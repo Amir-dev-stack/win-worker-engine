@@ -1,7 +1,7 @@
 import type { Config } from "@netlify/functions";
 import { randomUUID } from "node:crypto";
 import {
-  WIN_RESOURCE, WIN_SCOPES, randomSecret, saveOAuthRecord,
+  WIN_ISSUER, WIN_RESOURCE, WIN_SCOPES, randomSecret, saveOAuthRecord,
   readOAuthRecord, validateOwnerToken, hashSecret
 } from "../lib/oauth-store.mts";
 
@@ -39,6 +39,15 @@ function scopesFrom(value: string): string[] | null {
   return [...new Set(requested)];
 }
 
+function redirectAuthorizationError(redirectUri: string, state: string, error: string, description: string): Response {
+  const callback = new URL(redirectUri);
+  callback.searchParams.set("error", error);
+  callback.searchParams.set("error_description", description);
+  callback.searchParams.set("state", state);
+  callback.searchParams.set("iss", WIN_ISSUER);
+  return Response.redirect(callback.toString(), 303);
+}
+
 export default async (req: Request) => {
   const url = new URL(req.url);
   if (req.method === "GET") {
@@ -48,16 +57,27 @@ export default async (req: Request) => {
     const state = url.searchParams.get("state") || "";
     const challenge = url.searchParams.get("code_challenge") || "";
     const method = url.searchParams.get("code_challenge_method") || "";
-    const audience = url.searchParams.get("resource") || WIN_RESOURCE;
+    const audience = url.searchParams.get("resource") || "";
     const scopes = scopesFrom(url.searchParams.get("scope") || "");
     const client = await readOAuthRecord<ClientRecord>("clients", clientId);
 
-    if (!client || !client.redirectUris.includes(redirectUri) || responseType !== "code" ||
-        !state || !challenge || method !== "S256" || audience !== WIN_RESOURCE || !scopes) {
-      return new Response("Invalid OAuth authorization request", { status: 400 });
+    // Never redirect to a URI that was not registered for this exact client.
+    if (!client || !client.redirectUris.includes(redirectUri) || !state) {
+      return new Response("Invalid OAuth client, redirect URI, or state.", { status: 400 });
     }
+    if (responseType !== "code" || !/^[A-Za-z0-9_-]{43}$/.test(challenge) ||
+        method !== "S256" || audience !== WIN_RESOURCE || !scopes) {
+      return redirectAuthorizationError(
+        redirectUri, state, "invalid_request",
+        "The authorization request is missing a valid PKCE challenge, resource, response type, or supported scope."
+      );
+    }
+
     const txn = randomUUID();
-    const record: AuthRequest = { clientId, redirectUri, state, challenge, audience, scopes, expiresAt: Date.now() + 10 * 60 * 1000 };
+    const record: AuthRequest = {
+      clientId, redirectUri, state, challenge, audience, scopes,
+      expiresAt: Date.now() + 10 * 60 * 1000
+    };
     await saveOAuthRecord("requests", txn, record);
     return new Response(page(txn, client.clientName, scopes.join(" ")), {
       headers: {
@@ -81,7 +101,7 @@ export default async (req: Request) => {
       return new Response("Invalid OAuth client.", { status: 400 });
     }
     if (!await validateOwnerToken(ownerToken)) {
-      return new Response(page(txn, "WIN ChatGPT client", auth.scopes.join(" "), "The WIN internal token was not accepted. Check it and try again."), {
+      return new Response(page(txn, client.clientName, auth.scopes.join(" "), "The WIN internal token was not accepted. Check it and try again."), {
         status: 401, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }
       });
     }
@@ -89,12 +109,15 @@ export default async (req: Request) => {
     await saveOAuthRecord("requests", txn, { ...auth, consumedAt: Date.now() });
     const code = randomSecret("win_code");
     await saveOAuthRecord("codes", hashSecret(code), {
+      issuer: WIN_ISSUER,
       clientId: auth.clientId, redirectUri: auth.redirectUri, challenge: auth.challenge,
-      audience: auth.audience, scopes: auth.scopes, createdAt: Date.now(), expiresAt: Date.now() + 3 * 60 * 1000
+      audience: auth.audience, scopes: auth.scopes, createdAt: Date.now(),
+      expiresAt: Date.now() + 3 * 60 * 1000
     });
     const callback = new URL(auth.redirectUri);
     callback.searchParams.set("code", code);
     callback.searchParams.set("state", auth.state);
+    callback.searchParams.set("iss", WIN_ISSUER);
     return Response.redirect(callback.toString(), 303);
   }
 
