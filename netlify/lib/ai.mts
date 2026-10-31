@@ -200,8 +200,10 @@ async function askWorker(
     input = "Original WIN brief, worker-network manifest and all first-pass department reports follow. Challenge unsupported assumptions, correct mistakes, identify material disagreement and missing evidence. Do not simply agree. Re-check current/disputed claims.\nBRIEF AND NETWORK:\n" +
       JSON.stringify(brief) + "\nDEPARTMENT REPORTS:\n" + JSON.stringify(peerReports ?? []);
   } else {
-    input = "You are the SINGLE final decision authority in WIN. Review the original brief, worker-network hierarchy, all eight department reports, four adversarial reviews and the Low-Risk Gate. Do not treat report count or consensus as evidence. Decide whether any proposed coupon is actually publishable.\n" +
-      JSON.stringify({ brief, departmentReports: peerReports, mandatoryRules: [
+    const departmentReports = (peerReports ?? []).filter(report => report.phase === "initial_scout" || report.phase === "department");
+    const debateReports = (peerReports ?? []).filter(report => report.phase === "debate");
+    input = "You are the SINGLE final decision authority in WIN. Review the original brief, worker-network hierarchy, all eight department reports, four adversarial reviews and the Low-Risk Gate. Do not treat report count or consensus as evidence. Decide whether any proposed coupon is actually publishable.\\n" +
+      JSON.stringify({ brief, departmentReports, debateReports, mandatoryRules: [
         "Return exactly one final decision: BET, WAIT or NO BET.",
         "Choose NO BET when core evidence, event identity, current STS prices or exact market/settlement rules are missing, stale, contradictory or unverifiable.",
         "For a latest-coupon build, compare the eligible current candidate pool and any user-supplied existing coupon. Offer a WIN alternative only if each included leg passes all mandatory checks.",
