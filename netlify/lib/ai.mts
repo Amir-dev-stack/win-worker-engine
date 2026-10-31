@@ -24,23 +24,19 @@ function extractText(data: any): string {
   }
   return chunks.join("\n");
 }
-
 function extractCitations(data: any): Citation[] {
   const found: Citation[] = [];
   for (const item of data.output ?? []) for (const part of item.content ?? []) {
-    for (const a of part.annotations ?? []) {
-      if (a.type === "url_citation" && a.url) found.push({title:a.title,url:a.url,snippet:a.snippet});
-    }
+    for (const a of part.annotations ?? []) if (a.type === "url_citation" && a.url) found.push({title:a.title,url:a.url,snippet:a.snippet});
   }
   return found;
 }
-
 export async function askWorker(role: string, phase: string, brief: unknown, peerReports?: WorkerReport[]): Promise<WorkerReport> {
   const startedAt = new Date().toISOString();
   const workerId = crypto.randomUUID();
   const apiKey = Netlify.env.get("OPENAI_API_KEY");
-  if (!apiKey) return {workerId,role,phase,status:"failed",report:"",citations:[],error:"OPENAI_API_KEY is not configured.",startedAt,completedAt:new Date().toISOString()};
-  const model = Netlify.env.get("OPENAI_MODEL") || "gpt-6-astra";
+  const model = Netlify.env.get("OPENAI_MODEL");
+  if (!apiKey || !model) return {workerId,role,phase,status:"failed",report:"",citations:[],error:!apiKey?"OPENAI_API_KEY is not configured.":"OPENAI_MODEL is not configured. Set a model ID available to your API account.",startedAt,completedAt:new Date().toISOString()};
   const webSearch = (Netlify.env.get("WIN_ENABLE_WEB_SEARCH") ?? "true") === "true";
   const instructions = [
     "You are an independent research worker in WIN, a cautious sports betting research system.",
@@ -56,9 +52,7 @@ export async function askWorker(role: string, phase: string, brief: unknown, pee
   try {
     const body: any = {model,instructions,input,store:false};
     if (webSearch) body.tools = [{type:"web_search_preview"}];
-    const response = await fetch("https://api.openai.com/v1/responses",{
-      method:"POST",headers:{"Authorization":"Bearer "+apiKey,"Content-Type":"application/json"},body:JSON.stringify(body)
-    });
+    const response = await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":"Bearer "+apiKey,"Content-Type":"application/json"},body:JSON.stringify(body)});
     const data: any = await response.json();
     if (!response.ok) throw new Error(data.error?.message || "Responses API returned HTTP "+response.status);
     return {workerId,role,phase,status:"completed",responseId:data.id,report:extractText(data),citations:extractCitations(data),startedAt,completedAt:new Date().toISOString()};
@@ -66,25 +60,16 @@ export async function askWorker(role: string, phase: string, brief: unknown, pee
     return {workerId,role,phase,status:"failed",report:"",citations:[],error:String(error),startedAt,completedAt:new Date().toISOString()};
   }
 }
-
 export async function runIndependentWorkers(brief: unknown) {
   return Promise.all(specialists.map(([role,label])=>askWorker(label,"initial",brief)));
 }
-
 export async function runDebate(brief: unknown, reports: WorkerReport[]) {
   const roles = ["FOR-side challenger","AGAINST-side challenger","Markets and settlement auditor","Quantitative evidence reviewer"];
   return Promise.all(roles.map(role=>askWorker(role,"debate",brief,reports)));
 }
-
 export async function runGlobalMaster(brief: unknown, reports: WorkerReport[], debate: WorkerReport[]) {
   return askWorker("Global Master — final decision authority","final",{
     brief,initialReports:reports,debateReports:debate,
-    mandatoryRules:[
-      "Return exactly one final decision: BET, WAIT or NO BET.",
-      "Choose NO BET when core evidence is missing, contradictory, stale or unverifiable.",
-      "Never manufacture a combined-odds target by adding weak selections.",
-      "Explain market settlement, correlation, key risks and unverified claims.",
-      "No bet placement."
-    ]
+    mandatoryRules:["Return exactly one final decision: BET, WAIT or NO BET.","Choose NO BET when core evidence is missing, contradictory, stale or unverifiable.","Never manufacture a combined-odds target by adding weak selections.","Explain market settlement, correlation, key risks and unverified claims.","No bet placement."]
   });
 }
