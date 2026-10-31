@@ -4,19 +4,39 @@ import { z } from "zod";
 import { get, list } from "../lib/store.mts";
 import { authorizeMcpRequest, WIN_ISSUER } from "../lib/oauth-store.mts";
 
-function scopeError(scopes: string[], required: string) {
-  return { content: [{ type: "text" as const, text: "This WIN connection does not have the required permission: " + required }] , isError: true };
+const resourceMetadata = WIN_ISSUER + "/.well-known/oauth-protected-resource/mcp";
+
+function authRequired(scope: string) {
+  return {
+    content: [{ type: "text" as const, text: "Connect or reauthorize WIN to grant " + scope + " access." }],
+    isError: true,
+    _meta: {
+      "mcp/www_authenticate": [
+        'Bearer resource_metadata="' + resourceMetadata + '", error="insufficient_scope", error_description="Connect to your WIN engine to use this tool."'
+      ]
+    }
+  };
 }
 
 function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
   const server = new McpServer({ name: "WIN Worker Engine", version: "0.2.0" });
 
-  server.tool("start_research_run", "Start a new independent WIN research and debate run. No bet is placed.", {
-    event: z.string().min(3), sport: z.string().optional(), competition: z.string().optional(), country: z.string().optional(),
-    dateTime: z.string().optional(), markets: z.array(z.string()).optional(),
-    humanTips: z.array(z.any()).optional(), context: z.string().optional()
+  server.registerTool("start_research_run", {
+    title: "Start WIN research",
+    description: "Start the on-demand WIN specialist research, adversarial review and Global Master workflow. This does not place a bet.",
+    inputSchema: {
+      event: z.string().min(3),
+      sport: z.string().optional(),
+      competition: z.string().optional(),
+      country: z.string().optional(),
+      dateTime: z.string().optional(),
+      markets: z.array(z.string()).optional(),
+      humanTips: z.array(z.any()).optional(),
+      context: z.string().optional()
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
   }, async (args) => {
-    if (!scopes.includes("win:research")) return scopeError(scopes, "win:research");
+    if (!scopes.includes("win:research")) return authRequired("win:research");
     const response = await fetch(baseUrl + "/api/runs", {
       method: "POST",
       headers: { "content-type": "application/json", "authorization": "Bearer " + internalToken },
@@ -25,24 +45,44 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
     return { content: [{ type: "text" as const, text: await response.text() }], isError: !response.ok && response.status !== 202 };
   });
 
-  server.tool("get_run", "Read a WIN run by its ID", { runId: z.string() }, async ({ runId }) => {
-    if (!scopes.includes("win:read")) return scopeError(scopes, "win:read");
+  server.registerTool("get_run", {
+    title: "Get WIN research report",
+    description: "Read the complete WIN report, including worker findings, challenge reports, citations, errors and Global Master decision.",
+    inputSchema: { runId: z.string() },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:read"] }]
+  }, async ({ runId }) => {
+    if (!scopes.includes("win:read")) return authRequired("win:read");
     const run = await get<any>("runs", runId);
     return { content: [{ type: "text" as const, text: JSON.stringify(run ?? { error: "Run not found" }) }] };
   });
 
-  server.tool("list_runs", "List recent WIN research runs", {}, async () => {
-    if (!scopes.includes("win:read")) return scopeError(scopes, "win:read");
+  server.registerTool("list_runs", {
+    title: "List WIN research",
+    description: "List recent on-demand WIN research runs and their status.",
+    inputSchema: {},
+    securitySchemes: [{ type: "oauth2", scopes: ["win:read"] }]
+  }, async () => {
+    if (!scopes.includes("win:read")) return authRequired("win:read");
     return { content: [{ type: "text" as const, text: JSON.stringify(await list("runs", 50)) }] };
   });
 
-  server.tool("list_human_tips", "List user-imported public or authorized human tips", {}, async () => {
-    if (!scopes.includes("win:read")) return scopeError(scopes, "win:read");
+  server.registerTool("list_human_tips", {
+    title: "List WIN tips",
+    description: "List human tips and public or user-authorized inspiration material imported into WIN.",
+    inputSchema: {},
+    securitySchemes: [{ type: "oauth2", scopes: ["win:read"] }]
+  }, async () => {
+    if (!scopes.includes("win:read")) return authRequired("win:read");
     return { content: [{ type: "text" as const, text: JSON.stringify(await list("tips", 100)) }] };
   });
 
-  server.tool("list_predictions", "Read the frozen WIN prediction ledger", {}, async () => {
-    if (!scopes.includes("win:read")) return scopeError(scopes, "win:read");
+  server.registerTool("list_predictions", {
+    title: "List frozen WIN forecasts",
+    description: "Read the WIN frozen pre-event forecast ledger.",
+    inputSchema: {},
+    securitySchemes: [{ type: "oauth2", scopes: ["win:read"] }]
+  }, async () => {
+    if (!scopes.includes("win:read")) return authRequired("win:read");
     return { content: [{ type: "text" as const, text: JSON.stringify(await list("predictions", 200)) }] };
   });
 
@@ -58,7 +98,7 @@ export default async (req: Request) => {
       headers: {
         "content-type": "application/json",
         "cache-control": "no-store",
-        "www-authenticate": 'Bearer realm="WIN", resource_metadata="' + WIN_ISSUER + '/.well-known/oauth-protected-resource/mcp", scope="win:read win:research"'
+        "www-authenticate": 'Bearer resource_metadata="' + resourceMetadata + '", scope="win:read win:research"'
       }
     });
   }
