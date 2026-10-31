@@ -8,6 +8,8 @@ export default async (req: Request) => {
   if (path === "/.well-known/oauth-authorization-server") {
     return Response.json({
       issuer: WIN_ISSUER,
+      authorization_response_iss_parameter_supported: true,
+      client_id_metadata_document_supported: false,
       authorization_endpoint: WIN_ISSUER + "/oauth/authorize",
       token_endpoint: WIN_ISSUER + "/oauth/token",
       registration_endpoint: WIN_ISSUER + "/oauth/register",
