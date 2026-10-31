@@ -6,8 +6,12 @@ function validRedirect(value: unknown): value is string {
   if (typeof value !== "string") return false;
   try {
     const url = new URL(value);
-    if (url.protocol !== "https:") return false;
-    return url.hostname === "chatgpt.com" || url.hostname === "chat.openai.com";
+    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) return false;
+    if (url.hostname === "chatgpt.com") {
+      return url.pathname === "/connector_platform_oauth_redirect" ||
+        /^\\/connector\\/oauth\\/[A-Za-z0-9_-]+$/.test(url.pathname);
+    }
+    return url.hostname === "chat.openai.com" && url.pathname.startsWith("/aip/");
   } catch { return false; }
 }
 
@@ -17,12 +21,19 @@ export default async (req: Request) => {
   try { body = await req.json(); } catch { return Response.json({ error: "invalid_client_metadata" }, { status: 400 }); }
 
   const redirectUris = Array.isArray(body?.redirect_uris) ? body.redirect_uris : [];
-  if (!redirectUris.length || !redirectUris.every(validRedirect)) {
+  if (!redirectUris.length || redirectUris.length > 10 || !redirectUris.every(validRedirect)) {
     return Response.json({ error: "invalid_redirect_uri" }, { status: 400 });
   }
   if (body.token_endpoint_auth_method && body.token_endpoint_auth_method !== "none") {
     return Response.json({ error: "unsupported_token_endpoint_auth_method" }, { status: 400 });
   }
+  if (Array.isArray(body.grant_types) && body.grant_types.some((x: string) => !["authorization_code", "refresh_token"].includes(x))) {
+    return Response.json({ error: "unsupported_grant_type" }, { status: 400 });
+  }
+  if (Array.isArray(body.response_types) && body.response_types.some((x: string) => x !== "code")) {
+    return Response.json({ error: "unsupported_response_type" }, { status: 400 });
+  }
+
   const clientId = randomUUID();
   const clientName = typeof body.client_name === "string" ? body.client_name.slice(0, 100) : "WIN ChatGPT client";
   const record = { clientId, clientName, redirectUris, createdAt: Date.now() };
