@@ -284,6 +284,6 @@ export async function runDebate(brief: unknown, reports: WorkerReport[]) {
 
 export async function runGlobalMaster(brief: unknown, reports: WorkerReport[], debate: WorkerReport[], workerNetwork: unknown) {
   return askWorker("WIN Global Master — single final decision authority", "final", {
-    brief, workerNetwork, departmentReports: reports, debateReports: debate
+    originalBrief: brief, workerNetwork
   }, [...reports, ...debate]);
 }
