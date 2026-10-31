@@ -1,0 +1,107 @@
+import type { Config } from "@netlify/functions";
+import { randomUUID } from "node:crypto";
+import {
+  WIN_RESOURCE, WIN_SCOPES, randomSecret, saveOAuthRecord,
+  readOAuthRecord, validateOwnerToken, hashSecret
+} from "../lib/oauth-store.mts";
+
+type ClientRecord = { clientId: string; clientName: string; redirectUris: string[] };
+type AuthRequest = {
+  clientId: string; redirectUri: string; state: string; challenge: string;
+  audience: string; scopes: string[]; expiresAt: number; consumedAt?: number;
+};
+
+const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]!));
+const page = (txn: string, client: string, scope: string, error = "") => `<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Connect WIN</title>
+<style>
+body{font:16px system-ui;background:#0b1020;color:#edf2ff;display:grid;min-height:100vh;place-items:center;margin:0}
+main{width:min(440px,calc(100% - 40px));background:#151d31;border:1px solid #34415d;border-radius:18px;padding:28px;box-sizing:border-box}
+h1{margin:0 0 10px;font-size:25px}p{color:#bac6dc;line-height:1.5}label{display:block;margin:18px 0 8px;font-size:14px}
+input{width:100%;box-sizing:border-box;padding:13px;border-radius:9px;border:1px solid #51617e;background:#0b1020;color:white}
+button{width:100%;margin-top:18px;padding:13px;border:0;border-radius:9px;background:#b7d4ff;color:#10182a;font-weight:700;cursor:pointer}
+.error{color:#ffb7b7}.scope{padding:10px;background:#0b1020;border-radius:8px;font-size:13px;color:#cad5e9}
+</style><main><h1>Connect WIN to ChatGPT</h1>
+<p><b>${escapeHtml(client)}</b> is requesting permission to use your WIN research engine.</p>
+<p class="scope">Permissions: ${escapeHtml(scope)}<br>Can read WIN research records and start research runs. It cannot place bets or access your STS account.</p>
+${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}
+<form method="post" action="/oauth/authorize">
+<input type="hidden" name="txn" value="${escapeHtml(txn)}">
+<label for="ownerToken">WIN internal token</label>
+<input id="ownerToken" name="ownerToken" type="password" autocomplete="current-password" required>
+<button type="submit">Authorize WIN connection</button>
+</form><p>Use the same private token you use to connect the WIN dashboard. It is checked on this secure WIN website and is not added to the plugin.</p></main></html>`;
+
+function scopesFrom(value: string): string[] | null {
+  const requested = value.trim() ? value.trim().split(/\\s+/) : [...WIN_SCOPES];
+  if (!requested.length || requested.some(s => !(WIN_SCOPES as readonly string[]).includes(s))) return null;
+  return [...new Set(requested)];
+}
+
+export default async (req: Request) => {
+  const url = new URL(req.url);
+  if (req.method === "GET") {
+    const clientId = url.searchParams.get("client_id") || "";
+    const redirectUri = url.searchParams.get("redirect_uri") || "";
+    const responseType = url.searchParams.get("response_type") || "";
+    const state = url.searchParams.get("state") || "";
+    const challenge = url.searchParams.get("code_challenge") || "";
+    const method = url.searchParams.get("code_challenge_method") || "";
+    const audience = url.searchParams.get("resource") || WIN_RESOURCE;
+    const scopes = scopesFrom(url.searchParams.get("scope") || "");
+    const client = await readOAuthRecord<ClientRecord>("clients", clientId);
+
+    if (!client || !client.redirectUris.includes(redirectUri) || responseType !== "code" ||
+        !state || !challenge || method !== "S256" || audience !== WIN_RESOURCE || !scopes) {
+      return new Response("Invalid OAuth authorization request", { status: 400 });
+    }
+    const txn = randomUUID();
+    const record: AuthRequest = { clientId, redirectUri, state, challenge, audience, scopes, expiresAt: Date.now() + 10 * 60 * 1000 };
+    await saveOAuthRecord("requests", txn, record);
+    return new Response(page(txn, client.clientName, scopes.join(" ")), {
+      headers: {
+        "content-type": "text/html; charset=utf-8", "cache-control": "no-store",
+        "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff", "referrer-policy": "no-referrer"
+      }
+    });
+  }
+
+  if (req.method === "POST") {
+    const form = await req.formData();
+    const txn = String(form.get("txn") || "");
+    const ownerToken = String(form.get("ownerToken") || "");
+    const auth = await readOAuthRecord<AuthRequest>("requests", txn);
+    if (!auth || auth.expiresAt <= Date.now() || auth.consumedAt) {
+      return new Response("Authorization request expired. Start connecting WIN again.", { status: 400 });
+    }
+    const client = await readOAuthRecord<ClientRecord>("clients", auth.clientId);
+    if (!client || !client.redirectUris.includes(auth.redirectUri)) {
+      return new Response("Invalid OAuth client.", { status: 400 });
+    }
+    if (!await validateOwnerToken(ownerToken)) {
+      return new Response(page(txn, "WIN ChatGPT client", auth.scopes.join(" "), "The WIN internal token was not accepted. Check it and try again."), {
+        status: 401, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" }
+      });
+    }
+
+    await saveOAuthRecord("requests", txn, { ...auth, consumedAt: Date.now() });
+    const code = randomSecret("win_code");
+    await saveOAuthRecord("codes", hashSecret(code), {
+      clientId: auth.clientId, redirectUri: auth.redirectUri, challenge: auth.challenge,
+      audience: auth.audience, scopes: auth.scopes, createdAt: Date.now(), expiresAt: Date.now() + 3 * 60 * 1000
+    });
+    const callback = new URL(auth.redirectUri);
+    callback.searchParams.set("code", code);
+    callback.searchParams.set("state", auth.state);
+    return Response.redirect(callback.toString(), 303);
+  }
+
+  return new Response("Method not allowed", { status: 405 });
+};
+
+export const config: Config = {
+  path: "/oauth/authorize",
+  rateLimit: { windowSize: 60, windowLimit: 20, aggregateBy: ["ip"] }
+};
