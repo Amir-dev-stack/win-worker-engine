@@ -16,8 +16,11 @@ export default async (req: Request) => {
     const debate = await runDebate(run.brief,reports);
     const withDebate = {...withInitial,status:"synthesizing",debate,updatedAt:new Date().toISOString()};
     await put("runs",run.id,withDebate);
-    const master = await runGlobalMaster(run.brief,reports,debate);
-    const completed = {...withDebate,status:"completed",master,decision:master.status==="completed"?master.report:"NO BET — Global Master failed; manual review required.",updatedAt:new Date().toISOString(),completedAt:new Date().toISOString()};
+    const failed = [...reports,...debate].filter(x=>x.status!=="completed" || !x.report.trim());
+    const master = failed.length
+      ? {workerId:crypto.randomUUID(),role:"Global Master — deterministic safety gate",phase:"final",status:"completed",report:"FINAL DECISION: NO BET\n\nThe Low-Risk Gate rejected this run because one or more required independent checks failed or returned an empty report. Failed checks: "+failed.map(x=>x.role+": "+(x.error||"empty report")).join("; ")+". Do not place a bet; rerun after the research services are restored.",citations:[],startedAt:new Date().toISOString(),completedAt:new Date().toISOString()}
+      : await runGlobalMaster(run.brief,reports,debate);
+    const completed = {...withDebate,status:"completed",master,decision:master.status==="completed"?master.report:"FINAL DECISION: NO BET — Global Master failed; manual review required.",updatedAt:new Date().toISOString(),completedAt:new Date().toISOString()};
     await put("runs",run.id,completed);
     if (master.status==="completed") {
       const predictionId=crypto.randomUUID();
