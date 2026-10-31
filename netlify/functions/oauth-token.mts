@@ -4,7 +4,7 @@ import {
 } from "../lib/oauth-store.mts";
 
 type CodeRecord = {
-  clientId: string; redirectUri: string; challenge: string; audience: string;
+  issuer: string; clientId: string; redirectUri: string; challenge: string; audience: string;
   scopes: string[]; createdAt: number; expiresAt: number; consumedAt?: number;
 };
 type RefreshRecord = {
@@ -37,7 +37,7 @@ export default async (req: Request) => {
     const challenge = Buffer.from(hash).toString("base64url");
     const record = await readOAuthRecord<CodeRecord>("codes", hashSecret(code));
     if (!record || record.consumedAt || record.expiresAt <= Date.now()) return fail("invalid_grant");
-    if (record.clientId !== clientId || record.redirectUri !== redirectUri || record.challenge !== challenge ||
+    if (record.issuer !== "https://win-worker-engine.netlify.app" || record.clientId !== clientId || record.redirectUri !== redirectUri || record.challenge !== challenge ||
         record.audience !== WIN_RESOURCE) return fail("invalid_grant");
 
     await saveOAuthRecord("codes", hashSecret(code), { ...record, consumedAt: Date.now() });
