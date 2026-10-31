@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090d17"><title>WIN Worker Engine</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<div class="brand"><div class="mark">W</div><div><b>WIN</b><small>WORKER ENGINE</small></div></div>
+<nav><a class="active" href="#overview">Overview</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#ledger">Prediction ledger</a></nav>
+<div class="side-bottom"><span class="pulse"></span> Engine console <small>Research only · no bet placement</small></div>
+</aside>
+<main>
+<header><div><div class="eyebrow">OPERATIONS / LIVE SYSTEM</div><h1>Research command center</h1><p>Independent analysis. Adversarial review. Evidence-led decisions.</p></div><div class="connection"><i></i><span id="apiStatus">Checking API</span></div></header>
+<section class="stats">
+<article><label>Research runs</label><strong id="runCount">—</strong><small>Recorded investigations</small></article>
+<article><label>Active workers</label><strong id="workerCount">—</strong><small>Independent AI reports</small></article>
+<article><label>Human tips</label><strong id="tipCount">—</strong><small>Imported evidence</small></article>
+<article><label>Frozen forecasts</label><strong id="predictionCount">—</strong><small>Pre-match ledger</small></article>
+</section>
+<section class="panel" id="overview">
+<div class="panel-head"><div><div class="eyebrow">NEW INVESTIGATION</div><h2>Start a research run</h2><p>Each specialist starts with the event brief independently.</p></div><span class="tag">8 SPECIALISTS + 4 REVIEWERS</span></div>
+<form id="runForm" class="run-form">
+<label>Event or match<input name="event" required placeholder="e.g. Team A vs Team B"></label>
+<div class="two"><label>Sport<input name="sport" placeholder="Football, basketball, tennis…"></label><label>Competition<input name="competition" placeholder="League / tournament"></label></div>
+<div class="two"><label>Kickoff (local time)<input name="dateTime" placeholder="2026-10-31 20:00"></label><label>Markets to assess<input name="markets" placeholder="1X2, totals, handicap…"></label></div>
+<label>Context, odds and human tips<textarea name="context" rows="4" placeholder="Paste available odds, public tip details, source URLs, lineups or context. Login-only STS content must be supplied by you."></textarea></label>
+<div class="form-foot"><span>Final decision can be BET, WAIT or NO BET. No forced odds target.</span><button type="submit">Launch research <b>↗</b></button></div>
+</form>
+</section>
+<section class="panel" id="runs"><div class="panel-head"><div><div class="eyebrow">EXECUTION HISTORY</div><h2>Research runs</h2><p>Worker progress and Global Master decisions.</p></div><button class="subtle" id="refresh">Refresh ↻</button></div><div id="runsList" class="empty">No runs loaded yet.</div></section>
+<section class="columns">
+<section class="panel" id="tips"><div class="panel-head"><div><div class="eyebrow">SOURCE INTELLIGENCE</div><h2>Human tip imports</h2></div></div><form id="tipForm" class="compact"><input name="tip" required placeholder="Paste a public / authorized tip"><input name="sourceUrl" placeholder="Source URL"><input name="tipster" placeholder="Tipster name (optional)"><button type="submit">Save tip</button></form><div id="tipsList" class="mini-list"></div></section>
+<section class="panel" id="ledger"><div class="panel-head"><div><div class="eyebrow">LONG-TERM LEARNING</div><h2>Prediction ledger</h2></div></div><div id="ledgerList" class="empty">No frozen forecasts yet.</div></section>
+</section>
+<footer>WIN Worker Engine · Evidence and research support only · Never places bets automatically.</footer>
+</main>
+</div>
+<dialog id="tokenDialog"><form method="dialog"><h2>Connect your private engine</h2><p>Paste the WIN internal token stored in Netlify environment variables. It stays in this browser tab only.</p><input id="tokenInput" type="password" autocomplete="off" placeholder="WIN_INTERNAL_TOKEN" required><div class="dialog-actions"><button value="cancel" class="subtle">Cancel</button><button id="saveToken" value="default">Connect</button></div></form></dialog>
+<script type="module" src="/app.js"></script>
+</body></html>
