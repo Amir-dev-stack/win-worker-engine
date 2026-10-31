@@ -8,8 +8,7 @@ function validRedirect(value: unknown): value is string {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) return false;
     if (url.hostname === "chatgpt.com") {
-      return url.pathname === "/connector_platform_oauth_redirect" ||
-        /^\\/connector\\/oauth\\/[A-Za-z0-9_-]+$/.test(url.pathname);
+      return url.pathname === "/connector_platform_oauth_redirect" || /^\/connector\/oauth\/[A-Za-z0-9_-]+$/.test(url.pathname);
     }
     return url.hostname === "chat.openai.com" && url.pathname.startsWith("/aip/");
   } catch { return false; }
