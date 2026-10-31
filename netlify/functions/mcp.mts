@@ -19,35 +19,48 @@ function authRequired(scope: string) {
 }
 
 function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
-  const server = new McpServer({ name: "WIN Worker Engine", version: "0.2.0" });
+  const server = new McpServer({ name: "WIN Worker Engine", version: "0.3.0" });
 
   server.registerTool("start_research_run", {
-    title: "Start WIN research",
-    description: "Start the on-demand WIN specialist research, adversarial review and Global Master workflow. This does not place a bet.",
+    title: "Start WIN multi-department research",
+    description: "Start an on-demand WIN run through Public Offer & Scouting, all eight main departments, the dynamic sport/country/competition/event worker hierarchy, four adversarial reviewers and one Global Master. Use taskType build_latest_coupon to discover and compare current public candidates, audit_existing_coupon for a supplied coupon, or compare_coupons to compare a supplied coupon against a WIN alternative. No bet is placed.",
     inputSchema: {
-      event: z.string().min(3),
+      taskType: z.enum(["research_event", "build_latest_coupon", "audit_existing_coupon", "compare_coupons"]).optional(),
+      event: z.string().min(3).optional(),
       sport: z.string().optional(),
       competition: z.string().optional(),
       country: z.string().optional(),
       dateTime: z.string().optional(),
       markets: z.array(z.string()).optional(),
       humanTips: z.array(z.any()).optional(),
-      context: z.string().optional()
+      context: z.string().optional(),
+      existingCoupon: z.string().optional(),
+      targetCombinedOdds: z.number().positive().optional(),
+      maxLegs: z.number().int().min(1).max(20).optional(),
+      dateWindow: z.string().optional()
     },
     securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
   }, async (args) => {
     if (!scopes.includes("win:research")) return authRequired("win:research");
+    const event = args.event || (
+      args.taskType === "build_latest_coupon" ? "LATEST PUBLIC STS PRE-MATCH COUPON" :
+      args.taskType === "audit_existing_coupon" ? "USER-SUPPLIED COUPON AUDIT" :
+      args.taskType === "compare_coupons" ? "COUPON COMPARISON" : ""
+    );
+    if (event.length < 3) {
+      return { content: [{ type: "text" as const, text: "An event name is required for event research." }], isError: true };
+    }
     const response = await fetch(baseUrl + "/api/runs", {
       method: "POST",
       headers: { "content-type": "application/json", "authorization": "Bearer " + internalToken },
-      body: JSON.stringify({ event: args.event, ...args })
+      body: JSON.stringify({ ...args, event })
     });
     return { content: [{ type: "text" as const, text: await response.text() }], isError: !response.ok && response.status !== 202 };
   });
 
   server.registerTool("get_run", {
-    title: "Get WIN research report",
-    description: "Read the complete WIN report, including worker findings, challenge reports, citations, errors and Global Master decision.",
+    title: "Get full WIN report",
+    description: "Read a WIN run by its ID. Returns the dynamic worker-network tree, actual department worker statuses, specialist assignments, adversarial review, citations, handoffs, blockers and Global Master decision.",
     inputSchema: { runId: z.string() },
     securitySchemes: [{ type: "oauth2", scopes: ["win:read"] }]
   }, async ({ runId }) => {
@@ -58,12 +71,17 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
 
   server.registerTool("list_runs", {
     title: "List WIN research",
-    description: "List recent on-demand WIN research runs and their status.",
+    description: "List recent on-demand WIN research runs, status, type and Global Master decision.",
     inputSchema: {},
     securitySchemes: [{ type: "oauth2", scopes: ["win:read"] }]
   }, async () => {
     if (!scopes.includes("win:read")) return authRequired("win:read");
-    return { content: [{ type: "text" as const, text: JSON.stringify(await list("runs", 50)) }] };
+    const runs = await list<any>("runs", 50);
+    return { content: [{ type: "text" as const, text: JSON.stringify(runs.map(run => ({
+      id: run.id, taskType: run.brief?.taskType, event: run.brief?.event,
+      status: run.status, createdAt: run.createdAt, completedAt: run.completedAt,
+      decision: run.decision, workerNetworkSummary: run.workerNetwork?.executionSummary
+    }))) }] };
   });
 
   server.registerTool("list_human_tips", {
@@ -78,7 +96,7 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
 
   server.registerTool("list_predictions", {
     title: "List frozen WIN forecasts",
-    description: "Read the WIN frozen pre-event forecast ledger.",
+    description: "Read frozen pre-event WIN forecast records, including run IDs and model response references.",
     inputSchema: {},
     securitySchemes: [{ type: "oauth2", scopes: ["win:read"] }]
   }, async () => {
