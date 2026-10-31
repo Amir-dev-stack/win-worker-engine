@@ -5,7 +5,7 @@ export const WIN_ISSUER = "https://win-worker-engine.netlify.app";
 export const WIN_RESOURCE = WIN_ISSUER + "/mcp";
 export const WIN_SCOPES = ["win:read", "win:research"] as const;
 
-const store = getStore({ name: "win-oauth", region: "eu-central-1", consistency: "strong" });
+const store = getStore({ name: "win-oauth", consistency: "strong" });
 const recordKey = (kind: string, id: string) => "oauth/" + kind + "/" + id;
 
 export function randomSecret(prefix: string): string {
@@ -42,7 +42,6 @@ export async function authorizeMcpRequest(req: Request): Promise<McpAuthorizatio
   if (!match) return { ok: false, scopes: [], reason: "missing_bearer" };
   const bearer = match[1];
 
-  // Keep existing dashboard/service-token compatibility while supporting OAuth for ChatGPT.
   const ownerToken = Netlify.env.get("WIN_INTERNAL_TOKEN");
   if (ownerToken && safeEqual(bearer, ownerToken)) {
     return { ok: true, scopes: [...WIN_SCOPES] };
@@ -52,8 +51,8 @@ export async function authorizeMcpRequest(req: Request): Promise<McpAuthorizatio
   if (!record || typeof record.expiresAt !== "number" || record.expiresAt <= Date.now()) {
     return { ok: false, scopes: [], reason: "invalid_token" };
   }
-  if (record.audience !== WIN_RESOURCE || !Array.isArray(record.scopes)) {
-    return { ok: false, scopes: [], reason: "invalid_audience_or_scope" };
+  if (record.issuer !== WIN_ISSUER || record.audience !== WIN_RESOURCE || !Array.isArray(record.scopes)) {
+    return { ok: false, scopes: [], reason: "invalid_issuer_audience_or_scope" };
   }
   return { ok: true, scopes: record.scopes.filter((s: string) => (WIN_SCOPES as readonly string[]).includes(s)) };
 }
@@ -63,10 +62,10 @@ export async function issueTokenPair(clientId: string, audience: string, scopes:
   const accessToken = randomSecret("win_at");
   const refreshToken = randomSecret("win_rt");
   await saveOAuthRecord("access", hashSecret(accessToken), {
-    clientId, audience, scopes, createdAt: now, expiresAt: now + 60 * 60 * 1000
+    issuer: WIN_ISSUER, clientId, audience, scopes, createdAt: now, expiresAt: now + 60 * 60 * 1000
   });
   await saveOAuthRecord("refresh", hashSecret(refreshToken), {
-    clientId, audience, scopes, createdAt: now, expiresAt: now + 30 * 24 * 60 * 60 * 1000,
+    issuer: WIN_ISSUER, clientId, audience, scopes, createdAt: now, expiresAt: now + 30 * 24 * 60 * 60 * 1000,
     consumedAt: null
   });
   return { accessToken, refreshToken, expiresIn: 3600 };
