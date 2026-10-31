@@ -1,20 +1,138 @@
+import { WIN_DEPARTMENTS, buildWorkerNetwork } from "./worker-org.mts";
+
 export type Citation = { title?: string; url?: string; snippet?: string };
 export type WorkerReport = {
-  workerId: string; role: string; phase: string; status: "completed" | "failed";
-  responseId?: string; report: string; citations: Citation[]; error?: string;
-  startedAt: string; completedAt: string;
+  workerId: string;
+  role: string;
+  phase: string;
+  departmentId?: string;
+  assignedTeams?: string[];
+  status: "completed" | "failed";
+  responseId?: string;
+  report: string;
+  citations: Citation[];
+  error?: string;
+  startedAt: string;
+  completedAt: string;
 };
 
-const specialists = [
-  ["form", "Recent form and performance analyst"],
-  ["availability", "Lineups, injuries and player availability analyst"],
-  ["tactics", "Tactical matchup and style analyst"],
-  ["statistics", "Sport-specific statistical analyst"],
-  ["context", "Competition, motivation, schedule and context analyst"],
-  ["market", "Betting market and settlement rules analyst"],
-  ["tipster", "Human tipster and Strefa Inspiracji evidence analyst"],
-  ["against", "Independent skeptical FOR/AGAINST red-team analyst"]
-] as const;
+type DepartmentAssignment = {
+  id: string;
+  role: string;
+  assignment: string;
+  requiresScoutingPack?: boolean;
+};
+
+const departmentAssignments: DepartmentAssignment[] = [
+  {
+    id: "D1",
+    role: "Public Offer & Scouting Department Director",
+    assignment: [
+      "Run a bounded public-source pre-match offer and fixture scan for the requested objective and time window.",
+      "Attempt official publicly accessible STS offer pages first. Do not log in, bypass bot checks, scrape hidden/private APIs, use cookies, or claim access to the user's account.",
+      "For every candidate, identify participants, sport, country/competition when available, local start time/timezone, current event status, source URL, publication/update date, whether STS itself is the source, exact market label and exact price only if directly visible.",
+      "Separate OFFICIAL STS PUBLICLY OBSERVED, USER-SUPPLIED, THIRD-PARTY SCHEDULE ONLY, LOGIN-RESTRICTED, and NOT VERIFIED.",
+      "Reject started, completed, cancelled, postponed, duplicate or ambiguous pre-match events. State scan limits and categories not checked.",
+      "Do not label third-party prices as STS prices. Never invent odds.",
+      "Return a candidate shortlist and the strongest coverage gaps. If there are no verified public STS prices, say so rather than pretending.",
+      "At the end include exactly one machine-readable block named <WIN_CANDIDATES_JSON> ... </WIN_CANDIDATES_JSON>. It must contain JSON { \"events\": [ { \"event\": string, \"sport\": string, \"country\": string, \"competition\": string, \"startTime\": string, \"eventStatus\": string, \"sourceUrl\": string, \"market\": string, \"selection\": string, \"odds\": string } ] }. Include only candidates actually named in your report; use empty strings for unknowns and [] when none. The block is a routing aid, not independent verification."
+    ].join("\n")
+  },
+  {
+    id: "D2",
+    role: "Sport Analysis Department Director",
+    assignment: [
+      "Own sport judgement for every candidate in the scouting pack. Activate the correct sport-specific branch only for sports actually present.",
+      "Apply the relevant sport chief, country chief, competition chief and event chief checklists in the worker-network manifest. Do not force football metrics onto other sports.",
+      "For each material selection assess event identity/context, recent form and opponent strength, confirmed versus unconfirmed availability, tactics/technical matchup, venue/surface/conditions and rest/travel where relevant.",
+      "Cover the assigned form, availability, tactics, competition context, venue/conditions, sport statistics, Small Chef A FOR and Small Chef B AGAINST roles. These are named review assignments within this department request, not claims of separate API sessions.",
+      "Write the strongest case FOR, strongest case AGAINST, realistic failure scenario, evidence grade STRONG/MODERATE/WEAK/INSUFFICIENT, and SHORTLIST/WATCHLIST/PASS/NOT VERIFIED verdict.",
+      "Preserve disagreement. Do not use popularity, intuition or the number of supporting roles as evidence."
+    ].join("\n"),
+    requiresScoutingPack: true
+  },
+  {
+    id: "D3",
+    role: "Betting Markets & Settlement Department Director",
+    assignment: [
+      "Own the bet itself, separately from the sporting prediction.",
+      "For every candidate, verify exact bookmaker/source, market label, selection, line/handicap, period, displayed price and capture time. Never assume a market exists on STS merely because another bookmaker offers it.",
+      "Check regulation time versus overtime/extra time/shootout, push/void, half-win/half-loss, retirement/withdrawal, abandonment, postponement, participant changes and operator-specific settlement wording.",
+      "Compare lower-variance or more forgiving alternatives only when actually available and documented. Do not call a market safer only because its odds are shorter.",
+      "For any unavailable STS rules or unobserved price write BLOCKED / NOT VERIFIED and name the exact missing item."
+    ].join("\n"),
+    requiresScoutingPack: true
+  },
+  {
+    id: "D4",
+    role: "Quantitative Research & Evidence Department Director",
+    assignment: [
+      "Audit source authority, publication date separately from event date, retrieval time, sample size, recency, definitions, missing data and contradictions.",
+      "Separate observed facts, third-party reports, inference, bookmaker-implied break-even probability and independent probability estimates.",
+      "Calculate 1 / decimal odds only from a verified price and label it raw implied break-even probability before margin, not the true win chance.",
+      "Do not claim EV, value, calibration, ROI or precise probabilities without a transparent, defensible basis. Use NOT ESTIMABLE when inputs are insufficient.",
+      "Challenge tiny samples, cherry-picking, survivorship bias, data leakage and false precision."
+    ].join("\n"),
+    requiresScoutingPack: true
+  },
+  {
+    id: "D5",
+    role: "Strefa Inspiracji & Tipster Intelligence Department Director",
+    assignment: [
+      "Audit only public or user-supplied/authorized SmartBet, Strefa Inspiracji, tipster or coupon material included in the brief.",
+      "Decompose each supplied tip into exact event, market, selection, line, odds and source. Verify historical results, odds, time window, sample size and settlement before reporting any hit rate or ROI.",
+      "Popularity, tipster confidence and copied-pick counts are discovery signals only, not proof.",
+      "If no inspiration material was supplied or accessible, mark NOT APPLICABLE with the reason. Never claim inspection of login-restricted material."
+    ].join("\n")
+  },
+  {
+    id: "D6",
+    role: "Coupon Construction & Portfolio Risk Department Director",
+    assignment: [
+      "Compare the user's existing coupon, when supplied, against the latest candidate set and an independently constructed alternative.",
+      "Construct only from legs that have passed event, sport, market, quantitative and integrity checks. If upstream evidence is missing, return WAIT / REMOVE / NO BET.",
+      "Check duplicate and contradictory legs, same-event dependence, same-team/player exposure, shared venue/weather/roster/schedule/league and all common-cause risks.",
+      "Compare fewer-leg alternatives, separate sport-specific coupons and singles. Do not force an odds target by adding a weak leg.",
+      "Calculate combined odds only when every included decimal price is current and verified. For MAXIKOMBI/system bets, distinguish stake per combination from total stake and label unsupported payouts illustrative.",
+      "Apply the WIN Low-Risk Gate as a hard veto. Never issue the final Global Master decision."
+    ].join("\n"),
+    requiresScoutingPack: true
+  },
+  {
+    id: "D7",
+    role: "Results, Learning & Knowledge Transfer Department Director",
+    assignment: [
+      "Review only the prior frozen forecasts/results/lesson records included in the brief. Do not invent a historical WIN track record.",
+      "Keep pre-event forecast timestamps separate from post-event results. Verify sporting result separately from bookmaker market settlement.",
+      "Identify validated sport-, market-, country- or competition-scoped lessons only when sample size supports them.",
+      "If there are no applicable prior records, mark NOT APPLICABLE / NO VALIDATED HISTORICAL LESSONS AVAILABLE."
+    ].join("\n")
+  },
+  {
+    id: "D8",
+    role: "Integrity, Source Governance & Responsible Play Director",
+    assignment: [
+      "Independently re-check material source claims, event status, price timestamps, market wording, source conflicts, calculations and omissions.",
+      "Run the red-team/pre-mortem: strongest plausible losing scenario for each leg and a common-cause failure scenario for the whole coupon.",
+      "Identify fabricated/unsupported facts, stale prices, ambiguous markets, unresolved FOR/AGAINST disagreement, missing participant facts and any misleading confidence claim.",
+      "Protect privacy and access boundaries. No STS login bypass, no hidden APIs, no automated bet placement or stake change.",
+      "Use neutral responsible-play language; never encourage chasing losses or risking essential funds. Block publication if a material concern remains."
+    ].join("\n"),
+    requiresScoutingPack: true
+  }
+];
+
+const commonInstructions = [
+  "You are one independent department director pass in WIN, a cautious sports-betting research system.",
+  "This request is one separate OpenAI Responses API call. Do not claim that the sub-roles listed in your assignment are separate model sessions; they are assigned checks within your department pass.",
+  "Do not invent facts, injuries, lineups, odds, markets, results, sources, source access or statistics. Distinguish CONFIRMED, REPORTED/UNCONFIRMED, UNKNOWN and CONTRADICTED.",
+  "Use current, primary and reputable web sources where web search is enabled. Cite URLs and publication/update times. Record source retrieval time.",
+  "A source URL alone is not proof that the relevant claim was verified. Include what the source actually supports.",
+  "Never say an STS price was visible unless it was actually visible on an official/public STS source or supplied by the user. Third-party odds must be labelled third-party.",
+  "Do not describe any bet as safe, guaranteed, fixed or 100%. Do not recommend staking more, chasing losses or risking essential funds.",
+  "A required check with insufficient evidence must be reported as BLOCKED, PARTIAL, INSUFFICIENT or NOT ESTIMABLE, not passed.",
+  "Return a structured report with: execution status, assigned team checklist, findings, evidence/citations and timestamps, FOR case where relevant, AGAINST case where relevant, unknowns/blockers, handoff recipient and provisional verdict."
+].join("\n");
 
 function extractText(data: any): string {
   if (typeof data.output_text === "string") return data.output_text;
@@ -24,63 +142,148 @@ function extractText(data: any): string {
   }
   return chunks.join("\n");
 }
+
 function extractCitations(data: any): Citation[] {
   const found: Citation[] = [];
   for (const item of data.output ?? []) for (const part of item.content ?? []) {
-    for (const a of part.annotations ?? []) if (a.type === "url_citation" && a.url) found.push({title:a.title,url:a.url,snippet:a.snippet});
+    for (const a of part.annotations ?? []) if (a.type === "url_citation" && a.url) {
+      found.push({ title: a.title, url: a.url, snippet: a.snippet });
+    }
   }
   for (const item of data.output ?? []) {
     if (item.type === "web_search_call") {
       for (const source of item.action?.sources ?? item.results ?? []) {
-        if (source.url || source.source_website_url) found.push({title:source.title,url:source.url||source.source_website_url,snippet:source.snippet});
+        if (source.url || source.source_website_url) {
+          found.push({ title: source.title, url: source.url || source.source_website_url, snippet: source.snippet });
+        }
       }
     }
   }
-  return [...new Map(found.filter(x=>x.url).map(x=>[x.url,x])).values()];
+  return [...new Map(found.filter(x => x.url).map(x => [x.url, x])).values()];
 }
-export async function askWorker(role: string, phase: string, brief: unknown, peerReports?: WorkerReport[]): Promise<WorkerReport> {
+
+async function askWorker(
+  role: string,
+  phase: string,
+  brief: unknown,
+  peerReports?: WorkerReport[],
+  department?: DepartmentAssignment
+): Promise<WorkerReport> {
   const startedAt = new Date().toISOString();
   const workerId = crypto.randomUUID();
   const apiKey = Netlify.env.get("OPENAI_API_KEY");
   const model = Netlify.env.get("OPENAI_MODEL");
-  if (!apiKey || !model) return {workerId,role,phase,status:"failed",report:"",citations:[],error:!apiKey?"OPENAI_API_KEY is not configured.":"OPENAI_MODEL is not configured. Set a model ID available to your API account.",startedAt,completedAt:new Date().toISOString()};
+  const failed = (error: string): WorkerReport => ({
+    workerId, role, phase, departmentId: department?.id, status: "failed",
+    report: "", citations: [], error, startedAt, completedAt: new Date().toISOString()
+  });
+
+  if (!apiKey || !model) {
+    return failed(!apiKey ? "OPENAI_API_KEY is not configured." :
+      "OPENAI_MODEL is not configured. Set a model ID available to your API account.");
+  }
+
   const webSearch = (Netlify.env.get("WIN_ENABLE_WEB_SEARCH") ?? "true") === "true";
-  const instructions = [
-    "You are an independent research worker in WIN, a cautious sports betting research system.",
-    "Do not invent facts, injuries, odds, lineups, sources or statistics. State what is unknown.",
-    "Research current, primary and reputable sources using web search. Cite source URLs and publication or update times where available. Distinguish verified facts, reported claims, inference and uncertainty.",
-    "Do not treat tipster win rates, follower counts or copied coupons as proof of skill. Require sample size and time window.",
-    "Do not recommend a bet solely to reach a target combined price. Account for correlation and market settlement.",
-    "Return a structured report with: findings, evidence and timestamps, FOR case, AGAINST case, unknowns, confidence (low/medium/high), and provisional verdict (BET/WAIT/NO BET)."
-  ].join("\n");
-  const input = phase === "initial"
-    ? "Research brief (independent; do not assume other workers' conclusions):\n" + JSON.stringify(brief)
-    : "Review the original brief and peer reports. Challenge unsupported assumptions; correct errors; identify disagreement and missing evidence. Do not merely agree. Re-check disputed/current claims with web search.\nBRIEF:\n" + JSON.stringify(brief) + "\nPEER REPORTS:\n" + JSON.stringify(peerReports ?? []);
+  const roleInstructions = department
+    ? "DEPARTMENT: " + department.id + " — " + department.role + "\nASSIGNED DEPARTMENT CHECKS:\n" + department.assignment
+    : "";
+  const instructions = commonInstructions + "\n" + roleInstructions;
+  let input: string;
+
+  if (phase === "initial_scout") {
+    input = "Original WIN brief:\n" + JSON.stringify(brief) +
+      "\nPerform Department D1 Public Offer & Scouting first. Discover only bounded, relevant public candidates. Produce the machine-readable WIN_CANDIDATES_JSON block exactly as specified in your assignment. No other department conclusion is final at this stage.";
+  } else if (phase === "department") {
+    input = "Original WIN brief plus the completed scouting handoff and dynamically built worker network. Perform only your assigned department review independently; do not copy conclusions from other department reports.\n" +
+      JSON.stringify(brief);
+  } else if (phase === "debate") {
+    input = "Original WIN brief, worker-network manifest and all first-pass department reports follow. Challenge unsupported assumptions, correct mistakes, identify material disagreement and missing evidence. Do not simply agree. Re-check current/disputed claims.\nBRIEF AND NETWORK:\n" +
+      JSON.stringify(brief) + "\nDEPARTMENT REPORTS:\n" + JSON.stringify(peerReports ?? []);
+  } else {
+    input = "You are the SINGLE final decision authority in WIN. Review the original brief, worker-network hierarchy, all eight department reports, four adversarial reviews and the Low-Risk Gate. Do not treat report count or consensus as evidence. Decide whether any proposed coupon is actually publishable.\n" +
+      JSON.stringify({ brief, departmentReports: peerReports, mandatoryRules: [
+        "Return exactly one final decision: BET, WAIT or NO BET.",
+        "Choose NO BET when core evidence, event identity, current STS prices or exact market/settlement rules are missing, stale, contradictory or unverifiable.",
+        "For a latest-coupon build, compare the eligible current candidate pool and any user-supplied existing coupon. Offer a WIN alternative only if each included leg passes all mandatory checks.",
+        "For a coupon audit, compare the supplied coupon against independently researched alternatives, but do not treat an inaccessible private STS coupon as retrieved.",
+        "Never force a combined-odds target by adding weak selections.",
+        "Explain exact selections, source/price timestamps, settlement, weakest leg, correlation, common-cause risks and unverified claims.",
+        "No bet placement, account login or stake action."
+      ] });
+  }
+
   try {
-    const body: any = {model,instructions,input,store:false};
+    const body: any = { model, instructions, input, store: false };
     if (webSearch) {
-      body.tools = [{type:"web_search"}];
+      body.tools = [{ type: "web_search" }];
       body.tool_choice = "required";
       body.include = ["web_search_call.action.sources"];
     }
-    const response = await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":"Bearer "+apiKey,"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
     const data: any = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || "Responses API returned HTTP "+response.status);
-    return {workerId,role,phase,status:"completed",responseId:data.id,report:extractText(data),citations:extractCitations(data),startedAt,completedAt:new Date().toISOString()};
+    if (!response.ok) throw new Error(data.error?.message || "Responses API returned HTTP " + response.status);
+    return {
+      workerId, role, phase, departmentId: department?.id,
+      assignedTeams: department ? WIN_DEPARTMENTS.find(d => d.id === department.id)?.teams : undefined,
+      status: "completed", responseId: data.id,
+      report: extractText(data), citations: extractCitations(data),
+      startedAt, completedAt: new Date().toISOString()
+    };
   } catch (error) {
-    return {workerId,role,phase,status:"failed",report:"",citations:[],error:String(error),startedAt,completedAt:new Date().toISOString()};
+    return failed(String(error));
   }
 }
-export async function runIndependentWorkers(brief: unknown) {
-  return Promise.all(specialists.map(([role,label])=>askWorker(label,"initial",brief)));
-}
-export async function runDebate(brief: unknown, reports: WorkerReport[]) {
-  const roles = ["FOR-side challenger","AGAINST-side challenger","Markets and settlement auditor","Quantitative evidence reviewer"];
-  return Promise.all(roles.map(role=>askWorker(role,"debate",brief,reports)));
-}
-export async function runGlobalMaster(brief: unknown, reports: WorkerReport[], debate: WorkerReport[]) {
-  return askWorker("Global Master — final decision authority","final",{
-    brief,initialReports:reports,debateReports:debate,
-    mandatoryRules:["Return exactly one final decision: BET, WAIT or NO BET.","Choose NO BET when core evidence is missing, contradictory, stale or unverifiable.","Never manufacture a combined-odds target by adding weak selections.","Explain market settlement, correlation, key risks and unverified claims.","No bet placement."]
+
+export async function runIndependentWorkers(brief: any, runId: string) {
+  // D1 runs first so its candidate inventory can create the actual sport/country/competition/event task graph.
+  const scoutDepartment = departmentAssignments[0];
+  const scout = await askWorker(scoutDepartment.role, "initial_scout", brief, undefined, scoutDepartment);
+  const workerNetwork = buildWorkerNetwork(brief, scout.report, runId);
+  const routedBrief = {
+    ...brief,
+    scoutingReport: scout.report,
+    workerNetwork,
+    workerNetworkExecutionDisclosure: workerNetwork.executionDisclosure
+  };
+
+  const remainingDepartments = departmentAssignments.slice(1);
+  const rest = await Promise.all(remainingDepartments.map(department =>
+    askWorker(department.role, "department", routedBrief, undefined, department)
+  ));
+  const reports = [scout, ...rest];
+  const failed = reports.filter(r => r.status !== "completed" || !r.report.trim());
+  const departmentStatuses = WIN_DEPARTMENTS.map(department => {
+    const report = reports.find(r => r.departmentId === department.id);
+    return {
+      id: department.id, name: department.name, director: department.director,
+      status: !report ? "not_run" : report.status === "completed" && report.report.trim() ? "completed" : "failed",
+      workerId: report?.workerId, responseId: report?.responseId,
+      blocker: report?.error || (!report?.report.trim() ? "Empty report." : undefined)
+    };
   });
+
+  return {
+    reports,
+    workerNetwork: { ...workerNetwork, departmentStatuses, failedDepartmentIds: failed.map(x => x.departmentId) }
+  };
+}
+
+export async function runDebate(brief: unknown, reports: WorkerReport[]) {
+  const roles = [
+    "Independent FOR-side challenger / Small Chef A review",
+    "Independent AGAINST-side challenger / Small Chef B review",
+    "Markets, price and settlement red-team auditor",
+    "Quantitative evidence and correlation challenger"
+  ];
+  return Promise.all(roles.map(role => askWorker(role, "debate", { brief, departmentReports: reports }, reports)));
+}
+
+export async function runGlobalMaster(brief: unknown, reports: WorkerReport[], debate: WorkerReport[], workerNetwork: unknown) {
+  return askWorker("WIN Global Master — single final decision authority", "final", {
+    brief, workerNetwork, departmentReports: reports, debateReports: debate
+  }, [...reports, ...debate]);
 }
