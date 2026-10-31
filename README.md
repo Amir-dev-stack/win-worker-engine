@@ -79,3 +79,5 @@ Set local secrets in an untracked .env file or Netlify CLI environment; do not c
 ## Credential changes
 
 After changing any Netlify environment variable, trigger a fresh production deploy so Functions receive the new values. The API key and WIN internal token must remain secret and must never be committed to Git.
+
+<!-- Netlify deployment trigger: GitHub identity has been connected. -->
