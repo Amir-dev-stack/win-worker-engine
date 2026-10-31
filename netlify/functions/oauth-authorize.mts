@@ -34,7 +34,7 @@ ${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}
 </form><p>Use the same private token you use to connect the WIN dashboard. It is checked on this secure WIN website and is not added to the plugin.</p></main></html>`;
 
 function scopesFrom(value: string): string[] | null {
-  const requested = value.trim() ? value.trim().split(/\\s+/) : [...WIN_SCOPES];
+  const requested = value.trim() ? value.trim().split(/\s+/) : [...WIN_SCOPES];
   if (!requested.length || requested.some(s => !(WIN_SCOPES as readonly string[]).includes(s))) return null;
   return [...new Set(requested)];
 }
