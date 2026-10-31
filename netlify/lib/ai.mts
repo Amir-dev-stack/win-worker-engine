@@ -29,7 +29,14 @@ function extractCitations(data: any): Citation[] {
   for (const item of data.output ?? []) for (const part of item.content ?? []) {
     for (const a of part.annotations ?? []) if (a.type === "url_citation" && a.url) found.push({title:a.title,url:a.url,snippet:a.snippet});
   }
-  return found;
+  for (const item of data.output ?? []) {
+    if (item.type === "web_search_call") {
+      for (const source of item.action?.sources ?? item.results ?? []) {
+        if (source.url || source.source_website_url) found.push({title:source.title,url:source.url||source.source_website_url,snippet:source.snippet});
+      }
+    }
+  }
+  return [...new Map(found.filter(x=>x.url).map(x=>[x.url,x])).values()];
 }
 export async function askWorker(role: string, phase: string, brief: unknown, peerReports?: WorkerReport[]): Promise<WorkerReport> {
   const startedAt = new Date().toISOString();
@@ -41,17 +48,21 @@ export async function askWorker(role: string, phase: string, brief: unknown, pee
   const instructions = [
     "You are an independent research worker in WIN, a cautious sports betting research system.",
     "Do not invent facts, injuries, odds, lineups, sources or statistics. State what is unknown.",
-    "Use current web research when available and cite source URLs. Distinguish verified facts, reported claims, inference and uncertainty.",
+    "Research current, primary and reputable sources using web search. Cite source URLs and publication or update times where available. Distinguish verified facts, reported claims, inference and uncertainty.",
     "Do not treat tipster win rates, follower counts or copied coupons as proof of skill. Require sample size and time window.",
     "Do not recommend a bet solely to reach a target combined price. Account for correlation and market settlement.",
     "Return a structured report with: findings, evidence and timestamps, FOR case, AGAINST case, unknowns, confidence (low/medium/high), and provisional verdict (BET/WAIT/NO BET)."
   ].join("\n");
   const input = phase === "initial"
     ? "Research brief (independent; do not assume other workers' conclusions):\n" + JSON.stringify(brief)
-    : "Review the original brief and peer reports. Challenge unsupported assumptions; correct errors; identify disagreement and missing evidence. Do not merely agree.\nBRIEF:\n" + JSON.stringify(brief) + "\nPEER REPORTS:\n" + JSON.stringify(peerReports ?? []);
+    : "Review the original brief and peer reports. Challenge unsupported assumptions; correct errors; identify disagreement and missing evidence. Do not merely agree. Re-check disputed/current claims with web search.\nBRIEF:\n" + JSON.stringify(brief) + "\nPEER REPORTS:\n" + JSON.stringify(peerReports ?? []);
   try {
     const body: any = {model,instructions,input,store:false};
-    if (webSearch) body.tools = [{type:"web_search_preview"}];
+    if (webSearch) {
+      body.tools = [{type:"web_search"}];
+      body.tool_choice = "required";
+      body.include = ["web_search_call.action.sources"];
+    }
     const response = await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":"Bearer "+apiKey,"Content-Type":"application/json"},body:JSON.stringify(body)});
     const data: any = await response.json();
     if (!response.ok) throw new Error(data.error?.message || "Responses API returned HTTP "+response.status);
