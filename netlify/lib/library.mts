@@ -289,7 +289,7 @@ export async function settleCouponRecord(input: any) {
     const text = searchText({ name: profile.name, scope, aliases: profile.aliases }).toLowerCase();
     const selectionTerms = selectionSummary.flatMap((item: any) => [item.event, item.pick]).filter(Boolean);
     const entityMentioned = selectionTerms.some((term: string) => text.includes(term.toLowerCase()));
-    const hierarchyMatch = ["sport", "country", "league"].includes(profile.entityType);
+    const hierarchyMatch = ["sport", "country", "league", "specialist"].includes(profile.entityType);
     return sameSport && sameCountry && sameCompetition && (hierarchyMatch || entityMentioned);
   });
   for (const profile of matchingProfiles) {
