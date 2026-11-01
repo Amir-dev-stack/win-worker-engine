@@ -49,6 +49,7 @@ const checks = [
   [runner.includes("runIndependentWorkers") && runner.includes("runDebate") && runner.includes("runGlobalMaster"), "Full WIN execution pipeline is missing."],
   [org.includes('tier: "T4"') && org.includes('tier: "T5"') && org.includes('tier: "T6"') && org.includes("club_dossier") && org.includes("player_dossier"), "Persistent club/player agent hierarchy is incomplete."],
   [library.includes("getMandatoryLearningPack") && library.includes("archiveRunToLibrary") && library.includes("winning-coupons") && library.includes("losing-coupons"), "Persistent split coupon library is incomplete."],
+  [library.includes("ensureLegacyLibraryImport") && library.includes("non_destructive_copy"), "Legacy WIN library import is missing."],
   [libraryApi.includes('path: "/api/library"') && libraryApi.includes("save_coupon") && libraryApi.includes("settle_coupon"), "Authenticated WIN library API is incomplete."],
   [html.includes('id="library"') && app.includes("refreshLibrary") && app.includes("couponForm"), "WIN library dashboard is incomplete."],
   [runner.includes("hasLibraryReviewReceipt") && runner.includes("libraryReviewGate") && runner.includes("missingLibraryReceipts"), "Mandatory library review gate is missing."]
