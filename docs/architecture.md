@@ -28,3 +28,16 @@ The web search tool is enabled in Responses API requests by default. Search cita
 ## Persistence
 
 Netlify Blobs stores JSON records in a site-wide store in eu-central-1. Keys are unique and records are immutable by convention; the API only appends results and writes frozen forecasts once. Blobs has eventual consistency and no transactions or atomic compare-and-swap in this design. It is a small single-operator MVP, not a high-concurrency ledger. Use Postgres with unique constraints and append-only permissions before scaling.
+
+
+## Central mission and learning lifecycle
+
+The architecture serves WIN's central mission: research, validate and construct the strongest evidence-supported high-probability coupons realistically achievable. Every worker role must contribute to selection quality, risk reduction, probability calibration, verified learning or an evidence-based NO BET decision. The 99% aspiration is not a guarantee and cannot be used as an unsupported confidence label.
+
+The learning system operates in two phases:
+- **Intensive learning:** prioritized coverage research, strategy documentation, chronological historical testing, out-of-sample validation and prospective paper tracking.
+- **Mature intelligence:** entered only after both priority coverage targets and strategy evidence gates are met. Broad exploratory work is reduced, while scheduled monitoring, settlement audits, calibration and strategy-decay checks continue. Material changes or evidence gaps can reactivate intensive research.
+
+Strategies have explicit evidence states; a historical hit rate or simulation alone cannot promote a strategy to mature. Coupon approval remains subject to all department reports, independent FOR/AGAINST and market/quantitative challenges, library review, integrity controls and the Global Master BET / WAIT / NO BET decision. Missing mandatory evidence means NO BET.
+
+See [WIN mission and learning policy](WIN-MISSION.md) for the complete objectives, exit criteria, metrics and safeguards.
