@@ -4,20 +4,32 @@ import { get, list, put } from "../lib/store.mts";
 import { runDebate, runGlobalMaster, runIndependentWorkers } from "../lib/ai.mts";
 import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
 
-function hasLibraryReviewReceipt(report: string): boolean {
+function hasLibraryReviewReceipt(report: string, expectedLibraryReview: any): boolean {
   const open = "<WIN_LIBRARY_REVIEW_JSON>";
   const close = "</WIN_LIBRARY_REVIEW_JSON>";
   const start = report.indexOf(open);
   const end = report.indexOf(close);
   if (start < 0 || end <= start) return false;
+
   try {
     const receipt = JSON.parse(report.slice(start + open.length, end).trim());
+    const ids = (items: any[]) => items.map((item) => item?.id).filter((id) => typeof id === "string");
+    const includesAll = (actual: unknown, expected: string[]) =>
+      Array.isArray(actual) && actual.every((id) => typeof id === "string") &&
+      expected.every((id) => actual.includes(id));
+
     return receipt?.reviewed === true &&
       Array.isArray(receipt.winningRecordIds) &&
       Array.isArray(receipt.losingRecordIds) &&
       Array.isArray(receipt.validatedLessonIds) &&
-      Array.isArray(receipt.emptyCollections);
-  } catch { return false; }
+      Array.isArray(receipt.emptyCollections) &&
+      Array.isArray(receipt.keyLearning) &&
+      includesAll(receipt.winningRecordIds, ids(expectedLibraryReview?.winningCoupons ?? [])) &&
+      includesAll(receipt.losingRecordIds, ids(expectedLibraryReview?.losingCoupons ?? [])) &&
+      includesAll(receipt.validatedLessonIds, ids(expectedLibraryReview?.validatedLessons ?? []));
+  } catch {
+    return false;
+  }
 }
 
 function updateNetworkStatuses(network: any, reports: any[], debate: any[]) {
@@ -93,7 +105,7 @@ export default async (req: Request) => {
       libraryReview
     };
 
-    // D1 scouts first. The result creates the dynamic sport/country/competition/event graph.
+    // D1 scouts first. The result creates the dynamic sport/country/competition/club/player/event graph.
     const firstPass = await runIndependentWorkers(brief, run.id);
     const { reports, workerNetwork } = firstPass;
     const withDepartments = {
@@ -105,13 +117,32 @@ export default async (req: Request) => {
 
     const debate = await runDebate(brief, reports);
     const networkAfterDebate = updateNetworkStatuses(workerNetwork, reports, debate);
+
+    // Calculate the receipt gate BEFORE building objects that use it. Keep the same
+    // gated network in the intermediate and final run so the gate cannot be lost.
+    const missingLibraryReceipts = reports
+      .filter(x => ["D6", "D7"].includes(x.departmentId) && !hasLibraryReviewReceipt(x.report || "", libraryReview))
+      .map(x => x.departmentId + " mandatory library review receipt missing, incomplete or invalid");
+
+    const gatedWorkerNetwork = {
+      ...networkAfterDebate,
+      libraryReviewGate: {
+        status: missingLibraryReceipts.length ? "failed" : "passed",
+        failures: missingLibraryReceipts,
+        reviewedAt: libraryReview.reviewedAt,
+        matchedWinningCoupons: libraryReview.counts?.winningCouponsMatched ?? 0,
+        matchedLosingCoupons: libraryReview.counts?.losingCouponsMatched ?? 0,
+        matchedValidatedLessons: libraryReview.counts?.validatedLessonsMatched ?? 0
+      }
+    };
+
     const withDebate = {
       ...withDepartments, status: "synthesizing", debate,
-      workerNetwork: { ...networkAfterDebate, libraryReviewGate: { status: missingLibraryReceipts.length ? "failed" : "passed", failures: missingLibraryReceipts, reviewedAt: libraryReview.reviewedAt } }, updatedAt: new Date().toISOString()
+      workerNetwork: gatedWorkerNetwork,
+      updatedAt: new Date().toISOString()
     };
     await put("runs", run.id, withDebate);
 
-    const missingLibraryReceipts = reports.filter(x => ["D6", "D7"].includes(x.departmentId) && !hasLibraryReviewReceipt(x.report || "")).map(x => x.departmentId + " mandatory library review receipt missing or invalid");
     const failed = [...reports, ...debate].filter(x => x.status !== "completed" || !x.report?.trim());
     const gateFailures = [...failed.map(x => (x.departmentId ? x.departmentId + " — " : "") + x.role + ": " + (x.error || "empty report")), ...missingLibraryReceipts];
     const master = failed.length || missingLibraryReceipts.length
@@ -119,12 +150,12 @@ export default async (req: Request) => {
           workerId: crypto.randomUUID(),
           role: "WIN Global Master — deterministic Low-Risk Gate",
           phase: "final", status: "completed",
-          report: "FINAL DECISION: NO BET\n\nThe WIN Low-Risk Gate rejected this run because one or more required department or adversarial reports failed or returned an empty report. Failed checks: " +
+          report: "FINAL DECISION: NO BET\n\nThe WIN Low-Risk Gate rejected this run because one or more required department or adversarial reports failed or the mandatory knowledge-library review was incomplete. Failed checks: " +
             gateFailures.join("; ") +
             ". Do not place a bet. Re-run after the service or evidence blocker is resolved.",
           citations: [], startedAt: new Date().toISOString(), completedAt: new Date().toISOString()
         }
-      : await runGlobalMaster(brief, reports, debate, networkAfterDebate);
+      : await runGlobalMaster(brief, reports, debate, gatedWorkerNetwork);
 
     const masterValid = master.status === "completed" && Boolean(master.report?.trim());
     const completed = {
@@ -137,8 +168,8 @@ export default async (req: Request) => {
         citations: [], startedAt: new Date().toISOString(), completedAt: new Date().toISOString()
       },
       decision: masterValid ? master.report :
-        "FINAL DECISION: NO BET — a required worker or Global Master report was missing or empty.",
-      workerNetwork: networkAfterDebate,
+        "FINAL DECISION: NO BET — a required worker, library review or Global Master report was missing or incomplete.",
+      workerNetwork: gatedWorkerNetwork,
       updatedAt: new Date().toISOString(),
       completedAt: new Date().toISOString()
     };
@@ -149,7 +180,8 @@ export default async (req: Request) => {
       id: predictionId, runId: run.id, recordedAt: new Date().toISOString(),
       frozen: true, brief, decision: completed.decision,
       workerResponseIds: [...reports, ...debate, master].map(x => x.responseId).filter(Boolean),
-      workerNetworkSummary: networkAfterDebate.executionSummary
+      workerNetworkSummary: gatedWorkerNetwork.executionSummary,
+      libraryReviewGate: gatedWorkerNetwork.libraryReviewGate
     };
     await put("predictions", predictionId, prediction);
     await put("library/frozen-predictions", predictionId, prediction);
