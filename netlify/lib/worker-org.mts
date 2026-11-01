@@ -263,7 +263,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
     for (const club of candidate.clubs || []) {
       const clubName = text(club.name);
       if (!clubName) continue;
-      const clubId = "club-" + slug([candidate.sport, candidate.country, candidate.competition, clubName].filter(Boolean).join(" × "));
+      const clubId = "club-" + slug([candidate.sport, candidate.country, clubName].filter(Boolean).join(" × "));
       clubIds.push(clubId);
       if (!nodes.some(n => n.id === clubId)) nodes.push({
         id: clubId, parentId: nodes.some(n => n.id === parent) ? parent : "worker-network-director",
@@ -280,7 +280,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
       if (!playerName) continue;
       const clubName = text(player.club);
       const clubId = clubName
-        ? "club-" + slug([candidate.sport, candidate.country, candidate.competition, clubName].filter(Boolean).join(" × "))
+        ? "club-" + slug([candidate.sport, candidate.country, clubName].filter(Boolean).join(" × "))
         : "";
       const playerId = "player-" + slug([candidate.sport, candidate.country, playerName].filter(Boolean).join(" × "));
       playerIds.push(playerId);
