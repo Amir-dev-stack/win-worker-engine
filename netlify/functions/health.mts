@@ -14,7 +14,7 @@ export default async () => {
     aiExecutionApproved: Netlify.env.get("WIN_AI_BUDGET_APPROVED") === "true",
     mcp: "oauth_enabled",
     persistence: "netlify_blobs",
-    execution: "scheduled_hourly",
+    execution: "scheduled_four_hour_learning_monitor",
     scheduling: { learningMonitor: "every_4_hours", learningCycles: "one_bounded_research_cycle_every_4_hours_when_budget_approved", aiMonthlyEstimateLimitUsd: 5 },
     sts: "no_official_sts_api_connection"
   },
