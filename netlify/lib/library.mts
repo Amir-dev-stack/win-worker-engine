@@ -116,6 +116,7 @@ export async function saveCouponRecord(input: any) {
   if (couponText.length < 3) throw new Error("couponText must contain at least 3 characters");
   const outcome = (clean(input?.outcome || "pending", 20).toLowerCase() as LibraryOutcome);
   if (!OUTCOMES.has(outcome)) throw new Error("outcome must be pending, won, lost, void, partial, cancelled or unknown");
+  if ((outcome === "won" || outcome === "lost") && (!clean(input?.settlementSource, 1000) || !safeArray(input?.settlementEvidence, 30).length)) throw new Error("Winning or losing status requires a settlement source and at least one evidence reference");
   const id = clean(input?.id, 100) || crypto.randomUUID();
   const createdAt = new Date().toISOString();
   const record = {
@@ -157,10 +158,11 @@ export async function settleCouponRecord(input: any) {
     throw new Error("settlement outcome must be won, lost, void, partial or cancelled");
   }
   const settlementSource = clean(input?.settlementSource, 1000);
-  if (!settlementSource) throw new Error("settlementSource is required");
+  if (!settlementSource) throw new Error("settlementSource is required");\n  const settlementEvidence = safeArray(input?.evidence, 30);
+  if (!settlementEvidence.length) throw new Error("At least one settlement evidence reference is required");
   const updated = {
     ...current, outcome, settlementSource,
-    settlementEvidence: safeArray(input?.evidence, 30),
+    settlementEvidence,
     settledAt: clean(input?.settledAt, 100) || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     learningStatus: "available_for_review"
@@ -229,7 +231,7 @@ export async function saveLearningNote(input: any) {
     runId: clean(input?.runId, 100) || null,
     entityType: clean(input?.entityType, 30) || null,
     entityId: clean(input?.entityId, 180) || null,
-    validationStatus: input?.validationStatus === "validated" ? "validated" : "candidate_for_validation",
+    validationStatus: "candidate_for_validation",
     evidence: safeArray(input?.evidence, 30),
     sampleSize: Number.isInteger(input?.sampleSize) ? input.sampleSize : null,
     createdAt: new Date().toISOString()
