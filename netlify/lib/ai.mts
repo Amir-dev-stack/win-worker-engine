@@ -187,7 +187,7 @@ async function askWorker(
   const workerId = crypto.randomUUID();
   const apiKey = Netlify.env.get("OPENAI_API_KEY");
   const configuredModel = Netlify.env.get("OPENAI_MODEL");
-  const model = phase === "scheduled_scout" ? "gpt-6-luna" : configuredModel;
+  const model = (phase === "scheduled_scout" || phase === "scheduled_learning") ? "gpt-6-luna" : configuredModel;
   const failed = (error: string): WorkerReport => ({
     workerId, role, phase, departmentId: department?.id, status: "failed",
     report: "", citations: [], error, startedAt, completedAt: new Date().toISOString()
@@ -216,6 +216,8 @@ async function askWorker(
       "\nPerform Department D1 Public Offer & Scouting first. Discover only bounded, relevant public candidates. Produce the machine-readable WIN_CANDIDATES_JSON block exactly as specified in your assignment. No other department conclusion is final at this stage.";
   } else if (phase === "scheduled_scout") {
     input = "Perform a small, time-bounded public fixture and pre-match offer scan for the next 24 hours across sports. Return up to 10 candidates only, exact source URLs and timestamps, and clear coverage gaps. Do not construct a coupon or make betting recommendations. Include the required WIN_CANDIDATES_JSON block.\\n" + JSON.stringify(brief);
+  } else if (phase === "scheduled_learning") {
+    input = "You are WIN's scheduled intensive-learning researcher. Complete ONE bounded research cycle using the exact learningTrack in the supplied brief. Focus on verifiable public information, source URLs and publication/retrieval dates. Distinguish sourced facts, hypotheses, inferences and unknowns. If the library contains no settled examples or usable historical odds, say so. Do not fabricate historical results, prices, sample sizes or strategy performance. Do not label a strategy validated or recommend a bet. Produce a concise report with: objective, scope, findings, evidence references, data gaps, falsifiable next steps, and a machine-readable <WIN_LEARNING_CYCLE_JSON> block containing {\"cycleType\":string,\"sport\":string|null,\"focus\":string,\"candidateStrategies\":[{\"name\":string,\"market\":string,\"hypothesis\":string,\"eligibilityRules\":[string],\"exclusions\":[string],\"requiredData\":[string],\"validationStatus\":\"candidate_for_validation\"}],\"coverageGaps\":[string],\"sourceRefs\":[string],\"validationBlockers\":[string]}. Empty arrays are acceptable. Candidate strategies remain hypotheses only.\\n" + JSON.stringify(brief);
   } else if (phase === "department") {
     input = "Original WIN brief plus the completed scouting handoff and dynamically built worker network. Perform only your assigned department review independently; do not copy conclusions from other department reports.\n" +
       JSON.stringify(brief);
@@ -240,14 +242,14 @@ async function askWorker(
   let budgetId: string | null = null;
   let budgetSettled = false;
   try {
-    const maxOutputTokens = phase === "scheduled_scout" ? 600 : 1000;
-    const maxToolCalls = phase === "scheduled_scout" ? 1 : 2;
+    const maxOutputTokens = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 600 : 1000;
+    const maxToolCalls = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 1 : 2;
     const requestBudgetId = crypto.randomUUID();
     budgetId = requestBudgetId;
     const budget = await reserveAIRequest({
       id: requestBudgetId, model, phase, inputChars: instructions.length + input.length,
       maxOutputTokens, maxToolCalls,
-      maxInputChars: phase === "scheduled_scout" ? 12000 : 25000
+      maxInputChars: (phase === "scheduled_scout" || phase === "scheduled_learning") ? 12000 : 25000
     });
     if (!budget.allowed) throw new Error(budget.reason);
     const body: any = { model, instructions, input, store: false, max_output_tokens: maxOutputTokens, max_tool_calls: maxToolCalls };
@@ -291,6 +293,10 @@ async function askWorker(
 export async function runScheduledScout(brief: any) {
   const scoutDepartment = departmentAssignments[0];
   return askWorker("WIN Scheduled Public Offer & Scouting", "scheduled_scout", brief, undefined, scoutDepartment);
+}
+
+export async function runScheduledLearning(brief: any) {
+  return askWorker("WIN Scheduled Intensive Learning Researcher", "scheduled_learning", brief);
 }
 
 export async function runIndependentWorkers(brief: any, runId: string) {
