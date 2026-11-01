@@ -100,7 +100,7 @@ const departmentAssignments: DepartmentAssignment[] = [
       "Calculate combined odds only when every included decimal price is current and verified. For MAXIKOMBI/system bets, distinguish stake per combination from total stake and label unsupported payouts illustrative.",
       "Apply the WIN Low-Risk Gate as a hard veto. Never issue the final Global Master decision.",
       "Before constructing any coupon, review the supplied mandatory WIN library pack. Read BOTH winningCoupons and losingCoupons, relevant entityProfiles and validatedLessons. Identify reusable patterns and counterexamples, but do not copy picks blindly or overfit small samples. If either collection has zero matching records, say so honestly.",
-      "Include a <WIN_LIBRARY_REVIEW_JSON>...</WIN_LIBRARY_REVIEW_JSON> block with JSON: { \\"reviewed\\": true, \\"winningRecordIds\\": [], \\"losingRecordIds\\": [], \\"validatedLessonIds\\": [], \\"emptyCollections\\": [], \\"keyLearning\\": [\\"...\\"] }. This receipt is mandatory even when there are zero records."
+      "Include a <WIN_LIBRARY_REVIEW_JSON>...</WIN_LIBRARY_REVIEW_JSON> block with JSON: { \"reviewed\": true, \"winningRecordIds\": [], \"losingRecordIds\": [], \"validatedLessonIds\": [], \"emptyCollections\": [], \"keyLearning\": [\"...\"] }. This receipt is mandatory even when there are zero records."
     ].join("\n"),
     requiresScoutingPack: true
   },
@@ -113,7 +113,7 @@ const departmentAssignments: DepartmentAssignment[] = [
       "Identify validated sport-, market-, country- or competition-scoped lessons only when sample size supports them.",
       "If there are no applicable prior records, mark NOT APPLICABLE / NO VALIDATED HISTORICAL LESSONS AVAILABLE.",
       "Mandatory: examine the complete libraryReview pack before making any learning claim. Read both wins and losses, and distinguish validated lessons from candidate notes. Record which coupon examples and entity profiles were reviewed.",
-      "Write a dated learning report and, where evidence warrants, append a <WIN_LESSONS_JSON>...</WIN_LESSONS_JSON> block with JSON { \\"lessons\\": [ { \\"title\\": string, \\"scopeType\\": string, \\"scopeId\\": string, \\"lesson\\": string, \\"sampleSize\\": number, \\"evidenceRecordIds\\": [string] } ] }. Never promote a proposed lesson to validated status automatically.",
+      "Write a dated learning report and, where evidence warrants, append a <WIN_LESSONS_JSON>...</WIN_LESSONS_JSON> block with JSON { \"lessons\": [ { \"title\": string, \"scopeType\": string, \"scopeId\": string, \"lesson\": string, \"sampleSize\": number, \"evidenceRecordIds\": [string] } ] }. Never promote a proposed lesson to validated status automatically.",
       "Include the mandatory <WIN_LIBRARY_REVIEW_JSON> receipt with reviewed=true, winningRecordIds, losingRecordIds, validatedLessonIds and emptyCollections."
     ].join("\n")
   },
