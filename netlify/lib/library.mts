@@ -29,9 +29,65 @@ function relevant<T>(items: T[], query: string): T[] {
   })).filter(x => x.score > 0).sort((a, b) => b.score - a.score).map(x => x.item as T);
 }
 
+export async function ensureLegacyLibraryImport() {
+  const existing = await get<any>("library/meta", "legacy-import-v1");
+  if (existing?.completedAt) return existing;
+
+  const [legacyTips, legacyRuns, legacyPredictions, legacyResults] = await Promise.all([
+    list<any>("tips", 500),
+    list<any>("runs", 500),
+    list<any>("predictions", 500),
+    list<any>("results", 500)
+  ]);
+
+  let importedTips = 0;
+  let importedRuns = 0;
+  let importedPredictions = 0;
+  let importedResults = 0;
+
+  for (const item of legacyTips) {
+    const id = clean(item?.id, 180);
+    if (!id) continue;
+    await put("library/human-tips", id, item);
+    importedTips++;
+  }
+  for (const item of legacyRuns) {
+    const id = clean(item?.id, 180);
+    if (!id) continue;
+    await put("library/research-runs", id, {
+      ...item, legacyImported: true,
+      savedAt: new Date().toISOString()
+    });
+    importedRuns++;
+  }
+  for (const item of legacyPredictions) {
+    const id = clean(item?.id, 180);
+    if (!id) continue;
+    await put("library/frozen-predictions", id, item);
+    importedPredictions++;
+  }
+  for (const item of legacyResults) {
+    const id = clean(item?.id, 180);
+    if (!id) continue;
+    await put("library/settled-results", id, item);
+    importedResults++;
+  }
+
+  const marker = {
+    id: "legacy-import-v1", status: "completed",
+    importedTips, importedRuns, importedPredictions, importedResults,
+    completedAt: new Date().toISOString(),
+    sourceCollections: ["tips", "runs", "predictions", "results"],
+    method: "non_destructive_copy"
+  };
+  await put("library/meta", "legacy-import-v1", marker);
+  return marker;
+}
+
 export async function searchWinLibrary(options: {
   category?: string; query?: string; outcome?: string; sport?: string; entityType?: string; limit?: number;
 } = {}) {
+  await ensureLegacyLibraryImport();
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 30));
   const category = clean(options.category || "all", 40).toLowerCase();
   const [coupons, winning, losing, pending, lessons, entities, profiles, observations, runs,
@@ -85,6 +141,7 @@ export async function searchWinLibrary(options: {
 }
 
 export async function getMandatoryLearningPack(brief: any) {
+  await ensureLegacyLibraryImport();
   const query = [
     brief?.event, brief?.sport, brief?.country, brief?.competition, brief?.context,
     brief?.existingCoupon, ...(Array.isArray(brief?.teams) ? brief.teams : []),
