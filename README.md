@@ -77,7 +77,7 @@ These are persistent agent identities and profiles activated on demand. The enti
 
 ## WIN Knowledge Library — mandatory for coupon writers
 
-The shared library uses the existing private, site-wide Netlify Blobs store `win-engine` in `eu-central-1`. It does not require a separate database subscription or a continuously running worker.
+The shared library uses the existing private, site-wide Netlify Blobs store `win-engine` in `eu-central-1`. It does not require a separate database subscription or a continuously running worker. On its first authenticated library read or coupon research run, the library also performs a one-time, non-destructive copy of legacy tips, runs, frozen predictions and settled results into the corresponding library collections; original source records are retained.
 
 | Library collection | What is stored |
 | --- | --- |
