@@ -56,6 +56,9 @@ const [aiBudget, hourlyMonitor, scheduledRunner, budgetApi, health] = await Prom
 const checks = [
   [html.includes("WIN Worker Engine"), "Dashboard title is missing."],
   [aiBudget.includes("OPERATING_LIMIT_USD = 4.95") && aiBudget.includes("reserveAIRequest") && aiBudget.includes("onlyIfNew"), "Fail-closed monthly AI budget controller is missing."],
+  [ai.includes('WIN_AI_BUDGET_APPROVED') && ai.includes('provider-side monthly spending limit'), "AI calls are not fail-closed pending provider budget approval."],
+  [hourlyMonitor.includes('WIN_AI_BUDGET_APPROVED') && hourlyMonitor.includes('blocked_budget_approval_required'), "Scheduled AI is not disabled pending budget approval."],
+  [health.includes('aiExecutionApproved') && health.includes('configured_but_disabled_pending_budget_approval'), "Health endpoint does not disclose the AI approval gate."],
   [hourlyMonitor.includes("schedule: \"0 * * * *\"") && hourlyMonitor.includes("12 * 60 * 60 * 1000"), "Balanced hourly monitor / 12-hour scout schedule is missing."],
   [scheduledRunner.includes("runScheduledScout") && scheduledRunner.includes("authorized(req)"), "Authenticated background scheduled scout runner is missing."],
   [budgetApi.includes("/api/ai-budget") && budgetApi.includes("getAIbudgetStatus"), "Authenticated AI budget status endpoint is missing."],
