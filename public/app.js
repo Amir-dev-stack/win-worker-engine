@@ -84,6 +84,24 @@ async function refreshLibrary(){
   $("#libraryList").innerHTML='<div class="empty">Could not load the private WIN library.</div>';
  }
 }
+async function refreshSimulations(){
+ const category=$("#simulationCategory")?.value||"runs";
+ const runId=$("#simulationRunId")?.value.trim()||"";
+ const params=new URLSearchParams({category});
+ if(runId)params.set("runId",runId);
+ try{
+  const data=await api("/api/simulations?"+params.toString());
+  const items=category==="runs"?data:(data.items||[]);
+  $("#simulationLibraryStatus").textContent=category==="runs"?items.length+" simulation runs":(data.count||0)+" coupon records returned · showing up to 200";
+  $("#simulationList").innerHTML=items.length?items.slice(0,50).map(item=>{
+   if(category==="runs"){
+    const summary=item.summary||{};
+    return '<article class="mini-row"><div><b>'+escapeHtml(item.id)+'</b><small>'+escapeHtml(item.status)+' · '+Number(item.couponCount||0).toLocaleString()+' generated · '+Number(item.selectionCount||0).toLocaleString()+' historical picks</small><p>Wins '+Number(summary.won||0).toLocaleString()+' · Losses '+Number(summary.lost||0).toLocaleString()+' · Voids '+Number(summary.voided||0).toLocaleString()+' · ROI '+(summary.flatStakeRoi===undefined?"pending":(Number(summary.flatStakeRoi)*100).toFixed(2)+"%")+'</p>'+(item.error?'<p class="report-error">'+escapeHtml(item.error)+'</p>':"")+'</div><button class="subtle" type="button" data-sim-run="'+escapeHtml(item.id)+'">View outcomes</button></article>';
+   }
+   return '<article class="mini-row"><div><b>'+escapeHtml(item.id)+'</b><small>'+escapeHtml(item.outcome)+' · '+Number(item.legCount||0)+' legs · combined odds '+Number(item.combinedOdds||0).toFixed(2)+'</small><p>'+escapeHtml((item.selections||[]).map(x=>x.event+" — "+x.market+": "+x.pick+" ("+x.result+")").join(" · ").slice(0,700))+'</p></div></article>';
+  }).join(""):'<div class="empty">No records in this simulation collection yet.</div>';
+ }catch(e){$("#simulationLibraryStatus").textContent="Simulation library unavailable: "+e.message}
+}
 async function refresh(){
  try{
   const health=await fetch("/api/health").then(r=>r.json());
@@ -100,6 +118,7 @@ async function refresh(){
   }
   $("#mcpStatus").textContent="OAuth MCP endpoint deployed; plugin authorization test pending";
   await refreshLibrary();
+  await refreshSimulations();
  }catch(e){$("#apiStatus").textContent="Authentication needed";$("#runsList").textContent=e.message}
 }
 $("#saveToken").addEventListener("click",e=>{e.preventDefault();token=$("#tokenInput").value.trim();if(token){sessionStorage.setItem("win-token",token);dialog.close();refresh()}});
@@ -173,3 +192,23 @@ $("#libraryList").addEventListener("click",async e=>{
 
 if(!token)dialog.showModal();else refresh();
 setInterval(()=>{if(token&&!document.hidden)refresh()},20000);
+
+$("#simulationForm").addEventListener("submit",async e=>{
+ e.preventDefault();const form=e.currentTarget,f=new FormData(form),button=form.querySelector('button[type="submit"]');
+ let selections;try{const parsed=JSON.parse(String(f.get("selections")||""));selections=Array.isArray(parsed)?parsed:parsed.selections;if(!Array.isArray(selections))throw new Error("JSON must be an array or an object with a selections array.");}catch(err){alert("Invalid historical dataset JSON: "+err.message);return;}
+ if(button){button.disabled=true;button.textContent="Queuing simulation…";}
+ $("#simulationStatus").textContent="Validating historical selections and queuing the background simulation…";
+ try{
+  const result=await api("/api/simulations",{method:"POST",body:JSON.stringify({selections,couponCount:Number(f.get("couponCount")),minLegs:Number(f.get("minLegs")),maxLegs:Number(f.get("maxLegs")),seed:f.get("seed")||undefined})});
+  $("#simulationStatus").textContent="Queued simulation "+result.runId+" · "+Number(result.couponCount).toLocaleString()+" coupons · "+result.selectionCount+" historical selections. Refresh to see progress and results.";
+  $("#simulationRunId").value=result.runId;$("#simulationCategory").value="runs";await refreshSimulations();
+ }catch(err){$("#simulationStatus").textContent="Simulation not started: "+err.message;alert(err.message);}
+ finally{if(button){button.disabled=false;button.textContent="Run historical simulation ↗";}}
+});
+$("#refreshSimulations").addEventListener("click",refreshSimulations);
+$("#simulationCategory").addEventListener("change",refreshSimulations);
+$("#simulationRunId").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();refreshSimulations();}});
+$("#simulationList").addEventListener("click",e=>{
+ const b=e.target.closest("[data-sim-run]");if(!b)return;
+ $("#simulationRunId").value=b.dataset.simRun;$("#simulationCategory").value="winning";refreshSimulations();
+});
