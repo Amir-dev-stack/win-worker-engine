@@ -245,6 +245,7 @@ export async function settleCouponRecord(input: any) {
   await remove("library/winning-coupons", id);
   await remove("library/losing-coupons", id);
   await remove("library/pending-coupons", id);
+  await remove("library/other-settlements", id);
   if (outcome === "won") await put("library/winning-coupons", id, updated);
   else if (outcome === "lost") await put("library/losing-coupons", id, updated);
   else await put("library/other-settlements", id, updated);
