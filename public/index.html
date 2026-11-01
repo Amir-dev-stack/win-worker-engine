@@ -63,11 +63,11 @@
 </form>
 </section>
 <section class="panel" id="simulations">
-<div class="panel-head"><div><div class="eyebrow">HISTORICAL EXPERIMENTS</div><h2>WIN Simulation Lab</h2><p>Generate random coupon combinations from real, settled historical selections. Experimental results stay separate from real STS and human coupons.</p></div><span class="tag">HISTORICAL DATA ONLY</span></div>
+<div class="panel-head"><div><div class="eyebrow">HISTORICAL EXPERIMENTS</div><h2>WIN Simulation Lab</h2><p>Generate and compare hypothetical coupons from 2 to 50 legs using real, settled historical selections. Results stay separate from real STS and human coupons.</p></div><span class="tag">HISTORICAL DATA ONLY</span></div>
 <form id="simulationForm" class="run-form">
 <label>Historical selections JSON<textarea name="selections" rows="9" required placeholder='Paste an array of settled selections. Example: [{"id":"p1","eventId":"match-1","event":"Team A vs Team B","sport":"Football","market":"Over 1.5","pick":"Over 1.5","odds":1.35,"result":"won","eventStart":"2026-08-01T18:00:00Z","oddsCapturedAt":"2026-08-01T12:00:00Z","oddsSource":"https://source.example/odds","resultSource":"https://source.example/result"}]'></textarea></label>
-<div class="two"><label>Coupons to generate<input name="couponCount" type="number" min="100" max="100000" value="1000"></label><label>Minimum legs<input name="minLegs" type="number" min="2" max="10" value="2"></label></div>
-<div class="two"><label>Maximum legs<input name="maxLegs" type="number" min="2" max="10" value="5"></label><label>Reproducible seed (optional)<input name="seed" placeholder="Leave blank for generated seed"></label></div>
+<div class="two"><label>Coupons to generate<input name="couponCount" type="number" min="100" max="100000" value="1000"></label><label>Minimum legs<input name="minLegs" type="number" min="2" max="50" value="2"></label></div>
+<div class="two"><label>Maximum legs<input name="maxLegs" type="number" min="2" max="50" value="50"></label><label>Reproducible seed (optional)<input name="seed" placeholder="Leave blank for generated seed"></label></div>
 <div class="form-foot"><span>Every selection needs a real pre-event odds timestamp, settled outcome and source references. Use distinct event IDs for separate matches.</span><button type="submit">Run historical simulation ↗</button></div>
 </form>
 <div id="simulationStatus" class="empty">No simulation submitted in this session.</div>
