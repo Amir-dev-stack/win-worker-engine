@@ -252,3 +252,8 @@ WIN has two operating phases:
 Strategies must have explicit lifecycle states (idea, documented, historically tested, out-of-sample validated, prospectively paper-tracked, mature/monitored, retired/suspended). Backtests and simulations alone do not prove future performance. Every coupon still passes the full WIN workflow and the BET / WAIT / NO BET gate; weak or unverifiable evidence means NO BET.
 
 The full mission, learning exit gate, evidence standards, measurement dashboard and integrity rules are defined in [docs/WIN-MISSION.md](docs/WIN-MISSION.md).
+
+
+## Scheduled intensive-learning cycle
+
+The published `hourly-monitor` function is configured to run every four hours (UTC). When `WIN_AI_BUDGET_APPROVED=true`, it rotates through six bounded research workstreams — coverage mapping, market/settlement research, falsifiable strategy hypotheses, historical-data audits, verified coupon failure analysis and validation readiness — across a rotating list of sports. Each successful cycle is archived under `library/learning-cycles` and included in later mandatory learning packs. These records are candidate research only; they do not automatically validate a strategy or create a betting recommendation. The scheduler remains disabled for AI work until provider spending controls and key rotation are confirmed.
