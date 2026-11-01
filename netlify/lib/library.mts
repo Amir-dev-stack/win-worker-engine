@@ -251,7 +251,66 @@ export async function settleCouponRecord(input: any) {
     id: historyId, couponId: id, action: "settled", outcome,
     settlementSource, evidence: updated.settlementEvidence, at: updated.settledAt
   });
-  return updated;
+
+  // Every settlement creates an idempotent, evidence-linked learning case.
+  // It records what happened, not an unsupported claim about why it happened.
+  const learningId = "settlement-" + id;
+  const selectionSummary = safeArray(updated.selections, 100).map((selection: any, index: number) => ({
+    index: index + 1,
+    event: clean(selection?.event || selection?.match || selection?.fixture, 250) || null,
+    market: clean(selection?.market || selection?.selectionType, 180) || null,
+    pick: clean(selection?.pick || selection?.selection || selection?.outcome, 180) || null,
+    odds: selection?.odds ?? selection?.price ?? null,
+    result: clean(selection?.result || selection?.settlement, 120) || null
+  }));
+  const learningRecord = {
+    id: learningId, recordType: "settlement_learning_case",
+    couponId: id, outcome, sport: updated.sport, country: updated.country,
+    competition: updated.competition, combinedOdds: updated.combinedOdds ?? null,
+    selections: selectionSummary, settlementSource,
+    evidence: updated.settlementEvidence,
+    observation: "Verified coupon settlement recorded. This is an outcome observation, not proof that any individual selection or strategy caused the result.",
+    validationStatus: "candidate_for_validation",
+    createdAt: updated.settledAt, updatedAt: new Date().toISOString()
+  };
+  await put("library/lessons", learningId, learningRecord);
+  await put("library/settlement-learning", learningId, learningRecord);
+
+  // Transfer the result to persistent entity agents whose scopes match this coupon.
+  const profiles = await list<any>("library/entity-profiles", 1000);
+  const matchingProfiles = profiles.filter((profile: any) => {
+    const scope = profile.scope || {};
+    const sameSport = !updated.sport || !scope.sport || clean(scope.sport, 100).toLowerCase() === clean(updated.sport, 100).toLowerCase();
+    const sameCountry = !updated.country || !scope.country || clean(scope.country, 100).toLowerCase() === clean(updated.country, 100).toLowerCase();
+    const sameCompetition = !updated.competition || !scope.competition || clean(scope.competition, 200).toLowerCase() === clean(updated.competition, 200).toLowerCase();
+    const text = searchText({ name: profile.name, scope, aliases: profile.aliases }).toLowerCase();
+    const selectionTerms = selectionSummary.flatMap((item: any) => [item.event, item.pick]).filter(Boolean);
+    const entityMentioned = selectionTerms.some((term: string) => text.includes(term.toLowerCase()));
+    const hierarchyMatch = ["sport", "country", "league"].includes(profile.entityType);
+    return sameSport && sameCountry && sameCompetition && (hierarchyMatch || entityMentioned);
+  });
+  for (const profile of matchingProfiles) {
+    const observationId = learningId + ":" + clean(profile.id, 180);
+    await put("library/agent-observations", observationId, {
+      id: observationId, agentId: profile.agentId, entityId: profile.id,
+      entityType: profile.entityType, couponId: id, outcome,
+      recordType: "settlement_outcome_observation",
+      observation: learningRecord.observation,
+      settlementLearningId: learningId,
+      evidence: updated.settlementEvidence,
+      status: "verified_coupon_outcome_unattributed",
+      observedAt: updated.settledAt
+    });
+    await put("library/agent-profiles", profile.agentId, {
+      ...(await get<any>("library/agent-profiles", profile.agentId) || {}),
+      agentId: profile.agentId, entityId: profile.id, entityType: profile.entityType,
+      name: profile.name, scope: profile.scope,
+      lastSettlementLearningId: learningId, lastSettlementOutcome: outcome,
+      lastLearningAt: updated.settledAt
+    });
+  }
+  await put("library/coupons", id, { ...updated, learningStatus: "recorded", settlementLearningId: learningId, learningAgentsUpdated: matchingProfiles.length });
+  return { ...updated, learningStatus: "recorded", settlementLearningId: learningId, learningAgentsUpdated: matchingProfiles.length };
 }
 
 export async function saveEntityProfile(input: any) {
