@@ -3,7 +3,14 @@ import { createSimulationRun } from "../lib/simulation.mts";
 import { list } from "../lib/store.mts";
 export default async(req:Request)=>{
  const denied=requireAuth(req);if(denied)return denied;
- if(req.method==="GET")return Response.json(await list<any>("library/simulation-runs",100));
+ if(req.method==="GET"){
+  const url=new URL(req.url),runId=url.searchParams.get("runId"),category=url.searchParams.get("category")||"runs";
+  if(category==="runs")return Response.json(await list<any>("library/simulation-runs",100));
+  const collection=category==="winning"?"library/simulation-winning-coupons":category==="losing"?"library/simulation-losing-coupons":category==="other"?"library/simulation-other-coupons":"";
+  if(!collection)return Response.json({error:"category must be runs, winning, losing or other"},{status:400});
+  const batches=await list<any>(collection,1000),records=batches.filter(x=>!runId||x.runId===runId).flatMap(x=>x.records||[]);
+  return Response.json({category,runId,count:records.length,items:records.slice(0,200)});
+ }
  if(req.method!=="POST")return new Response("Method not allowed",{status:405});
  let body:any;try{body=await req.json();}catch{return Response.json({error:"Expected JSON body"},{status:400});}
  try{
