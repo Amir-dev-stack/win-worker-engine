@@ -21,6 +21,7 @@ const required = [
   "netlify/functions/sources.mts",
   "netlify/lib/source-intelligence.mts",
   "netlify/lib/simulation.mts",
+  "netlify/lib/backtest.mts",
   "netlify/lib/ai.mts",
   "netlify/lib/worker-org.mts",
   "netlify/lib/library.mts",
@@ -45,6 +46,7 @@ const [html, app, ai, org, mcp, authMeta, authorize, runner, library, libraryApi
 ]);
 
 const simulation = await readFile("netlify/lib/simulation.mts", "utf8");
+const backtest = await readFile("netlify/lib/backtest.mts", "utf8");
 const [aiBudget, hourlyMonitor, scheduledRunner, budgetApi, health] = await Promise.all([
   readFile("netlify/lib/ai-budget.mts", "utf8"),
   readFile("netlify/functions/hourly-monitor.mts", "utf8"),
@@ -69,6 +71,9 @@ const checks = [
   [budgetApi.includes("/api/ai-budget") && budgetApi.includes("getAIbudgetStatus"), "Authenticated AI budget status endpoint is missing."],
   [health.includes("learningMonitor") && health.includes("learningCycles"), "Health endpoint does not disclose intensive-learning schedule."],
   [simulation.includes("Math.min(50") && simulation.includes("const minLegs=Math.min(50") && simulation.includes("performanceByLegCount"), "WIN 2–50 leg experiment sweep is missing."],
+  [backtest.includes("chronologicalSplit") && backtest.includes("historically_tested_not_validated") && backtest.includes("hitRate95Wilson"), "Chronological strategy backtest and uncertainty reporting are missing."],
+  [mcp.includes("run_strategy_backtest") && mcp.includes("runStrategyBacktest"), "WIN MCP chronological strategy backtest tool is missing."],
+  [library.includes("backtestRuns") && library.includes("library/backtest-runs"), "Strategy backtest results are not included in the WIN library."],
   [sourceLibrary.includes('import { get, list, put }'), "Tipster source report list dependency is missing."],
   [html.includes("build_latest_coupon") && html.includes("compare_coupons"), "Dashboard coupon task modes are missing."],
   [app.includes("workerNetwork") && app.includes("/api/runs/"), "Dashboard worker-network report view is missing."],
