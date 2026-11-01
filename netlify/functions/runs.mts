@@ -1,5 +1,6 @@
 import { requireAuth } from "../lib/auth.mts";
-import { list, put } from "../lib/store.mts";\nimport { saveCouponRecord } from "../lib/library.mts";
+import { list, put } from "../lib/store.mts";
+import { saveCouponRecord } from "../lib/library.mts";
 
 const TASK_TYPES = new Set(["research_event", "build_latest_coupon", "audit_existing_coupon", "compare_coupons"]);
 
