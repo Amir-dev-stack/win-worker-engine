@@ -30,7 +30,9 @@ export const WIN_DEPARTMENTS: WorkerDepartment[] = [
     purpose: "Assess each event with the correct sport-specific blueprint, participant availability, matchup, context and independent FOR/AGAINST reasoning.",
     required: true,
     teams: [
-      "Dynamic Sport / Discipline Master for each represented sport",\n      "Persistent Club / Team Agent for each identified club",\n      "Persistent Player / Athlete Agent for each identified athlete",
+      "Dynamic Sport / Discipline Master for each represented sport",
+      "Persistent Club / Team Agent for each identified club",
+      "Persistent Player / Athlete Agent for each identified athlete",
       "Performance & Form Upper Agent",
       "Availability & Context Upper Agent",
       "Competition & Event Context Upper Agent",
