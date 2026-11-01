@@ -30,7 +30,7 @@ const departmentAssignments: DepartmentAssignment[] = [
     assignment: [
       "Run a bounded public-source pre-match offer and fixture scan for the requested objective and time window.",
       "Attempt official publicly accessible STS offer pages first. Do not log in, bypass bot checks, scrape hidden/private APIs, use cookies, or claim access to the user's account.",
-      "For every candidate, identify participants, sport, country/competition when available, local start time/timezone, current event status, source URL, publication/update date, whether STS itself is the source, exact market label and exact price only if directly visible.",
+      "For every candidate, identify participants, sport, country/competition when available, local start time/timezone, current event status, source URL, publication/update date, whether STS itself is the source, exact market label and exact price only if directly visible.",\n      "Identify every club/team and named player explicitly supported by reliable sources or user-supplied material. For player names, connect the player to a club only when the relationship is supported. Never invent a squad or imply every player was individually researched.",
       "Separate OFFICIAL STS PUBLICLY OBSERVED, USER-SUPPLIED, THIRD-PARTY SCHEDULE ONLY, LOGIN-RESTRICTED, and NOT VERIFIED.",
       "Reject started, completed, cancelled, postponed, duplicate or ambiguous pre-match events. State scan limits and categories not checked.",
       "Do not label third-party prices as STS prices. Never invent odds.",
@@ -47,7 +47,7 @@ const departmentAssignments: DepartmentAssignment[] = [
       "For each material selection assess event identity/context, recent form and opponent strength, confirmed versus unconfirmed availability, tactics/technical matchup, venue/surface/conditions and rest/travel where relevant.",
       "Cover the assigned form, availability, tactics, competition context, venue/conditions, sport statistics, Small Chef A FOR and Small Chef B AGAINST roles. These are named review assignments within this department request, not claims of separate API sessions.",
       "Write the strongest case FOR, strongest case AGAINST, realistic failure scenario, evidence grade STRONG/MODERATE/WEAK/INSUFFICIENT, and SHORTLIST/WATCHLIST/PASS/NOT VERIFIED verdict.",
-      "Preserve disagreement. Do not use popularity, intuition or the number of supporting roles as evidence."
+      "Preserve disagreement. Do not use popularity, intuition or the number of supporting roles as evidence."\n      "For every identified club and named player, complete the relevant club/player agent checklist: match logs, team performance, role, minutes, goals/assists or sport-specific output, cards/discipline, injuries, availability, recent performance, opponent/context and source freshness. Mark missing data explicitly."
     ].join("\n"),
     requiresScoutingPack: true
   },
@@ -94,7 +94,7 @@ const departmentAssignments: DepartmentAssignment[] = [
       "Check duplicate and contradictory legs, same-event dependence, same-team/player exposure, shared venue/weather/roster/schedule/league and all common-cause risks.",
       "Compare fewer-leg alternatives, separate sport-specific coupons and singles. Do not force an odds target by adding a weak leg.",
       "Calculate combined odds only when every included decimal price is current and verified. For MAXIKOMBI/system bets, distinguish stake per combination from total stake and label unsupported payouts illustrative.",
-      "Apply the WIN Low-Risk Gate as a hard veto. Never issue the final Global Master decision."
+      "Apply the WIN Low-Risk Gate as a hard veto. Never issue the final Global Master decision."\n      "Before constructing any coupon, review the supplied mandatory WIN library pack. Read BOTH winningCoupons and losingCoupons, relevant entityProfiles and validatedLessons. Identify reusable patterns and counterexamples, but do not copy picks blindly or overfit small samples. If either collection has zero matching records, say so honestly.",\n      "Include a <WIN_LIBRARY_REVIEW_JSON>...</WIN_LIBRARY_REVIEW_JSON> block with JSON: { \\"reviewed\\": true, \\"winningRecordIds\\": [], \\"losingRecordIds\\": [], \\"validatedLessonIds\\": [], \\"emptyCollections\\": [], \\"keyLearning\\": [\\"...\\"] }. This receipt is mandatory even when there are zero records."
     ].join("\n"),
     requiresScoutingPack: true
   },
@@ -105,7 +105,7 @@ const departmentAssignments: DepartmentAssignment[] = [
       "Review only the prior frozen forecasts/results/lesson records included in the brief. Do not invent a historical WIN track record.",
       "Keep pre-event forecast timestamps separate from post-event results. Verify sporting result separately from bookmaker market settlement.",
       "Identify validated sport-, market-, country- or competition-scoped lessons only when sample size supports them.",
-      "If there are no applicable prior records, mark NOT APPLICABLE / NO VALIDATED HISTORICAL LESSONS AVAILABLE."
+      "If there are no applicable prior records, mark NOT APPLICABLE / NO VALIDATED HISTORICAL LESSONS AVAILABLE."\n      "Mandatory: examine the complete libraryReview pack before making any learning claim. Read both wins and losses, and distinguish validated lessons from candidate notes. Record which coupon examples and entity profiles were reviewed.",\n      "Write a dated learning report and, where evidence warrants, append a <WIN_LESSONS_JSON>...</WIN_LESSONS_JSON> block with JSON { \\"lessons\\": [ { \\"title\\": string, \\"scopeType\\": string, \\"scopeId\\": string, \\"lesson\\": string, \\"sampleSize\\": number, \\"evidenceRecordIds\\": [string] } ] }. Never promote a proposed lesson to validated status automatically.",\n      "Include the mandatory <WIN_LIBRARY_REVIEW_JSON> receipt with reviewed=true, winningRecordIds, losingRecordIds, validatedLessonIds and emptyCollections."
     ].join("\n")
   },
   {
@@ -131,7 +131,7 @@ const commonInstructions = [
   "Never say an STS price was visible unless it was actually visible on an official/public STS source or supplied by the user. Third-party odds must be labelled third-party.",
   "Do not describe any bet as safe, guaranteed, fixed or 100%. Do not recommend staking more, chasing losses or risking essential funds.",
   "A required check with insufficient evidence must be reported as BLOCKED, PARTIAL, INSUFFICIENT or NOT ESTIMABLE, not passed.",
-  "Return a structured report with: execution status, assigned team checklist, findings, evidence/citations and timestamps, FOR case where relevant, AGAINST case where relevant, unknowns/blockers, handoff recipient and provisional verdict."
+  "Return a structured report with: execution status, assigned team checklist, findings, evidence/citations and timestamps, FOR case where relevant, AGAINST case where relevant, unknowns/blockers, handoff recipient and provisional verdict."\n  "The brief includes a real libraryReview payload loaded from persistent storage. Every department must inspect relevant winning and losing human coupon cases and scoped agent/entity profiles before its assessment; distinguish verified library records from unverified notes. Do not invent a record or claim a collection was reviewed if its payload was not supplied.",\n  "D6 and D7 must each include a machine-readable <WIN_LIBRARY_REVIEW_JSON> receipt with reviewed=true, winningRecordIds, losingRecordIds, validatedLessonIds, emptyCollections and keyLearning. Empty results are allowed but must be acknowledged.",
 ].join("\n");
 
 function extractText(data: any): string {
