@@ -9,7 +9,7 @@ export default async(req:Request)=>{
  if(!prediction)return Response.json({error:"Prediction not found"},{status:404});
  const id=crypto.randomUUID();
  const result={id,predictionId:body.predictionId,outcome:body.outcome,settlementSource:body.settlementSource,evidence:body.evidence??null,recordedAt:new Date().toISOString()};
- await put("results",id,result);
+ await put("results",id,result);\n await put("library/settled-results",id,result);
  return Response.json(result,{status:201});
 };
 export const config={path:"/api/results"};
