@@ -13,9 +13,11 @@ function extractLearningCycle(report: string): any | null {
   try {
     const parsed = JSON.parse(report.slice(start + open.length, end).trim());
     return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
+}
+
+function stage(name: string, status: string, startedAt: string, extra: Record<string, unknown> = {}) {
+  return { name, status, startedAt, finishedAt: new Date().toISOString(), ...extra };
 }
 
 export default async (req: Request) => {
@@ -24,29 +26,48 @@ export default async (req: Request) => {
   try { body = await req.json(); } catch { return new Response("Bad JSON", { status: 400 }); }
   const run = await get<any>("runs", body.runId);
   if (!run) return new Response("Run not found", { status: 404 });
+  if (["completed", "failed"].includes(run.status) && run.learningReportVersion === 1) {
+    return new Response(null, { status: 202 });
+  }
 
   const startedAt = new Date().toISOString();
-  await put("runs", run.id, { ...run, status: "scouting", startedAt, updatedAt: startedAt });
+  const stages: any[] = [];
+  await put("runs", run.id, { ...run, status: "scouting", startedAt, updatedAt: startedAt, learningReportVersion: 1 });
+
   try {
+    const reviewStarted = new Date().toISOString();
     const libraryReview = await getMandatoryLearningPack(run.brief);
+    stages.push(stage("review_existing_WIN_knowledge", "completed", reviewStarted, {
+      counts: libraryReview.counts, areasReviewed: libraryReview.areasReviewed
+    }));
+
+    const aiStarted = new Date().toISOString();
     const brief = { ...run.brief, runId: run.id, libraryReview };
     const scout = await runScheduledLearning(brief);
     const completedAt = new Date().toISOString();
+    const aiCompleted = scout.status === "completed" && Boolean(scout.report?.trim());
+    stages.push(stage("AI_research_execution", aiCompleted ? "completed" : "failed", aiStarted, {
+      agentId: scout.workerId || null, agentName: scout.name || null,
+      model: scout.model || null, responseId: scout.responseId || null,
+      citationCount: Array.isArray(scout.citations) ? scout.citations.length : 0,
+      reportCharacters: scout.report?.length || 0,
+      error: scout.error || null
+    }));
+
+    const learningData = extractLearningCycle(scout.report || "");
+    const strategyCandidates = Array.isArray(learningData?.candidateStrategies)
+      ? learningData.candidateStrategies.slice(0, 20) : [];
     const completed = {
-      ...run, brief, status: scout.status === "completed" && scout.report.trim() ? "completed" : "failed",
+      ...run, brief, status: aiCompleted ? "completed" : "failed",
       workers: [scout], debate: [], master: null,
       decision: "SCHEDULED LEARNING ONLY — no strategy was validated and no betting recommendation or coupon decision was made.",
-      updatedAt: completedAt, completedAt,
-      scoutSummary: {
-        status: scout.status,
-        report: scout.report,
-        citations: scout.citations,
-        error: scout.error || null
-      }
+      updatedAt: completedAt, completedAt, learningReportVersion: 1,
+      learningStages: stages,
+      scoutSummary: { status: scout.status, report: scout.report, citations: scout.citations, error: scout.error || null }
     };
     await put("runs", run.id, completed);
-    const learningData = extractLearningCycle(scout.report);
-    const strategyCandidates = Array.isArray(learningData?.candidateStrategies) ? learningData.candidateStrategies.slice(0, 20) : [];
+
+    const storageStarted = new Date().toISOString();
     for (let index = 0; index < strategyCandidates.length; index++) {
       const candidate = strategyCandidates[index];
       const candidateId = run.id + ":strategy:" + index;
@@ -60,40 +81,83 @@ export default async (req: Request) => {
         exclusions: Array.isArray(candidate?.exclusions) ? candidate.exclusions.slice(0, 30) : [],
         requiredData: Array.isArray(candidate?.requiredData) ? candidate.requiredData.slice(0, 30) : [],
         sourceRefs: Array.isArray(learningData?.sourceRefs) ? learningData.sourceRefs.slice(0, 30) : [],
-        validationStatus: "candidate_for_validation",
-        validated: false,
-        createdAt: completedAt
+        validationStatus: "candidate_for_validation", validated: false, createdAt: completedAt
       });
     }
-    await put("library/learning-cycles", run.id, {
-      id: run.id, runId: run.id, status: completed.status,
+
+    const report = {
+      id: run.id, runId: run.id, reportVersion: 1,
+      title: "WIN Research & Learning Report — " + (run.brief?.event || run.id),
+      status: completed.status,
       cycleType: run.brief?.learningTrack?.cycleType || "unspecified",
       sport: run.brief?.learningTrack?.sport || null,
       focus: run.brief?.learningTrack?.focus || null,
       cycleIndex: run.brief?.learningTrack?.cycleIndex ?? null,
-      strategyCandidateCount: strategyCandidates.length,
-      coverageGaps: Array.isArray(learningData?.coverageGaps) ? learningData.coverageGaps.slice(0, 50) : [],
-      validationBlockers: Array.isArray(learningData?.validationBlockers) ? learningData.validationBlockers.slice(0, 50) : [],
-      report: scout.report, citations: scout.citations, error: scout.error || null,
+      startedAt, completedAt,
+      workPerformed: {
+        agentsRun: scout.workerId ? [{ id: scout.workerId, name: scout.name || null, model: scout.model || null }] : [],
+        departmentsRun: ["scheduled_learning_research"],
+        libraryAreasReviewed: libraryReview.areasReviewed,
+        libraryReviewCounts: libraryReview.counts
+      },
+      findings: {
+        summary: learningData?.summary || null,
+        keyFindings: Array.isArray(learningData?.keyFindings) ? learningData.keyFindings.slice(0, 50) : [],
+        discoveries: Array.isArray(learningData?.discoveries) ? learningData.discoveries.slice(0, 50) : [],
+        coverageGaps: Array.isArray(learningData?.coverageGaps) ? learningData.coverageGaps.slice(0, 50) : [],
+        validationBlockers: Array.isArray(learningData?.validationBlockers) ? learningData.validationBlockers.slice(0, 50) : [],
+        sourceRefs: Array.isArray(learningData?.sourceRefs) ? learningData.sourceRefs.slice(0, 50) : []
+      },
+      strategies: {
+        candidatesCreated: strategyCandidates.length,
+        candidates: strategyCandidates,
+        validationStatus: "candidate_research_not_validated"
+      },
+      execution: {
+        stages,
+        agentStatus: scout.status,
+        citationCount: Array.isArray(scout.citations) ? scout.citations.length : 0,
+        reportCharacters: scout.report?.length || 0,
+        error: scout.error || null
+      },
+      rawReport: scout.report || "",
+      citations: Array.isArray(scout.citations) ? scout.citations : [],
       learningStatus: "candidate_research_not_validated",
-      createdAt: run.createdAt, completedAt
-    });
+      warning: "A completed research report is not proof that a strategy is profitable or validated. Verify sources and test strategies prospectively."
+    };
+    await put("library/learning-cycles", run.id, report);
     await put("library/agent-notes", "scheduled-learning-" + run.id, {
       id: "scheduled-learning-" + run.id, runId: run.id,
-      noteType: "scheduled_learning_research",
-      cycleType: run.brief?.learningTrack?.cycleType || "unspecified",
-      sport: run.brief?.learningTrack?.sport || null,
+      noteType: "scheduled_learning_research", title: report.title,
+      cycleType: report.cycleType, sport: report.sport,
       report: scout.report, citations: scout.citations,
-      validationStatus: "candidate_for_validation",
-      createdAt: completedAt
+      validationStatus: "candidate_for_validation", createdAt: completedAt
     });
-    const libraryArchive = await archiveRunToLibrary(completed);
-    await put("runs", run.id, { ...completed, libraryArchive });
+    stages.push(stage("persist_report_and_learning_to_library", "completed", storageStarted, {
+      learningCycleSaved: true, strategyCandidatesSaved: strategyCandidates.length
+    }));
+    const libraryArchive = await archiveRunToLibrary({ ...completed, learningStages: stages });
+    const finalRun = { ...completed, learningStages: stages, libraryArchive };
+    await put("runs", run.id, finalRun);
+    await put("library/learning-cycles", run.id, { ...report, execution: { ...report.execution, stages } });
   } catch (error) {
     const failedAt = new Date().toISOString();
-    const failed = { ...run, status: "failed", error: String(error), updatedAt: failedAt, completedAt: failedAt };
+    stages.push({ name: "research_cycle", status: "failed", finishedAt: failedAt, error: String(error) });
+    const failed = { ...run, status: "failed", error: String(error), learningStages: stages,
+      learningReportVersion: 1, updatedAt: failedAt, completedAt: failedAt };
     await put("runs", run.id, failed);
-    try { await archiveRunToLibrary(failed); } catch { /* primary failure remains visible on the run */ }
+    await put("library/learning-cycles", run.id, {
+      id: run.id, runId: run.id, reportVersion: 1,
+      title: "WIN Research & Learning Report — FAILED — " + (run.brief?.event || run.id),
+      status: "failed", cycleType: run.brief?.learningTrack?.cycleType || "unspecified",
+      sport: run.brief?.learningTrack?.sport || null, focus: run.brief?.learningTrack?.focus || null,
+      startedAt, completedAt: failedAt, workPerformed: { departmentsRun: ["scheduled_learning_research"] },
+      findings: { summary: null, keyFindings: [], discoveries: [], coverageGaps: [], validationBlockers: [], sourceRefs: [] },
+      strategies: { candidatesCreated: 0, candidates: [], validationStatus: "not_run" },
+      execution: { stages, error: String(error) }, rawReport: "",
+      learningStatus: "failed_no_learning_claimed"
+    });
+    try { await archiveRunToLibrary(failed); } catch { /* failure remains recorded */ }
   }
   return new Response(null, { status: 202 });
 };
