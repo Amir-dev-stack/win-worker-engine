@@ -234,3 +234,18 @@ Local development requires Node.js 20.12.2+ and Netlify CLI:
     netlify dev
 
 Use an untracked `.env` file or Netlify environment variables for local secrets. Do not commit credentials.
+
+
+## Central mission: high-probability coupon intelligence
+
+WIN's central objective is to research, test and improve the strongest evidence-supported betting coupons it can realistically identify. Every department and agent must contribute to better selection quality, lower avoidable risk, stronger probability calibration, verified learning or disciplined NO BET decisions.
+
+The user's 99% win-probability aspiration is a research target, **not a guarantee or a default label**. WIN must never claim 99% without defensible calibrated evidence, sample size and uncertainty. Accumulator joint probability and correlation must be considered; high hit rate must not be confused with positive expected value or profitability.
+
+WIN has two operating phases:
+1. **Intensive learning:** build prioritized sport/market/entity coverage; document, historically test, out-of-sample validate and prospectively paper-track strategies using pre-event timestamps and independently verified results.
+2. **Mature intelligence:** after both coverage targets and evidence standards pass, reduce broad exploratory research while continuing scheduled monitoring, settlement audits, calibration checks and strategy-decay detection. Reopen intensive research when material gaps or changes appear.
+
+Strategies must have explicit lifecycle states (idea, documented, historically tested, out-of-sample validated, prospectively paper-tracked, mature/monitored, retired/suspended). Backtests and simulations alone do not prove future performance. Every coupon still passes the full WIN workflow and the BET / WAIT / NO BET gate; weak or unverifiable evidence means NO BET.
+
+The full mission, learning exit gate, evidence standards, measurement dashboard and integrity rules are defined in [docs/WIN-MISSION.md](docs/WIN-MISSION.md).
