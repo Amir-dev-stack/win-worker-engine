@@ -4,6 +4,7 @@ import { z } from "zod";
 import { get, list } from "../lib/store.mts";
 import { searchWinLibrary, saveCouponRecord, settleCouponRecord, saveEntityProfile, saveLearningNote } from "../lib/library.mts";
 import { createSimulationRun } from "../lib/simulation.mts";
+import { getTipsterSourceReport, importTipsterCoupon, listTipsterSources } from "../lib/source-intelligence.mts";
 import { authorizeMcpRequest, WIN_ISSUER } from "../lib/oauth-store.mts";
 
 const resourceMetadata = WIN_ISSUER + "/.well-known/oauth-protected-resource/mcp";
@@ -224,6 +225,51 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
       });
       if (!queued.ok && queued.status !== 202) throw new Error("Simulation worker could not be queued: HTTP " + queued.status);
       return { content: [{ type: "text" as const, text: JSON.stringify({ runId: run.id, status: "queued", couponCount: run.couponCount, selectionCount: run.selectionCount, message: "Historical simulation queued. Results are derived only from supplied settled data." }) }] };
+    } catch (error) {
+      return { content: [{ type: "text" as const, text: String(error) }], isError: true };
+    }
+  });
+
+
+  server.registerTool("list_tipster_sources", {
+    title: "List WIN public tipster sources",
+    description: "List known tipster research sources, current collection permissions, and safe import modes. Automated collection is disabled unless official API access or written permission is recorded.",
+    inputSchema: {},
+    securitySchemes: [{ type: "oauth2", scopes: ["win:read"] }]
+  }, async () => {
+    if (!scopes.includes("win:read")) return authRequired("win:read");
+    return { content: [{ type: "text" as const, text: JSON.stringify(listTipsterSources()) }] };
+  });
+
+  server.registerTool("get_tipster_source_report", {
+    title: "Get WIN tipster import report",
+    description: "Review public/user-authorized tipster coupon imports, source totals and pending settlement counts.",
+    inputSchema: {},
+    securitySchemes: [{ type: "oauth2", scopes: ["win:read"] }]
+  }, async () => {
+    if (!scopes.includes("win:read")) return authRequired("win:read");
+    return { content: [{ type: "text" as const, text: JSON.stringify(await getTipsterSourceReport()) }] };
+  });
+
+  server.registerTool("import_public_tipster_coupon", {
+    title: "Import a public tipster coupon into WIN",
+    description: "Import coupon details supplied by the user or an authorized export. Requires an HTTPS source URL and an explicit attestation that the user is entitled to provide and retain the data. New records remain pending until independently evidenced settlement. This tool does not log in, scrape, or bypass restrictions.",
+    inputSchema: {
+      sourceId: z.enum(["sts-strefa-inspiracji", "tippium", "blogabet", "tipstrr", "oddra"]),
+      sourceUrl: z.string().url(), couponText: z.string().min(3),
+      authorizedToStore: z.boolean(),
+      tipsterName: z.string().optional(), publishedAt: z.string().optional(),
+      label: z.string().optional(), sport: z.string().optional(),
+      country: z.string().optional(), competition: z.string().optional(),
+      combinedOdds: z.number().positive().optional(), bookmaker: z.string().optional(),
+      selections: z.array(z.any()).optional(), sourceSnapshot: z.string().optional(),
+      importMethod: z.enum(["manual_user_submission", "user_provided_export", "official_api", "written_permission"]).optional()
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
+  }, async (args) => {
+    if (!scopes.includes("win:research")) return authRequired("win:research");
+    try {
+      return { content: [{ type: "text" as const, text: JSON.stringify(await importTipsterCoupon(args)) }] };
     } catch (error) {
       return { content: [{ type: "text" as const, text: String(error) }], isError: true };
     }
