@@ -268,3 +268,9 @@ The full mission, learning exit gate, evidence standards, measurement dashboard 
 ## Scheduled intensive-learning cycle
 
 The published `hourly-monitor` function is configured to run every four hours (UTC). When `WIN_AI_BUDGET_APPROVED=true`, it rotates through six bounded research workstreams — coverage mapping, market/settlement research, falsifiable strategy hypotheses, historical-data audits, verified coupon failure analysis and validation readiness — across a rotating list of sports. Each successful cycle is archived under `library/learning-cycles` and included in later mandatory learning packs. These records are candidate research only; they do not automatically validate a strategy or create a betting recommendation. The scheduler remains disabled for AI work until provider spending controls and key rotation are confirmed.
+
+## OpenAI Agents SDK runtime
+
+WIN's department workers now execute through the OpenAI TypeScript Agents SDK (`@openai/agents`), pinned to `0.21.0`. The runtime creates a focused agent for each WIN worker pass, supports hosted web search when enabled, caps each agent run at two model turns, and records SDK-reported token usage in the existing WIN budget ledger. The same runtime is used by scouting, scheduled learning, department analysis, adversarial review and Global Master passes.
+
+The SDK receives the existing server-side `OPENAI_API_KEY` at runtime; keys are never stored in source control. Automatic SDK trace export is disabled by default so WIN research prompts and tool traces are not sent to the tracing service. The existing `WIN_AI_BUDGET_APPROVED=true` fail-closed gate remains mandatory before any model call. SDK integration does not place bets or bypass source, settlement, evidence or low-risk checks.
