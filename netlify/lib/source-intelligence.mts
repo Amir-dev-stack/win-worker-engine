@@ -1,40 +1,40 @@
 import { createHash } from "node:crypto";
-import { list, put } from "./store.mts";
+import { get, put } from "./store.mts";
 import { saveCouponRecord } from "./library.mts";
 
 type SourceMode = "manual_import" | "permission_required" | "policy_review_required";
 
 const SOURCES = [
   {
-    id: "sts-strefa-inspiracji", name: "STS Strefa Inspiracji",
+    id: "sts-strefa-inspiracji", name: "STS Strefa Inspiracji", domains: ["sts.pl"],
     url: "https://www.sts.pl/strefa-inspiracji",
     mode: "manual_import" as SourceMode,
     automatedCollection: false,
     note: "Public-page research only. Interactive or account-only coupon details must be supplied by the user. No STS account/session access."
   },
   {
-    id: "tippium", name: "Tippium",
+    id: "tippium", name: "Tippium", domains: ["tippium.com"],
     url: "https://tippium.com/en/tipsters/",
     mode: "permission_required" as SourceMode,
     automatedCollection: false,
     note: "Do not run bots or automated collection without written platform permission. User-provided exports or snapshots may be imported with an authorization attestation."
   },
   {
-    id: "blogabet", name: "Blogabet",
+    id: "blogabet", name: "Blogabet", domains: ["blogabet.com"],
     url: "https://blogabet.com/",
     mode: "policy_review_required" as SourceMode,
     automatedCollection: false,
     note: "No automated profile harvesting. Minimize personal data; import only user-provided material the user is entitled to retain, subject to platform terms and applicable law."
   },
   {
-    id: "tipstrr", name: "Tipstrr",
+    id: "tipstrr", name: "Tipstrr", domains: ["tipstrr.com"],
     url: "https://tipstrr.com/",
     mode: "permission_required" as SourceMode,
     automatedCollection: false,
     note: "Automated monitoring or replication is disabled pending written permission or an approved API."
   },
   {
-    id: "oddra", name: "Oddra",
+    id: "oddra", name: "Oddra", domains: ["oddra.org"],
     url: "https://www.oddra.org/",
     mode: "policy_review_required" as SourceMode,
     automatedCollection: false,
@@ -81,6 +81,14 @@ export async function importTipsterCoupon(input: any) {
   }
   const sourceUrl = safeUrl(input?.sourceUrl);
   if (!sourceUrl) throw new Error("A valid HTTPS sourceUrl is required.");
+  const sourceHost = new URL(sourceUrl).hostname.toLowerCase();
+  if (!source.domains.some(domain => sourceHost === domain || sourceHost.endsWith("." + domain))) {
+    throw new Error("sourceUrl must belong to the selected source domain.");
+  }
+  const importMethod = clean(input?.importMethod, 50) || "manual_user_submission";
+  if (!["manual_user_submission", "user_provided_export"].includes(importMethod)) {
+    throw new Error("Only manual_user_submission and user_provided_export are enabled. API and written-permission connectors require separate verification and implementation.");
+  }
   const couponText = clean(input?.couponText, 30000);
   if (couponText.length < 3) throw new Error("couponText must contain the human coupon selections.");
   const publishedAt = clean(input?.publishedAt, 100);
@@ -88,7 +96,7 @@ export async function importTipsterCoupon(input: any) {
   const sourceSnapshot = clean(input?.sourceSnapshot, 10000);
   const selections = Array.isArray(input?.selections) ? input.selections.slice(0, 100) : [];
   const id = "tipster-" + makeId([sourceId, sourceUrl, publishedAt, couponText].join("|"));
-  const existing = (await list<any>("library/tipster-imports", 1000)).find(item => item.id === id);
+  const existing = await get<any>("library/tipster-imports", id);
   if (existing) return { ...existing, duplicate: true };
 
   const saved = await saveCouponRecord({
@@ -113,7 +121,7 @@ export async function importTipsterCoupon(input: any) {
   const record = {
     id, couponId: saved.id, sourceId, sourceName: source.name, sourceUrl,
     sourceMode: source.mode, automatedCollection: false,
-    importMethod: clean(input?.importMethod, 50) || "manual_user_submission",
+    importMethod,
     authorizationAttested: true,
     authorizationAttestedAt: new Date().toISOString(),
     tipsterName: tipsterName || null,
