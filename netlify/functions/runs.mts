@@ -1,5 +1,5 @@
 import { requireAuth } from "../lib/auth.mts";
-import { list, put } from "../lib/store.mts";
+import { list, put } from "../lib/store.mts";\nimport { saveCouponRecord } from "../lib/library.mts";
 
 const TASK_TYPES = new Set(["research_event", "build_latest_coupon", "audit_existing_coupon", "compare_coupons"]);
 
@@ -59,6 +59,17 @@ export default async (req: Request) => {
   };
   await put("runs", id, run);
   await put("library/research-runs", id, { ...run, libraryArchive: { status: "queued" } });
+  if (normalized.existingCoupon) {
+    await saveCouponRecord({
+      origin: "human",
+      label: "Human coupon attached to " + taskType,
+      couponText: normalized.existingCoupon,
+      sport: normalized.sport, country: normalized.country, competition: normalized.competition,
+      notes: normalized.context || "Imported automatically from a WIN coupon audit/comparison request.",
+      source: "User-supplied in WIN research request",
+      outcome: "pending", runId: id
+    });
+  }
 
   const base = new URL(req.url);
   const trigger = await fetch(new URL("/.netlify/functions/worker-runner", base), {
@@ -81,7 +92,7 @@ export default async (req: Request) => {
 
   return Response.json({
     runId: id, status: "queued", taskType,
-    message: "WIN Executive Coordination created the run. The worker network and eight department passes are queued."
+    message: "WIN Executive Coordination created the run. The worker network and eight department passes are queued; any user-supplied coupon was archived to the pending library."
   }, { status: 202 });
 };
 
