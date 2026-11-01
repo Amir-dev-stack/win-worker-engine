@@ -6,11 +6,24 @@ function validRedirect(value: unknown): value is string {
   if (typeof value !== "string") return false;
   try {
     const url = new URL(value);
-    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) return false;
-    if (url.hostname === "chatgpt.com") {
-      return url.pathname === "/connector_platform_oauth_redirect" || /^\/connector\/oauth\/[A-Za-z0-9_-]+$/.test(url.pathname);
+    if (url.username || url.password || url.search || url.hash) return false;
+
+    // ChatGPT hosted callbacks for the ChatGPT web connector.
+    if (url.protocol === "https:" && url.hostname === "chatgpt.com") {
+      return url.pathname === "/connector_platform_oauth_redirect" ||
+        /^\/connector\/oauth\/[A-Za-z0-9_-]+$/.test(url.pathname);
     }
-    return url.hostname === "chat.openai.com" && url.pathname.startsWith("/aip/");
+    if (url.protocol === "https:" && url.hostname === "chat.openai.com") {
+      return url.pathname.startsWith("/aip/");
+    }
+
+    // Codex / ChatGPT Desktop uses an ephemeral local loopback port.
+    // RFC 8252 permits variable ports for native-app loopback redirects.
+    // Restrict this exception to the exact IPv4 loopback host and callback path.
+    if (url.protocol === "http:" && url.hostname === "127.0.0.1") {
+      return /^\/callback\/[A-Za-z0-9_-]+$/.test(url.pathname);
+    }
+    return false;
   } catch { return false; }
 }
 
