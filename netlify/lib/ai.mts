@@ -36,7 +36,7 @@ const departmentAssignments: DepartmentAssignment[] = [
       "Reject started, completed, cancelled, postponed, duplicate or ambiguous pre-match events. State scan limits and categories not checked.",
       "Do not label third-party prices as STS prices. Never invent odds.",
       "Return a candidate shortlist and the strongest coverage gaps. If there are no verified public STS prices, say so rather than pretending.",
-      "At the end include exactly one machine-readable block named <WIN_CANDIDATES_JSON> ... </WIN_CANDIDATES_JSON>. It must contain JSON { \"events\": [ { \"event\": string, \"sport\": string, \"country\": string, \"competition\": string, \"startTime\": string, \"eventStatus\": string, \"sourceUrl\": string, \"market\": string, \"selection\": string, \"odds\": string } ] }. Include only candidates actually named in your report; use empty strings for unknowns and [] when none. The block is a routing aid, not independent verification."
+      "At the end include exactly one machine-readable block named <WIN_CANDIDATES_JSON> ... </WIN_CANDIDATES_JSON>. It must contain JSON { \"events\": [ { \"event\": string, \"sport\": string, \"country\": string, \"competition\": string, \"startTime\": string, \"eventStatus\": string, \"sourceUrl\": string, \"market\": string, \"selection\": string, \"odds\": string, \"clubs\": [ { \"name\": string, \"side\": string } ], \"players\": [ { \"name\": string, \"club\": string } ] } ] }. Include only entities confirmed by source or supplied by user; use [] when unknown. This block is a routing aid, not independent verification."
     ].join("\n")
   },
   {
@@ -139,7 +139,8 @@ const commonInstructions = [
   "Do not describe any bet as safe, guaranteed, fixed or 100%. Do not recommend staking more, chasing losses or risking essential funds.",
   "A required check with insufficient evidence must be reported as BLOCKED, PARTIAL, INSUFFICIENT or NOT ESTIMABLE, not passed.",
   "Return a structured report with: execution status, assigned team checklist, findings, evidence/citations and timestamps, FOR case where relevant, AGAINST case where relevant, unknowns/blockers, handoff recipient and provisional verdict.",
-  "The brief includes a real libraryReview payload loaded from persistent storage. Every department must inspect relevant winning and losing human coupon cases and scoped agent/entity profiles before its assessment; distinguish verified library records from unverified notes. Do not invent a record or claim a collection was reviewed if its payload was not supplied.",\n  "D6 and D7 must each include a machine-readable <WIN_LIBRARY_REVIEW_JSON> receipt with reviewed=true, winningRecordIds, losingRecordIds, validatedLessonIds, emptyCollections and keyLearning. Empty results are allowed but must be acknowledged.",
+  "The brief includes a real libraryReview payload loaded from persistent storage. Every department must inspect relevant winning and losing human coupon cases and scoped agent/entity profiles before its assessment; distinguish verified library records from unverified notes. Do not invent a record or claim a collection was reviewed if its payload was not supplied.",
+  "D6 and D7 must each include a machine-readable <WIN_LIBRARY_REVIEW_JSON> receipt with reviewed=true, winningRecordIds, losingRecordIds, validatedLessonIds, emptyCollections and keyLearning. Empty results are allowed but must be acknowledged.",
 ].join("\n");
 
 function extractText(data: any): string {
