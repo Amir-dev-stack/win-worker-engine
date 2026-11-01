@@ -14,6 +14,8 @@ const required = [
   "netlify/functions/worker-runner.mts",
   "netlify/functions/simulations.mts",
   "netlify/functions/simulation-runner.mts",
+  "netlify/functions/sources.mts",
+  "netlify/lib/source-intelligence.mts",
   "netlify/lib/simulation.mts",
   "netlify/lib/ai.mts",
   "netlify/lib/worker-org.mts",
@@ -23,7 +25,7 @@ const required = [
 
 for (const file of required) await access(file);
 
-const [html, app, ai, org, mcp, authMeta, authorize, runner, library, libraryApi] = await Promise.all([
+const [html, app, ai, org, mcp, authMeta, authorize, runner, library, libraryApi, sourceLibrary, sourceApi] = await Promise.all([
   readFile("public/index.html", "utf8"),
   readFile("public/app.js", "utf8"),
   readFile("netlify/lib/ai.mts", "utf8"),
@@ -33,7 +35,9 @@ const [html, app, ai, org, mcp, authMeta, authorize, runner, library, libraryApi
   readFile("netlify/functions/oauth-authorize.mts", "utf8"),
   readFile("netlify/functions/worker-runner.mts", "utf8"),
   readFile("netlify/lib/library.mts", "utf8"),
-  readFile("netlify/functions/library.mts", "utf8")
+  readFile("netlify/functions/library.mts", "utf8"),
+  readFile("netlify/lib/source-intelligence.mts", "utf8"),
+  readFile("netlify/functions/sources.mts", "utf8")
 ]);
 
 const checks = [
@@ -55,7 +59,11 @@ const checks = [
   [library.includes("ensureLegacyLibraryImport") && library.includes("non_destructive_copy"), "Legacy WIN library import is missing."],
   [libraryApi.includes('path: "/api/library"') && libraryApi.includes("save_coupon") && libraryApi.includes("settle_coupon"), "Authenticated WIN library API is incomplete."],
   [html.includes('id="library"') && app.includes("refreshLibrary") && app.includes("couponForm"), "WIN library dashboard is incomplete."],
-  [runner.includes("hasLibraryReviewReceipt") && runner.includes("libraryReviewGate") && runner.includes("missingLibraryReceipts"), "Mandatory library review gate is missing."]
+  [runner.includes("hasLibraryReviewReceipt") && runner.includes("libraryReviewGate") && runner.includes("missingLibraryReceipts"), "Mandatory library review gate is missing."],
+  [mcp.includes("list_tipster_sources") && mcp.includes("import_public_tipster_coupon") && mcp.includes("get_tipster_source_report"), "WIN tipster source MCP tools are missing."],
+  [sourceLibrary.includes("automatedCollection: false") && sourceLibrary.includes("authorizedToStore") && sourceLibrary.includes("duplicate"), "WIN tipster source permissions and deduplication are missing."],
+  [sourceApi.includes('path: "/api/sources"'), "Authenticated tipster source API is missing."],
+  [html.includes('id="sourceIntelligence"') && app.includes("refreshSources"), "Tipster source dashboard is missing."]
 
 ];
 
