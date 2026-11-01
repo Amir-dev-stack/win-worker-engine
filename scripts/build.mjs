@@ -61,6 +61,8 @@ const checks = [
   [hourlyMonitor.includes('0 */4 * * *') && hourlyMonitor.includes('strategy_hypothesis') && hourlyMonitor.includes('validation_readiness'), "Four-hour intensive-learning cycle rotation is missing."],
   [scheduledRunner.includes('runScheduledLearning') && scheduledRunner.includes('library/learning-cycles'), "Scheduled learning cycle archival is missing."],
   [library.includes('learningCycles') && library.includes('library/learning-cycles'), "Scheduled learning research is not included in mandatory library reviews."],
+  [scheduledRunner.includes('WIN_LEARNING_CYCLE_JSON') && scheduledRunner.includes('library/strategy-candidates') && scheduledRunner.includes('candidate_for_validation'), "Structured strategy candidates are not archived as unvalidated research."],
+  [library.includes('strategyCandidates') && library.includes('library/strategy-candidates') && library.includes('strategyCandidatesMatched'), "Candidate strategies are not searchable or included in mandatory learning packs."],
   [health.includes('aiExecutionApproved') && health.includes('configured_but_disabled_pending_budget_approval'), "Health endpoint does not disclose the AI approval gate."],
   [hourlyMonitor.includes('0 */4 * * *') && hourlyMonitor.includes('strategy_hypothesis') && hourlyMonitor.includes('validation_readiness'), "Four-hour intensive-learning cycle rotation is missing."],
   [scheduledRunner.includes("runScheduledLearning") && scheduledRunner.includes("authorized(req)") && scheduledRunner.includes("library/learning-cycles"), "Authenticated background scheduled learning runner is missing."],
