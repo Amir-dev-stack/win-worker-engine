@@ -91,6 +91,8 @@ The shared library uses the existing private, site-wide Netlify Blobs store `win
 | `library/agent-profiles` | Persistent specialist agent identities and missions |
 | `library/agent-observations` | Run-linked observations written to each relevant entity agent's history |
 | `library/agent-notes` | Full department, challenge and Global Master reports |
+| `library/learning-cycles` | Scheduled four-hour research-cycle reports, sources, coverage gaps and validation blockers |
+| `library/strategy-candidates` | Structured strategy hypotheses with eligibility rules, exclusions, required data and `candidate_for_validation` status |
 | `library/research-runs` | Archived full run brief, reports, debate, network, citations and decision |
 | `library/coupon-research-cases` | Coupon build, audit and comparison case files |
 | `library/archive-failures` | Audit records when library archiving itself fails |
