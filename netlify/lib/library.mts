@@ -139,8 +139,9 @@ export async function saveCouponRecord(input: any) {
   if (outcome === "won") await put("library/winning-coupons", id, record);
   else if (outcome === "lost") await put("library/losing-coupons", id, record);
   else await put("library/pending-coupons", id, record);
-  await put("library/coupon-history", crypto.randomUUID(), {
-    id: crypto.randomUUID(), couponId: id, action: "created", outcome,
+  const historyId = crypto.randomUUID();
+  await put("library/coupon-history", historyId, {
+    id: historyId, couponId: id, action: "created", outcome,
     at: createdAt, source: record.origin
   });
   return record;
@@ -171,8 +172,9 @@ export async function settleCouponRecord(input: any) {
   if (outcome === "won") await put("library/winning-coupons", id, updated);
   else if (outcome === "lost") await put("library/losing-coupons", id, updated);
   else await put("library/pending-coupons", id, updated);
-  await put("library/coupon-history", crypto.randomUUID(), {
-    id: crypto.randomUUID(), couponId: id, action: "settled", outcome,
+  const historyId = crypto.randomUUID();
+  await put("library/coupon-history", historyId, {
+    id: historyId, couponId: id, action: "settled", outcome,
     settlementSource, evidence: updated.settlementEvidence, at: updated.settledAt
   });
   return updated;
@@ -261,8 +263,9 @@ export async function archiveRunToLibrary(run: any) {
 
   const reports = [...(run.workers || []), ...(run.debate || []), ...(run.master ? [run.master] : [])];
   for (const report of reports) {
-    await put("library/agent-notes", crypto.randomUUID(), {
-      id: crypto.randomUUID(), runId: run.id, recordType: "agent_report",
+    const noteId = crypto.randomUUID();
+    await put("library/agent-notes", noteId, {
+      id: noteId, runId: run.id, recordType: "agent_report",
       agentId: report.workerId, agentRole: report.role, departmentId: report.departmentId || null,
       phase: report.phase, status: report.status, report: clean(report.report, MAX_TEXT),
       citations: safeArray(report.citations, 100), createdAt: report.completedAt || savedAt
@@ -277,7 +280,8 @@ export async function archiveRunToLibrary(run: any) {
     if (!entityType) continue;
     const entityId = clean(node.id, 180);
     if (!entityId) continue;
-    const profile = await saveEntityProfile({
+    const existingProfile = await get<any>("library/entity-profiles", entityId);
+    const profile = existingProfile || await saveEntityProfile({
       entityType, id: entityId, name: node.name,
       sport: node.scope?.sport, country: node.scope?.country,
       competition: node.scope?.competition, club: node.scope?.club,
@@ -286,8 +290,9 @@ export async function archiveRunToLibrary(run: any) {
     });
     const departmentId = entityType === "sport" || entityType === "club" || entityType === "player" || entityType === "event" ? "D2" : "D1";
     const sourceReport = (run.workers || []).find((x: any) => x.departmentId === departmentId);
-    await put("library/agent-observations", crypto.randomUUID(), {
-      id: crypto.randomUUID(), agentId: profile.agentId, entityId, entityType,
+    const observationId = crypto.randomUUID();
+    await put("library/agent-observations", observationId, {
+      id: observationId, agentId: profile.agentId, entityId, entityType,
       runId: run.id, sourceReportId: sourceReport?.workerId || null,
       observation: clean(sourceReport?.report, 5000),
       status: sourceReport?.status === "completed" ? "case_specific_review" : "not_verified",
