@@ -58,6 +58,32 @@ async function openRun(id){
  try{renderRunDetail(await api("/api/runs/"+encodeURIComponent(id)))}
  catch(e){node.textContent=e.message}
 }
+async function refreshLibrary(){
+ const category=$("#libraryCategory")?.value||"all";
+ const query=$("#libraryQuery")?.value.trim()||"";
+ const params=new URLSearchParams({category,limit:"40"});
+ if(query)params.set("q",query);
+ try{
+  const data=await api("/api/library?"+params.toString());
+  const items=data.items||[];
+  $("#libraryStatus").textContent=items.length+" records shown · "+category+" · reviewed "+new Date(data.reviewedAt).toLocaleTimeString();
+  $("#libraryList").innerHTML=items.length?items.map(item=>{
+   const type=escapeHtml(item.recordType||item.entityType||"library record");
+   const title=escapeHtml(item.label||item.title||item.name||item.event||item.agentId||item.id||"WIN record");
+   const state=escapeHtml(item.outcome||item.validationStatus||item.status||"saved");
+   const date=item.updatedAt||item.createdAt||item.savedAt||item.observedAt||item.recordedAt;
+   const body=escapeHtml(item.couponText||item.note||item.observation||item.finalAnalysis||item.report||item.agentMission||item.decision||"");
+   const id=escapeHtml(item.id||"");
+   const couponActions=item.recordType==="coupon"&&item.outcome==="pending"
+     ?'<div class="library-actions"><button type="button" class="subtle" data-settle-id="'+id+'" data-outcome="won">Record WIN</button><button type="button" class="subtle" data-settle-id="'+id+'" data-outcome="lost">Record LOSS</button></div>'
+     :"";
+   return '<article class="mini-row library-item"><div><b>'+title+'</b><small>'+type+' · '+state+(date?' · '+new Date(date).toLocaleString():"")+'</small>'+(body?'<p>'+body.slice(0,550)+(body.length>550?'…':"")+'</p>':"")+'</div>'+couponActions+'</article>';
+  }).join(""):'<div class="empty">No records in this collection yet. Import human coupons or run WIN research to build the library.</div>';
+ }catch(e){
+  $("#libraryStatus").textContent="Library unavailable: "+e.message;
+  $("#libraryList").innerHTML='<div class="empty">Could not load the private WIN library.</div>';
+ }
+}
 async function refresh(){
  try{
   const health=await fetch("/api/health").then(r=>r.json());
@@ -73,6 +99,7 @@ async function refresh(){
     renderRunDetail(current);
   }
   $("#mcpStatus").textContent="OAuth MCP endpoint deployed; plugin authorization test pending";
+  await refreshLibrary();
  }catch(e){$("#apiStatus").textContent="Authentication needed";$("#runsList").textContent=e.message}
 }
 $("#saveToken").addEventListener("click",e=>{e.preventDefault();token=$("#tokenInput").value.trim();if(token){sessionStorage.setItem("win-token",token);dialog.close();refresh()}});
@@ -108,5 +135,41 @@ $("#runForm").addEventListener("submit",async e=>{
 $("#tipForm").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget;const f=new FormData(form);try{await api("/api/tips",{method:"POST",body:JSON.stringify({tip:f.get("tip"),sourceUrl:f.get("sourceUrl"),tipster:f.get("tipster")})});form.reset();await refresh()}catch(err){alert(err.message)}});
 $("#runsList").addEventListener("click",e=>{const b=e.target.closest("[data-run-id]");if(b)openRun(b.dataset.runId)});
 $("#refresh").addEventListener("click",refresh);
+$("#couponForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const form=e.currentTarget;
+ const f=new FormData(form);
+ const b=form.querySelector("button[type=\"submit\"]");
+ if(b){b.disabled=true;b.textContent="Saving…"}
+ try{
+  const result=await api("/api/library",{method:"POST",body:JSON.stringify({
+   action:"save_coupon",label:f.get("label"),couponText:f.get("couponText"),
+   notes:f.get("notes"),origin:"human",outcome:"pending",bookmaker:"STS (user supplied)"
+  })});
+  form.reset();
+  alert("Coupon saved in WIN pending library: "+result.id);
+  await refreshLibrary();
+ }catch(err){alert(err.message)}
+ finally{if(b){b.disabled=false;b.textContent="Save human coupon to library"}}
+});
+$("#refreshLibrary").addEventListener("click",refreshLibrary);
+$("#libraryCategory").addEventListener("change",refreshLibrary);
+$("#libraryQuery").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();refreshLibrary()}});
+$("#libraryList").addEventListener("click",async e=>{
+ const button=e.target.closest("[data-settle-id]");
+ if(!button)return;
+ const settlementSource=prompt("Enter the result or settlement source (URL/reference) to support this classification:");
+ if(!settlementSource||!settlementSource.trim())return;
+ button.disabled=true;
+ try{
+  await api("/api/library",{method:"POST",body:JSON.stringify({
+   action:"settle_coupon",couponId:button.dataset.settleId,
+   outcome:button.dataset.outcome,settlementSource:settlementSource.trim(),
+   evidence:[{type:"user_supplied_settlement_reference",reference:settlementSource.trim()}]
+  })});
+  await refreshLibrary();
+ }catch(err){alert(err.message);button.disabled=false}
+});
+
 if(!token)dialog.showModal();else refresh();
 setInterval(()=>{if(token&&!document.hidden)refresh()},20000);
