@@ -354,7 +354,7 @@ export async function archiveRunToLibrary(run: any) {
       };
       const node = (network?.nodes || []).find((n: any) => n.tier === "T4" &&
         clean(n.scope?.club || n.name.replace(/ Club Agent$/, ""), 200).toLowerCase() === name.toLowerCase());
-      const id = clean(node?.id, 180) || "club-" + slug([scope.sport, scope.country, scope.competition, name].filter(Boolean).join(" × "));
+      const id = clean(node?.id, 180) || "club-" + slug([scope.sport, scope.country, name].filter(Boolean).join(" × "));
       const previous = await get<any>("library/entity-profiles", id);
       const evidence = safeArray(dossier?.evidence, 50);
       const profile = await saveEntityProfile({
