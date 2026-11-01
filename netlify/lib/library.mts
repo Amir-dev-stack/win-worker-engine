@@ -91,7 +91,7 @@ export async function searchWinLibrary(options: {
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 30));
   const category = clean(options.category || "all", 40).toLowerCase();
   const [coupons, winning, losing, pending, lessons, entities, profiles, observations, runs,
-    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements] = await Promise.all([
+    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements, learningCycles] = await Promise.all([
     list<any>("library/coupons", 500),
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
@@ -107,7 +107,8 @@ export async function searchWinLibrary(options: {
     list<any>("library/coupon-research-cases", 200),
     list<any>("library/frozen-predictions", 500),
     list<any>("library/settled-results", 500),
-    list<any>("library/other-settlements", 500)
+    list<any>("library/other-settlements", 500),
+    list<any>("library/learning-cycles", 500)
   ]);
   let items: any[] = [];
   if (category === "winning") items = winning;
@@ -126,8 +127,9 @@ export async function searchWinLibrary(options: {
   else if (category === "predictions") items = frozenPredictions;
   else if (category === "results") items = settledResults;
   else if (category === "other-settlements") items = otherSettlements;
+  else if (category === "learning-cycles") items = learningCycles;
   else items = [...coupons, ...lessons, ...entities, ...profiles, ...observations, ...runs,
-    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements];
+    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles];
 
   let filtered = relevant(items, clean(options.query, 1000));
   if (options.outcome) filtered = filtered.filter((x: any) => x.outcome === options.outcome);
@@ -138,7 +140,7 @@ export async function searchWinLibrary(options: {
     items: filtered.slice(0, limit), reviewedAt: new Date().toISOString(),
     libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "coupons", "coupon-history",
       "human-tips", "lessons", "entity-profiles", "agent-profiles", "agent-observations",
-      "agent-notes", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases"]
+      "agent-notes", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases", "learning-cycles"]
   };
 }
 
@@ -149,14 +151,15 @@ export async function getMandatoryLearningPack(brief: any) {
     brief?.existingCoupon, ...(Array.isArray(brief?.teams) ? brief.teams : []),
     ...(Array.isArray(brief?.clubs) ? brief.clubs : []), ...(Array.isArray(brief?.players) ? brief.players : [])
   ].filter(Boolean).join(" ");
-  const [winning, losing, lessons, profiles, agentProfiles, humanTips, couponHistory] = await Promise.all([
+  const [winning, losing, lessons, profiles, agentProfiles, humanTips, couponHistory, learningCycles] = await Promise.all([
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
     list<any>("library/lessons", 500),
     list<any>("library/entity-profiles", 500),
     list<any>("library/agent-profiles", 500),
     list<any>("library/human-tips", 300),
-    list<any>("library/coupon-history", 300)
+    list<any>("library/coupon-history", 300),
+    list<any>("library/learning-cycles", 100)
   ]);
   const winners = relevant(winning, query).slice(0, 12);
   const losers = relevant(losing, query).slice(0, 12);
@@ -166,6 +169,7 @@ export async function getMandatoryLearningPack(brief: any) {
   const relevantAgentProfiles = relevant(agentProfiles, query).slice(0, 12);
   const relevantHumanTips = relevant(humanTips, query).slice(0, 10);
   const relevantCouponHistory = relevant(couponHistory, query).slice(0, 10);
+  const relevantLearningCycles = relevant(learningCycles, query).slice(0, 8);
   return {
     mandatory: true, readBeforeCouponConstruction: true,
     reviewedAt: new Date().toISOString(), query, reviewStatus: "COMPLETED",
@@ -176,11 +180,13 @@ export async function getMandatoryLearningPack(brief: any) {
       validatedLessonsAvailable: lessons.filter(x => x.validationStatus === "validated").length,
       validatedLessonsMatched: validatedLessons.length, candidateLessonsMatched: candidateLessons.length,
       entityProfilesMatched: entityProfiles.length, agentProfilesMatched: relevantAgentProfiles.length, humanTipsMatched: relevantHumanTips.length,
-      couponHistoryMatched: relevantCouponHistory.length
+      couponHistoryMatched: relevantCouponHistory.length,
+      learningCyclesMatched: relevantLearningCycles.length
     },
     winningCoupons: winners, losingCoupons: losers, validatedLessons, candidateLessons,
     entityProfiles, agentProfiles: relevantAgentProfiles, humanTips: relevantHumanTips, couponHistory: relevantCouponHistory,
-    instruction: "Every coupon-writing agent must read both winning and losing examples, relevant human tips, entity profiles and lessons. Empty libraries must be acknowledged honestly; do not invent examples."
+    learningCycles: relevantLearningCycles,
+    instruction: "Every coupon-writing agent must read both winning and losing examples, relevant human tips, entity profiles, validated lessons and recent scheduled learning-cycle research. Candidate research is not validated knowledge. Empty libraries must be acknowledged honestly; do not invent examples."
   };
 }
 
