@@ -261,13 +261,18 @@ export async function saveEntityProfile(input: any) {
   const scope = {
     sport: clean(input?.sport, 100) || null,
     country: clean(input?.country, 100) || null,
+    sports: clean(input?.sports, 1000) || null,
     competition: clean(input?.competition, 200) || null,
-    club: clean(input?.club, 200) || null
+    club: clean(input?.club, 200) || null,
+    providerId: clean(input?.providerId, 250) || null,
+    aliases: safeArray(input?.aliases, 50).map((x) => clean(x, 200)).filter(Boolean)
   };
   const id = clean(input?.id, 180) || [entityType, scope.sport, scope.country, scope.competition, name].filter(Boolean).map(slug).join(":");
   const profile = {
     id, agentId: "WIN-" + entityType.toUpperCase() + "-" + slug(id),
     entityType, name, scope,
+    providerId: scope.providerId,
+    aliases: scope.aliases,
     profile: input?.profile && typeof input.profile === "object" ? input.profile : {},
     sources: safeArray(input?.sources, 40),
     agentMission: clean(input?.agentMission, 3000) || entityMission(entityType),
@@ -377,10 +382,18 @@ export async function archiveRunToLibrary(run: any) {
     const entityId = clean(node.id, 180);
     if (!entityId) continue;
     const existingProfile = await get<any>("library/entity-profiles", entityId);
+    const entityName = entityType === "sport" ? node.scope?.sport
+      : entityType === "country" ? node.scope?.country
+      : entityType === "league" ? node.scope?.competition
+      : entityType === "club" ? node.scope?.club
+      : entityType === "player" ? node.scope?.player
+      : entityType === "event" ? node.scope?.event : "";
     const profile = await saveEntityProfile({
-      entityType, id: entityId, name: node.scope?.club || node.scope?.player || node.name,
-      sport: node.scope?.sport, country: node.scope?.country,
+      entityType, id: entityId, name: entityName || node.name,
+      sport: node.scope?.sport, country: node.scope?.country, sports: node.scope?.sports,
       competition: node.scope?.competition, club: node.scope?.club,
+      providerId: node.scope?.providerId,
+      aliases: typeof node.scope?.aliases === "string" ? node.scope.aliases.split("|").filter(Boolean) : node.scope?.aliases,
       profile: { ...(existingProfile?.profile || {}), ...node.scope, workerStatus: node.status, runId: run.id },
       sources: safeArray(existingProfile?.sources, 40),
       createdAt: existingProfile?.createdAt,
@@ -416,6 +429,8 @@ export async function archiveRunToLibrary(run: any) {
       const evidence = safeArray(dossier?.evidence, 50);
       const profile = await saveEntityProfile({
         entityType: "club", id, name, ...scope,
+        providerId: clean(dossier?.providerId || dossier?.externalId, 250),
+        aliases: safeArray(dossier?.aliases, 50),
         profile: { ...(previous?.profile || {}), dossier: dossier.profile || dossier,
           lastReviewedAt: savedAt, lastRunId: run.id, dossierEvidenceStatus: evidence.length ? "references_supplied_needs_validation" : "evidence_missing" },
         sources: [...safeArray(previous?.sources, 40), ...evidence].slice(-40),
@@ -457,6 +472,8 @@ export async function archiveRunToLibrary(run: any) {
       }));
       const profile = await saveEntityProfile({
         entityType: "player", id, name, ...scope,
+        providerId: clean(dossier?.providerId || dossier?.externalId, 250),
+        aliases: safeArray(dossier?.aliases, 50),
         profile: { ...(previous?.profile || {}), dossier: dossier.profile || {},
           matchLog, lastReviewedAt: savedAt, lastRunId: run.id,
           dossierEvidenceStatus: evidence.length && matchLog.every((m: any) => m.evidenceRefs.length) ? "references_supplied_needs_validation" : "evidence_missing_or_incomplete" },
