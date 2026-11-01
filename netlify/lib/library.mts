@@ -170,7 +170,8 @@ export async function settleCouponRecord(input: any) {
     throw new Error("settlement outcome must be won, lost, void, partial or cancelled");
   }
   const settlementSource = clean(input?.settlementSource, 1000);
-  if (!settlementSource) throw new Error("settlementSource is required");\n  const settlementEvidence = safeArray(input?.evidence, 30);
+  if (!settlementSource) throw new Error("settlementSource is required");
+  const settlementEvidence = safeArray(input?.evidence, 30);
   if (!settlementEvidence.length) throw new Error("At least one settlement evidence reference is required");
   const updated = {
     ...current, outcome, settlementSource,
