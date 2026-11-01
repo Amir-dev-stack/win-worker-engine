@@ -9,7 +9,8 @@ export default async () => Response.json({
       : "needs_configuration",
     mcp: "oauth_enabled",
     persistence: "netlify_blobs",
-    execution: "on_demand_only",
+    execution: "scheduled_hourly",
+    scheduling: { monitor: "hourly", publicScouting: "every_12_hours_when_budget_allows", aiMonthlyLimitUsd: 5 },
     sts: "no_official_sts_api_connection"
   },
   note: "This endpoint reports service configuration only; it does not run AI research. Research API requires authorization."
