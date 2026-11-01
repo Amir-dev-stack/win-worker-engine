@@ -218,6 +218,11 @@ export async function saveEntityProfile(input: any) {
     updatedAt: new Date().toISOString()
   };
   await put("library/entity-profiles", id, profile);
+  await put("library/agent-profiles", profile.agentId, {
+    agentId: profile.agentId, entityId: id, entityType, name,
+    mission: profile.agentMission, scope, activationMode: "on_demand",
+    persistentIdentity: true, createdAt: profile.createdAt, updatedAt: profile.updatedAt
+  });
   return profile;
 }
 
