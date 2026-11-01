@@ -265,6 +265,23 @@ function lessonsFromReport(report: string): any[] {
   } catch { return []; }
 }
 
+function entityDossiersFromReport(report: string): { clubs: any[]; players: any[] } {
+  const startTag = "<WIN_ENTITY_DOSSIERS_JSON>";
+  const endTag = "</WIN_ENTITY_DOSSIERS_JSON>";
+  const start = report.indexOf(startTag);
+  const end = report.indexOf(endTag);
+  if (start < 0 || end <= start) return { clubs: [], players: [] };
+  try {
+    const parsed = JSON.parse(report.slice(start + startTag.length, end).trim());
+    return {
+      clubs: safeArray(parsed?.clubs, 100),
+      players: safeArray(parsed?.players, 300)
+    };
+  } catch {
+    return { clubs: [], players: [] };
+  }
+}
+
 export async function archiveRunToLibrary(run: any) {
   const savedAt = new Date().toISOString();
   const network = run?.workerNetwork;
@@ -313,6 +330,81 @@ export async function archiveRunToLibrary(run: any) {
       status: sourceReport?.status === "completed" ? "case_specific_review" : "not_verified",
       observedAt: savedAt
     });
+  }
+
+  const sportReport = (run.workers || []).find((x: any) => x.departmentId === "D2");
+  if (sportReport?.report) {
+    const dossiers = entityDossiersFromReport(sportReport.report);
+    for (const dossier of dossiers.clubs) {
+      const name = clean(dossier?.name, 200);
+      if (!name) continue;
+      const scope = {
+        sport: clean(dossier?.sport || run.brief?.sport, 100),
+        country: clean(dossier?.country || run.brief?.country, 100),
+        competition: clean(dossier?.competition || run.brief?.competition, 200)
+      };
+      const node = (network?.nodes || []).find((n: any) => n.tier === "T4" &&
+        clean(n.scope?.club || n.name.replace(/ Club Agent$/, ""), 200).toLowerCase() === name.toLowerCase());
+      const id = clean(node?.id, 180) || "club-" + slug([scope.sport, scope.country, scope.competition, name].filter(Boolean).join(" × "));
+      const previous = await get<any>("library/entity-profiles", id);
+      const evidence = safeArray(dossier?.evidence, 50);
+      const profile = await saveEntityProfile({
+        entityType: "club", id, name, ...scope,
+        profile: { ...(previous?.profile || {}), dossier: dossier.profile || dossier,
+          lastReviewedAt: savedAt, lastRunId: run.id, dossierEvidenceStatus: evidence.length ? "references_supplied_needs_validation" : "evidence_missing" },
+        sources: [...safeArray(previous?.sources, 40), ...evidence].slice(-40),
+        agentMission: entityMission("club")
+      });
+      const observationId = crypto.randomUUID();
+      await put("library/agent-observations", observationId, {
+        id: observationId, agentId: profile.agentId, entityId: id, entityType: "club",
+        runId: run.id, sourceReportId: sportReport.workerId,
+        observation: { dossier, evidence, verificationStatus: "requires_source_validation" },
+        status: "dossier_requires_evidence_validation", observedAt: savedAt
+      });
+    }
+    for (const dossier of dossiers.players) {
+      const name = clean(dossier?.name, 200);
+      if (!name) continue;
+      const scope = {
+        sport: clean(dossier?.sport || run.brief?.sport, 100),
+        country: clean(dossier?.country || run.brief?.country, 100),
+        competition: clean(dossier?.competition || run.brief?.competition, 200),
+        club: clean(dossier?.club, 200)
+      };
+      const node = (network?.nodes || []).find((n: any) => n.tier === "T5" &&
+        clean(n.scope?.player || n.name.replace(/ Player Agent$/, ""), 200).toLowerCase() === name.toLowerCase());
+      const id = clean(node?.id, 180) || "player-" + slug([scope.sport, scope.country, name].filter(Boolean).join(" × "));
+      const previous = await get<any>("library/entity-profiles", id);
+      const evidence = safeArray(dossier?.evidence, 50);
+      const matchLog = safeArray(dossier?.matchLog, 200).map((match: any) => ({
+        date: clean(match?.date, 40) || null, opponent: clean(match?.opponent, 200) || null,
+        competition: clean(match?.competition, 200) || null,
+        minutes: Number.isFinite(match?.minutes) ? match.minutes : null,
+        starter: typeof match?.starter === "boolean" ? match.starter : null,
+        position: clean(match?.position, 100) || null,
+        goals: Number.isFinite(match?.goals) ? match.goals : null,
+        assists: Number.isFinite(match?.assists) ? match.assists : null,
+        cards: clean(match?.cards, 100) || null, injuryStatus: clean(match?.injuryStatus, 500) || null,
+        sportSpecificMetrics: match?.sportSpecificMetrics && typeof match.sportSpecificMetrics === "object" ? match.sportSpecificMetrics : {},
+        evidenceRefs: safeArray(match?.evidenceRefs, 20)
+      }));
+      const profile = await saveEntityProfile({
+        entityType: "player", id, name, ...scope,
+        profile: { ...(previous?.profile || {}), dossier: dossier.profile || {},
+          matchLog, lastReviewedAt: savedAt, lastRunId: run.id,
+          dossierEvidenceStatus: evidence.length && matchLog.every((m: any) => m.evidenceRefs.length) ? "references_supplied_needs_validation" : "evidence_missing_or_incomplete" },
+        sources: [...safeArray(previous?.sources, 40), ...evidence].slice(-40),
+        agentMission: entityMission("player")
+      });
+      const observationId = crypto.randomUUID();
+      await put("library/agent-observations", observationId, {
+        id: observationId, agentId: profile.agentId, entityId: id, entityType: "player",
+        runId: run.id, sourceReportId: sportReport.workerId,
+        observation: { dossier: { ...dossier, matchLog }, evidence, verificationStatus: "requires_source_validation" },
+        status: "dossier_requires_evidence_validation", observedAt: savedAt
+      });
+    }
   }
 
   const learningReport = (run.workers || []).find((x: any) => x.departmentId === "D7");
