@@ -34,7 +34,8 @@ export async function searchWinLibrary(options: {
 } = {}) {
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 30));
   const category = clean(options.category || "all", 40).toLowerCase();
-  const [coupons, winning, losing, pending, lessons, entities, profiles, observations, runs, humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults] = await Promise.all([
+  const [coupons, winning, losing, pending, lessons, entities, profiles, observations, runs,
+    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults] = await Promise.all([
     list<any>("library/coupons", 500),
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
@@ -43,11 +44,14 @@ export async function searchWinLibrary(options: {
     list<any>("library/entity-profiles", 500),
     list<any>("library/agent-profiles", 500),
     list<any>("library/agent-observations", 500),
-    list<any>("library/research-runs", 200)
+    list<any>("library/research-runs", 200),
+    list<any>("library/human-tips", 300),
+    list<any>("library/agent-notes", 500),
+    list<any>("library/coupon-history", 500),
+    list<any>("library/coupon-research-cases", 200),
+    list<any>("library/frozen-predictions", 500),
+    list<any>("library/settled-results", 500)
   ]);
-  const byId = new Map<string, any>();
-  for (const record of coupons) if (record?.id) byId.set(record.id, record);
-  const q = clean(options.query, 1000);
   let items: any[] = [];
   if (category === "winning") items = winning;
   else if (category === "losing") items = losing;
@@ -58,16 +62,25 @@ export async function searchWinLibrary(options: {
   else if (category === "agents") items = profiles;
   else if (category === "observations") items = observations;
   else if (category === "runs") items = runs;
-  else items = [...coupons, ...lessons, ...entities, ...profiles, ...observations, ...runs];
+  else if (category === "tips") items = humanTips;
+  else if (category === "notes") items = agentNotes;
+  else if (category === "coupon-history") items = couponHistory;
+  else if (category === "coupon-cases") items = couponCases;
+  else if (category === "predictions") items = frozenPredictions;
+  else if (category === "results") items = settledResults;
+  else items = [...coupons, ...lessons, ...entities, ...profiles, ...observations, ...runs,
+    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults];
 
-  let filtered = relevant(items, q);
+  let filtered = relevant(items, clean(options.query, 1000));
   if (options.outcome) filtered = filtered.filter((x: any) => x.outcome === options.outcome);
   if (options.sport) filtered = filtered.filter((x: any) => !x.sport || x.sport.toLowerCase() === options.sport!.toLowerCase());
   if (options.entityType) filtered = filtered.filter((x: any) => x.entityType === options.entityType || x.scope?.entityType === options.entityType);
   return {
-    category, query: q || null, count: filtered.length, items: filtered.slice(0, limit),
-    reviewedAt: new Date().toISOString(),
-    libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "coupons", "coupon-history", "human-tips", "lessons", "entity-profiles", "agent-profiles", "agent-observations", "agent-notes", "research-runs", "frozen-predictions", "settled-results", "coupon-research-cases"]
+    category, query: clean(options.query, 1000) || null, count: filtered.length,
+    items: filtered.slice(0, limit), reviewedAt: new Date().toISOString(),
+    libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "coupons", "coupon-history",
+      "human-tips", "lessons", "entity-profiles", "agent-profiles", "agent-observations",
+      "agent-notes", "research-runs", "frozen-predictions", "settled-results", "coupon-research-cases"]
   };
 }
 
@@ -81,35 +94,32 @@ export async function getMandatoryLearningPack(brief: any) {
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
     list<any>("library/lessons", 500),
-    list<any>("library/entity-profiles", 500)
+    list<any>("library/entity-profiles", 500),
+    list<any>("library/human-tips", 300),
+    list<any>("library/coupon-history", 300)
   ]);
   const winners = relevant(winning, query).slice(0, 12);
   const losers = relevant(losing, query).slice(0, 12);
   const validatedLessons = relevant(lessons.filter(x => x.validationStatus === "validated"), query).slice(0, 12);
   const candidateLessons = relevant(lessons.filter(x => x.validationStatus !== "validated"), query).slice(0, 5);
   const entityProfiles = relevant(profiles, query).slice(0, 12);
-  const relevantHumanTips = relevant(humanTips, query).slice(0, 10);\n  const relevantCouponHistory = relevant(couponHistory, query).slice(0, 10);
+  const relevantHumanTips = relevant(humanTips, query).slice(0, 10);
+  const relevantCouponHistory = relevant(couponHistory, query).slice(0, 10);
   return {
-    mandatory: true,
-    readBeforeCouponConstruction: true,
-    reviewedAt: new Date().toISOString(),
-    query,
-    reviewStatus: "COMPLETED",
-    areasReviewed: ["winning-coupons", "losing-coupons", "validated-lessons", "candidate-lessons", "entity-profiles"],
+    mandatory: true, readBeforeCouponConstruction: true,
+    reviewedAt: new Date().toISOString(), query, reviewStatus: "COMPLETED",
+    areasReviewed: ["winning-coupons", "losing-coupons", "validated-lessons", "candidate-lessons", "entity-profiles", "human-tips", "coupon-history"],
     counts: {
       winningCouponsAvailable: winning.length, winningCouponsMatched: winners.length,
       losingCouponsAvailable: losing.length, losingCouponsMatched: losers.length,
       validatedLessonsAvailable: lessons.filter(x => x.validationStatus === "validated").length,
-      validatedLessonsMatched: validatedLessons.length,
-      candidateLessonsMatched: candidateLessons.length, entityProfilesMatched: entityProfiles.length,
-      humanTipsMatched: relevantHumanTips.length, couponHistoryMatched: relevantCouponHistory.length
+      validatedLessonsMatched: validatedLessons.length, candidateLessonsMatched: candidateLessons.length,
+      entityProfilesMatched: entityProfiles.length, humanTipsMatched: relevantHumanTips.length,
+      couponHistoryMatched: relevantCouponHistory.length
     },
-    winningCoupons: winners,
-    losingCoupons: losers,
-    validatedLessons,
-    candidateLessons,
-    entityProfiles,
-    instruction: "Every coupon-writing agent must read both winning and losing examples, study relevant profiles and lessons, and include a WIN_LIBRARY_REVIEW_JSON receipt in its report. Empty libraries must be acknowledged honestly; do not invent examples."
+    winningCoupons: winners, losingCoupons: losers, validatedLessons, candidateLessons,
+    entityProfiles, humanTips: relevantHumanTips, couponHistory: relevantCouponHistory,
+    instruction: "Every coupon-writing agent must read both winning and losing examples, relevant human tips, entity profiles and lessons. Empty libraries must be acknowledged honestly; do not invent examples."
   };
 }
 
