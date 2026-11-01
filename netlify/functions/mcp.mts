@@ -306,7 +306,6 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
 }
 
 export default async (req: Request) => {
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
   const authorization = await authorizeMcpRequest(req);
   if (!authorization.ok) {
     return new Response(JSON.stringify({ error: "unauthorized", message: "Connect or reauthorize WIN to use its research tools." }), {
