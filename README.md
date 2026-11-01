@@ -56,6 +56,63 @@ Each run makes up to **13 independent Responses API requests**:
 
 This is the actual count of independent model API requests. The event chiefs and Tier 5 roles are tracked task assignments covered inside the relevant department reports, not extra independent sessions. The dashboard shows the real request/report counts.
 
+## Expanded WIN agent federation
+
+Every identified sports entity receives a stable, persistent, on-demand agent identity and a scoped dossier. The graph is built from confirmed/user-supplied entities; it does not fabricate a complete world roster or pre-create every unknown athlete.
+
+| Tier | Persistent agent identity | Research remit |
+| --- | --- | --- |
+| T0 | Worker Network Director | Scope, task graph, source routing and handoffs |
+| T1 | Sport Agent | Sport rules, metrics, formats, tactical and statistical methods |
+| T2 | Country Agent | Country context, governing bodies and local competition structure |
+| T3 | League / Competition Agent | Format, standings, incentives, schedule and historical context |
+| T4 | Club / Team Agent | Squad, management, tactics, results, home/away splits and availability |
+| T5 | Player / Athlete Agent | Match-by-match record, minutes, goals/assists or sport-specific output, discipline, injury, availability and performance trends |
+| T6 | Match / Event Agent | Event-specific dossier combining all relevant entity reports |
+| T7 | Event specialists | Identity, form, availability, tactics, conditions, evidence, FOR/AGAINST and price checks |
+
+These are persistent agent identities and profiles activated on demand. The entity-specific task is routed through the relevant department report; the system does not pretend that every profile is a separately running AI process or an independent API session. If a named club or player is not present in reliable or user-supplied sources, its agent is not fabricated.
+
+## WIN Knowledge Library — mandatory for coupon writers
+
+The shared library uses the existing private, site-wide Netlify Blobs store `win-engine` in `eu-central-1`. It does not require a separate database subscription or a continuously running worker.
+
+| Library collection | What is stored |
+| --- | --- |
+| `library/winning-coupons` | Human or WIN coupons with verified winning settlement |
+| `library/losing-coupons` | Human or WIN coupons with verified losing settlement |
+| `library/pending-coupons` | Unsettled, void, partial, cancelled or otherwise unclassified coupons |
+| `library/coupons` | Canonical coupon record and complete selection details |
+| `library/coupon-history` | Append-only coupon import and settlement history |
+| `library/lessons` | D7 reports, agent notes and lesson proposals; only explicitly validated lessons are treated as established knowledge |
+| `library/entity-profiles` | Stable profiles for sport, country, league, club, player and event agents |
+| `library/agent-profiles` | Persistent specialist agent identities and missions |
+| `library/agent-observations` | Run-linked observations written to each relevant entity agent's history |
+| `library/agent-notes` | Full department, challenge and Global Master reports |
+| `library/research-runs` | Archived full run brief, reports, debate, network, citations and decision |
+| `library/coupon-research-cases` | Coupon build, audit and comparison case files |
+| `library/archive-failures` | Audit records when library archiving itself fails |
+
+### Mandatory learning checkpoint
+
+Before a coupon can be approved, the worker engine loads relevant winning coupons, losing coupons, validated lessons and entity profiles from the library and includes that real data in every department brief. D6 Coupon Construction and D7 Results/Learning must both return a machine-readable `WIN_LIBRARY_REVIEW_JSON` receipt listing reviewed record IDs and empty collections. If either receipt is missing/invalid, the deterministic Low-Risk Gate returns **NO BET**.
+
+D7 may write proposed lessons to the library, but they remain `candidate_for_validation` and are not supplied as proven knowledge until an authorized reviewer validates them with evidence. Settled human coupons are imported with `save_human_coupon` and moved to the winning or losing section only through `record_coupon_outcome` with a settlement source. Void/partial/cancelled cases are not mislabeled as wins or losses.
+
+Every completed or failed run is archived with its worker reports, four challenge reports when available, Global Master decision, citations, network and entity observations. Coupon research cases are retained even when the final decision is WAIT or NO BET.
+
+### Library access
+
+The authenticated REST endpoint is `GET|POST /api/library`. The OAuth-protected MCP tools are:
+- `search_win_library`
+- `save_human_coupon`
+- `record_coupon_outcome`
+- `save_win_entity_profile`
+- `save_win_learning_note`
+- `validate_win_lesson`
+
+All library access is private and requires authenticated WIN access. The library is persistent storage, not a 24/7 AI process: no cron/scheduler or paid always-on worker is used. Records remain stored between runs and deploys. However, a free hosting plan cannot guarantee uninterrupted API availability: if Netlify pauses the team after its monthly credits are exhausted, the library API cannot be reached until the site resumes. Storage and API use remain subject to the host's quotas. Netlify Blobs is key/value object storage, not a transactional relational database; this remains a single-operator MVP.
+
 ## On-demand coupon task modes
 
 The MCP tool `start_research_run` supports:
