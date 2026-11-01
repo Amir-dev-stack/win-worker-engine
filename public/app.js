@@ -22,8 +22,8 @@ function networkPanel(network){
  const summary=network.executionSummary||{};
  const nodes=network.nodes||[];
  const departments=nodes.filter(n=>n.tier==="MAIN_DEPARTMENT");
- const tiers=["T1","T2","T3","T4","T5"];
- const labels={T1:"Sport / discipline chiefs",T2:"Sport × country chiefs",T3:"Competition chiefs",T4:"Match / event chiefs",T5:"Event specialist assignments"};
+ const tiers=["T1","T2","T3","T4","T5","T6","T7"];
+ const labels={T1:"Sport agents",T2:"Country agents",T3:"League / competition agents",T4:"Club / team agents",T5:"Player / athlete agents",T6:"Match / event agents",T7:"Event specialist assignments"};
  const tierHtml=tiers.map(t=>{
    const selected=nodes.filter(n=>n.tier===t);
    return '<h5>'+labels[t]+' ('+selected.length+')</h5>'+(selected.length?selected.slice(0,60).map(n=>'<div class="network-row"><span>'+escapeHtml(n.name)+'</span><small>'+escapeHtml(n.status)+'</small></div>').join(""):'<div class="empty">No verified or supplied nodes in this tier.</div>');
@@ -32,7 +32,7 @@ function networkPanel(network){
  const apiText=summary.actualApiSessions!==undefined
    ?summary.actualApiSessions+" actual model API sessions ("+summary.completedDepartmentReports+" department reports, "+summary.completedDebateReports+" completed challenge reports)"
    :"Department and challenge execution details are still pending.";
- return '<section class="network-panel"><div class="report-title"><b>WIN worker network</b><span class="decision">'+escapeHtml(network.runId||"Run")+'</span></div><p>'+escapeHtml(network.executionDisclosure||"")+'</p><div class="network-stats"><span>'+Number(counts.sports||0)+' sports</span><span>'+Number(counts.sportCountryBranches||0)+' sport/country nodes</span><span>'+Number(counts.competitions||0)+' competitions</span><span>'+Number(counts.events||0)+' events</span><span>'+Number(counts.eventSpecialistAssignments||0)+' specialist assignments</span></div><h5>Eight main departments</h5>'+deptHtml+'<h5>Independent worker hierarchy</h5>'+tierHtml+'<p class="detail-meta">'+escapeHtml(apiText)+'</p><p class="detail-meta">The tier chiefs and per-event specialist roles are task assignments covered by the department API passes; they are not counted as additional independent model sessions.</p></section>';
+ return '<section class="network-panel"><div class="report-title"><b>WIN worker network</b><span class="decision">'+escapeHtml(network.runId||"Run")+'</span></div><p>'+escapeHtml(network.executionDisclosure||"")+'</p><div class="network-stats"><span>'+Number(counts.sports||0)+' sports</span><span>'+Number(counts.sportCountryBranches||0)+' sport/country nodes</span><span>'+Number(counts.competitions||0)+' competitions</span><span>'+Number(counts.clubs||0)+' club agents</span><span>'+Number(counts.players||0)+' player agents</span><span>'+Number(counts.events||0)+' events</span><span>'+Number(counts.eventSpecialistAssignments||0)+' specialist assignments</span></div><h5>Eight main departments</h5>'+deptHtml+'<h5>Independent worker hierarchy</h5>'+tierHtml+'<p class="detail-meta">'+escapeHtml(apiText)+'</p><p class="detail-meta">Sport, country, league, club, player and event nodes are persistent on-demand agent identities. Entity-specific checks are routed through the department API passes; they are not falsely counted as separate always-on model sessions.</p><p class="detail-meta">Mandatory library review: '+escapeHtml(network.libraryReviewGate?.status||"pending")+(network.libraryReviewGate?.failures?.length?" · "+escapeHtml(network.libraryReviewGate.failures.join("; ")):"")+'</p></section>';
 }
 function renderRunDetail(run){
  const node=$("#runDetail");
