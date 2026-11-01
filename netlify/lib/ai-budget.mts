@@ -190,7 +190,7 @@ export async function getAIbudgetStatus() {
     blockedCalls: ledger.blockedCalls,
     lastCallAt: ledger.lastCallAt,
     lastError: ledger.lastError,
-    enforcement: "pre-request reservation with atomic Blobs lock; fail-closed",
-    note: "Conservative estimates use verified standard token rates and a capped web-search call count. Reconcile against OpenAI billing; provider billing is the final source of truth."
+    enforcement: "application-level estimate only; NOT a provider hard cap or concurrency-safe financial ledger",
+    note: "This Blobs ledger is advisory and must not be relied on as a guaranteed spending ceiling. Configure a provider-side monthly limit and usage alerts, disable auto-recharge, and reconcile actual usage in OpenAI Platform. AI execution is separately disabled unless WIN_AI_BUDGET_APPROVED=true."
   };
 }
