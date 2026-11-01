@@ -38,7 +38,7 @@ export async function validateOwnerToken(value: string): Promise<boolean> {
 export type McpAuthorization = { ok: boolean; scopes: string[]; reason?: string };
 
 export async function authorizeMcpRequest(req: Request): Promise<McpAuthorization> {
-  const match = req.headers.get("authorization")?.match(/^Bearer\\s+(.+)$/i);
+  const match = req.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i);
   if (!match) return { ok: false, scopes: [], reason: "missing_bearer" };
   const bearer = match[1];
 
