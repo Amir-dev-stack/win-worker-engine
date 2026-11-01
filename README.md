@@ -56,7 +56,7 @@ Each run makes up to **13 independent Responses API requests**:
 - 4 independent debate/challenge reports;
 - 1 Global Master request.
 
-This is the actual count of independent model API requests. The event chiefs and Tier 5 roles are tracked task assignments covered inside the relevant department reports, not extra independent sessions. The dashboard shows the real request/report counts.
+This is the actual count of independent model API requests. The persistent Sport, Country, League, Club, Player and Match/Event agent identities are activated on demand and their entity-specific work is routed through the responsible department reports. Tier 7 event specialist assignments are also covered inside those department requests. They are not extra always-on processes or extra independent API sessions. The dashboard shows the actual model request/report counts.
 
 ## Expanded WIN agent federation
 
