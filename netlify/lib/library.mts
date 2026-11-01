@@ -446,7 +446,20 @@ export async function archiveRunToLibrary(run: any) {
       winningExamplesRead: run.brief?.priorLearning?.counts?.winningCouponsMatched ?? 0,
       losingExamplesRead: run.brief?.priorLearning?.counts?.losingCouponsMatched ?? 0,
       createdAt: run.createdAt, savedAt
-    });
+      if ((run.brief?.taskType === "build_latest_coupon" || run.brief?.taskType === "compare_coupons") &&
+      /^\s*FINAL DECISION:\s*BET\b/im.test(run.master?.report || "")) {
+      await saveCouponRecord({
+        id: "win-" + run.id,
+        origin: "win",
+        label: "WIN proposed coupon — " + clean(run.brief?.event, 180),
+        couponText: clean(run.master?.report, MAX_TEXT),
+        sport: run.brief?.sport, country: run.brief?.country, competition: run.brief?.competition,
+        source: "WIN Global Master report; proposed only, not proof of placement",
+        notes: "Stored as pending until the user confirms placement and supplies a settlement source and evidence.",
+        outcome: "pending", runId: run.id
+      });
+    }
+  });
   }
   return { savedAt, reportsArchived: reports.length, entityProfilesUpdated: (network?.nodes || []).filter((n: any) => Boolean(nodeType[n.tier])).length };
 }
