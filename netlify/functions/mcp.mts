@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
 import { get, list } from "../lib/store.mts";
+import { searchWinLibrary, saveCouponRecord, settleCouponRecord, saveEntityProfile, saveLearningNote } from "../lib/library.mts";
 import { authorizeMcpRequest, WIN_ISSUER } from "../lib/oauth-store.mts";
 
 const resourceMetadata = WIN_ISSUER + "/.well-known/oauth-protected-resource/mcp";
@@ -102,6 +103,100 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
   }, async () => {
     if (!scopes.includes("win:read")) return authRequired("win:read");
     return { content: [{ type: "text" as const, text: JSON.stringify(await list("predictions", 200)) }] };
+  });
+
+
+  server.registerTool("search_win_library", {
+    title: "Search WIN Knowledge Library",
+    description: "Search the private WIN library: winning, losing and pending human coupons, lessons, entity/agent profiles, observations and archived research. Mandatory before coupon construction.",
+    inputSchema: {
+      category: z.enum(["all", "winning", "losing", "pending", "coupons", "lessons", "entities", "agents", "observations", "runs"]).optional(),
+      query: z.string().optional(), sport: z.string().optional(),
+      entityType: z.enum(["sport", "country", "league", "club", "player", "event"]).optional(),
+      limit: z.number().int().min(1).max(100).optional()
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:read"] }]
+  }, async (args) => {
+    if (!scopes.includes("win:read")) return authRequired("win:read");
+    return { content: [{ type: "text" as const, text: JSON.stringify(await searchWinLibrary(args)) }] };
+  });
+
+  server.registerTool("save_human_coupon", {
+    title: "Save Human Coupon to WIN Library",
+    description: "Save a human coupon. New coupons are pending settlement by default, then moved to the separate winning or losing collection only when supported by settlement evidence.",
+    inputSchema: {
+      label: z.string().optional(), couponText: z.string().min(3),
+      selections: z.array(z.any()).optional(), sport: z.string().optional(),
+      country: z.string().optional(), competition: z.string().optional(),
+      combinedOdds: z.number().positive().optional(), bookmaker: z.string().optional(),
+      notes: z.string().optional(), source: z.string().optional()
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
+  }, async (args) => {
+    if (!scopes.includes("win:research")) return authRequired("win:research");
+    return { content: [{ type: "text" as const, text: JSON.stringify(await saveCouponRecord({ ...args, origin: "human", outcome: "pending" })) }] };
+  });
+
+  server.registerTool("record_coupon_outcome", {
+    title: "Record Settled Coupon Outcome",
+    description: "Save verified coupon settlement. Winning and losing cases are stored separately; void, partial and cancelled coupons remain separately classified.",
+    inputSchema: {
+      couponId: z.string().min(1),
+      outcome: z.enum(["won", "lost", "void", "partial", "cancelled"]),
+      settlementSource: z.string().min(3), evidence: z.array(z.any()).optional(),
+      settledAt: z.string().optional()
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
+  }, async (args) => {
+    if (!scopes.includes("win:research")) return authRequired("win:research");
+    return { content: [{ type: "text" as const, text: JSON.stringify(await settleCouponRecord(args)) }] };
+  });
+
+  server.registerTool("save_win_entity_profile", {
+    title: "Create or Update WIN Entity Agent",
+    description: "Create or update a persistent on-demand profile for a sport, country, league, club, player or event, with a stable agent identity and scoped research mission.",
+    inputSchema: {
+      entityType: z.enum(["sport", "country", "league", "club", "player", "event"]),
+      name: z.string().min(1), id: z.string().optional(),
+      sport: z.string().optional(), country: z.string().optional(),
+      competition: z.string().optional(), club: z.string().optional(),
+      profile: z.any().optional(), sources: z.array(z.any()).optional(),
+      agentMission: z.string().optional()
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
+  }, async (args) => {
+    if (!scopes.includes("win:research")) return authRequired("win:research");
+    return { content: [{ type: "text" as const, text: JSON.stringify(await saveEntityProfile(args)) }] };
+  });
+
+  server.registerTool("save_win_learning_note", {
+    title: "Save WIN Agent Learning Note",
+    description: "Store a dated lesson or agent note. New lessons remain candidates for validation until an authorized reviewer supplies evidence.",
+    inputSchema: {
+      title: z.string().optional(), note: z.string().min(3),
+      agentId: z.string().optional(), runId: z.string().optional(),
+      entityType: z.string().optional(), entityId: z.string().optional(),
+      evidence: z.array(z.any()).optional(), sampleSize: z.number().int().nonnegative().optional()
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
+  }, async (args) => {
+    if (!scopes.includes("win:research")) return authRequired("win:research");
+    return { content: [{ type: "text" as const, text: JSON.stringify(await saveLearningNote(args)) }] };
+  });
+
+  server.registerTool("validate_win_lesson", {
+    title: "Validate WIN Library Lesson",
+    description: "Validate a proposed lesson only when evidence references are supplied. Only validated lessons are reused as established knowledge in later coupon reviews.",
+    inputSchema: { lessonId: z.string().min(1), evidence: z.array(z.any()).min(1) },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
+  }, async (args) => {
+    if (!scopes.includes("win:research")) return authRequired("win:research");
+    const lesson = await get<any>("library/lessons", args.lessonId);
+    if (!lesson) return { content: [{ type: "text" as const, text: "Lesson not found." }], isError: true };
+    const updated = { ...lesson, validationStatus: "validated", validationEvidence: args.evidence.slice(0, 30), validatedAt: new Date().toISOString() };
+    const { put } = await import("../lib/store.mts");
+    await put("library/lessons", args.lessonId, updated);
+    return { content: [{ type: "text" as const, text: JSON.stringify(updated) }] };
   });
 
   return server;
