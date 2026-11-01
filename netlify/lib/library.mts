@@ -443,10 +443,12 @@ export async function archiveRunToLibrary(run: any) {
       origin: "win", status: run.master?.report?.match(/FINAL DECISION:\s*([A-Z ]+)/i)?.[1]?.trim() || "reviewed",
       event: run.brief?.event, originalCoupon: run.brief?.existingCoupon || null,
       finalAnalysis: clean(run.master?.report, MAX_TEXT),
-      winningExamplesRead: run.brief?.priorLearning?.counts?.winningCouponsMatched ?? 0,
-      losingExamplesRead: run.brief?.priorLearning?.counts?.losingCouponsMatched ?? 0,
+      winningExamplesRead: run.brief?.libraryReview?.counts?.winningCouponsMatched ?? 0,
+      losingExamplesRead: run.brief?.libraryReview?.counts?.losingCouponsMatched ?? 0,
       createdAt: run.createdAt, savedAt
-      if ((run.brief?.taskType === "build_latest_coupon" || run.brief?.taskType === "compare_coupons") &&
+    });
+
+    if ((run.brief?.taskType === "build_latest_coupon" || run.brief?.taskType === "compare_coupons") &&
       /^\s*FINAL DECISION:\s*BET\b/im.test(run.master?.report || "")) {
       await saveCouponRecord({
         id: "win-" + run.id,
@@ -459,7 +461,6 @@ export async function archiveRunToLibrary(run: any) {
         outcome: "pending", runId: run.id
       });
     }
-  });
   }
   return { savedAt, reportsArchived: reports.length, entityProfilesUpdated: (network?.nodes || []).filter((n: any) => Boolean(nodeType[n.tier])).length };
 }
