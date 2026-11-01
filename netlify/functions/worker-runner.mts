@@ -1,7 +1,8 @@
 import type { Config } from "@netlify/functions";
 import { authorized } from "../lib/auth.mts";
 import { get, list, put } from "../lib/store.mts";
-import { runDebate, runGlobalMaster, runIndependentWorkers } from "../lib/ai.mts";\nimport { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
+import { runDebate, runGlobalMaster, runIndependentWorkers } from "../lib/ai.mts";
+import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
 
 function hasLibraryReviewReceipt(report: string): boolean {
   const open = "<WIN_LIBRARY_REVIEW_JSON>";
@@ -74,6 +75,7 @@ export default async (req: Request) => {
   await put("runs", run.id, { ...run, status: "scouting", startedAt, updatedAt: startedAt });
 
   try {
+    const libraryReview = await getMandatoryLearningPack(run.brief);
     // Attach a small, relevant slice of prior frozen records for Department 7.
     const priorPredictions = (await list<any>("predictions", 200)).slice(0, 20).map(p => ({
       id: p.id, runId: p.runId, recordedAt: p.recordedAt,
@@ -86,7 +88,8 @@ export default async (req: Request) => {
     const brief = {
       ...run.brief,
       runId: run.id,
-      priorLearning: { priorPredictions, priorResults },\n      libraryReview
+      priorLearning: { priorPredictions, priorResults },
+      libraryReview
     };
 
     // D1 scouts first. The result creates the dynamic sport/country/competition/event graph.
@@ -103,11 +106,12 @@ export default async (req: Request) => {
     const networkAfterDebate = updateNetworkStatuses(workerNetwork, reports, debate);
     const withDebate = {
       ...withDepartments, status: "synthesizing", debate,
-      workerNetwork: networkAfterDebate, updatedAt: new Date().toISOString()
+      workerNetwork: { ...networkAfterDebate, libraryReviewGate: { status: missingLibraryReceipts.length ? "failed" : "passed", failures: missingLibraryReceipts, reviewedAt: libraryReview.reviewedAt } }, updatedAt: new Date().toISOString()
     };
     await put("runs", run.id, withDebate);
 
-    const missingLibraryReceipts = reports.filter(x => ["D6", "D7"].includes(x.departmentId) && !hasLibraryReviewReceipt(x.report || "")).map(x => x.departmentId + " mandatory library review receipt missing or invalid");\n    const failed = [...reports, ...debate].filter(x => x.status !== "completed" || !x.report?.trim());\n    const gateFailures = [...failed.map(x => (x.departmentId ? x.departmentId + " — " : "") + x.role + ": " + (x.error || "empty report")), ...missingLibraryReceipts];
+    const missingLibraryReceipts = reports.filter(x => ["D6", "D7"].includes(x.departmentId) && !hasLibraryReviewReceipt(x.report || "")).map(x => x.departmentId + " mandatory library review receipt missing or invalid");
+    const failed = [...reports, ...debate].filter(x => x.status !== "completed" || !x.report?.trim());\n    const gateFailures = [...failed.map(x => (x.departmentId ? x.departmentId + " — " : "") + x.role + ": " + (x.error || "empty report")), ...missingLibraryReceipts];
     const master = failed.length
       ? {
           workerId: crypto.randomUUID(),
@@ -145,6 +149,8 @@ export default async (req: Request) => {
       workerResponseIds: [...reports, ...debate, master].map(x => x.responseId).filter(Boolean),
       workerNetworkSummary: networkAfterDebate.executionSummary
     });
+    const libraryArchive = await archiveRunToLibrary({ ...completed, libraryArchive: undefined });
+    await put("runs", run.id, { ...completed, libraryArchive });
   } catch (error) {
     await put("runs", run.id, {
       ...run, status: "failed", error: String(error),
