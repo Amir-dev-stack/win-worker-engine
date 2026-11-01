@@ -23,6 +23,7 @@ const required = [
   "netlify/lib/simulation.mts",
   "netlify/lib/backtest.mts",
   "netlify/lib/ai.mts",
+  "netlify/lib/agents-sdk.mts",
   "netlify/lib/worker-org.mts",
   "netlify/lib/library.mts",
   "netlify/lib/oauth-store.mts"
@@ -30,7 +31,7 @@ const required = [
 
 for (const file of required) await access(file);
 
-const [html, app, ai, org, mcp, authMeta, authorize, runner, library, libraryApi, sourceLibrary, sourceApi] = await Promise.all([
+const [html, app, ai, org, mcp, authMeta, authorize, runner, library, libraryApi, sourceLibrary, sourceApi, sdkRuntime, packageJson] = await Promise.all([
   readFile("public/index.html", "utf8"),
   readFile("public/app.js", "utf8"),
   readFile("netlify/lib/ai.mts", "utf8"),
@@ -42,7 +43,9 @@ const [html, app, ai, org, mcp, authMeta, authorize, runner, library, libraryApi
   readFile("netlify/lib/library.mts", "utf8"),
   readFile("netlify/functions/library.mts", "utf8"),
   readFile("netlify/lib/source-intelligence.mts", "utf8"),
-  readFile("netlify/functions/sources.mts", "utf8")
+  readFile("netlify/functions/sources.mts", "utf8"),
+  readFile("netlify/lib/agents-sdk.mts", "utf8"),
+  readFile("package.json", "utf8")
 ]);
 
 const simulation = await readFile("netlify/lib/simulation.mts", "utf8");
@@ -56,6 +59,7 @@ const [aiBudget, hourlyMonitor, scheduledRunner, budgetApi, health] = await Prom
 ]);
 
 const checks = [
+  [packageJson.includes('"@openai/agents": "0.21.0"') && sdkRuntime.includes("from \"@openai/agents\"") && ai.includes("runWinAgent"), "OpenAI Agents SDK runtime is not installed or wired into WIN worker execution."],
   [html.includes("WIN Worker Engine"), "Dashboard title is missing."],
   [aiBudget.includes("OPERATING_LIMIT_USD = 4.95") && aiBudget.includes("reserveAIRequest") && aiBudget.includes("onlyIfNew"), "Fail-closed monthly AI budget controller is missing."],
   [ai.includes('WIN_AI_BUDGET_APPROVED') && ai.includes('provider-side monthly spending limit'), "AI calls are not fail-closed pending provider budget approval."],
