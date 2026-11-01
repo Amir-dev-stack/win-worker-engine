@@ -172,6 +172,34 @@ $("#couponForm").addEventListener("submit",async e=>{
  finally{if(b){b.disabled=false;b.textContent="Save human coupon to library"}}
 });
 $("#refreshLibrary").addEventListener("click",refreshLibrary);
+
+async function refreshSources(){
+ try{
+  const [registry,report]=await Promise.all([api("/api/sources"),api("/api/sources?view=report")]);
+  const statuses=(registry.sources||[]).map(s=>'<article class="mini-row"><div><b>'+escapeHtml(s.name)+'</b><small>'+escapeHtml(s.status)+' · automated collection '+(s.automatedCollection?"enabled":"disabled")+'</small><p>'+escapeHtml(s.note)+'</p><a href="'+escapeHtml(s.url)+'" target="_blank" rel="noopener noreferrer">Open source ↗</a></div></article>').join("");
+  $("#sourceRegistry").innerHTML=statuses||'<div class="empty">No source records configured.</div>';
+  $("#sourceImportStatus").textContent=Number(report.total||0)+" imports stored · "+Number(report.pending||0)+" awaiting settlement. Automated collectors: disabled.";
+ }catch(e){$("#sourceImportStatus").textContent="Source registry unavailable: "+e.message}
+}
+$("#sourceImportForm").addEventListener("submit",async e=>{
+ e.preventDefault();const form=e.currentTarget,f=new FormData(form),button=form.querySelector('button[type="submit"]');
+ let selections=[];const raw=String(f.get("selections")||"").trim();
+ if(raw){try{selections=JSON.parse(raw);if(!Array.isArray(selections))throw new Error("Selections JSON must be an array.");}catch(err){alert("Invalid selections JSON: "+err.message);return;}}
+ if(button){button.disabled=true;button.textContent="Importing…";}
+ try{
+  const result=await api("/api/sources",{method:"POST",body:JSON.stringify({
+   action:"import_coupon",sourceId:f.get("sourceId"),tipsterName:f.get("tipsterName"),
+   sourceUrl:f.get("sourceUrl"),publishedAt:f.get("publishedAt"),competition:f.get("competition"),
+   couponText:f.get("couponText"),selections,sourceSnapshot:f.get("sourceSnapshot"),
+   authorizedToStore:f.get("authorizedToStore")==="on",importMethod:"manual_user_submission"
+  })});
+  $("#sourceImportStatus").textContent=(result.duplicate?"Duplicate already recorded: ":"Imported: ")+result.id+" · settlement pending.";
+  form.reset();await refreshSources();await refreshLibrary();
+ }catch(err){$("#sourceImportStatus").textContent="Import failed: "+err.message;alert(err.message);}
+ finally{if(button){button.disabled=false;button.textContent="Import coupon into WIN ↗";}}
+});
+$("#refreshSources").addEventListener("click",refreshSources);
+
 $("#libraryCategory").addEventListener("change",refreshLibrary);
 $("#libraryQuery").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();refreshLibrary()}});
 $("#libraryList").addEventListener("click",async e=>{
@@ -190,7 +218,7 @@ $("#libraryList").addEventListener("click",async e=>{
  }catch(err){alert(err.message);button.disabled=false}
 });
 
-if(!token)dialog.showModal();else refresh();
+if(!token)dialog.showModal();else {refresh();refreshSources();}
 setInterval(()=>{if(token&&!document.hidden)refresh()},20000);
 
 $("#simulationForm").addEventListener("submit",async e=>{
