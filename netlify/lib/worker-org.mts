@@ -311,9 +311,16 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
       const playerName = text(player.name);
       if (!playerName) continue;
       const clubName = text(player.club);
-      const clubId = clubName
+      const matchedClub = clubName ? nodes.find((node) =>
+        node.tier === "T4" &&
+        text(node.scope?.club).toLowerCase() === clubName.toLowerCase() &&
+        text(node.scope?.sport).toLowerCase() === text(candidate.sport).toLowerCase() &&
+        text(node.scope?.country).toLowerCase() === text(candidate.country).toLowerCase()
+      ) : undefined;
+      const fallbackClubId = clubName
         ? "club-" + slug([candidate.sport, candidate.country, clubName].filter(Boolean).join(" × "))
         : "";
+      const clubId = matchedClub?.id || fallbackClubId;
       const playerId = player.providerId
         ? "player-" + slug(candidate.sport || "unknown") + "-provider-" + slug(player.providerId)
         : "player-" + slug([candidate.sport, playerName].filter(Boolean).join(" × "));
