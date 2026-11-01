@@ -91,7 +91,7 @@ export async function searchWinLibrary(options: {
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 30));
   const category = clean(options.category || "all", 40).toLowerCase();
   const [coupons, winning, losing, pending, lessons, entities, profiles, observations, runs,
-    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements, learningCycles, strategyCandidates] = await Promise.all([
+    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements, learningCycles, strategyCandidates, backtestRuns] = await Promise.all([
     list<any>("library/coupons", 500),
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
@@ -109,7 +109,8 @@ export async function searchWinLibrary(options: {
     list<any>("library/settled-results", 500),
     list<any>("library/other-settlements", 500),
     list<any>("library/learning-cycles", 500),
-    list<any>("library/strategy-candidates", 1000)
+    list<any>("library/strategy-candidates", 1000),
+    list<any>("library/backtest-runs", 500)
   ]);
   let items: any[] = [];
   if (category === "winning") items = winning;
@@ -130,8 +131,9 @@ export async function searchWinLibrary(options: {
   else if (category === "other-settlements") items = otherSettlements;
   else if (category === "learning-cycles") items = learningCycles;
   else if (category === "strategies") items = strategyCandidates;
+  else if (category === "backtests") items = backtestRuns;
   else items = [...coupons, ...lessons, ...entities, ...profiles, ...observations, ...runs,
-    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates];
+    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns];
 
   let filtered = relevant(items, clean(options.query, 1000));
   if (options.outcome) filtered = filtered.filter((x: any) => x.outcome === options.outcome);
@@ -142,7 +144,7 @@ export async function searchWinLibrary(options: {
     items: filtered.slice(0, limit), reviewedAt: new Date().toISOString(),
     libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "coupons", "coupon-history",
       "human-tips", "lessons", "entity-profiles", "agent-profiles", "agent-observations",
-      "agent-notes", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases", "learning-cycles", "strategy-candidates"]
+      "agent-notes", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases", "learning-cycles", "strategy-candidates", "backtest-runs"]
   };
 }
 
@@ -153,7 +155,7 @@ export async function getMandatoryLearningPack(brief: any) {
     brief?.existingCoupon, ...(Array.isArray(brief?.teams) ? brief.teams : []),
     ...(Array.isArray(brief?.clubs) ? brief.clubs : []), ...(Array.isArray(brief?.players) ? brief.players : [])
   ].filter(Boolean).join(" ");
-  const [winning, losing, lessons, profiles, agentProfiles, humanTips, couponHistory, learningCycles, strategyCandidates] = await Promise.all([
+  const [winning, losing, lessons, profiles, agentProfiles, humanTips, couponHistory, learningCycles, strategyCandidates, backtestRuns] = await Promise.all([
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
     list<any>("library/lessons", 500),
@@ -162,7 +164,8 @@ export async function getMandatoryLearningPack(brief: any) {
     list<any>("library/human-tips", 300),
     list<any>("library/coupon-history", 300),
     list<any>("library/learning-cycles", 100),
-    list<any>("library/strategy-candidates", 500)
+    list<any>("library/strategy-candidates", 500),
+    list<any>("library/backtest-runs", 200)
   ]);
   const winners = relevant(winning, query).slice(0, 12);
   const losers = relevant(losing, query).slice(0, 12);
@@ -174,10 +177,11 @@ export async function getMandatoryLearningPack(brief: any) {
   const relevantCouponHistory = relevant(couponHistory, query).slice(0, 10);
   const relevantLearningCycles = relevant(learningCycles, query).slice(0, 8);
   const relevantStrategyCandidates = relevant(strategyCandidates, query).slice(0, 12);
+  const relevantBacktests = relevant(backtestRuns, query).slice(0, 6);
   return {
     mandatory: true, readBeforeCouponConstruction: true,
     reviewedAt: new Date().toISOString(), query, reviewStatus: "COMPLETED",
-    areasReviewed: ["winning-coupons", "losing-coupons", "validated-lessons", "candidate-lessons", "entity-profiles", "human-tips", "coupon-history", "learning-cycles", "strategy-candidates"],
+    areasReviewed: ["winning-coupons", "losing-coupons", "validated-lessons", "candidate-lessons", "entity-profiles", "human-tips", "coupon-history", "learning-cycles", "strategy-candidates", "backtest-runs"],
     counts: {
       winningCouponsAvailable: winning.length, winningCouponsMatched: winners.length,
       losingCouponsAvailable: losing.length, losingCouponsMatched: losers.length,
@@ -186,13 +190,15 @@ export async function getMandatoryLearningPack(brief: any) {
       entityProfilesMatched: entityProfiles.length, agentProfilesMatched: relevantAgentProfiles.length, humanTipsMatched: relevantHumanTips.length,
       couponHistoryMatched: relevantCouponHistory.length,
       learningCyclesMatched: relevantLearningCycles.length,
-      strategyCandidatesMatched: relevantStrategyCandidates.length
+      strategyCandidatesMatched: relevantStrategyCandidates.length,
+      backtestsMatched: relevantBacktests.length
     },
     winningCoupons: winners, losingCoupons: losers, validatedLessons, candidateLessons,
     entityProfiles, agentProfiles: relevantAgentProfiles, humanTips: relevantHumanTips, couponHistory: relevantCouponHistory,
     learningCycles: relevantLearningCycles,
     strategyCandidates: relevantStrategyCandidates,
-    instruction: "Every coupon-writing agent must read both winning and losing examples, relevant human tips, entity profiles, validated lessons and recent scheduled learning-cycle research and candidate strategies. Candidate research is not validated knowledge. Empty libraries must be acknowledged honestly; do not invent examples."
+    backtestRuns: relevantBacktests,
+    instruction: "Every coupon-writing agent must read both winning and losing examples, relevant human tips, entity profiles, validated lessons and recent scheduled learning-cycle research, candidate strategies and chronological backtest summaries. Candidate research and retrospective backtests are not validated knowledge. Empty libraries must be acknowledged honestly; do not invent examples."
   };
 }
 
