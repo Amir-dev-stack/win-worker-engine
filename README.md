@@ -184,8 +184,11 @@ Set these in Netlify → win-worker-engine → Project configuration → Environ
 | OPENAI_MODEL | Yes | A model ID enabled for the OpenAI API account. |
 | WIN_INTERNAL_TOKEN | Yes | Private bearer token for REST/dashboard and owner consent. Keep secret. |
 | WIN_ENABLE_WEB_SEARCH | No | Set to true to enable Responses API web search; defaults to true. |
+| WIN_AI_BUDGET_APPROVED | Yes, explicit opt-in | Must be exactly `true` before any OpenAI call is allowed. Keep unset/false until the API key is rotated, provider-side monthly spending limit and alerts are configured, and auto-recharge is disabled. |
 
 Never put these values in the browser bundle, GitHub, chat messages, or netlify.toml.
+
+**Spending safety:** the in-app Blobs ledger is only an estimate and is not a hard financial cap. WIN fails closed unless `WIN_AI_BUDGET_APPROVED=true`. Before setting it, revoke and replace any exposed API key, configure the OpenAI API project's monthly spend limit and usage alerts, disable automatic recharge, and verify those controls in the provider dashboard. Provider-side enforcement may not be instantaneous; monitor actual usage. Never paste API keys into chat or commit them.
 
 ## STS data access boundary
 
