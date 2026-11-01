@@ -9,8 +9,9 @@ export default async () => {
   time: new Date().toISOString(),
   integrations: {
     openaiResponses: Netlify.env.get("OPENAI_API_KEY") && Netlify.env.get("OPENAI_MODEL")
-      ? "configured_not_yet_validated"
+      ? (Netlify.env.get("WIN_AI_BUDGET_APPROVED") === "true" ? "enabled_not_yet_validated" : "configured_but_disabled_pending_budget_approval")
       : "needs_configuration",
+    aiExecutionApproved: Netlify.env.get("WIN_AI_BUDGET_APPROVED") === "true",
     mcp: "oauth_enabled",
     persistence: "netlify_blobs",
     execution: "scheduled_hourly",
@@ -23,7 +24,7 @@ export default async () => {
     remainingUsd: budget.remainingUsd, calls: budget.calls,
     blockedCalls: budget.blockedCalls
   },
-  note: "This endpoint reports service configuration and budget status only; it does not run AI research. Research API requires authorization."
+  note: "This endpoint reports service configuration and budget status only; it does not run AI research. AI calls fail closed until WIN_AI_BUDGET_APPROVED=true after provider-side spending controls and API-key rotation are verified."
   });
 };
 export const config = {path:"/api/health"};
