@@ -6,7 +6,7 @@ export default async (_req: Request, context: Context) => {
   const now = new Date();
   const nowIso = now.toISOString();
   const state = await get<any>("scheduler-state", "balanced-hourly") || {};
-  const runs = await list<any>("runs", 200);
+  const runs = await list<any>("runs", 50);
   const activeRuns = runs.filter(run => ["queued", "scouting", "debating", "synthesizing"].includes(run.status));
   const staleRuns = activeRuns.filter(run => {
     const updated = Date.parse(run.updatedAt || run.createdAt || "");
