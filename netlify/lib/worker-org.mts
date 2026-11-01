@@ -30,7 +30,7 @@ export const WIN_DEPARTMENTS: WorkerDepartment[] = [
     purpose: "Assess each event with the correct sport-specific blueprint, participant availability, matchup, context and independent FOR/AGAINST reasoning.",
     required: true,
     teams: [
-      "Dynamic Sport / Discipline Master for each represented sport",
+      "Dynamic Sport / Discipline Master for each represented sport",\n      "Persistent Club / Team Agent for each identified club",\n      "Persistent Player / Athlete Agent for each identified athlete",
       "Performance & Form Upper Agent",
       "Availability & Context Upper Agent",
       "Competition & Event Context Upper Agent",
@@ -137,6 +137,8 @@ export const IMWFD_TIERS = [
 
 export const EVENT_SPECIALISTS = [
   { id: "event_identity", name: "Event Identity & Schedule Worker", department: "D1", purpose: "Participants, competition, start time, timezone, event status, postponement and duplicates." },
+  { id: "club_dossier", name: "Club / Team Intelligence Agent", department: "D2", purpose: "Club history, squad depth, manager/coaching, tactics, formations, transfers where relevant, match results, team metrics, home/away splits, injuries, suspensions, workload, schedule and source quality." },
+  { id: "player_dossier", name: "Player / Athlete Intelligence Agent", department: "D2", purpose: "Individual match-by-match record, starts, minutes, role, goals/assists or sport-specific output, cards/discipline, injury/recovery, availability, performance trends, opponent context and source freshness." },
   { id: "form", name: "Form & Performance Worker", department: "D2", purpose: "Recent results, opponent strength, sport-specific metrics, sample size and recency." },
   { id: "availability", name: "Availability Worker", department: "D2", purpose: "Confirmed lineups, injuries, suspensions, withdrawals, roster and participation." },
   { id: "tactics", name: "Tactical / Technical Worker", department: "D2", purpose: "Styles, matchup, strategy and sport-specific performance interactions." },
