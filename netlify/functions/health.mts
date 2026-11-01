@@ -15,7 +15,7 @@ export default async () => {
     mcp: "oauth_enabled",
     persistence: "netlify_blobs",
     execution: "scheduled_hourly",
-    scheduling: { monitor: "hourly", publicScouting: "every_12_hours_when_budget_allows", aiMonthlyLimitUsd: 5 },
+    scheduling: { learningMonitor: "every_4_hours", learningCycles: "one_bounded_research_cycle_every_4_hours_when_budget_approved", aiMonthlyEstimateLimitUsd: 5 },
     sts: "no_official_sts_api_connection"
   },
   aiBudget: {
