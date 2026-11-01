@@ -437,7 +437,7 @@ export async function archiveRunToLibrary(run: any) {
   }
 
   const nodeType: Record<string, EntityKind> = {
-    T1: "sport", T2: "country", T3: "league", T4: "club", T5: "player", T6: "event"
+    T1: "sport", T2: "country", T3: "league", T4: "club", T5: "player", T6: "event", T7: "specialist"
   };
   for (const node of network?.nodes || []) {
     const entityType = nodeType[node.tier];
