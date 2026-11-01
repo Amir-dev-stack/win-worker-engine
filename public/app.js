@@ -231,7 +231,7 @@ $("#simulationForm").addEventListener("submit",async e=>{
   $("#simulationStatus").textContent="Queued simulation "+result.runId+" · "+Number(result.couponCount).toLocaleString()+" coupons · "+result.selectionCount+" historical selections. Refresh to see progress and results.";
   $("#simulationRunId").value=result.runId;$("#simulationCategory").value="runs";await refreshSimulations();
  }catch(err){$("#simulationStatus").textContent="Simulation not started: "+err.message;alert(err.message);}
- finally{if(button){button.disabled=false;button.textContent="Run historical simulation ↗";}}
+ finally{if(button){button.disabled=false;button.textContent="Run historical experiment ↗";}}
 });
 $("#refreshSimulations").addEventListener("click",refreshSimulations);
 $("#simulationCategory").addEventListener("change",refreshSimulations);
