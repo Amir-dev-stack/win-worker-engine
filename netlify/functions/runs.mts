@@ -57,7 +57,7 @@ export default async (req: Request) => {
     id, status: "queued", createdAt, updatedAt: createdAt,
     brief: normalized, workers: [], debate: [], workerNetwork: null, master: null
   };
-  await put("runs", id, run);
+  await put("runs", id, run);\n  await put("library/research-runs", id, { ...run, libraryArchive: { status: "queued" } });
 
   const base = new URL(req.url);
   const trigger = await fetch(new URL("/.netlify/functions/worker-runner", base), {
