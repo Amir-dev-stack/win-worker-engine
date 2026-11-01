@@ -1,10 +1,10 @@
 import { get, list, put, remove } from "./store.mts";
 
 export type LibraryOutcome = "pending" | "won" | "lost" | "void" | "partial" | "cancelled" | "unknown";
-export type EntityKind = "sport" | "country" | "league" | "club" | "player" | "event";
+export type EntityKind = "sport" | "country" | "league" | "club" | "player" | "event" | "specialist";
 
 const OUTCOMES = new Set<LibraryOutcome>(["pending", "won", "lost", "void", "partial", "cancelled", "unknown"]);
-const ENTITY_KINDS = new Set<EntityKind>(["sport", "country", "league", "club", "player", "event"]);
+const ENTITY_KINDS = new Set<EntityKind>(["sport", "country", "league", "club", "player", "event", "specialist"]);
 const MAX_TEXT = 30000;
 
 function clean(value: unknown, max = 3000): string {
@@ -91,7 +91,7 @@ export async function searchWinLibrary(options: {
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 30));
   const category = clean(options.category || "all", 40).toLowerCase();
   const [coupons, winning, losing, pending, lessons, entities, profiles, observations, runs,
-    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults] = await Promise.all([
+    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements] = await Promise.all([
     list<any>("library/coupons", 500),
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
@@ -106,7 +106,8 @@ export async function searchWinLibrary(options: {
     list<any>("library/coupon-history", 500),
     list<any>("library/coupon-research-cases", 200),
     list<any>("library/frozen-predictions", 500),
-    list<any>("library/settled-results", 500)
+    list<any>("library/settled-results", 500),
+    list<any>("library/other-settlements", 500)
   ]);
   let items: any[] = [];
   if (category === "winning") items = winning;
@@ -124,8 +125,9 @@ export async function searchWinLibrary(options: {
   else if (category === "coupon-cases") items = couponCases;
   else if (category === "predictions") items = frozenPredictions;
   else if (category === "results") items = settledResults;
+  else if (category === "other-settlements") items = otherSettlements;
   else items = [...coupons, ...lessons, ...entities, ...profiles, ...observations, ...runs,
-    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults];
+    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements];
 
   let filtered = relevant(items, clean(options.query, 1000));
   if (options.outcome) filtered = filtered.filter((x: any) => x.outcome === options.outcome);
@@ -136,7 +138,7 @@ export async function searchWinLibrary(options: {
     items: filtered.slice(0, limit), reviewedAt: new Date().toISOString(),
     libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "coupons", "coupon-history",
       "human-tips", "lessons", "entity-profiles", "agent-profiles", "agent-observations",
-      "agent-notes", "research-runs", "frozen-predictions", "settled-results", "coupon-research-cases"]
+      "agent-notes", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases"]
   };
 }
 
@@ -245,7 +247,7 @@ export async function settleCouponRecord(input: any) {
   await remove("library/pending-coupons", id);
   if (outcome === "won") await put("library/winning-coupons", id, updated);
   else if (outcome === "lost") await put("library/losing-coupons", id, updated);
-  else await put("library/pending-coupons", id, updated);
+  else await put("library/other-settlements", id, updated);
   const historyId = crypto.randomUUID();
   await put("library/coupon-history", historyId, {
     id: historyId, couponId: id, action: "settled", outcome,
@@ -356,7 +358,8 @@ function entityMission(type: EntityKind): string {
     league: "Maintain competition format, standings, schedule, incentives, form trends and settlement context.",
     club: "Maintain team history, squad, tactics, management, results, home/away splits, roster availability and performance.",
     player: "Maintain individual match logs, minutes, goals/assists or sport-specific output, discipline, injuries, availability and performance trends.",
-    event: "Maintain event identity, schedule, participants, conditions, market context and verified outcome."
+    event: "Maintain event identity, schedule, participants, conditions, market context and verified outcome.",
+    specialist: "Maintain specialist methodology, market-specific evidence standards, recurring failure modes and validated lessons relevant to the assigned discipline."
   };
   return missions[type];
 }
