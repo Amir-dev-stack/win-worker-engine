@@ -93,6 +93,8 @@ The shared library uses the existing private, site-wide Netlify Blobs store `win
 | `library/agent-notes` | Full department, challenge and Global Master reports |
 | `library/learning-cycles` | Scheduled four-hour research-cycle reports, sources, coverage gaps and validation blockers |
 | `library/strategy-candidates` | Structured strategy hypotheses with eligibility rules, exclusions, required data and `candidate_for_validation` status |
+| `library/backtest-runs` | Chronological 60/20/20 training, validation and holdout metrics for fixed strategy filters |
+| `library/backtest-datasets` | Source-attributed pre-event selection data retained to reproduce a backtest |
 | `library/research-runs` | Archived full run brief, reports, debate, network, citations and decision |
 | `library/coupon-research-cases` | Coupon build, audit and comparison case files |
 | `library/archive-failures` | Audit records when library archiving itself fails |
@@ -136,8 +138,15 @@ REST:
 
 MCP:
 - `run_historical_coupon_simulation`
+- `run_strategy_backtest`
 
 The dashboard accepts a JSON array of selection records. Do not use invented results, fabricated odds, or post-event odds timestamps. A screenshot of a settled coupon is not enough to classify every leg unless each individual market result can be independently determined.
+
+## Strategy Backtest Lab
+
+The MCP tool `run_strategy_backtest` accepts 10–10,000 supplied historical selections with event identity, sport, market, odds, pre-event odds-capture timestamp, settled outcome and source references. It applies fixed user-defined sport/country/competition/market/odds filters, keeps one observation per event, sorts chronologically and reports separate 60% training, 20% validation and 20% holdout results. Metrics include hit rate with a 95% Wilson interval, flat-stake ROI, average odds, Brier score when pre-event probabilities are supplied, and closing implied-probability movement when closing odds are supplied.
+
+Backtests are saved in `library/backtest-runs`; the source-attributed input records are saved in `library/backtest-datasets`. Results always remain `historically_tested_not_validated`. The tool does not tune strategy filters, infer missing odds, guarantee independence, or automatically promote a strategy. A human/independent review and prospective frozen paper record are still required before maturity.
 
 ## On-demand coupon task modes
 
