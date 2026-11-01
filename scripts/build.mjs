@@ -41,9 +41,8 @@ const checks = [
   [app.includes("workerNetwork") && app.includes("get_run"), "Dashboard worker-network report view is missing."],
   [ai.includes("WIN_LIBRARY_REVIEW_JSON") && ai.includes("WIN_LESSONS_JSON"), "Mandatory library review instructions are missing."],
   [org.includes('tier: "T4"') && org.includes('tier: "T5"') && org.includes('tier: "T6"'), "Club/player/event agent hierarchy is missing."],
-  [mcp.includes("search_win_library") && mcp.includes("save_human_coupon") && mcp.includes("record_coupon_outcome"), "MCP WIN library tools are missing."]
-
-  [authMeta.includes("authorization_response_iss_parameter_supported: true"), "OAuth issuer identification is missing."],
+  [mcp.includes("search_win_library") && mcp.includes("save_human_coupon") && mcp.includes("record_coupon_outcome"), "MCP WIN library tools are missing."],
+  [runner.includes("getMandatoryLearningPack") && runner.includes("archiveRunToLibrary"), "Library pre-review and archival are missing."],\n  [authMeta.includes("authorization_response_iss_parameter_supported: true"), "OAuth issuer identification is missing."],
   [authorize.includes('callback.searchParams.set("iss", WIN_ISSUER)'), "OAuth callback does not echo the issuer."],
   [runner.includes("runIndependentWorkers") && runner.includes("runDebate") && runner.includes("runGlobalMaster"), "Full WIN execution pipeline is missing."]
 ];
