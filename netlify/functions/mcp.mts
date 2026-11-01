@@ -3,6 +3,7 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { z } from "zod";
 import { get, list } from "../lib/store.mts";
 import { searchWinLibrary, saveCouponRecord, settleCouponRecord, saveEntityProfile, saveLearningNote } from "../lib/library.mts";
+import { createSimulationRun } from "../lib/simulation.mts";
 import { authorizeMcpRequest, WIN_ISSUER } from "../lib/oauth-store.mts";
 
 const resourceMetadata = WIN_ISSUER + "/.well-known/oauth-protected-resource/mcp";
@@ -197,6 +198,33 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
     const { put } = await import("../lib/store.mts");
     await put("library/lessons", args.lessonId, updated);
     return { content: [{ type: "text" as const, text: JSON.stringify(updated) }] };
+  });
+
+  server.registerTool("run_historical_coupon_simulation", {
+    title: "Run WIN historical coupon simulation",
+    description: "Generate reproducible random coupon combinations from supplied real historical selections with pre-event odds timestamps and verified settled outcomes. Saves experimental winning and losing coupons separately. This is descriptive construction analysis, not a predictive-edge proof.",
+    inputSchema: {
+      selections: z.array(z.any()).min(2).max(10000),
+      couponCount: z.number().int().min(100).max(100000).optional(),
+      minLegs: z.number().int().min(2).max(10).optional(),
+      maxLegs: z.number().int().min(2).max(10).optional(),
+      seed: z.string().optional()
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
+  }, async (args) => {
+    if (!scopes.includes("win:research")) return authRequired("win:research");
+    try {
+      const run = await createSimulationRun(args);
+      const queued = await fetch(baseUrl + "/.netlify/functions/simulation-runner", {
+        method: "POST",
+        headers: { "content-type": "application/json", "authorization": "Bearer " + internalToken },
+        body: JSON.stringify({ runId: run.id })
+      });
+      if (!queued.ok && queued.status !== 202) throw new Error("Simulation worker could not be queued: HTTP " + queued.status);
+      return { content: [{ type: "text" as const, text: JSON.stringify({ runId: run.id, status: "queued", couponCount: run.couponCount, selectionCount: run.selectionCount, message: "Historical simulation queued. Results are derived only from supplied settled data." }) }] };
+    } catch (error) {
+      return { content: [{ type: "text" as const, text: String(error) }], isError: true };
+    }
   });
 
   return server;
