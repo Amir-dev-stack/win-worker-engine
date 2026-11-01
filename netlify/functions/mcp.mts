@@ -308,6 +308,12 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
 export default async (req: Request) => {
   const authorization = await authorizeMcpRequest(req);
   if (!authorization.ok) {
+    // Diagnostic reason is a fixed enum; never log authorization headers or token material.
+    console.warn("WIN MCP authorization rejected", {
+      reason: authorization.reason || "unknown",
+      method: req.method,
+      path: new URL(req.url).pathname
+    });
     return new Response(JSON.stringify({ error: "unauthorized", message: "Connect or reauthorize WIN to use its research tools." }), {
       status: 401,
       headers: {
