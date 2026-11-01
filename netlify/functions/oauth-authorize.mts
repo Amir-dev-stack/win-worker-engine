@@ -9,6 +9,7 @@ type ClientRecord = { clientId: string; clientName: string; redirectUris: string
 type AuthRequest = {
   clientId: string; redirectUri: string; state: string; challenge: string;
   audience: string; scopes: string[]; expiresAt: number; consumedAt?: number;
+  completedCode?: string; codeExpiresAt?: number;
 };
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]!));
@@ -93,12 +94,25 @@ export default async (req: Request) => {
     const txn = String(form.get("txn") || "");
     const ownerToken = String(form.get("ownerToken") || "");
     const auth = await readOAuthRecord<AuthRequest>("requests", txn);
-    if (!auth || auth.expiresAt <= Date.now() || auth.consumedAt) {
+    if (!auth || auth.expiresAt <= Date.now()) {
       return new Response("Authorization request expired. Start connecting WIN again.", { status: 400 });
     }
     const client = await readOAuthRecord<ClientRecord>("clients", auth.clientId);
     if (!client || !client.redirectUris.includes(auth.redirectUri)) {
       return new Response("Invalid OAuth client.", { status: 400 });
+    }
+    // A browser may retry or resubmit after the first POST has already
+    // authorized the transaction. Reuse the same short-lived code rather
+    // than treating that harmless retry as an expired authorization.
+    if (auth.consumedAt) {
+      if (auth.completedCode && auth.codeExpiresAt && auth.codeExpiresAt > Date.now()) {
+        const callback = new URL(auth.redirectUri);
+        callback.searchParams.set("code", auth.completedCode);
+        callback.searchParams.set("state", auth.state);
+        callback.searchParams.set("iss", WIN_ISSUER);
+        return Response.redirect(callback.toString(), 303);
+      }
+      return new Response("Authorization request expired. Start connecting WIN again.", { status: 400 });
     }
     if (!await validateOwnerToken(ownerToken)) {
       return new Response(page(txn, client.clientName, auth.scopes.join(" "), "The WIN internal token was not accepted. Check it and try again."), {
@@ -106,13 +120,16 @@ export default async (req: Request) => {
       });
     }
 
-    await saveOAuthRecord("requests", txn, { ...auth, consumedAt: Date.now() });
     const code = randomSecret("win_code");
+    const codeExpiresAt = Date.now() + 3 * 60 * 1000;
     await saveOAuthRecord("codes", hashSecret(code), {
       issuer: WIN_ISSUER,
       clientId: auth.clientId, redirectUri: auth.redirectUri, challenge: auth.challenge,
       audience: auth.audience, scopes: auth.scopes, createdAt: Date.now(),
-      expiresAt: Date.now() + 3 * 60 * 1000
+      expiresAt: codeExpiresAt
+    });
+    await saveOAuthRecord("requests", txn, {
+      ...auth, consumedAt: Date.now(), completedCode: code, codeExpiresAt
     });
     const callback = new URL(auth.redirectUri);
     callback.searchParams.set("code", code);
