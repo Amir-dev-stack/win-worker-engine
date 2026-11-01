@@ -5,6 +5,7 @@ const required = [
   "public/app.js",
   "netlify/functions/health.mts",
   "netlify/functions/runs.mts",
+  "netlify/functions/library.mts",
   "netlify/functions/mcp.mts",
   "netlify/functions/oauth-authorize.mts",
   "netlify/functions/oauth-metadata.mts",
@@ -13,6 +14,7 @@ const required = [
   "netlify/functions/worker-runner.mts",
   "netlify/lib/ai.mts",
   "netlify/lib/worker-org.mts",
+  "netlify/lib/library.mts",
   "netlify/lib/oauth-store.mts"
 ];
 
@@ -36,6 +38,11 @@ const checks = [
   [ai.includes("WIN_DEPARTMENTS") && ai.includes("runGlobalMaster"), "WIN department orchestration is missing."],
   [org.includes("EVENT_SPECIALISTS") && org.includes("IMWFD_TIERS"), "Dynamic worker hierarchy is missing."],
   [mcp.includes("start_research_run") && mcp.includes("get_run"), "MCP start/read tools are missing."],
+  [app.includes("workerNetwork") && app.includes("get_run"), "Dashboard worker-network report view is missing."],
+  [ai.includes("WIN_LIBRARY_REVIEW_JSON") && ai.includes("WIN_LESSONS_JSON"), "Mandatory library review instructions are missing."],
+  [org.includes('tier: "T4"') && org.includes('tier: "T5"') && org.includes('tier: "T6"'), "Club/player/event agent hierarchy is missing."],
+  [mcp.includes("search_win_library") && mcp.includes("save_human_coupon") && mcp.includes("record_coupon_outcome"), "MCP WIN library tools are missing."]
+
   [authMeta.includes("authorization_response_iss_parameter_supported: true"), "OAuth issuer identification is missing."],
   [authorize.includes('callback.searchParams.set("iss", WIN_ISSUER)'), "OAuth callback does not echo the issuer."],
   [runner.includes("runIndependentWorkers") && runner.includes("runDebate") && runner.includes("runGlobalMaster"), "Full WIN execution pipeline is missing."]
