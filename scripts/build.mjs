@@ -35,7 +35,7 @@ const [html, app, ai, org, mcp, authMeta, authorize, runner, library, libraryApi
 
 const checks = [
   [html.includes("WIN Worker Engine"), "Dashboard title is missing."],
-  [html.includes("build_latest_coupon") && html.includes("compare_coupons"), "Dashboard coupon task modes are missing."],
+  [app.includes("build_latest_coupon") && app.includes("compare_coupons"), "Dashboard coupon task modes are missing."],
   [app.includes("workerNetwork") && app.includes("get_run"), "Dashboard worker-network report view is missing."],
   [ai.includes("WIN_DEPARTMENTS") && ai.includes("runGlobalMaster"), "WIN department orchestration is missing."],
   [org.includes("EVENT_SPECIALISTS") && org.includes("IMWFD_TIERS"), "Dynamic worker hierarchy is missing."],
