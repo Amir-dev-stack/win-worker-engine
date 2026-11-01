@@ -1,7 +1,22 @@
 import type { Config } from "@netlify/functions";
 import { authorized } from "../lib/auth.mts";
 import { get, list, put } from "../lib/store.mts";
-import { runDebate, runGlobalMaster, runIndependentWorkers } from "../lib/ai.mts";
+import { runDebate, runGlobalMaster, runIndependentWorkers } from "../lib/ai.mts";\nimport { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
+
+function hasLibraryReviewReceipt(report: string): boolean {
+  const open = "<WIN_LIBRARY_REVIEW_JSON>";
+  const close = "</WIN_LIBRARY_REVIEW_JSON>";
+  const start = report.indexOf(open);
+  const end = report.indexOf(close);
+  if (start < 0 || end <= start) return false;
+  try {
+    const receipt = JSON.parse(report.slice(start + open.length, end).trim());
+    return receipt?.reviewed === true &&
+      Array.isArray(receipt.winningRecordIds) &&
+      Array.isArray(receipt.losingRecordIds) &&
+      Array.isArray(receipt.emptyCollections);
+  } catch { return false; }
+}
 
 function updateNetworkStatuses(network: any, reports: any[], debate: any[]) {
   const departmentById = new Map(reports.map(report => [report.departmentId, report]));
@@ -71,7 +86,7 @@ export default async (req: Request) => {
     const brief = {
       ...run.brief,
       runId: run.id,
-      priorLearning: { priorPredictions, priorResults }
+      priorLearning: { priorPredictions, priorResults },\n      libraryReview
     };
 
     // D1 scouts first. The result creates the dynamic sport/country/competition/event graph.
@@ -92,14 +107,14 @@ export default async (req: Request) => {
     };
     await put("runs", run.id, withDebate);
 
-    const failed = [...reports, ...debate].filter(x => x.status !== "completed" || !x.report?.trim());
+    const missingLibraryReceipts = reports.filter(x => ["D6", "D7"].includes(x.departmentId) && !hasLibraryReviewReceipt(x.report || "")).map(x => x.departmentId + " mandatory library review receipt missing or invalid");\n    const failed = [...reports, ...debate].filter(x => x.status !== "completed" || !x.report?.trim());\n    const gateFailures = [...failed.map(x => (x.departmentId ? x.departmentId + " — " : "") + x.role + ": " + (x.error || "empty report")), ...missingLibraryReceipts];
     const master = failed.length
       ? {
           workerId: crypto.randomUUID(),
           role: "WIN Global Master — deterministic Low-Risk Gate",
           phase: "final", status: "completed",
           report: "FINAL DECISION: NO BET\n\nThe WIN Low-Risk Gate rejected this run because one or more required department or adversarial reports failed or returned an empty report. Failed checks: " +
-            failed.map(x => (x.departmentId ? x.departmentId + " — " : "") + x.role + ": " + (x.error || "empty report")).join("; ") +
+            gateFailures.join("; ") +
             ". Do not place a bet. Re-run after the service or evidence blocker is resolved.",
           citations: [], startedAt: new Date().toISOString(), completedAt: new Date().toISOString()
         }
