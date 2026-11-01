@@ -14,7 +14,7 @@ function validate(raw:any[]):Pick[]{
 }
 export async function createSimulationRun(input:any){
  const picks=validate(input?.selections),count=Math.min(100000,Math.max(100,Math.floor(Number(input?.couponCount)||1000)));
- const minLegs=Math.min(10,Math.max(2,Math.floor(Number(input?.minLegs)||2))),maxLegs=Math.min(50,Math.max(minLegs,Math.floor(Number(input?.maxLegs)||5)));
+ const minLegs=Math.min(50,Math.max(2,Math.floor(Number(input?.minLegs)||2))),maxLegs=Math.min(50,Math.max(minLegs,Math.floor(Number(input?.maxLegs)||5)));
  const uniqueEvents=new Set(picks.map(p=>p.eventId)).size;if(uniqueEvents<maxLegs)throw Error("Dataset has "+uniqueEvents+" distinct events; at least "+maxLegs+" are required.");
  const id=crypto.randomUUID(),datasetId="dataset-"+id,createdAt=new Date().toISOString();
  const run={id,datasetId,status:"queued",createdAt,updatedAt:createdAt,mode:"historical_random_coupon_combinations",couponCount:count,minLegs,maxLegs,seed:clean(input?.seed)||id,selectionCount:picks.length,dataQuality:{uniqueEvents,allOddsPreEvent:true,allResultsSettled:true},sourceDisclosure:"Supplied historical odds and settled results only. This is descriptive coupon-construction analysis, not proof of predictive edge."};
