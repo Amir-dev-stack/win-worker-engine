@@ -34,7 +34,7 @@ export async function searchWinLibrary(options: {
 } = {}) {
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 30));
   const category = clean(options.category || "all", 40).toLowerCase();
-  const [coupons, winning, losing, pending, lessons, entities, profiles, observations, runs] = await Promise.all([
+  const [coupons, winning, losing, pending, lessons, entities, profiles, observations, runs, humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults] = await Promise.all([
     list<any>("library/coupons", 500),
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
@@ -67,7 +67,7 @@ export async function searchWinLibrary(options: {
   return {
     category, query: q || null, count: filtered.length, items: filtered.slice(0, limit),
     reviewedAt: new Date().toISOString(),
-    libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "lessons", "entity-profiles", "agent-profiles", "agent-observations", "research-runs"]
+    libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "coupons", "coupon-history", "human-tips", "lessons", "entity-profiles", "agent-profiles", "agent-observations", "agent-notes", "research-runs", "frozen-predictions", "settled-results", "coupon-research-cases"]
   };
 }
 
@@ -77,7 +77,7 @@ export async function getMandatoryLearningPack(brief: any) {
     brief?.existingCoupon, ...(Array.isArray(brief?.teams) ? brief.teams : []),
     ...(Array.isArray(brief?.clubs) ? brief.clubs : []), ...(Array.isArray(brief?.players) ? brief.players : [])
   ].filter(Boolean).join(" ");
-  const [winning, losing, lessons, profiles] = await Promise.all([
+  const [winning, losing, lessons, profiles, humanTips, couponHistory] = await Promise.all([
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
     list<any>("library/lessons", 500),
@@ -88,6 +88,7 @@ export async function getMandatoryLearningPack(brief: any) {
   const validatedLessons = relevant(lessons.filter(x => x.validationStatus === "validated"), query).slice(0, 12);
   const candidateLessons = relevant(lessons.filter(x => x.validationStatus !== "validated"), query).slice(0, 5);
   const entityProfiles = relevant(profiles, query).slice(0, 12);
+  const relevantHumanTips = relevant(humanTips, query).slice(0, 10);\n  const relevantCouponHistory = relevant(couponHistory, query).slice(0, 10);
   return {
     mandatory: true,
     readBeforeCouponConstruction: true,
@@ -100,7 +101,8 @@ export async function getMandatoryLearningPack(brief: any) {
       losingCouponsAvailable: losing.length, losingCouponsMatched: losers.length,
       validatedLessonsAvailable: lessons.filter(x => x.validationStatus === "validated").length,
       validatedLessonsMatched: validatedLessons.length,
-      candidateLessonsMatched: candidateLessons.length, entityProfilesMatched: entityProfiles.length
+      candidateLessonsMatched: candidateLessons.length, entityProfilesMatched: entityProfiles.length,
+      humanTipsMatched: relevantHumanTips.length, couponHistoryMatched: relevantCouponHistory.length
     },
     winningCoupons: winners,
     losingCoupons: losers,
