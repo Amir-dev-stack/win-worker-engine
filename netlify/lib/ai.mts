@@ -231,17 +231,19 @@ async function askWorker(
       ] });
   }
 
+  let budgetId: string | null = null;
+  let budgetSettled = false;
   try {
     const maxOutputTokens = phase === "scheduled_scout" ? 600 : 1000;
     const maxToolCalls = phase === "scheduled_scout" ? 1 : 2;
-    const budgetId = crypto.randomUUID();
+    const requestBudgetId = crypto.randomUUID();
+    budgetId = requestBudgetId;
     const budget = await reserveAIRequest({
-      id: budgetId, model, phase, inputChars: instructions.length + input.length,
+      id: requestBudgetId, model, phase, inputChars: instructions.length + input.length,
       maxOutputTokens, maxToolCalls,
       maxInputChars: phase === "scheduled_scout" ? 12000 : 25000
     });
     if (!budget.allowed) throw new Error(budget.reason);
-    let budgetSettled = false;
     const body: any = { model, instructions, input, store: false, max_output_tokens: maxOutputTokens, max_tool_calls: maxToolCalls };
     if (webSearch) {
       body.tools = [{ type: "web_search", return_token_budget: "default" }];
@@ -256,14 +258,14 @@ async function askWorker(
     });
     const data: any = await response.json();
     if (!response.ok) {
-      if (response.status >= 500) await settleAIRequest(budgetId, null, 0, true);
-      else await releaseAIRequest(budgetId, "OpenAI rejected request with HTTP " + response.status);
+      if (response.status >= 500) await settleAIRequest(requestBudgetId, null, 0, true);
+      else await releaseAIRequest(requestBudgetId, "OpenAI rejected request with HTTP " + response.status);
       budgetSettled = true;
       throw new Error(data.error?.message || "Responses API returned HTTP " + response.status);
     }
     const webSearchRequests = Number(data.tool_usage?.web_search?.num_requests ??
       (data.output ?? []).filter((item: any) => item.type === "web_search_call").length);
-    await settleAIRequest(budgetId, data.usage, webSearchRequests);
+    await settleAIRequest(requestBudgetId, data.usage, webSearchRequests);
     budgetSettled = true;
     return {
       workerId, role, phase, departmentId: department?.id,
@@ -273,8 +275,16 @@ async function askWorker(
       startedAt, completedAt: new Date().toISOString()
     };
   } catch (error) {
+    if (budgetId && !budgetSettled) {
+      try { await settleAIRequest(budgetId, null, 0, true); } catch { /* retain reservation if storage is unavailable */ }
+    }
     return failed(String(error));
   }
+}
+
+export async function runScheduledScout(brief: any) {
+  const scoutDepartment = departmentAssignments[0];
+  return askWorker("WIN Scheduled Public Offer & Scouting", "scheduled_scout", brief, undefined, scoutDepartment);
 }
 
 export async function runIndependentWorkers(brief: any, runId: string) {
