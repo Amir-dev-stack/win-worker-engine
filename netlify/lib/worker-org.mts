@@ -192,11 +192,28 @@ function normalizeCandidate(value: any, source: string, index: number) {
   const status = text(value?.eventStatus || value?.status) || "unknown";
   const url = text(value?.sourceUrl || value?.url);
   const rawClubs = [value?.homeClub, value?.awayClub, ...(Array.isArray(value?.clubs) ? value.clubs : [])];
-  const clubs = rawClubs.map((club: any) => typeof club === "string" ? { name: text(club), side: "" } : { name: text(club?.name || club?.club), side: text(club?.side || club?.role) }).filter((club: any) => club.name).slice(0, 20);
-  const players = (Array.isArray(value?.players) ? value.players : []).map((player: any) => typeof player === "string" ? { name: text(player), club: "" } : { name: text(player?.name || player?.player), club: text(player?.club || player?.team) }).filter((player: any) => player.name).slice(0, 100);
+  const clubs = rawClubs.map((club: any) => typeof club === "string"
+    ? { name: text(club), side: "", providerId: "", aliases: [] }
+    : {
+        name: text(club?.name || club?.club), side: text(club?.side || club?.role),
+        providerId: text(club?.providerId || club?.externalId || club?.id),
+        aliases: Array.isArray(club?.aliases) ? club.aliases.map(text).filter(Boolean).slice(0, 20) : []
+      }).filter((club: any) => club.name).slice(0, 20);
+  const players = (Array.isArray(value?.players) ? value.players : []).map((player: any) => typeof player === "string"
+    ? { name: text(player), club: "", providerId: "", aliases: [] }
+    : {
+        name: text(player?.name || player?.player), club: text(player?.club || player?.team),
+        providerId: text(player?.providerId || player?.externalId || player?.id),
+        aliases: Array.isArray(player?.aliases) ? player.aliases.map(text).filter(Boolean).slice(0, 20) : []
+      }).filter((player: any) => player.name).slice(0, 100);
   const sourceType = source === "scout_report" ? "SCOUT_REPORT_NEEDS_SECONDARY_VERIFICATION" : "USER_SUPPLIED";
+  const providerEventId = text(value?.providerEventId || value?.eventId || value?.id);
+  const eventIdentity = providerEventId
+    ? [sport, "provider", providerEventId].filter(Boolean).join(" ")
+    : [sport, country, competition, event, startTime].filter(Boolean).join(" ");
   return {
-    eventId: "evt-" + slug(event) + "-" + index,
+    eventId: "evt-" + slug(eventIdentity),
+    providerEventId: providerEventId || null,
     event, sport, country, competition, startTime, status, clubs, players,
     sourceType, sourceUrl: url.startsWith("https://") ? url : undefined,
     observedMarket: text(value?.market),
@@ -221,7 +238,8 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
   }
 
   const sports = [...new Set(candidates.map((x: any) => x.sport).filter(Boolean))];
-  const countries = [...new Set(candidates.filter((x: any) => x.sport && x.country).map((x: any) => x.sport + " × " + x.country))];
+  // One persistent country agent per country, shared across all sports.
+  const countries = [...new Set(candidates.map((x: any) => x.country).filter(Boolean))];
   const competitions = [...new Set(candidates.filter((x: any) => x.sport && x.country && x.competition)
     .map((x: any) => x.sport + " × " + x.country + " × " + x.competition))];
 
@@ -239,23 +257,34 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
     const sid = "sport-" + slug(sport);
     nodes.push({ id: sid, parentId: "worker-network-director", tier: "T1", name: sport + " Sport Chief", scope: { sport }, status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2" });
   }
-  for (const value of countries) {
-    const [sport, country] = value.split(" × ");
-    const sid = "sport-" + slug(sport);
-    const cid = "country-" + slug(value);
-    nodes.push({ id: cid, parentId: nodes.some(n => n.id === sid) ? sid : "worker-network-director", tier: "T2", name: sport + " — " + country + " Country Chief", scope: { sport, country }, status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D1" });
+  for (const country of countries) {
+    const relatedSports = [...new Set(candidates.filter((x: any) => x.country === country).map((x: any) => x.sport).filter(Boolean))];
+    const cid = "country-" + slug(country);
+    nodes.push({
+      id: cid, parentId: "worker-network-director", tier: "T2",
+      name: country + " Country Intelligence Agent",
+      scope: { country, sports: relatedSports.join(",") },
+      status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D1"
+    });
   }
   for (const value of competitions) {
     const [sport, country, competition] = value.split(" × ");
-    const cid = "country-" + slug(sport + " × " + country);
-    nodes.push({ id: "competition-" + slug(value), parentId: cid, tier: "T3", name: competition + " Competition Chief", scope: { sport, country, competition }, status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D1" });
+    const cid = "country-" + slug(country);
+    const sid = "sport-" + slug(sport);
+    nodes.push({
+      id: "competition-" + slug(value),
+      parentId: nodes.some(n => n.id === cid) ? cid : sid,
+      tier: "T3", name: competition + " League / Competition Agent",
+      scope: { sport, country, competition },
+      status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D1"
+    });
   }
   for (const candidate of candidates as any[]) {
     const competitionId = candidate.sport && candidate.country && candidate.competition
       ? "competition-" + slug(candidate.sport + " × " + candidate.country + " × " + candidate.competition)
       : "";
-    const countryId = candidate.sport && candidate.country
-      ? "country-" + slug(candidate.sport + " × " + candidate.country) : "";
+    const countryId = candidate.country
+      ? "country-" + slug(candidate.country) : "";
     const sportId = candidate.sport ? "sport-" + slug(candidate.sport) : "worker-network-director";
     const parent = competitionId || countryId || sportId;
 
@@ -263,13 +292,16 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
     for (const club of candidate.clubs || []) {
       const clubName = text(club.name);
       if (!clubName) continue;
-      const clubId = "club-" + slug([candidate.sport, candidate.country, clubName].filter(Boolean).join(" × "));
+      const clubId = club.providerId
+        ? "club-" + slug(candidate.sport || "unknown") + "-provider-" + slug(club.providerId)
+        : "club-" + slug([candidate.sport, candidate.country, clubName].filter(Boolean).join(" × "));
       clubIds.push(clubId);
       if (!nodes.some(n => n.id === clubId)) nodes.push({
         id: clubId, parentId: nodes.some(n => n.id === parent) ? parent : "worker-network-director",
         tier: "T4", name: clubName + " Club Agent",
         scope: { sport: candidate.sport || "unknown", country: candidate.country || "unknown",
-          competition: candidate.competition || "unknown", club: clubName, side: text(club.side) },
+          competition: candidate.competition || "unknown", club: clubName, side: text(club.side),
+          providerId: text(club.providerId), aliases: (club.aliases || []).join("|") },
         status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2"
       });
     }
@@ -282,7 +314,9 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
       const clubId = clubName
         ? "club-" + slug([candidate.sport, candidate.country, clubName].filter(Boolean).join(" × "))
         : "";
-      const playerId = "player-" + slug([candidate.sport, candidate.country, playerName].filter(Boolean).join(" × "));
+      const playerId = player.providerId
+        ? "player-" + slug(candidate.sport || "unknown") + "-provider-" + slug(player.providerId)
+        : "player-" + slug([candidate.sport, playerName].filter(Boolean).join(" × "));
       playerIds.push(playerId);
       if (!nodes.some(n => n.id === playerId)) nodes.push({
         id: playerId,
@@ -290,7 +324,8 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
           (nodes.some(n => n.id === parent) ? parent : "worker-network-director"),
         tier: "T5", name: playerName + " Player Agent",
         scope: { sport: candidate.sport || "unknown", country: candidate.country || "unknown",
-          competition: candidate.competition || "unknown", player: playerName, club: clubName || "unknown" },
+          competition: candidate.competition || "unknown", player: playerName, club: clubName || "unknown",
+          providerId: text(player.providerId), aliases: (player.aliases || []).join("|") },
         status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2"
       });
     }
@@ -326,7 +361,8 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
     candidates,
     nodes,
     nodeCounts: {
-      sports: sports.length, sportCountryBranches: countries.length,
+      sports: sports.length, countries: countries.length,
+      sportCountryBranches: countries.length,
       competitions: competitions.length, events: candidates.length,
       clubs: nodes.filter(n => n.tier === "T4").length,
       players: nodes.filter(n => n.tier === "T5").length,
