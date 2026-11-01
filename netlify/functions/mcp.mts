@@ -130,7 +130,9 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
       selections: z.array(z.any()).optional(), sport: z.string().optional(),
       country: z.string().optional(), competition: z.string().optional(),
       combinedOdds: z.number().positive().optional(), bookmaker: z.string().optional(),
-      notes: z.string().optional(), source: z.string().optional()
+      notes: z.string().optional(), source: z.string().optional(),
+      sourceType: z.string().optional(), tipsterName: z.string().optional(),
+      publishedAt: z.string().optional(), sourceSnapshot: z.string().optional()
     },
     securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
   }, async (args) => {
