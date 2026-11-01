@@ -198,6 +198,12 @@ async function askWorker(
       "OPENAI_MODEL is not configured. Set a model ID available to your API account.");
   }
 
+  // Fail closed until the owner has configured provider-side spending controls
+  // and rotated the API key. The Blobs ledger is an estimate, not a hard cap.
+  if (Netlify.env.get("WIN_AI_BUDGET_APPROVED") !== "true") {
+    return failed("WIN AI execution is disabled until the owner confirms a provider-side monthly spending limit, usage alerts, auto-recharge disabled, and API-key rotation. Set WIN_AI_BUDGET_APPROVED=true only after those controls are verified.");
+  }
+
   const webSearch = (Netlify.env.get("WIN_ENABLE_WEB_SEARCH") ?? "true") === "true";
   const roleInstructions = department
     ? "DEPARTMENT: " + department.id + " — " + department.role + "\nASSIGNED DEPARTMENT CHECKS:\n" + department.assignment
