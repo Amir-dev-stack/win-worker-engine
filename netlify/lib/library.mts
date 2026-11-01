@@ -90,11 +90,12 @@ export async function getMandatoryLearningPack(brief: any) {
     brief?.existingCoupon, ...(Array.isArray(brief?.teams) ? brief.teams : []),
     ...(Array.isArray(brief?.clubs) ? brief.clubs : []), ...(Array.isArray(brief?.players) ? brief.players : [])
   ].filter(Boolean).join(" ");
-  const [winning, losing, lessons, profiles, humanTips, couponHistory] = await Promise.all([
+  const [winning, losing, lessons, profiles, agentProfiles, humanTips, couponHistory] = await Promise.all([
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
     list<any>("library/lessons", 500),
     list<any>("library/entity-profiles", 500),
+    list<any>("library/agent-profiles", 500),
     list<any>("library/human-tips", 300),
     list<any>("library/coupon-history", 300)
   ]);
@@ -103,6 +104,7 @@ export async function getMandatoryLearningPack(brief: any) {
   const validatedLessons = relevant(lessons.filter(x => x.validationStatus === "validated"), query).slice(0, 12);
   const candidateLessons = relevant(lessons.filter(x => x.validationStatus !== "validated"), query).slice(0, 5);
   const entityProfiles = relevant(profiles, query).slice(0, 12);
+  const relevantAgentProfiles = relevant(agentProfiles, query).slice(0, 12);
   const relevantHumanTips = relevant(humanTips, query).slice(0, 10);
   const relevantCouponHistory = relevant(couponHistory, query).slice(0, 10);
   return {
@@ -114,11 +116,11 @@ export async function getMandatoryLearningPack(brief: any) {
       losingCouponsAvailable: losing.length, losingCouponsMatched: losers.length,
       validatedLessonsAvailable: lessons.filter(x => x.validationStatus === "validated").length,
       validatedLessonsMatched: validatedLessons.length, candidateLessonsMatched: candidateLessons.length,
-      entityProfilesMatched: entityProfiles.length, humanTipsMatched: relevantHumanTips.length,
+      entityProfilesMatched: entityProfiles.length, agentProfilesMatched: relevantAgentProfiles.length, humanTipsMatched: relevantHumanTips.length,
       couponHistoryMatched: relevantCouponHistory.length
     },
     winningCoupons: winners, losingCoupons: losers, validatedLessons, candidateLessons,
-    entityProfiles, humanTips: relevantHumanTips, couponHistory: relevantCouponHistory,
+    entityProfiles, agentProfiles: relevantAgentProfiles, humanTips: relevantHumanTips, couponHistory: relevantCouponHistory,
     instruction: "Every coupon-writing agent must read both winning and losing examples, relevant human tips, entity profiles and lessons. Empty libraries must be acknowledged honestly; do not invent examples."
   };
 }
