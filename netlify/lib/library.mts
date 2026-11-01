@@ -318,11 +318,13 @@ export async function archiveRunToLibrary(run: any) {
     const entityId = clean(node.id, 180);
     if (!entityId) continue;
     const existingProfile = await get<any>("library/entity-profiles", entityId);
-    const profile = existingProfile || await saveEntityProfile({
-      entityType, id: entityId, name: node.name,
+    const profile = await saveEntityProfile({
+      entityType, id: entityId, name: node.scope?.club || node.scope?.player || node.name,
       sport: node.scope?.sport, country: node.scope?.country,
       competition: node.scope?.competition, club: node.scope?.club,
-      profile: { ...node.scope, workerStatus: node.status, runId: run.id },
+      profile: { ...(existingProfile?.profile || {}), ...node.scope, workerStatus: node.status, runId: run.id },
+      sources: safeArray(existingProfile?.sources, 40),
+      createdAt: existingProfile?.createdAt,
       agentMission: entityMission(entityType)
     });
     const departmentId = entityType === "sport" || entityType === "club" || entityType === "player" || entityType === "event" ? "D2" : "D1";
