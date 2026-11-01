@@ -48,13 +48,16 @@ export async function authorizeMcpRequest(req: Request): Promise<McpAuthorizatio
   }
 
   const record = await readOAuthRecord<any>("access", hashSecret(bearer));
-  if (!record || typeof record.expiresAt !== "number" || record.expiresAt <= Date.now()) {
-    return { ok: false, scopes: [], reason: "invalid_token" };
+  if (!record) return { ok: false, scopes: [], reason: "unknown_token" };
+  if (typeof record.expiresAt !== "number" || record.expiresAt <= Date.now()) {
+    return { ok: false, scopes: [], reason: "expired_token" };
   }
-  if (record.issuer !== WIN_ISSUER || record.audience !== WIN_RESOURCE || !Array.isArray(record.scopes)) {
-    return { ok: false, scopes: [], reason: "invalid_issuer_audience_or_scope" };
-  }
-  return { ok: true, scopes: record.scopes.filter((s: string) => (WIN_SCOPES as readonly string[]).includes(s)) };
+  if (record.issuer !== WIN_ISSUER) return { ok: false, scopes: [], reason: "wrong_issuer" };
+  if (record.audience !== WIN_RESOURCE) return { ok: false, scopes: [], reason: "wrong_audience" };
+  if (!Array.isArray(record.scopes)) return { ok: false, scopes: [], reason: "invalid_scope_record" };
+  const scopes = record.scopes.filter((s: string) => (WIN_SCOPES as readonly string[]).includes(s));
+  if (!scopes.length) return { ok: false, scopes: [], reason: "no_supported_scopes" };
+  return { ok: true, scopes };
 }
 
 export async function issueTokenPair(clientId: string, audience: string, scopes: string[]) {
