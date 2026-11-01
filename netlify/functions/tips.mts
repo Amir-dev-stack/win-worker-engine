@@ -9,7 +9,8 @@ export default async (req: Request) => {
   if(!body.tip || typeof body.tip!=="string") return Response.json({error:"tip text is required"},{status:400});
   const id=crypto.randomUUID();
   const tip={id,tip:body.tip,sourceUrl:body.sourceUrl??null,sourceName:body.sourceName??"User import",capturedAt:new Date().toISOString(),event:body.event??null,tipster:body.tipster??null,metadata:body.metadata??{},status:"unverified"};
-  await put("tips",id,tip);\n  await put("library/human-tips",id,tip);
+  await put("tips",id,tip);
+  await put("library/human-tips",id,tip);
   return Response.json(tip,{status:201});
 };
 export const config={path:"/api/tips"};
