@@ -193,7 +193,7 @@ function normalizeCandidate(value: any, source: string, index: number) {
   const sourceType = source === "scout_report" ? "SCOUT_REPORT_NEEDS_SECONDARY_VERIFICATION" : "USER_SUPPLIED";
   return {
     eventId: "evt-" + slug(event) + "-" + index,
-    event, sport, country, competition, startTime, status,
+    event, sport, country, competition, startTime, status, clubs, players,
     sourceType, sourceUrl: url.startsWith("https://") ? url : undefined,
     observedMarket: text(value?.market),
     observedSelection: text(value?.selection),
@@ -324,6 +324,8 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
     nodeCounts: {
       sports: sports.length, sportCountryBranches: countries.length,
       competitions: competitions.length, events: candidates.length,
+      clubs: nodes.filter(n => n.tier === "T4").length,
+      players: nodes.filter(n => n.tier === "T5").length,
       eventSpecialistAssignments: candidates.length * EVENT_SPECIALISTS.length,
       departmentApiRequests: WIN_DEPARTMENTS.length,
       hierarchySpecialistAssignmentsAreIndependentApiSessions: false
