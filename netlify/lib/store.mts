@@ -24,3 +24,6 @@ export async function list<T>(kind: string, limit = 100): Promise<T[]> {
 export async function append(kind: string, id: string, value: unknown) {
   return put(kind, id, value);
 }
+export async function remove(kind: string, id: string) {
+  await store().delete(key(kind, id));
+}
