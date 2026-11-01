@@ -29,14 +29,14 @@ The graph creates only nodes supported by verified public sources or user-suppli
 
 - **Tier 0:** Worker Network Director.
 - **Tier 1:** Sport Agent — sport-specific rules, formats, metrics and methods.
-- **Tier 2:** Country Agent per relevant sport × country.
+- **Tier 2:** One persistent Country Agent per country, shared across the sports represented in its research scope.
 - **Tier 3:** League / Competition Agent per sport × country × competition/tour/series.
 - **Tier 4:** Club / Team Agent — squad, management, tactics, results, home/away splits, availability and performance.
 - **Tier 5:** Player / Athlete Agent — match-by-match record, minutes, role, goals/assists or sport-specific output, discipline/cards, injuries, availability and performance trends.
 - **Tier 6:** Match / Event Agent — the complete event dossier connected to relevant club and player profiles.
 - **Tier 7:** Event specialist assignments for identity/schedule, form, availability, tactics, competition context, venue/conditions, data quality, FOR, AGAINST, contrarian review, sport-specific statistics and price context.
 
-The system does not invent full rosters or pre-create every unknown country, club or athlete. Stable agent profiles are created when an entity is actually identified in source material or supplied by the user. The entity agent is a persistent identity and scoped memory; its review is routed through the responsible department request, not misrepresented as a separate always-running model process.
+The system does not invent full rosters or pre-create every unknown country, club or athlete. A country has one persistent country-agent identity shared across its sport branches. Stable club, player and event profiles are created when an entity is identified in reliable source material or supplied by the user. When available, source-provided provider IDs anchor canonical identity and aliases are retained; without an ID, ambiguous same-name entities are not automatically merged. A player profile can follow a transfer across clubs when a stable provider ID supports the link. The entity agent is a persistent identity and scoped memory; its review is routed through the responsible department request, not misrepresented as a separate always-running model process.
 
 ### Eight main departments
 
@@ -60,13 +60,13 @@ This is the actual count of independent model API requests. The persistent Sport
 
 ## Expanded WIN agent federation
 
-Every identified sports entity receives a stable, persistent, on-demand agent identity and a scoped dossier. The graph is built from confirmed/user-supplied entities; it does not fabricate a complete world roster or pre-create every unknown athlete.
+Every identified sports entity receives a stable, persistent, on-demand agent identity and a scoped dossier. Each country has one shared identity across sports. The graph is built from confirmed/user-supplied entities; it does not fabricate a complete world roster or pre-create every unknown athlete. Provider IDs and sourced aliases are retained when available to support canonical identity and historical club/player relationships.
 
 | Tier | Persistent agent identity | Research remit |
 | --- | --- | --- |
 | T0 | Worker Network Director | Scope, task graph, source routing and handoffs |
 | T1 | Sport Agent | Sport rules, metrics, formats, tactical and statistical methods |
-| T2 | Country Agent | Country context, governing bodies and local competition structure |
+| T2 | Country Agent | One shared identity per country across sports; governing context, governing bodies and local competition structure |
 | T3 | League / Competition Agent | Format, standings, incentives, schedule and historical context |
 | T4 | Club / Team Agent | Squad, management, tactics, results, home/away splits and availability |
 | T5 | Player / Athlete Agent | Match-by-match record, minutes, goals/assists or sport-specific output, discipline, injury, availability and performance trends |
