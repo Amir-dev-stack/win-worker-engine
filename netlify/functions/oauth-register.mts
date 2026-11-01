@@ -3,12 +3,12 @@ import { randomUUID } from "node:crypto";
 import { saveOAuthRecord } from "../lib/oauth-store.mts";
 
 function validRedirect(value: unknown): value is string {
-  if (typeof value !== "string") return false;
+  if (typeof value !== "string" || value.length > 2048) return false;
   try {
     const url = new URL(value);
     if (url.username || url.password || url.search || url.hash) return false;
 
-    // ChatGPT hosted callbacks for the ChatGPT web connector.
+    // Hosted ChatGPT OAuth callback.
     if (url.protocol === "https:" && url.hostname === "chatgpt.com") {
       return url.pathname === "/connector_platform_oauth_redirect" ||
         /^\/connector\/oauth\/[A-Za-z0-9_-]+$/.test(url.pathname);
@@ -17,20 +17,29 @@ function validRedirect(value: unknown): value is string {
       return url.pathname.startsWith("/aip/");
     }
 
-    // Codex / ChatGPT Desktop uses an ephemeral local loopback port.
-    // RFC 8252 permits variable ports for native-app loopback redirects.
-    // Restrict this exception to the exact IPv4 loopback host and callback path.
-    if (url.protocol === "http:" && url.hostname === "127.0.0.1") {
-      return /^\/callback\/[A-Za-z0-9_-]+$/.test(url.pathname);
+    // Native clients use an ephemeral loopback port (RFC 8252).
+    // Permit the standard /callback path and an optional opaque callback id,
+    // but never arbitrary paths, non-loopback hosts, credentials or query data.
+    const loopbackHost = url.hostname === "127.0.0.1" ||
+      url.hostname === "localhost" || url.hostname === "[::1]";
+    if (url.protocol === "http:" && loopbackHost) {
+      return url.pathname === "/callback" ||
+        /^\/callback\/[A-Za-z0-9_-]+$/.test(url.pathname);
     }
     return false;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 export default async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
   let body: any;
-  try { body = await req.json(); } catch { return Response.json({ error: "invalid_client_metadata" }, { status: 400 }); }
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: "invalid_client_metadata" }, { status: 400 });
+  }
 
   const redirectUris = Array.isArray(body?.redirect_uris) ? body.redirect_uris : [];
   if (!redirectUris.length || redirectUris.length > 10 || !redirectUris.every(validRedirect)) {
@@ -39,7 +48,8 @@ export default async (req: Request) => {
   if (body.token_endpoint_auth_method && body.token_endpoint_auth_method !== "none") {
     return Response.json({ error: "unsupported_token_endpoint_auth_method" }, { status: 400 });
   }
-  if (Array.isArray(body.grant_types) && body.grant_types.some((x: string) => !["authorization_code", "refresh_token"].includes(x))) {
+  if (Array.isArray(body.grant_types) &&
+      body.grant_types.some((x: string) => !["authorization_code", "refresh_token"].includes(x))) {
     return Response.json({ error: "unsupported_grant_type" }, { status: 400 });
   }
   if (Array.isArray(body.response_types) && body.response_types.some((x: string) => x !== "code")) {
