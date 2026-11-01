@@ -130,7 +130,7 @@ The dashboard includes a historical random-coupon experiment runner. It accepts 
 
 Each generated coupon uses at most one selection per event. Simulated winning, losing and void/other coupon batches are stored separately under `library/simulation-winning-coupons`, `library/simulation-losing-coupons` and `library/simulation-other-coupons`. Run summaries and exploratory candidate findings are stored in `library/simulation-runs` and `library/simulation-lessons`. These collections are never merged with real human/STS coupon collections.
 
-**Interpretation limit:** this first simulation mode randomly recombines known historical picks with known settled outcomes. It is useful for studying accumulator fragility, leg-count effects and recurring losing selections, but it is not a pre-match prediction model, a chronological out-of-sample backtest or proof of a future betting edge. Candidate findings remain unvalidated. A separate time-ordered strategy backtester with training/validation/holdout periods is required before claiming predictive performance.
+**Interpretation limit:** this first simulation mode randomly recombines known historical picks with known settled outcomes. It is useful for studying accumulator fragility, leg-count effects and recurring losing selections, but it is not a pre-match prediction model, a chronological out-of-sample backtest or proof of a future betting edge. Candidate findings remain unvalidated. A separate time-ordered strategy backtester with chronological training/validation/holdout periods is now implemented. Its retrospective results still do not prove predictive performance; prospective frozen paper tracking is required.
 
 REST:
 - GET|POST `/api/simulations`
