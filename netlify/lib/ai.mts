@@ -1,4 +1,5 @@
 import { WIN_DEPARTMENTS, buildWorkerNetwork } from "./worker-org.mts";
+import { reserveAIRequest, settleAIRequest, releaseAIRequest } from "./ai-budget.mts";
 
 export type Citation = { title?: string; url?: string; snippet?: string };
 export type WorkerReport = {
@@ -185,7 +186,8 @@ async function askWorker(
   const startedAt = new Date().toISOString();
   const workerId = crypto.randomUUID();
   const apiKey = Netlify.env.get("OPENAI_API_KEY");
-  const model = Netlify.env.get("OPENAI_MODEL");
+  const configuredModel = Netlify.env.get("OPENAI_MODEL");
+  const model = phase === "scheduled_scout" ? "gpt-6-luna" : configuredModel;
   const failed = (error: string): WorkerReport => ({
     workerId, role, phase, departmentId: department?.id, status: "failed",
     report: "", citations: [], error, startedAt, completedAt: new Date().toISOString()
@@ -206,6 +208,8 @@ async function askWorker(
   if (phase === "initial_scout") {
     input = "Original WIN brief:\n" + JSON.stringify(brief) +
       "\nPerform Department D1 Public Offer & Scouting first. Discover only bounded, relevant public candidates. Produce the machine-readable WIN_CANDIDATES_JSON block exactly as specified in your assignment. No other department conclusion is final at this stage.";
+  } else if (phase === "scheduled_scout") {
+    input = "Perform a small, time-bounded public fixture and pre-match offer scan for the next 24 hours across sports. Return up to 10 candidates only, exact source URLs and timestamps, and clear coverage gaps. Do not construct a coupon or make betting recommendations. Include the required WIN_CANDIDATES_JSON block.\\n" + JSON.stringify(brief);
   } else if (phase === "department") {
     input = "Original WIN brief plus the completed scouting handoff and dynamically built worker network. Perform only your assigned department review independently; do not copy conclusions from other department reports.\n" +
       JSON.stringify(brief);
@@ -228,19 +232,39 @@ async function askWorker(
   }
 
   try {
-    const body: any = { model, instructions, input, store: false };
+    const maxOutputTokens = phase === "scheduled_scout" ? 600 : 1000;
+    const maxToolCalls = phase === "scheduled_scout" ? 1 : 2;
+    const budgetId = crypto.randomUUID();
+    const budget = await reserveAIRequest({
+      id: budgetId, model, phase, inputChars: instructions.length + input.length,
+      maxOutputTokens, maxToolCalls,
+      maxInputChars: phase === "scheduled_scout" ? 12000 : 25000
+    });
+    if (!budget.allowed) throw new Error(budget.reason);
+    let budgetSettled = false;
+    const body: any = { model, instructions, input, store: false, max_output_tokens: maxOutputTokens, max_tool_calls: maxToolCalls };
     if (webSearch) {
-      body.tools = [{ type: "web_search" }];
+      body.tools = [{ type: "web_search", return_token_budget: "default" }];
       body.tool_choice = "required";
       body.include = ["web_search_call.action.sources"];
     }
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(90_000)
     });
     const data: any = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || "Responses API returned HTTP " + response.status);
+    if (!response.ok) {
+      if (response.status >= 500) await settleAIRequest(budgetId, null, 0, true);
+      else await releaseAIRequest(budgetId, "OpenAI rejected request with HTTP " + response.status);
+      budgetSettled = true;
+      throw new Error(data.error?.message || "Responses API returned HTTP " + response.status);
+    }
+    const webSearchRequests = Number(data.tool_usage?.web_search?.num_requests ??
+      (data.output ?? []).filter((item: any) => item.type === "web_search_call").length);
+    await settleAIRequest(budgetId, data.usage, webSearchRequests);
+    budgetSettled = true;
     return {
       workerId, role, phase, departmentId: department?.id,
       assignedTeams: department ? WIN_DEPARTMENTS.find(d => d.id === department.id)?.teams : undefined,
