@@ -40,8 +40,12 @@ const [html, app, ai, org, mcp, authMeta, authorize, runner, library, libraryApi
   readFile("netlify/functions/sources.mts", "utf8")
 ]);
 
+const simulation = await readFile("netlify/lib/simulation.mts", "utf8");
+
 const checks = [
   [html.includes("WIN Worker Engine"), "Dashboard title is missing."],
+  [simulation.includes("Math.min(50") && simulation.includes("performanceByLegCount"), "WIN 2–50 leg experiment sweep is missing."],
+  [sourceLibrary.includes('import { get, list, put }'), "Tipster source report list dependency is missing."],
   [html.includes("build_latest_coupon") && html.includes("compare_coupons"), "Dashboard coupon task modes are missing."],
   [app.includes("workerNetwork") && app.includes("/api/runs/"), "Dashboard worker-network report view is missing."],
   [ai.includes("WIN_DEPARTMENTS") && ai.includes("runGlobalMaster"), "WIN department orchestration is missing."],
