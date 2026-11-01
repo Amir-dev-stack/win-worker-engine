@@ -153,10 +153,22 @@ export default async (req: Request) => {
     const libraryArchive = await archiveRunToLibrary({ ...completed, libraryArchive: undefined });
     await put("runs", run.id, { ...completed, libraryArchive });
   } catch (error) {
-    await put("runs", run.id, {
-      ...run, status: "failed", error: String(error),
-      updatedAt: new Date().toISOString()
-    });
+    const latest = await get<any>("runs", run.id) ?? run;
+    const failedRun = {
+      ...latest, status: "failed", error: String(error),
+      updatedAt: new Date().toISOString(),
+      libraryArchive: { status: "archive_attempted_after_failure" }
+    };
+    await put("runs", run.id, failedRun);
+    try {
+      const libraryArchive = await archiveRunToLibrary(failedRun);
+      await put("runs", run.id, { ...failedRun, libraryArchive });
+    } catch (archiveError) {
+      await put("library/archive-failures", run.id, {
+        id: run.id, runId: run.id, error: String(archiveError),
+        originalError: String(error), recordedAt: new Date().toISOString()
+      });
+    }
   }
   return new Response(null, { status: 202 });
 };
