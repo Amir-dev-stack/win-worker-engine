@@ -209,8 +209,8 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
     inputSchema: {
       selections: z.array(z.any()).min(2).max(10000),
       couponCount: z.number().int().min(100).max(100000).optional(),
-      minLegs: z.number().int().min(2).max(10).optional(),
-      maxLegs: z.number().int().min(2).max(10).optional(),
+      minLegs: z.number().int().min(2).max(50).optional(),
+      maxLegs: z.number().int().min(2).max(50).optional(),
       seed: z.string().optional()
     },
     securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
