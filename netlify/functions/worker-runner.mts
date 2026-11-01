@@ -144,12 +144,14 @@ export default async (req: Request) => {
     await put("runs", run.id, completed);
 
     const predictionId = crypto.randomUUID();
-    await put("predictions", predictionId, {
+    const prediction = {
       id: predictionId, runId: run.id, recordedAt: new Date().toISOString(),
       frozen: true, brief, decision: completed.decision,
       workerResponseIds: [...reports, ...debate, master].map(x => x.responseId).filter(Boolean),
       workerNetworkSummary: networkAfterDebate.executionSummary
-    });
+    };
+    await put("predictions", predictionId, prediction);
+    await put("library/frozen-predictions", predictionId, prediction);
     const libraryArchive = await archiveRunToLibrary({ ...completed, libraryArchive: undefined });
     await put("runs", run.id, { ...completed, libraryArchive });
   } catch (error) {
