@@ -121,7 +121,7 @@ async function refresh(){
   await refreshSimulations();
  }catch(e){$("#apiStatus").textContent="Authentication needed";$("#runsList").textContent=e.message}
 }
-$("#saveToken").addEventListener("click",e=>{e.preventDefault();token=$("#tokenInput").value.trim();if(token){sessionStorage.setItem("win-token",token);dialog.close();refresh()}});
+$("#saveToken").addEventListener("click",e=>{e.preventDefault();token=$("#tokenInput").value.trim();if(token){sessionStorage.setItem("win-token",token);dialog.close();refresh();refreshSources()}});
 $("#runForm").addEventListener("submit",async e=>{
  e.preventDefault();
  const form=e.currentTarget;
