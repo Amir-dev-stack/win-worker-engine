@@ -12,6 +12,10 @@ const required = [
   "netlify/functions/oauth-register.mts",
   "netlify/functions/oauth-token.mts",
   "netlify/functions/worker-runner.mts",
+  "netlify/functions/hourly-monitor.mts",
+  "netlify/functions/scheduled-scout-runner.mts",
+  "netlify/functions/ai-budget.mts",
+  "netlify/lib/ai-budget.mts",
   "netlify/functions/simulations.mts",
   "netlify/functions/simulation-runner.mts",
   "netlify/functions/sources.mts",
@@ -41,9 +45,21 @@ const [html, app, ai, org, mcp, authMeta, authorize, runner, library, libraryApi
 ]);
 
 const simulation = await readFile("netlify/lib/simulation.mts", "utf8");
+const [aiBudget, hourlyMonitor, scheduledRunner, budgetApi, health] = await Promise.all([
+  readFile("netlify/lib/ai-budget.mts", "utf8"),
+  readFile("netlify/functions/hourly-monitor.mts", "utf8"),
+  readFile("netlify/functions/scheduled-scout-runner.mts", "utf8"),
+  readFile("netlify/functions/ai-budget.mts", "utf8"),
+  readFile("netlify/functions/health.mts", "utf8")
+]);
 
 const checks = [
   [html.includes("WIN Worker Engine"), "Dashboard title is missing."],
+  [aiBudget.includes("OPERATING_LIMIT_USD = 4.95") && aiBudget.includes("reserveAIRequest") && aiBudget.includes("onlyIfNew"), "Fail-closed monthly AI budget controller is missing."],
+  [hourlyMonitor.includes("schedule: \"0 * * * *\"") && hourlyMonitor.includes("12 * 60 * 60 * 1000"), "Balanced hourly monitor / 12-hour scout schedule is missing."],
+  [scheduledRunner.includes("runScheduledScout") && scheduledRunner.includes("authorized(req)"), "Authenticated background scheduled scout runner is missing."],
+  [budgetApi.includes("/api/ai-budget") && budgetApi.includes("getAIbudgetStatus"), "Authenticated AI budget status endpoint is missing."],
+  [health.includes("scheduled_hourly"), "Health endpoint does not disclose scheduled monitoring."],
   [simulation.includes("Math.min(50") && simulation.includes("const minLegs=Math.min(50") && simulation.includes("performanceByLegCount"), "WIN 2–50 leg experiment sweep is missing."],
   [sourceLibrary.includes('import { get, list, put }'), "Tipster source report list dependency is missing."],
   [html.includes("build_latest_coupon") && html.includes("compare_coupons"), "Dashboard coupon task modes are missing."],
