@@ -9,7 +9,7 @@
 <div class="shell">
 <aside class="sidebar">
 <div class="brand"><div class="mark">W</div><div><b>WIN</b><small>WORKER ENGINE</small></div></div>
-<nav><a class="active" href="#overview">Overview</a><a href="#connections">Connections</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#ledger">Prediction ledger</a></nav>
+<nav><a class="active" href="#overview">Overview</a><a href="#connections">Connections</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#library">Knowledge library</a><a href="#ledger">Prediction ledger</a></nav>
 <div class="side-bottom"><span class="pulse"></span> Engine console <small>On-demand research · no automatic betting</small></div>
 </aside>
 <main>
@@ -43,6 +43,21 @@
 <section class="columns">
 <section class="panel" id="tips"><div class="panel-head"><div><div class="eyebrow">SOURCE INTELLIGENCE</div><h2>Human tip imports</h2></div></div><form id="tipForm" class="compact"><input name="tip" required placeholder="Paste a public / authorized tip"><input name="sourceUrl" placeholder="Source URL"><input name="tipster" placeholder="Tipster name (optional)"><button type="submit">Save tip</button></form><div id="tipsList" class="mini-list"></div></section>
 <section class="panel" id="ledger"><div class="panel-head"><div><div class="eyebrow">LONG-TERM LEARNING</div><h2>Prediction ledger</h2></div></div><div id="ledgerList" class="empty">No frozen forecasts yet.</div></section>
+</section>
+<section class="panel" id="library">
+<div class="panel-head"><div><div class="eyebrow">SHARED LONG-TERM MEMORY</div><h2>WIN Knowledge Library</h2><p>Winning and losing human coupons, pending cases, lessons and persistent sport/entity agent profiles.</p></div><span class="tag">PRIVATE · PERSISTENT</span></div>
+<div class="two">
+<label>Collection<select id="libraryCategory"><option value="all">All library records</option><option value="winning">Winning coupons</option><option value="losing">Losing coupons</option><option value="pending">Pending / other outcomes</option><option value="lessons">Learning notes</option><option value="entities">Entity profiles</option><option value="agents">Agent profiles</option><option value="runs">Archived research runs</option></select></label>
+<label>Search library<input id="libraryQuery" placeholder="Team, player, competition, market…"></label>
+</div>
+<div class="form-foot"><span id="libraryStatus">Search results from the private WIN store.</span><button type="button" class="subtle" id="refreshLibrary">Refresh library ↻</button></div>
+<form id="couponForm" class="compact">
+<input name="label" placeholder="Coupon label (optional)">
+<textarea name="couponText" rows="4" required placeholder="Paste the complete human coupon: events, selections, markets, odds and any visible reference details. New imports are stored as pending until settlement is verified."></textarea>
+<input name="notes" placeholder="Notes or source reference (optional)">
+<button type="submit">Save human coupon to library</button>
+</form>
+<div id="libraryList" class="mini-list"><div class="empty">Connect to WIN to load the knowledge library.</div></div>
 </section>
 <footer>WIN Worker Engine · Runs when requested · Evidence and research support only · Never places bets automatically.</footer>
 </main>
