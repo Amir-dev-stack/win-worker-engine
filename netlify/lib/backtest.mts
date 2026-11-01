@@ -172,6 +172,7 @@ export async function runStrategyBacktest(input: any) {
       duplicateEventsExcluded,
       everyOddsTimestampPreEvent: true,
       sourceProvenanceRequired: true,
+      sourceReferencesIndependentlyVerified: false,
       chronologicalSplit: true
     },
     timeWindows: {
