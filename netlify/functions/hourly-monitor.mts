@@ -18,7 +18,9 @@ export default async (_req: Request, context: Context) => {
   let scoutStatus = "not_due";
   let scoutRunId: string | null = state.lastScoutRunId || null;
 
-  if (scoutDue && budget.remainingUsd >= 0.03 && Netlify.env.get("OPENAI_API_KEY")) {
+  const aiBudgetApproved = Netlify.env.get("WIN_AI_BUDGET_APPROVED") === "true";
+
+  if (scoutDue && aiBudgetApproved && budget.remainingUsd >= 0.03 && Netlify.env.get("OPENAI_API_KEY")) {
     const runId = crypto.randomUUID();
     const brief = {
       taskType: "scheduled_scout",
@@ -53,6 +55,8 @@ export default async (_req: Request, context: Context) => {
         await put("runs", runId, { id: runId, status: "failed", createdAt, updatedAt: nowIso, brief, error: "Scheduled scout queue returned HTTP " + response.status });
       }
     }
+  } else if (scoutDue && !aiBudgetApproved) {
+    scoutStatus = "blocked_budget_approval_required";
   } else if (scoutDue && budget.remainingUsd < 0.03) {
     scoutStatus = "skipped_budget_guard";
   } else if (scoutDue && !Netlify.env.get("OPENAI_API_KEY")) {
