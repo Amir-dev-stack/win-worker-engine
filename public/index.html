@@ -47,6 +47,21 @@
 <div class="form-foot"><span>Latest-coupon tasks compare bounded public candidates. Exact STS prices must be verified. No forced odds target or weak filler legs.</span><button type="submit">Launch WIN research <b>↗</b></button></div>
 </form>
 </section>
+<section class="panel" id="sourceIntelligence">
+<div class="panel-head"><div><div class="eyebrow">PUBLIC TIPSTER INTELLIGENCE</div><h2>Source registry & coupon imports</h2><p>Track source permissions and import human-created coupons from public pages, user-provided snapshots or authorized exports. Automated collection stays disabled until approved.</p></div><span class="tag">PERMISSION-GATED</span></div>
+<div id="sourceRegistry" class="mini-list"><div class="empty">Loading source permissions…</div></div>
+<div class="form-foot"><span id="sourceImportStatus">Imported coupons are saved as pending until settlement is verified.</span><button type="button" class="subtle" id="refreshSources">Refresh sources ↻</button></div>
+<form id="sourceImportForm" class="run-form">
+<div class="two"><label>Source<select name="sourceId" required><option value="sts-strefa-inspiracji">STS Strefa Inspiracji</option><option value="tippium">Tippium</option><option value="blogabet">Blogabet</option><option value="tipstrr">Tipstrr</option><option value="oddra">Oddra</option></select></label><label>Tipster display name (optional)<input name="tipsterName" placeholder="Public display name"></label></div>
+<label>Public coupon/profile URL<input name="sourceUrl" type="url" placeholder="https://…" required></label>
+<div class="two"><label>Publication time (optional)<input name="publishedAt" placeholder="ISO timestamp or displayed date/time"></label><label>Sport / competition<input name="competition" placeholder="Football · Premier League"></label></div>
+<label>Coupon details<textarea name="couponText" rows="5" required placeholder="Paste the complete human-created coupon: fixtures, markets, picks and displayed odds."></textarea></label>
+<label>Selections JSON (optional)<textarea name="selections" rows="4" placeholder='[{"event":"Team A vs Team B","market":"Over 1.5","pick":"Over 1.5","odds":1.35}]'></textarea></label>
+<label>Visible source snapshot (optional)<textarea name="sourceSnapshot" rows="3" placeholder="Paste only content you are entitled to provide and retain. Do not include private data, cookies or credentials."></textarea></label>
+<label class="check-row"><input name="authorizedToStore" type="checkbox" required> I confirm I am entitled to provide and retain this coupon information.</label>
+<div class="form-foot"><span>WIN will not log into third-party accounts or bypass platform restrictions. Imported records begin as PENDING.</span><button type="submit">Import coupon into WIN ↗</button></div>
+</form>
+</section>
 <section class="panel" id="simulations">
 <div class="panel-head"><div><div class="eyebrow">HISTORICAL EXPERIMENTS</div><h2>WIN Simulation Lab</h2><p>Generate random coupon combinations from real, settled historical selections. Experimental results stay separate from real STS and human coupons.</p></div><span class="tag">HISTORICAL DATA ONLY</span></div>
 <form id="simulationForm" class="run-form">
