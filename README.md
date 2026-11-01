@@ -23,18 +23,20 @@ A queued run is not a completed run. ChatGPT should read the run again until it 
 - **Executive Coordination Office** — creates run scope, task ID, objective, date/time window and task constraints.
 - **Independent Multi-Worker Operations & Federation Department (IMWFD)** — Worker Network Director, dynamic task graph, source/evidence routing, task statuses and department handoffs.
 
-### Dynamic event hierarchy
+### Dynamic entity and event hierarchy
 
-The worker graph creates only nodes supported by the supplied brief or scouting results:
+The graph creates only nodes supported by verified public sources or user-supplied material. Each identified entity receives a stable, persistent agent profile, activated only when needed:
 
 - **Tier 0:** Worker Network Director.
-- **Tier 1:** Sport / Discipline Chief.
-- **Tier 2:** Country Chief per relevant sport × country.
-- **Tier 3:** League / Competition Chief per relevant sport × country × league/tour/series.
-- **Tier 4:** Match / Event Chief for each distinct fixture or event.
-- **Tier 5:** Event specialist assignments for identity/schedule, form, availability, tactics, competition context, venue/conditions, data quality, FOR, AGAINST, contrarian review, sport-specific statistics and price context.
+- **Tier 1:** Sport Agent — sport-specific rules, formats, metrics and methods.
+- **Tier 2:** Country Agent per relevant sport × country.
+- **Tier 3:** League / Competition Agent per sport × country × competition/tour/series.
+- **Tier 4:** Club / Team Agent — squad, management, tactics, results, home/away splits, availability and performance.
+- **Tier 5:** Player / Athlete Agent — match-by-match record, minutes, role, goals/assists or sport-specific output, discipline/cards, injuries, availability and performance trends.
+- **Tier 6:** Match / Event Agent — the complete event dossier connected to relevant club and player profiles.
+- **Tier 7:** Event specialist assignments for identity/schedule, form, availability, tactics, competition context, venue/conditions, data quality, FOR, AGAINST, contrarian review, sport-specific statistics and price context.
 
-These chiefs and specialist positions are tracked in the run's worker-network manifest and routed to the responsible department pass. They are not counted as extra autonomous model sessions. Each event's specialist checklist is covered by its department report.
+The system does not invent full rosters or pre-create every unknown country, club or athlete. Stable agent profiles are created when an entity is actually identified in source material or supplied by the user. The entity agent is a persistent identity and scoped memory; its review is routed through the responsible department request, not misrepresented as a separate always-running model process.
 
 ### Eight main departments
 
