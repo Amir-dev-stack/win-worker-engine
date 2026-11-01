@@ -111,8 +111,9 @@ export default async (req: Request) => {
     await put("runs", run.id, withDebate);
 
     const missingLibraryReceipts = reports.filter(x => ["D6", "D7"].includes(x.departmentId) && !hasLibraryReviewReceipt(x.report || "")).map(x => x.departmentId + " mandatory library review receipt missing or invalid");
-    const failed = [...reports, ...debate].filter(x => x.status !== "completed" || !x.report?.trim());\n    const gateFailures = [...failed.map(x => (x.departmentId ? x.departmentId + " — " : "") + x.role + ": " + (x.error || "empty report")), ...missingLibraryReceipts];
-    const master = failed.length
+    const failed = [...reports, ...debate].filter(x => x.status !== "completed" || !x.report?.trim());
+    const gateFailures = [...failed.map(x => (x.departmentId ? x.departmentId + " — " : "") + x.role + ": " + (x.error || "empty report")), ...missingLibraryReceipts];
+    const master = failed.length || missingLibraryReceipts.length
       ? {
           workerId: crypto.randomUUID(),
           role: "WIN Global Master — deterministic Low-Risk Gate",
