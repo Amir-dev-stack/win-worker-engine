@@ -110,7 +110,7 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
     title: "Search WIN Knowledge Library",
     description: "Search the private WIN library: winning, losing and pending human coupons, lessons, entity/agent profiles, observations and archived research. Mandatory before coupon construction.",
     inputSchema: {
-      category: z.enum(["all", "winning", "losing", "pending", "coupons", "lessons", "entities", "agents", "observations", "runs"]).optional(),
+      category: z.enum(["all", "winning", "losing", "pending", "coupons", "lessons", "entities", "agents", "observations", "runs", "tips", "notes", "coupon-history", "coupon-cases", "predictions", "results"]).optional(),
       query: z.string().optional(), sport: z.string().optional(),
       entityType: z.enum(["sport", "country", "league", "club", "player", "event"]).optional(),
       limit: z.number().int().min(1).max(100).optional()
