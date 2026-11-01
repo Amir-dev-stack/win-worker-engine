@@ -15,6 +15,7 @@ function hasLibraryReviewReceipt(report: string): boolean {
     return receipt?.reviewed === true &&
       Array.isArray(receipt.winningRecordIds) &&
       Array.isArray(receipt.losingRecordIds) &&
+      Array.isArray(receipt.validatedLessonIds) &&
       Array.isArray(receipt.emptyCollections);
   } catch { return false; }
 }
