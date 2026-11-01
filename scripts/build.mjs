@@ -20,7 +20,7 @@ const required = [
 
 for (const file of required) await access(file);
 
-const [html, app, ai, org, mcp, authMeta, authorize, runner] = await Promise.all([
+const [html, app, ai, org, mcp, authMeta, authorize, runner, library, libraryApi] = await Promise.all([
   readFile("public/index.html", "utf8"),
   readFile("public/app.js", "utf8"),
   readFile("netlify/lib/ai.mts", "utf8"),
@@ -28,7 +28,9 @@ const [html, app, ai, org, mcp, authMeta, authorize, runner] = await Promise.all
   readFile("netlify/functions/mcp.mts", "utf8"),
   readFile("netlify/functions/oauth-metadata.mts", "utf8"),
   readFile("netlify/functions/oauth-authorize.mts", "utf8"),
-  readFile("netlify/functions/worker-runner.mts", "utf8")
+  readFile("netlify/functions/worker-runner.mts", "utf8"),
+  readFile("netlify/lib/library.mts", "utf8"),
+  readFile("netlify/functions/library.mts", "utf8")
 ]);
 
 const checks = [
@@ -44,7 +46,13 @@ const checks = [
   [runner.includes("getMandatoryLearningPack") && runner.includes("archiveRunToLibrary"), "Library pre-review and archival are missing."],
   [authMeta.includes("authorization_response_iss_parameter_supported: true"), "OAuth issuer identification is missing."],
   [authorize.includes('callback.searchParams.set("iss", WIN_ISSUER)'), "OAuth callback does not echo the issuer."],
-  [runner.includes("runIndependentWorkers") && runner.includes("runDebate") && runner.includes("runGlobalMaster"), "Full WIN execution pipeline is missing."]
+  [runner.includes("runIndependentWorkers") && runner.includes("runDebate") && runner.includes("runGlobalMaster"), "Full WIN execution pipeline is missing."],
+  [org.includes('tier: "T4"') && org.includes('tier: "T5"') && org.includes('tier: "T6"') && org.includes("club_dossier") && org.includes("player_dossier"), "Persistent club/player agent hierarchy is incomplete."],
+  [library.includes("getMandatoryLearningPack") && library.includes("archiveRunToLibrary") && library.includes("winning-coupons") && library.includes("losing-coupons"), "Persistent split coupon library is incomplete."],
+  [libraryApi.includes('path: "/api/library"') && libraryApi.includes("save_coupon") && libraryApi.includes("settle_coupon"), "Authenticated WIN library API is incomplete."],
+  [app.includes('id="library"') && app.includes("refreshLibrary") && app.includes("save_human_coupon"), "WIN library dashboard is incomplete."],
+  [runner.includes("hasLibraryReviewReceipt") && runner.includes("libraryReviewGate") && runner.includes("missingLibraryReceipts"), "Mandatory library review gate is missing."]
+
 ];
 
 for (const [passed, error] of checks) if (!passed) throw new Error(error);
