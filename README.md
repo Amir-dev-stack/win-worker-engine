@@ -115,6 +115,28 @@ The authenticated REST endpoint is `GET|POST /api/library`. The OAuth-protected 
 
 All library access is private and requires authenticated WIN access. The library is persistent storage, not a 24/7 AI process: no cron/scheduler or paid always-on worker is used. Records remain stored between runs and deploys. However, a free hosting plan cannot guarantee uninterrupted API availability: if Netlify pauses the team after its monthly credits are exhausted, the library API cannot be reached until the site resumes. Storage and API use remain subject to the host's quotas. Netlify Blobs is key/value object storage, not a transactional relational database; this remains a single-operator MVP.
 
+## Historical Simulation Lab
+
+The dashboard includes a historical random-coupon experiment runner. It accepts 2–10,000 supplied historical selections and generates 100–100,000 reproducible coupon combinations in a background function. Each input selection must contain:
+
+- `id`, `eventId`, `event`, `sport`, `market`, `pick`
+- decimal `odds` and an individually settled `result` (`won`, `lost` or `void`)
+- `eventStart` and `oddsCapturedAt` timestamps; odds capture must precede event start
+- `oddsSource` and `resultSource` provenance references
+
+Each generated coupon uses at most one selection per event. Simulated winning, losing and void/other coupon batches are stored separately under `library/simulation-winning-coupons`, `library/simulation-losing-coupons` and `library/simulation-other-coupons`. Run summaries and exploratory candidate findings are stored in `library/simulation-runs` and `library/simulation-lessons`. These collections are never merged with real human/STS coupon collections.
+
+**Interpretation limit:** this first simulation mode randomly recombines known historical picks with known settled outcomes. It is useful for studying accumulator fragility, leg-count effects and recurring losing selections, but it is not a pre-match prediction model, a chronological out-of-sample backtest or proof of a future betting edge. Candidate findings remain unvalidated. A separate time-ordered strategy backtester with training/validation/holdout periods is required before claiming predictive performance.
+
+REST:
+- GET|POST `/api/simulations`
+- GET `/api/simulations?category=winning|losing|other&runId=<id>`
+
+MCP:
+- `run_historical_coupon_simulation`
+
+The dashboard accepts a JSON array of selection records. Do not use invented results, fabricated odds, or post-event odds timestamps. A screenshot of a settled coupon is not enough to classify every leg unless each individual market result can be independently determined.
+
 ## On-demand coupon task modes
 
 The MCP tool `start_research_run` supports:
@@ -198,7 +220,7 @@ All REST routes require `Authorization: Bearer <WIN_INTERNAL_TOKEN>`, except hea
 
 - Public STS availability may not include every market or price. The system reports its scan scope and gaps; it is not a complete authenticated STS offer feed.
 - Strefa Inspiracji is not automatically scraped. Import public/authorized tip details or include login-only material supplied by the account holder.
-- The user-supplied settlement evidence remains necessary until an official results/settlement provider is integrated.
+- The user-supplied settlement evidence remains necessary until an official results/settlement provider is integrated.\n- The Simulation Lab currently performs historical coupon recombination, not predictive strategy backtesting.\n- Public human-tipster coupon capture is provenance-aware but still requires public/authorized source material to be imported; there is no unattended crawler or 24/7 scraper.
 - Netlify Blobs is object storage, not a relational/transactional database. This remains a single-operator MVP; migrate to managed Postgres before high-volume concurrent use.
 - ChatGPT plugin OAuth authorization and a real research run still need an end-to-end live test before the integration is described as fully verified.
 
