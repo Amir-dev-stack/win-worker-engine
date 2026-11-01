@@ -120,9 +120,12 @@ export default async (req: Request) => {
 
     // Calculate the receipt gate BEFORE building objects that use it. Keep the same
     // gated network in the intermediate and final run so the gate cannot be lost.
-    const missingLibraryReceipts = reports
-      .filter(x => ["D6", "D7"].includes(x.departmentId) && !hasLibraryReviewReceipt(x.report || "", libraryReview))
-      .map(x => x.departmentId + " mandatory library review receipt missing, incomplete or invalid");
+    const missingLibraryReceipts = [
+      ...reports.filter(x => !hasLibraryReviewReceipt(x.report || "", libraryReview))
+        .map(x => (x.departmentId || x.role) + " mandatory library review receipt missing, incomplete or invalid"),
+      ...debate.filter(x => !hasLibraryReviewReceipt(x.report || "", libraryReview))
+        .map(x => (x.role || "adversarial reviewer") + " mandatory library review receipt missing, incomplete or invalid")
+    ];
 
     const gatedWorkerNetwork = {
       ...networkAfterDebate,
@@ -157,7 +160,17 @@ export default async (req: Request) => {
         }
       : await runGlobalMaster(brief, reports, debate, gatedWorkerNetwork);
 
-    const masterValid = master.status === "completed" && Boolean(master.report?.trim());
+    const masterReceiptValid = hasLibraryReviewReceipt(master.report || "", libraryReview);
+    if (!masterReceiptValid) {
+      missingLibraryReceipts.push("Global Master mandatory library review receipt missing, incomplete or invalid");
+      gatedWorkerNetwork.libraryReviewGate = {
+        ...gatedWorkerNetwork.libraryReviewGate,
+        status: "failed",
+        failures: missingLibraryReceipts
+      };
+    }
+    const masterValid = master.status === "completed" && Boolean(master.report?.trim()) &&
+      missingLibraryReceipts.length === 0;
     const completed = {
       ...withDebate,
       status: "completed",
