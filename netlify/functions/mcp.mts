@@ -4,6 +4,7 @@ import { z } from "zod";
 import { get, list } from "../lib/store.mts";
 import { searchWinLibrary, saveCouponRecord, settleCouponRecord, saveEntityProfile, saveLearningNote } from "../lib/library.mts";
 import { createSimulationRun } from "../lib/simulation.mts";
+import { runStrategyBacktest } from "../lib/backtest.mts";
 import { getTipsterSourceReport, importTipsterCoupon, listTipsterSources } from "../lib/source-intelligence.mts";
 import { authorizeMcpRequest, WIN_ISSUER } from "../lib/oauth-store.mts";
 
@@ -112,7 +113,7 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
     title: "Search WIN Knowledge Library",
     description: "Search the private WIN library: winning, losing and pending human coupons, lessons, entity/agent profiles, observations and archived research. Mandatory before coupon construction.",
     inputSchema: {
-      category: z.enum(["all", "winning", "losing", "pending", "coupons", "lessons", "entities", "agents", "observations", "runs", "tips", "notes", "coupon-history", "coupon-cases", "predictions", "results", "other-settlements"]).optional(),
+      category: z.enum(["all", "winning", "losing", "pending", "coupons", "lessons", "entities", "agents", "observations", "runs", "tips", "notes", "coupon-history", "coupon-cases", "predictions", "results", "other-settlements", "learning-cycles", "strategies", "backtests"]).optional(),
       query: z.string().optional(), sport: z.string().optional(),
       entityType: z.enum(["sport", "country", "league", "club", "player", "event", "specialist"]).optional(),
       limit: z.number().int().min(1).max(100).optional()
@@ -230,6 +231,32 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
     }
   });
 
+
+  server.registerTool("run_strategy_backtest", {
+    title: "Run WIN chronological strategy backtest",
+    description: "Test a fixed, user-defined strategy filter against supplied historical selections using chronological 60/20/20 training, validation and holdout periods. Requires pre-event odds timestamps, source provenance and settled outcomes. Reports hit rate with Wilson interval, flat-stake ROI, Brier score when probabilities are supplied and closing-price movement when available. It never auto-validates a strategy; retrospective results are not proof of future edge.",
+    inputSchema: {
+      strategyName: z.string().optional(),
+      strategyHypothesis: z.string().optional(),
+      filters: z.object({
+        sports: z.array(z.string()).optional(),
+        countries: z.array(z.string()).optional(),
+        competitions: z.array(z.string()).optional(),
+        markets: z.array(z.string()).optional(),
+        minOdds: z.number().gt(1).optional(),
+        maxOdds: z.number().gt(1).optional()
+      }).optional(),
+      selections: z.array(z.any()).min(10).max(10000)
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
+  }, async (args) => {
+    if (!scopes.includes("win:research")) return authRequired("win:research");
+    try {
+      return { content: [{ type: "text" as const, text: JSON.stringify(await runStrategyBacktest(args)) }] };
+    } catch (error) {
+      return { content: [{ type: "text" as const, text: String(error) }], isError: true };
+    }
+  });
 
   server.registerTool("list_tipster_sources", {
     title: "List WIN public tipster sources",
