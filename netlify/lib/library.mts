@@ -184,8 +184,8 @@ export async function getMandatoryLearningPack(brief: any) {
   const losers = newestFirst(relevant(losing, query), ["settledAt", "updatedAt", "createdAt"]).slice(0, 12);
   const validatedLessons = newestFirst(relevant(lessons.filter(x => x.validationStatus === "validated"), query), ["createdAt"]).slice(0, 12);
   const candidateLessons = newestFirst(relevant(lessons.filter(x => x.validationStatus !== "validated"), query), ["createdAt"]).slice(0, 8);
-  const entityProfiles = newestFirst(relevant(profiles, query), ["updatedAt", "createdAt"]).slice(0, 30);
-  const relevantAgentProfiles = newestFirst(relevant(agentProfiles, query), ["updatedAt", "createdAt"]).slice(0, 30);
+  const entityProfiles = newestFirst(relevant(profiles, query), ["updatedAt", "createdAt"]).slice(0, 12);
+  const relevantAgentProfiles = newestFirst(relevant(agentProfiles, query), ["updatedAt", "createdAt"]).slice(0, 12);
 
   // Bring back prior entity-specific research as well as the full department reports.
   // This is what lets the on-demand identities reuse earlier findings rather than start from zero.
@@ -200,11 +200,20 @@ export async function getMandatoryLearningPack(brief: any) {
     (x.agentId && matchingEntityIds.has(x.agentId)) ||
     relevant([x], query).length > 0
   );
-  const priorAgentObservations = newestFirst(observationMatches, ["observedAt", "createdAt"]).slice(0, 40);
+  const priorAgentObservations = newestFirst(observationMatches, ["observedAt", "createdAt"]).slice(0, 16);
   const priorAgentNotes = newestFirst(
     relevant(agentNotes.filter((x: any) => x.recordType === "agent_report"), query),
     ["createdAt"]
-  ).slice(0, 16);
+  ).slice(0, 8).map((note: any) => {
+    const report = clean(note.report, MAX_TEXT);
+    const reportExcerpt = report.length <= 1200 ? report
+      : report.slice(0, 580) + "\n[Middle of archived report omitted from prompt; full report remains in WIN Library]\n" + report.slice(-580);
+    return {
+      id: note.id, runId: note.runId, agentId: note.agentId, agentRole: note.agentRole,
+      departmentId: note.departmentId, phase: note.phase, status: note.status,
+      reportExcerpt, citations: safeArray(note.citations, 12), createdAt: note.createdAt
+    };
+  });
   const relevantHumanTips = newestFirst(relevant(humanTips, query), ["createdAt"]).slice(0, 10);
   const relevantCouponHistory = newestFirst(relevant(couponHistory, query), ["at"]).slice(0, 10);
   const relevantLearningCycles = newestFirst(relevant(learningCycles, query), ["completedAt", "startedAt"]).slice(0, 8);
