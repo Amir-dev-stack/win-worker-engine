@@ -8,6 +8,22 @@ function escapeHtml(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","
 function decisionClass(text=""){const t=String(text).toUpperCase();return t.includes("NO BET")?"no":t.includes("BET")?"bet":"wait"}
 function safeUrl(value){try{const u=new URL(value);return ["https:","http:"].includes(u.protocol)?u.href:""}catch{return ""}}
 function citationHtml(items=[]){return items.map(c=>{const u=safeUrl(c.url);return u?'<a href="'+escapeHtml(u)+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(c.title||u)+'</a>':""}).filter(Boolean).join("")}
+function couponPanel(coupons=[]){
+ if(!coupons.length)return '<section class="report-card"><b>Constructed coupons</b><p class="empty">No structured coupon candidate was returned. Check D6 report and evidence blockers.</p></section>';
+ return '<section class="report-card"><h4>Coupon candidates — your decision</h4>'+coupons.map(c=>{
+  const legs=(c.legs||[]).map((l,i)=>'<tr><td>'+(i+1)+'. '+escapeHtml(l.event)+'</td><td>'+escapeHtml(l.market)+'<br><b>'+escapeHtml(l.selection)+'</b></td><td>'+(l.odds===null||l.odds===undefined?'Not verified':Number(l.odds).toFixed(2))+'</td><td>'+(l.sourceUrl?'<a href="'+escapeHtml(safeUrl(l.sourceUrl))+'" target="_blank" rel="noopener noreferrer">Source ↗</a>':'Not supplied')+'<br><small>'+escapeHtml(l.observedAt||'No timestamp')+'</small></td></tr>').join('');
+  const blockers=(c.blockers||[]).length?'<p class="report-error"><b>Evidence gaps / blockers:</b> '+escapeHtml(c.blockers.join(' · '))+'</p>':'';
+  const corr=(c.correlationNotes||[]).length?'<p><b>Correlation:</b> '+escapeHtml(c.correlationNotes.join(' · '))+'</p>':'';
+  const risk=(c.riskFactors||[]).length?'<p><b>Risk factors:</b> '+escapeHtml(c.riskFactors.join(' · '))+'</p>':'';
+  return '<article class="mini-row"><div><div class="report-title"><b>'+escapeHtml(c.label||'WIN candidate')+'</b><span class="decision">'+escapeHtml(c.status||'UNASSESSED')+'</span></div><p>Combined odds: <b>'+(c.combinedOdds?Number(c.combinedOdds).toFixed(2):'Not verified')+'</b></p><div class="table-wrap"><table><thead><tr><th>Event</th><th>Market / selection</th><th>Odds</th><th>Price evidence</th></tr></thead><tbody>'+legs+'</tbody></table></div>'+blockers+corr+risk+'</div></article>';
+ }).join('')+'</section>';
+}
+function riskPanel(risk,master){
+ if(!risk)return '<section class="report-card"><h4>Global Master — risk only</h4><p class="empty">Risk percentage unavailable. '+escapeHtml((master&&master.report)||'Required evidence or assessment was incomplete.')+'</p><p>The final betting decision remains yours.</p></section>';
+ const pct=Number(risk.overallRiskPercent);
+ const components=(risk.components||[]).map(x=>'<li>'+escapeHtml(x.factor)+': '+(x.riskPercent===null?'Unscored':Number(x.riskPercent).toFixed(0)+'%')+' · weight '+Number(x.weightPercent||0)+'%</li>').join('');
+ return '<section class="report-card"><h4>Global Master — risk assessment only</h4><div class="risk-score">'+(Number.isFinite(pct)?pct.toFixed(0)+'%':'Unavailable')+'</div><b>Estimated overall risk score</b><p>'+escapeHtml(risk.method||'Method not supplied.')+'</p><p><b>Scale:</b> '+escapeHtml(risk.riskScale||'0–100, higher means riskier')+'</p><p><b>Important:</b> This is a heuristic score, not a calibrated probability of losing.</p>'+(components?'<h5>Risk components</h5><ul>'+components+'</ul>':'')+((risk.topRiskDrivers||[]).length?'<p><b>Main risk drivers:</b> '+escapeHtml(risk.topRiskDrivers.join(' · '))+'</p>':'')+((risk.uncertainties||[]).length?'<p><b>Uncertainties:</b> '+escapeHtml(risk.uncertainties.join(' · '))+'</p>':'')+'<p><b>You make the final decision.</b> WIN does not place bets or decide for you.</p></section>';
+}
 function reportCard(item){
  const title=escapeHtml((item.departmentId?item.departmentId+" · ":"")+(item.role||"Research report"));
  const state=escapeHtml(item.status||"unknown");
@@ -43,10 +59,11 @@ function renderRunDetail(run){
  const brief='<div class="detail-meta">'+escapeHtml(run.status||"unknown")+' · '+taskType+' · Started '+escapeHtml(new Date(run.createdAt).toLocaleString())+'</div>';
  const cards=workers.length?workers.map(reportCard).join(""):'<div class="empty">Department reports have not arrived yet.</div>';
  const challengeCards=debate.length?debate.map(reportCard).join(""):'<div class="empty">Adversarial review reports have not arrived yet.</div>';
- const master=run.master?reportCard(run.master):'<div class="empty">Global Master report not available yet.</div>';
+ const master=riskPanel(run.riskAssessment,run.master);
+ const coupons=couponPanel(run.coupons||[]);
  const existing=run.brief?.existingCoupon?'<h4>Coupon under review</h4><pre>'+escapeHtml(run.brief.existingCoupon)+'</pre>':"";
  const error=run.error?'<p class="report-error">'+escapeHtml(run.error)+'</p>':"";
- node.innerHTML='<div class="detail-head"><div><div class="eyebrow">SELECTED INVESTIGATION</div><h3>'+title+'</h3>'+brief+'</div><button class="subtle" id="closeRunDetail">Close</button></div>'+networkPanel(run.workerNetwork)+existing+'<h4>Eight department reports ('+workers.length+')</h4>'+cards+'<h4>Independent adversarial review ('+debate.length+')</h4>'+challengeCards+'<h4>Global Master — final decision</h4>'+master+error;
+ node.innerHTML='<div class="detail-head"><div><div class="eyebrow">SELECTED INVESTIGATION</div><h3>'+title+'</h3>'+brief+'</div><button class="subtle" id="closeRunDetail">Close</button></div>'+networkPanel(run.workerNetwork)+existing+'<h4>Eight department reports ('+workers.length+')</h4>'+cards+'<h4>Independent adversarial review ('+debate.length+')</h4>'+challengeCards+coupons+master+error;
  node.classList.remove("hidden");
  $("#closeRunDetail").addEventListener("click",()=>{node.classList.add("hidden");selectedRunId=null});
 }
@@ -109,7 +126,7 @@ async function refresh(){
   const [runs,tips,preds]=await Promise.all([api("/api/runs"),api("/api/tips"),api("/api/predictions")]);
   $("#runCount").textContent=runs.length;$("#tipCount").textContent=tips.length;$("#predictionCount").textContent=preds.length;
   $("#workerCount").textContent=runs.reduce((n,r)=>n+(r.workers||[]).filter(w=>w.status==="completed").length+(r.debate||[]).filter(w=>w.status==="completed").length,0);
-  $("#runsList").innerHTML=runs.length?runs.slice().reverse().map(r=>{const d=r.decision||r.master?.report||r.status;return '<div class="run-row"><div><b>'+escapeHtml(r.brief?.event||r.id)+'</b><small>'+escapeHtml(r.brief?.taskType||"research_event")+' · '+escapeHtml(r.status)+' · '+new Date(r.createdAt).toLocaleString()+' · '+((r.workers||[]).length)+' departments</small></div><span class="decision '+decisionClass(d)+'">'+escapeHtml(String(d).slice(0,32))+'</span><button class="subtle run-open" data-run-id="'+escapeHtml(r.id)+'">Open report</button></div>'}).join(""):'<div class="empty">No investigations yet. Start the first WIN run above.</div>';
+  $("#runsList").innerHTML=runs.length?runs.slice().reverse().map(r=>{const d=r.riskAssessment&&typeof r.riskAssessment.overallRiskPercent==="number"?"Risk "+Number(r.riskAssessment.overallRiskPercent).toFixed(0)+"%":r.status;return '<div class="run-row"><div><b>'+escapeHtml(r.brief?.event||r.id)+'</b><small>'+escapeHtml(r.brief?.taskType||"research_event")+' · '+escapeHtml(r.status)+' · '+new Date(r.createdAt).toLocaleString()+' · '+((r.workers||[]).length)+' departments</small></div><span class="decision '+decisionClass(d)+'">'+escapeHtml(String(d).slice(0,32))+'</span><button class="subtle run-open" data-run-id="'+escapeHtml(r.id)+'">Open report</button></div>'}).join(""):'<div class="empty">No investigations yet. Start the first WIN run above.</div>';
   $("#tipsList").innerHTML=tips.length?tips.slice().reverse().slice(0,8).map(t=>'<div class="mini-row"><div><b>'+escapeHtml(t.tip.slice(0,110))+'</b><small>'+escapeHtml(t.tipster||t.sourceName)+' · '+escapeHtml(t.status)+'</small></div></div>').join(""):'<div class="empty">No human tips imported.</div>';
   $("#ledgerList").innerHTML=preds.length?preds.slice().reverse().slice(0,8).map(p=>'<div class="mini-row"><div><b>'+escapeHtml(p.brief?.event||p.id)+'</b><small>Frozen '+new Date(p.recordedAt).toLocaleString()+'</small></div><span class="decision">'+(p.frozen?"FROZEN":"")+'</span></div>').join(""):'<div class="empty">No frozen predictions yet.</div>';
   if(selectedRunId){
