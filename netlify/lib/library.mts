@@ -155,50 +155,86 @@ export async function getMandatoryLearningPack(brief: any) {
     brief?.existingCoupon, ...(Array.isArray(brief?.teams) ? brief.teams : []),
     ...(Array.isArray(brief?.clubs) ? brief.clubs : []), ...(Array.isArray(brief?.players) ? brief.players : [])
   ].filter(Boolean).join(" ");
-  const [winning, losing, lessons, profiles, agentProfiles, humanTips, couponHistory, learningCycles, strategyCandidates, backtestRuns] = await Promise.all([
+  const [winning, losing, lessons, profiles, agentProfiles, humanTips, couponHistory,
+    learningCycles, strategyCandidates, backtestRuns, agentObservations, agentNotes] = await Promise.all([
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
     list<any>("library/lessons", 500),
-    list<any>("library/entity-profiles", 500),
-    list<any>("library/agent-profiles", 500),
+    list<any>("library/entity-profiles", 1000),
+    list<any>("library/agent-profiles", 1000),
     list<any>("library/human-tips", 300),
     list<any>("library/coupon-history", 300),
     list<any>("library/learning-cycles", 100),
     list<any>("library/strategy-candidates", 500),
-    list<any>("library/backtest-runs", 200)
+    list<any>("library/backtest-runs", 200),
+    list<any>("library/agent-observations", 1500),
+    list<any>("library/agent-notes", 1500)
   ]);
-  const winners = relevant(winning, query).slice(0, 12);
-  const losers = relevant(losing, query).slice(0, 12);
-  const validatedLessons = relevant(lessons.filter(x => x.validationStatus === "validated"), query).slice(0, 12);
-  const candidateLessons = relevant(lessons.filter(x => x.validationStatus !== "validated"), query).slice(0, 5);
-  const entityProfiles = relevant(profiles, query).slice(0, 12);
-  const relevantAgentProfiles = relevant(agentProfiles, query).slice(0, 12);
-  const relevantHumanTips = relevant(humanTips, query).slice(0, 10);
-  const relevantCouponHistory = relevant(couponHistory, query).slice(0, 10);
-  const relevantLearningCycles = relevant(learningCycles, query).slice(0, 8);
-  const relevantStrategyCandidates = relevant(strategyCandidates, query).slice(0, 12);
-  const relevantBacktests = relevant(backtestRuns, query).slice(0, 6);
+  const newestFirst = (items: any[], dateFields: string[]) => items.sort((a, b) => {
+    const getTime = (x: any) => {
+      for (const field of dateFields) {
+        const value = Date.parse(x?.[field] || "");
+        if (Number.isFinite(value)) return value;
+      }
+      return 0;
+    };
+    return getTime(b) - getTime(a);
+  });
+  const winners = newestFirst(relevant(winning, query), ["settledAt", "updatedAt", "createdAt"]).slice(0, 12);
+  const losers = newestFirst(relevant(losing, query), ["settledAt", "updatedAt", "createdAt"]).slice(0, 12);
+  const validatedLessons = newestFirst(relevant(lessons.filter(x => x.validationStatus === "validated"), query), ["createdAt"]).slice(0, 12);
+  const candidateLessons = newestFirst(relevant(lessons.filter(x => x.validationStatus !== "validated"), query), ["createdAt"]).slice(0, 8);
+  const entityProfiles = newestFirst(relevant(profiles, query), ["updatedAt", "createdAt"]).slice(0, 30);
+  const relevantAgentProfiles = newestFirst(relevant(agentProfiles, query), ["updatedAt", "createdAt"]).slice(0, 30);
+
+  // Bring back prior entity-specific research as well as the full department reports.
+  // This is what lets the on-demand identities reuse earlier findings rather than start from zero.
+  const matchingEntityIds = new Set<string>([
+    ...entityProfiles.map((x: any) => x.id).filter(Boolean),
+    ...entityProfiles.map((x: any) => x.agentId).filter(Boolean),
+    ...relevantAgentProfiles.map((x: any) => x.entityId).filter(Boolean),
+    ...relevantAgentProfiles.map((x: any) => x.agentId).filter(Boolean)
+  ]);
+  const observationMatches = agentObservations.filter((x: any) =>
+    (x.entityId && matchingEntityIds.has(x.entityId)) ||
+    (x.agentId && matchingEntityIds.has(x.agentId)) ||
+    relevant([x], query).length > 0
+  );
+  const priorAgentObservations = newestFirst(observationMatches, ["observedAt", "createdAt"]).slice(0, 40);
+  const priorAgentNotes = newestFirst(
+    relevant(agentNotes.filter((x: any) => x.recordType === "agent_report"), query),
+    ["createdAt"]
+  ).slice(0, 16);
+  const relevantHumanTips = newestFirst(relevant(humanTips, query), ["createdAt"]).slice(0, 10);
+  const relevantCouponHistory = newestFirst(relevant(couponHistory, query), ["at"]).slice(0, 10);
+  const relevantLearningCycles = newestFirst(relevant(learningCycles, query), ["completedAt", "startedAt"]).slice(0, 8);
+  const relevantStrategyCandidates = newestFirst(relevant(strategyCandidates, query), ["createdAt"]).slice(0, 12);
+  const relevantBacktests = newestFirst(relevant(backtestRuns, query), ["completedAt", "createdAt"]).slice(0, 6);
   return {
     mandatory: true, readBeforeCouponConstruction: true,
     reviewedAt: new Date().toISOString(), query, reviewStatus: "COMPLETED",
-    areasReviewed: ["winning-coupons", "losing-coupons", "validated-lessons", "candidate-lessons", "entity-profiles", "human-tips", "coupon-history", "learning-cycles", "strategy-candidates", "backtest-runs"],
+    areasReviewed: ["winning-coupons", "losing-coupons", "validated-lessons", "candidate-lessons",
+      "entity-profiles", "agent-profiles", "agent-observations", "agent-notes", "human-tips",
+      "coupon-history", "learning-cycles", "strategy-candidates", "backtest-runs"],
     counts: {
       winningCouponsAvailable: winning.length, winningCouponsMatched: winners.length,
       losingCouponsAvailable: losing.length, losingCouponsMatched: losers.length,
       validatedLessonsAvailable: lessons.filter(x => x.validationStatus === "validated").length,
       validatedLessonsMatched: validatedLessons.length, candidateLessonsMatched: candidateLessons.length,
-      entityProfilesMatched: entityProfiles.length, agentProfilesMatched: relevantAgentProfiles.length, humanTipsMatched: relevantHumanTips.length,
-      couponHistoryMatched: relevantCouponHistory.length,
+      entityProfilesMatched: entityProfiles.length, agentProfilesMatched: relevantAgentProfiles.length,
+      agentObservationsMatched: priorAgentObservations.length, agentReportNotesMatched: priorAgentNotes.length,
+      humanTipsMatched: relevantHumanTips.length, couponHistoryMatched: relevantCouponHistory.length,
       learningCyclesMatched: relevantLearningCycles.length,
       strategyCandidatesMatched: relevantStrategyCandidates.length,
       backtestsMatched: relevantBacktests.length
     },
     winningCoupons: winners, losingCoupons: losers, validatedLessons, candidateLessons,
-    entityProfiles, agentProfiles: relevantAgentProfiles, humanTips: relevantHumanTips, couponHistory: relevantCouponHistory,
-    learningCycles: relevantLearningCycles,
-    strategyCandidates: relevantStrategyCandidates,
+    entityProfiles, agentProfiles: relevantAgentProfiles,
+    agentObservations: priorAgentObservations, agentNotes: priorAgentNotes,
+    humanTips: relevantHumanTips, couponHistory: relevantCouponHistory,
+    learningCycles: relevantLearningCycles, strategyCandidates: relevantStrategyCandidates,
     backtestRuns: relevantBacktests,
-    instruction: "Every coupon-writing agent must read both winning and losing examples, relevant human tips, entity profiles, validated lessons and recent scheduled learning-cycle research, candidate strategies and chronological backtest summaries. Candidate research and retrospective backtests are not validated knowledge. Empty libraries must be acknowledged honestly; do not invent examples."
+    instruction: "Before researching, inspect the prior agentObservations and agentNotes for this sport, country, competition, club, player, event and specialist. Reuse supported findings and their source references; do not repeat the same stable-fact research when a usable record already exists. Check freshness before reuse: odds, lineups, injuries, player availability, event status, schedules and other time-sensitive claims must be re-verified close to the event. Add genuinely new findings as new dated observations and preserve source URLs, publication dates, retrieval times, evidence grade and uncertainty. Never overwrite history or promote an unverified note into a validated lesson. Every coupon-writing agent must also read both winning and losing examples, relevant entity profiles, validated lessons and recent research cycles."
   };
 }
 
