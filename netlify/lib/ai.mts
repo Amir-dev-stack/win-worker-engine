@@ -147,7 +147,7 @@ const commonInstructions = [
   "A required check with insufficient evidence must be reported as BLOCKED, PARTIAL, INSUFFICIENT or NOT ESTIMABLE, not passed.",
   "Return a structured report with: execution status, assigned team checklist, findings, evidence/citations and timestamps, FOR case where relevant, AGAINST case where relevant, unknowns/blockers, handoff recipient and provisional verdict.",
   "The brief includes a real libraryReview payload loaded from persistent storage. Every department must inspect relevant winning and losing human coupon cases and scoped agent/entity profiles before its assessment; distinguish verified library records from unverified notes. Do not invent a record or claim a collection was reviewed if its payload was not supplied.",
-  "EVERY actual model worker pass that contributes to a coupon decision must independently review the supplied libraryReview payload and include its own machine-readable <WIN_LIBRARY_REVIEW_JSON> receipt with reviewed=true, winningRecordIds, losingRecordIds, validatedLessonIds, emptyCollections and keyLearning. This includes all eight department passes, all four adversarial debate reviewers and the Global Master. Receipts must list every supplied matching record ID in the winningCoupons, losingCoupons and validatedLessons arrays; do not claim to review data that was not supplied. Empty results are allowed but must be acknowledged. Missing or invalid receipt means the pass is blocked and the final decision must be NO BET.",
+  "EVERY actual model worker pass that contributes to a coupon decision must independently review the supplied libraryReview payload and include its own machine-readable <WIN_LIBRARY_REVIEW_JSON> receipt with reviewed=true, winningRecordIds, losingRecordIds, validatedLessonIds, emptyCollections and keyLearning. This includes all eight department passes, all four adversarial debate reviewers and the Global Master. Receipts must list every supplied matching record ID in the winningCoupons, losingCoupons and validatedLessons arrays; do not claim to review data that was not supplied. Empty results are allowed but must be acknowledged. Missing or invalid receipt means the pass is blocked. Expose the blocker to the user; do not issue a betting decision.",
 ].join("\n");
 
 function extractText(data: any): string {
@@ -335,7 +335,7 @@ export async function runDebate(brief: unknown, reports: WorkerReport[]) {
 }
 
 export async function runGlobalMaster(brief: unknown, reports: WorkerReport[], debate: WorkerReport[], workerNetwork: unknown) {
-  return askWorker("WIN Global Master — single final decision authority", "final", {
+  return askWorker("WIN Global Master — risk assessment only; user retains final decision", "final", {
     originalBrief: brief, workerNetwork
   }, [...reports, ...debate]);
 }
