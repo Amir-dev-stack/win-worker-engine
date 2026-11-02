@@ -1,7 +1,16 @@
 import { getAIbudgetStatus } from "../lib/ai-budget.mts";
+import { get, list } from "../lib/store.mts";
 
 export default async () => {
   const budget = await getAIbudgetStatus();
+  const [schedulerState, cycles, runs] = await Promise.all([
+    get<any>("scheduler-state", "balanced-hourly"),
+    list<any>("library/learning-cycles", 20),
+    list<any>("runs", 30)
+  ]);
+  const recentCycles = cycles.sort((a: any, b: any) => Date.parse(b.completedAt || b.startedAt || "") - Date.parse(a.completedAt || a.startedAt || "")).slice(0, 8);
+  const recentLearningRuns = runs.filter((run: any) => run.origin === "scheduled_intensive_learning").sort((a: any, b: any) => Date.parse(b.createdAt || "") - Date.parse(a.createdAt || "")).slice(0, 8);
+  const cycleCounts = { total: cycles.length, completed: cycles.filter((x: any) => x.status === "completed").length, failed: cycles.filter((x: any) => x.status === "failed").length, candidates: cycles.reduce((n: number, x: any) => n + Number(x.strategies?.candidatesCreated || 0), 0) };
   return Response.json({
   service: "WIN Worker Engine",
   status: "online",
