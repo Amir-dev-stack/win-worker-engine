@@ -4,6 +4,60 @@ import { get, list, put } from "../lib/store.mts";
 import { runDebate, runGlobalMaster, runIndependentWorkers } from "../lib/ai.mts";
 import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
 
+function extractJsonBlock(report: string, tag: string): any | null {
+  const open = "<" + tag + ">";
+  const close = "</" + tag + ">";
+  const start = report.indexOf(open);
+  const end = report.indexOf(close);
+  if (start < 0 || end <= start) return null;
+  try { return JSON.parse(report.slice(start + open.length, end).trim()); }
+  catch { return null; }
+}
+
+function collectCouponCandidates(reports: any[]) {
+  const source = reports.find(x => x.departmentId === "D6");
+  const parsed = source ? extractJsonBlock(source.report || "", "WIN_COUPONS_JSON") : null;
+  const coupons = Array.isArray(parsed?.coupons) ? parsed.coupons : [];
+  return coupons.map((coupon: any) => {
+    const legs = Array.isArray(coupon?.legs) ? coupon.legs : [];
+    const legChecks = legs.map((leg: any) => ({
+      event: typeof leg?.event === "string" ? leg.event : "Unspecified event",
+      market: typeof leg?.market === "string" ? leg.market : "Unspecified market",
+      selection: typeof leg?.selection === "string" ? leg.selection : "Unspecified selection",
+      odds: typeof leg?.odds === "number" && Number.isFinite(leg.odds) && leg.odds > 1 ? leg.odds : null,
+      sourceUrl: typeof leg?.sourceUrl === "string" && /^https?:\\/\\//i.test(leg.sourceUrl) ? leg.sourceUrl : null,
+      observedAt: typeof leg?.observedAt === "string" ? leg.observedAt : null,
+      settlementRule: typeof leg?.settlementRule === "string" ? leg.settlementRule : null,
+      blockers: Array.isArray(leg?.blockers) ? leg.blockers : []
+    }));
+    const missing = legChecks.flatMap((leg: any, i: number) => {
+      const absent = [];
+      if (!leg.event || leg.event === "Unspecified event") absent.push("event identity");
+      if (!leg.market || leg.market === "Unspecified market") absent.push("exact market");
+      if (!leg.selection || leg.selection === "Unspecified selection") absent.push("selection");
+      if (leg.odds === null) absent.push("verified decimal odds");
+      if (!leg.sourceUrl) absent.push("source URL");
+      if (!leg.observedAt) absent.push("price observation timestamp");
+      if (!leg.settlementRule) absent.push("settlement rule");
+      if (leg.blockers.length) absent.push(...leg.blockers);
+      return absent.map((item: string) => "Leg " + (i + 1) + ": " + item);
+    });
+    const blockers = [...(Array.isArray(coupon?.blockers) ? coupon.blockers : []), ...missing];
+    const status = coupon?.status === "QUALIFIED" && legs.length > 0 && blockers.length === 0 ? "QUALIFIED" : "BLOCKED";
+    const combined = legChecks.length && legChecks.every((x: any) => x.odds !== null)
+      ? Number(legChecks.reduce((n: number, x: any) => n * x.odds, 1).toFixed(4)) : null;
+    return {
+      id: typeof coupon?.id === "string" ? coupon.id : crypto.randomUUID(),
+      label: typeof coupon?.label === "string" ? coupon.label : "WIN coupon candidate",
+      status, legs: legChecks,
+      combinedOdds: status === "QUALIFIED" ? (typeof coupon?.combinedOdds === "number" ? coupon.combinedOdds : combined) : null,
+      riskFactors: Array.isArray(coupon?.riskFactors) ? coupon.riskFactors : [],
+      correlationNotes: Array.isArray(coupon?.correlationNotes) ? coupon.correlationNotes : [],
+      blockers
+    };
+  });
+}
+
 function hasLibraryReviewReceipt(report: string, expectedLibraryReview: any): boolean {
   const open = "<WIN_LIBRARY_REVIEW_JSON>";
   const close = "</WIN_LIBRARY_REVIEW_JSON>";
@@ -148,14 +202,13 @@ export default async (req: Request) => {
 
     const failed = [...reports, ...debate].filter(x => x.status !== "completed" || !x.report?.trim());
     const gateFailures = [...failed.map(x => (x.departmentId ? x.departmentId + " — " : "") + x.role + ": " + (x.error || "empty report")), ...missingLibraryReceipts];
+    const coupons = collectCouponCandidates(reports);
     const master = failed.length || missingLibraryReceipts.length
       ? {
           workerId: crypto.randomUUID(),
-          role: "WIN Global Master — deterministic Low-Risk Gate",
+          role: "WIN Global Master — risk assessment unavailable",
           phase: "final", status: "completed",
-          report: "FINAL DECISION: NO BET\n\nThe WIN Low-Risk Gate rejected this run because one or more required department or adversarial reports failed or the mandatory knowledge-library review was incomplete. Failed checks: " +
-            gateFailures.join("; ") +
-            ". Do not place a bet. Re-run after the service or evidence blocker is resolved.",
+          report: "Risk percentage unavailable because required research or library-review checks did not complete. The following blockers remain: " + gateFailures.join("; "),
           citations: [], startedAt: new Date().toISOString(), completedAt: new Date().toISOString()
         }
       : await runGlobalMaster(brief, reports, debate, gatedWorkerNetwork);
@@ -171,17 +224,20 @@ export default async (req: Request) => {
     }
     const masterValid = master.status === "completed" && Boolean(master.report?.trim()) &&
       missingLibraryReceipts.length === 0;
+    const riskAssessment = masterValid ? extractJsonBlock(master.report || "", "WIN_RISK_ASSESSMENT_JSON") : null;
     const completed = {
       ...withDebate,
       status: "completed",
+      coupons,
       master: masterValid ? master : {
-        workerId: crypto.randomUUID(), role: "WIN Global Master — deterministic Low-Risk Gate",
-        phase: "final", status: "completed",
-        report: "FINAL DECISION: NO BET\n\nThe Global Master did not return a usable final report. The Low-Risk Gate therefore blocks coupon publication.",
+        workerId: crypto.randomUUID(), role: "WIN Global Master — risk assessment unavailable",
+        phase: "final", status: "failed",
+        report: "Risk percentage unavailable because the Global Master risk assessment or required library receipt was incomplete.",
         citations: [], startedAt: new Date().toISOString(), completedAt: new Date().toISOString()
       },
-      decision: masterValid ? master.report :
-        "FINAL DECISION: NO BET — a required worker, library review or Global Master report was missing or incomplete.",
+      riskAssessment: riskAssessment && typeof riskAssessment.overallRiskPercent === "number"
+        ? riskAssessment : null,
+      decision: undefined,
       workerNetwork: gatedWorkerNetwork,
       updatedAt: new Date().toISOString(),
       completedAt: new Date().toISOString()
@@ -191,7 +247,7 @@ export default async (req: Request) => {
     const predictionId = crypto.randomUUID();
     const prediction = {
       id: predictionId, runId: run.id, recordedAt: new Date().toISOString(),
-      frozen: true, brief, decision: completed.decision,
+      frozen: true, brief, coupons: completed.coupons, riskAssessment: completed.riskAssessment,
       workerResponseIds: [...reports, ...debate, master].map(x => x.responseId).filter(Boolean),
       workerNetworkSummary: gatedWorkerNetwork.executionSummary,
       libraryReviewGate: gatedWorkerNetwork.libraryReviewGate
