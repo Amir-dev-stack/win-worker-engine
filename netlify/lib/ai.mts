@@ -151,12 +151,14 @@ const commonInstructions = [
 ].join("\n");
 
 
-function compactPromptValue(value: any, depth = 0, arrayLimit = 12): any {
+function compactPromptValue(value: any, depth = 0, arrayLimit = 12, fieldName = ""): any {
   if (typeof value === "string") {
     const limit = 1400;
     return value.length > limit ? value.slice(0, limit) + " [TRUNCATED FOR REQUEST BUDGET]" : value;
   }
   if (Array.isArray(value)) {
+    const receiptCollection = ["winningCoupons", "losingCoupons", "validatedLessons"].includes(fieldName);
+    if (receiptCollection) return value.map((item: any) => ({ id: item?.id }));
     return value.slice(0, arrayLimit).map(item => compactPromptValue(item, depth + 1, arrayLimit));
   }
   if (value && typeof value === "object") {
@@ -165,7 +167,7 @@ function compactPromptValue(value: any, depth = 0, arrayLimit = 12): any {
     for (const [key, child] of entries) {
       if (["rawReport", "sourceSnapshot", "debugTrace", "fullHtml"].includes(key)) continue;
       if (depth > 5 && !["id", "name", "status", "outcome", "validationStatus"].includes(key)) continue;
-      out[key] = compactPromptValue(child, depth + 1, arrayLimit);
+      out[key] = compactPromptValue(child, depth + 1, arrayLimit, key);
     }
     return out;
   }
