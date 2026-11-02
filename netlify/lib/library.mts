@@ -426,7 +426,7 @@ function entityMission(type: EntityKind): string {
 export async function saveLearningNote(input: any) {
   const note = clean(input?.note, 12000);
   if (note.length < 3) throw new Error("note must contain at least 3 characters");
-  const id = crypto.randomUUID();
+  const id = clean(input?.id, 180) || crypto.randomUUID();
   const record = {
     id, recordType: "learning_note",
     title: clean(input?.title, 250) || "WIN agent learning note",
@@ -675,9 +675,10 @@ export async function archiveRunToLibrary(run: any) {
       note: learningReport.report, agentId: learningReport.workerId, runId: run.id,
       validationStatus: "candidate_for_validation", evidence: learningReport.citations || []
     });
-    for (const lesson of lessonsFromReport(learningReport.report)) {
+    for (const [lessonIndex, lesson] of lessonsFromReport(learningReport.report).entries()) {
       if (typeof lesson?.lesson !== "string" || lesson.lesson.trim().length < 8) continue;
       await saveLearningNote({
+        id: run.id + ":D7:lesson:" + lessonIndex,
         title: clean(lesson.title, 250) || "D7 proposed lesson",
         note: lesson.lesson, runId: run.id,
         entityType: clean(lesson.scopeType, 30), entityId: clean(lesson.scopeId, 180),
@@ -691,7 +692,7 @@ export async function archiveRunToLibrary(run: any) {
   if (run.brief?.taskType === "build_latest_coupon" || run.brief?.taskType === "compare_coupons" || run.brief?.taskType === "audit_existing_coupon") {
     await put("library/coupon-research-cases", run.id, {
       id: run.id, recordType: "coupon_research_case",
-      origin: "win", status: run.master?.report?.match(/FINAL DECISION:\\s*([A-Z ]+)/i)?.[1]?.trim() || "reviewed",
+      origin: "win", status: run.master?.report?.match(/FINAL DECISION:\s*([A-Z ]+)/i)?.[1]?.trim() || "reviewed",
       event: run.brief?.event, originalCoupon: run.brief?.existingCoupon || null,
       finalAnalysis: clean(run.master?.report, MAX_TEXT),
       winningExamplesRead: run.brief?.libraryReview?.counts?.winningCouponsMatched ?? 0,
@@ -699,7 +700,7 @@ export async function archiveRunToLibrary(run: any) {
       createdAt: run.createdAt, savedAt
     });
     if ((run.brief?.taskType === "build_latest_coupon" || run.brief?.taskType === "compare_coupons") &&
-      /^\\s*FINAL DECISION:\\s*BET\\b/im.test(run.master?.report || "")) {
+      /^\s*FINAL DECISION:\s*BET\b/im.test(run.master?.report || "")) {
       await saveCouponRecord({
         id: "win-" + run.id, origin: "win",
         label: "WIN proposed coupon — " + clean(run.brief?.event, 180),
