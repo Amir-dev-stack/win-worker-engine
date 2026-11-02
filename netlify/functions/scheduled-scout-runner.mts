@@ -60,7 +60,7 @@ export default async (req: Request) => {
     const strategyCandidates = Array.isArray(learningData?.candidateStrategies)
       ? learningData.candidateStrategies.slice(0, 20) : [];
     const completed = {
-      ...run, brief, status: aiCompleted ? "completed" : "failed",
+      ...run, brief, status: aiCompleted && structuredLearningValid ? "completed" : "failed",
       workers: [scout], debate: [], master: null,
       decision: "SCHEDULED LEARNING ONLY — no strategy was validated and no betting recommendation or coupon decision was made.",
       updatedAt: completedAt, completedAt, learningReportVersion: 2,
