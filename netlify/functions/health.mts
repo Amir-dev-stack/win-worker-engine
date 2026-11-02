@@ -27,6 +27,12 @@ export default async () => {
     scheduling: { learningMonitor: "every_4_hours", learningCycles: "one_bounded_research_cycle_every_4_hours_when_budget_approved", aiMonthlyEstimateLimitUsd: 5 },
     sts: "no_official_sts_api_connection"
   },
+  learningSystem: {
+    schedulerHeartbeat: schedulerState?.lastCheck || null,
+    cycleCounts,
+    recentCycles: recentCycles.map((x: any) => ({ id: x.id, status: x.status, cycleType: x.cycleType, sport: x.sport, startedAt: x.startedAt, completedAt: x.completedAt, candidatesCreated: x.strategies?.candidatesCreated || 0, validationStatus: x.learningStatus || x.strategies?.validationStatus || null, error: x.execution?.error || null })),
+    recentLearningRuns: recentLearningRuns.map((x: any) => ({ id: x.id, status: x.status, createdAt: x.createdAt, completedAt: x.completedAt, error: x.error || x.scoutSummary?.error || null }))
+  },
   aiBudget: {
     month: budget.month, monthlyLimitUsd: budget.monthlyLimitUsd,
     spentUsd: budget.spentUsd, reservedUsd: budget.reservedUsd,
