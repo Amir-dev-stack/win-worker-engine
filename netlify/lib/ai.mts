@@ -222,7 +222,7 @@ async function askWorker(
   const workerId = crypto.randomUUID();
   const apiKey = Netlify.env.get("OPENAI_API_KEY");
   const configuredModel = Netlify.env.get("OPENAI_MODEL");
-  const model = (phase === "scheduled_scout" || phase === "scheduled_learning") ? "gpt-6-luna" : configuredModel;
+  const model = configuredModel;
   const failed = (error: string): WorkerReport => ({
     workerId, role, phase, departmentId: department?.id, status: "failed",
     report: "", citations: [], error, startedAt, completedAt: new Date().toISOString()
