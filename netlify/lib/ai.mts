@@ -102,7 +102,8 @@ const departmentAssignments: DepartmentAssignment[] = [
       "Check duplicate and contradictory legs, same-event dependence, same-team/player exposure, shared venue/weather/roster/schedule/league and all common-cause risks.",
       "Compare fewer-leg alternatives, separate sport-specific coupons and singles. Do not force an odds target by adding a weak leg.",
       "Calculate combined odds only when every included decimal price is current and verified. For MAXIKOMBI/system bets, distinguish stake per combination from total stake and label unsupported payouts illustrative.",
-      "Apply the WIN Low-Risk Gate as a hard veto. Never issue the final Global Master decision.",
+      "Apply the WIN Low-Risk Gate as a hard eligibility check. Never issue or imply the user\u2019s final betting decision.",
+      "At the end include exactly one <WIN_COUPONS_JSON> block with { \"coupons\": [ { \"id\": string, \"label\": string, \"status\": \"QUALIFIED\"|\"BLOCKED\", \"legs\": [ { \"event\": string, \"eventId\": string|null, \"startTime\": string|null, \"market\": string, \"selection\": string, \"odds\": number|null, \"oddsSource\": string|null, \"sourceUrl\": string|null, \"observedAt\": string|null, \"settlementRule\": string|null, \"evidenceRefs\": [string], \"checksPassed\": [string], \"blockers\": [string] } ], \"combinedOdds\": number|null, \"riskFactors\": [string], \"correlationNotes\": [string], \"blockers\": [string] } ] }. Only set status QUALIFIED if every leg has confirmed event identity, future pre-match status, exact market/selection, current verified decimal odds, source URL, observed timestamp, and settlement rules, and D2-D5/D8 checks do not block it. Otherwise status BLOCKED and list every missing item. Never invent IDs, prices, timestamps, source URLs or settlement rules. Include an empty coupons array if no defensible candidate exists."
       "Before constructing any coupon, review the supplied mandatory WIN library pack. Read BOTH winningCoupons and losingCoupons, relevant entityProfiles and validatedLessons. Identify reusable patterns and counterexamples, but do not copy picks blindly or overfit small samples. If either collection has zero matching records, say so honestly.",
       "Include a <WIN_LIBRARY_REVIEW_JSON>...</WIN_LIBRARY_REVIEW_JSON> block with JSON: { \"reviewed\": true, \"winningRecordIds\": [], \"losingRecordIds\": [], \"validatedLessonIds\": [], \"emptyCollections\": [], \"keyLearning\": [\"...\"] }. This receipt is mandatory even when there are zero records."
     ].join("\n"),
@@ -228,15 +229,14 @@ async function askWorker(
   } else {
     const departmentReports = (peerReports ?? []).filter(report => report.phase === "initial_scout" || report.phase === "department");
     const debateReports = (peerReports ?? []).filter(report => report.phase === "debate");
-    input = "You are the SINGLE final decision authority in WIN. Review the original brief, worker-network hierarchy, all eight department reports, four adversarial reviews and the Low-Risk Gate. Do not treat report count or consensus as evidence. Decide whether any proposed coupon is actually publishable.\\n" +
+    input = "You are WIN Global Master, an independent RISK ASSESSOR ONLY. You do not make the user\u2019s betting decision and have no authority to approve, reject, publish, hide or place a bet. Review the original brief, worker-network hierarchy, all eight department reports, four adversarial reviews and coupon-construction output. Do not treat report count or consensus as evidence. Assess risk for each constructed coupon and report an overall risk percentage.\\n" +
       JSON.stringify({ brief, departmentReports, debateReports, mandatoryRules: [
-        "Return exactly one final decision: BET, WAIT or NO BET.",
-        "Choose NO BET when core evidence, event identity, current STS prices or exact market/settlement rules are missing, stale, contradictory or unverifiable.",
-        "For a latest-coupon build, compare the eligible current candidate pool and any user-supplied existing coupon. Offer a WIN alternative only if each included leg passes all mandatory checks.",
-        "For a coupon audit, compare the supplied coupon against independently researched alternatives, but do not treat an inaccessible private STS coupon as retrieved.",
-        "Never force a combined-odds target by adding weak selections.",
-        "Explain exact selections, source/price timestamps, settlement, weakest leg, correlation, common-cause risks and unverified claims.",
-        "No bet placement, account login or stake action."
+        "Never output BET, WAIT or NO BET, and never tell the user whether to place the bet.",
+        "Return exactly one <WIN_RISK_ASSESSMENT_JSON> block with { \"overallRiskPercent\": number|null, \"riskScale\": \"heuristic_0_to_100_higher_is_riskier\", \"isCalibratedLossProbability\": false, \"method\": string, \"components\": [ { \"factor\": string, \"riskPercent\": number|null, \"weightPercent\": number, \"evidence\": [string] } ], \"topRiskDrivers\": [string], \"uncertainties\": [string], \"couponRisks\": [ { \"couponId\": string, \"riskPercent\": number|null, \"reason\": [string] } ] }.",
+        "The overallRiskPercent is a transparent heuristic risk score from 0 to 100, not a probability of losing or winning. Do not claim statistical calibration. If evidence is insufficient to score, return null rather than inventing a number.",
+        "Explain scoring factors, weights and evidence. Missing/stale odds, unknown settlement, unresolved adverse findings, weak evidence, high correlation, lineup uncertainty and source quality should increase risk or remain explicitly unscored.",
+        "Do not invent source checks, prices, statistics, calibration or risk precision. No bet placement, account login, stake advice or final decision.",
+        "Return a concise human-readable explanation followed by the single machine-readable risk block."
       ] });
   }
 
