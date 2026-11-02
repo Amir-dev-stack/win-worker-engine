@@ -62,7 +62,7 @@ export default async (req: Request) => {
       ...run, brief, status: aiCompleted ? "completed" : "failed",
       workers: [scout], debate: [], master: null,
       decision: "SCHEDULED LEARNING ONLY — no strategy was validated and no betting recommendation or coupon decision was made.",
-      updatedAt: completedAt, completedAt, learningReportVersion: 1,
+      updatedAt: completedAt, completedAt, learningReportVersion: 2,
       learningStages: stages,
       scoutSummary: { status: scout.status, report: scout.report, citations: scout.citations, error: scout.error || null }
     };
@@ -145,7 +145,7 @@ export default async (req: Request) => {
     const failedAt = new Date().toISOString();
     stages.push({ name: "research_cycle", status: "failed", finishedAt: failedAt, error: String(error) });
     const failed = { ...run, status: "failed", error: String(error), learningStages: stages,
-      learningReportVersion: 1, updatedAt: failedAt, completedAt: failedAt };
+      learningReportVersion: 2, updatedAt: failedAt, completedAt: failedAt };
     await put("runs", run.id, failed);
     await put("library/learning-cycles", run.id, {
       id: run.id, runId: run.id, reportVersion: 1,
