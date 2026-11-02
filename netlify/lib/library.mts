@@ -475,6 +475,8 @@ function entityDossiersFromReport(report: string): { clubs: any[]; players: any[
 export async function archiveRunToLibrary(run: any) {
   const savedAt = new Date().toISOString();
   const network = run?.workerNetwork;
+  const reports = [...(run.workers || []), ...(run.debate || []), ...(run.master ? [run.master] : [])];
+
   await put("library/research-runs", run.id, {
     id: run.id, taskType: run.brief?.taskType, event: run.brief?.event,
     status: run.status, decision: run.decision || run.master?.report || null,
@@ -483,20 +485,28 @@ export async function archiveRunToLibrary(run: any) {
     createdAt: run.createdAt, completedAt: run.completedAt || null, savedAt
   });
 
-  const reports = [...(run.workers || []), ...(run.debate || []), ...(run.master ? [run.master] : [])];
+  // Stable keys make archive retries idempotent: the same run cannot create duplicate report notes.
+  const reportNoteIds = new Map<string, string>();
   for (const report of reports) {
-    const noteId = crypto.randomUUID();
+    const noteId = run.id + ":" + (report.workerId || slug(report.role || "worker"));
+    reportNoteIds.set(report.workerId || report.role, noteId);
     await put("library/agent-notes", noteId, {
       id: noteId, runId: run.id, recordType: "agent_report",
-      agentId: report.workerId, agentRole: report.role, departmentId: report.departmentId || null,
-      phase: report.phase, status: report.status, report: clean(report.report, MAX_TEXT),
-      citations: safeArray(report.citations, 100), createdAt: report.completedAt || savedAt
+      agentId: report.workerId || null, agentRole: report.role || "WIN worker",
+      departmentId: report.departmentId || null, phase: report.phase || "unknown",
+      status: report.status || "failed", report: clean(report.report, MAX_TEXT),
+      citations: safeArray(report.citations, 100),
+      startedAt: report.startedAt || null, createdAt: report.completedAt || savedAt,
+      archivedAt: savedAt
     });
   }
 
   const nodeType: Record<string, EntityKind> = {
-    T1: "sport", T2: "country", T3: "league", T4: "club", T5: "player", T6: "event", T7: "specialist"
+    T1: "sport", T2: "country", T3: "league", T4: "club",
+    T5: "player", T6: "event", T7: "specialist"
   };
+  let entityProfilesUpdated = 0;
+  let observationsSaved = 0;
   for (const node of network?.nodes || []) {
     const entityType = nodeType[node.tier];
     if (!entityType) continue;
@@ -508,31 +518,65 @@ export async function archiveRunToLibrary(run: any) {
       : entityType === "league" ? node.scope?.competition
       : entityType === "club" ? node.scope?.club
       : entityType === "player" ? node.scope?.player
-      : entityType === "event" ? node.scope?.event : "";
+      : entityType === "event" ? node.scope?.event : node.name;
+    const departmentId = node.assignedDepartment ||
+      (["sport", "club", "player", "event"].includes(entityType) ? "D2" : "D1");
+    const sourceReport = reports.find((x: any) => x.departmentId === departmentId && x.phase === "department")
+      || reports.find((x: any) => x.departmentId === departmentId);
+    const sourceLibraryNoteId = sourceReport
+      ? reportNoteIds.get(sourceReport.workerId || sourceReport.role) || null : null;
+    const priorSources = safeArray(existingProfile?.sources, 100);
+    const reportSources = safeArray(sourceReport?.citations, 100);
     const profile = await saveEntityProfile({
       entityType, id: entityId, name: entityName || node.name,
       sport: node.scope?.sport, country: node.scope?.country, sports: node.scope?.sports,
       competition: node.scope?.competition, club: node.scope?.club,
       providerId: node.scope?.providerId,
       aliases: typeof node.scope?.aliases === "string" ? node.scope.aliases.split("|").filter(Boolean) : node.scope?.aliases,
-      profile: { ...(existingProfile?.profile || {}), ...node.scope, workerStatus: node.status, runId: run.id },
-      sources: safeArray(existingProfile?.sources, 40),
+      profile: {
+        ...(existingProfile?.profile || {}), ...node.scope,
+        workerStatus: node.status, lastRunId: run.id,
+        lastReviewedAt: sourceReport?.completedAt || savedAt,
+        lastResearchReportId: sourceReport?.workerId || null,
+        lastResearchNoteId: sourceLibraryNoteId,
+        lastResearchDepartment: departmentId,
+        executionMode: node.executionMode || "covered_by_department_checklist"
+      },
+      sources: [...priorSources, ...reportSources].slice(-100),
       createdAt: existingProfile?.createdAt,
       agentMission: entityMission(entityType)
     });
-    const departmentId = entityType === "sport" || entityType === "club" || entityType === "player" || entityType === "event" ? "D2" : "D1";
-    const sourceReport = (run.workers || []).find((x: any) => x.departmentId === departmentId);
-    const observationId = crypto.randomUUID();
+    entityProfilesUpdated++;
+
+    // The observation links each persistent identity to the full, archived department report
+    // and its citations rather than copying a shortened/partial report into every profile.
+    const observationId = run.id + ":" + entityId + ":" + (sourceReport?.workerId || "no-source");
     await put("library/agent-observations", observationId, {
-      id: observationId, agentId: profile.agentId, entityId, entityType,
-      runId: run.id, sourceReportId: sourceReport?.workerId || null,
-      observation: clean(sourceReport?.report, 5000),
-      status: sourceReport?.status === "completed" ? "case_specific_review" : "not_verified",
-      observedAt: savedAt
+      id: observationId, recordType: "entity_agent_research_link",
+      agentId: profile.agentId, entityId, entityType, entityName: profile.name,
+      scope: node.scope || {}, runId: run.id, departmentId,
+      sourceReportId: sourceReport?.workerId || null,
+      sourceLibraryNoteId,
+      sourceAgentRole: sourceReport?.role || null,
+      sourceReportStatus: sourceReport?.status || "not_run",
+      citations: reportSources,
+      observation: {
+        nodeName: node.name, nodeStatus: node.status,
+        executionMode: node.executionMode || "covered_by_department_checklist",
+        finding: sourceReport?.status === "completed"
+          ? "See the linked full department report and citations for this agent's research contribution."
+          : "No completed department report was available; no research finding is claimed."
+      },
+      status: sourceReport?.status === "completed" && Boolean(sourceReport.report?.trim())
+        ? "case_specific_review" : "not_verified",
+      observedAt: sourceReport?.completedAt || savedAt
     });
+    observationsSaved++;
   }
 
   const sportReport = (run.workers || []).find((x: any) => x.departmentId === "D2");
+  const sportReportNoteId = sportReport
+    ? reportNoteIds.get(sportReport.workerId || sportReport.role) || null : null;
   if (sportReport?.report) {
     const dossiers = entityDossiersFromReport(sportReport.report);
     for (const dossier of dossiers.clubs) {
@@ -547,23 +591,29 @@ export async function archiveRunToLibrary(run: any) {
         clean(n.scope?.club || n.name.replace(/ Club Agent$/, ""), 200).toLowerCase() === name.toLowerCase());
       const id = clean(node?.id, 180) || "club-" + slug([scope.sport, scope.country, name].filter(Boolean).join(" × "));
       const previous = await get<any>("library/entity-profiles", id);
-      const evidence = safeArray(dossier?.evidence, 50);
+      const evidence = safeArray(dossier?.evidence, 100);
       const profile = await saveEntityProfile({
         entityType: "club", id, name, ...scope,
         providerId: clean(dossier?.providerId || dossier?.externalId, 250),
         aliases: safeArray(dossier?.aliases, 50),
         profile: { ...(previous?.profile || {}), dossier: dossier.profile || dossier,
-          lastReviewedAt: savedAt, lastRunId: run.id, dossierEvidenceStatus: evidence.length ? "references_supplied_needs_validation" : "evidence_missing" },
-        sources: [...safeArray(previous?.sources, 40), ...evidence].slice(-40),
+          lastReviewedAt: savedAt, lastRunId: run.id, lastResearchReportId: sportReport.workerId,
+          lastResearchNoteId: sportReportNoteId,
+          dossierEvidenceStatus: evidence.length ? "references_supplied_needs_validation" : "evidence_missing" },
+        sources: [...safeArray(previous?.sources, 100), ...evidence].slice(-100),
         agentMission: entityMission("club")
       });
-      const observationId = crypto.randomUUID();
+      const observationId = run.id + ":" + id + ":dossier";
       await put("library/agent-observations", observationId, {
-        id: observationId, agentId: profile.agentId, entityId: id, entityType: "club",
+        id: observationId, recordType: "entity_dossier",
+        agentId: profile.agentId, entityId: id, entityType: "club",
         runId: run.id, sourceReportId: sportReport.workerId,
+        sourceLibraryNoteId: sportReportNoteId,
         observation: { dossier, evidence, verificationStatus: "requires_source_validation" },
+        citations: safeArray(sportReport.citations, 100),
         status: "dossier_requires_evidence_validation", observedAt: savedAt
       });
+      observationsSaved++;
     }
     for (const dossier of dossiers.players) {
       const name = clean(dossier?.name, 200);
@@ -578,8 +628,8 @@ export async function archiveRunToLibrary(run: any) {
         clean(n.scope?.player || n.name.replace(/ Player Agent$/, ""), 200).toLowerCase() === name.toLowerCase());
       const id = clean(node?.id, 180) || "player-" + slug([scope.sport, scope.country, name].filter(Boolean).join(" × "));
       const previous = await get<any>("library/entity-profiles", id);
-      const evidence = safeArray(dossier?.evidence, 50);
-      const matchLog = safeArray(dossier?.matchLog, 200).map((match: any) => ({
+      const evidence = safeArray(dossier?.evidence, 100);
+      const matchLog = safeArray(dossier?.matchLog, 300).map((match: any) => ({
         date: clean(match?.date, 40) || null, opponent: clean(match?.opponent, 200) || null,
         competition: clean(match?.competition, 200) || null,
         minutes: Number.isFinite(match?.minutes) ? match.minutes : null,
@@ -589,7 +639,7 @@ export async function archiveRunToLibrary(run: any) {
         assists: Number.isFinite(match?.assists) ? match.assists : null,
         cards: clean(match?.cards, 100) || null, injuryStatus: clean(match?.injuryStatus, 500) || null,
         sportSpecificMetrics: match?.sportSpecificMetrics && typeof match.sportSpecificMetrics === "object" ? match.sportSpecificMetrics : {},
-        evidenceRefs: safeArray(match?.evidenceRefs, 20)
+        evidenceRefs: safeArray(match?.evidenceRefs, 30)
       }));
       const profile = await saveEntityProfile({
         entityType: "player", id, name, ...scope,
@@ -597,27 +647,33 @@ export async function archiveRunToLibrary(run: any) {
         aliases: safeArray(dossier?.aliases, 50),
         profile: { ...(previous?.profile || {}), dossier: dossier.profile || {},
           matchLog, lastReviewedAt: savedAt, lastRunId: run.id,
-          dossierEvidenceStatus: evidence.length && matchLog.every((m: any) => m.evidenceRefs.length) ? "references_supplied_needs_validation" : "evidence_missing_or_incomplete" },
-        sources: [...safeArray(previous?.sources, 40), ...evidence].slice(-40),
+          lastResearchReportId: sportReport.workerId, lastResearchNoteId: sportReportNoteId,
+          dossierEvidenceStatus: evidence.length && matchLog.every((m: any) => m.evidenceRefs.length)
+            ? "references_supplied_needs_validation" : "evidence_missing_or_incomplete" },
+        sources: [...safeArray(previous?.sources, 100), ...evidence].slice(-100),
         agentMission: entityMission("player")
       });
-      const observationId = crypto.randomUUID();
+      const observationId = run.id + ":" + id + ":dossier";
       await put("library/agent-observations", observationId, {
-        id: observationId, agentId: profile.agentId, entityId: id, entityType: "player",
+        id: observationId, recordType: "entity_dossier",
+        agentId: profile.agentId, entityId: id, entityType: "player",
         runId: run.id, sourceReportId: sportReport.workerId,
+        sourceLibraryNoteId: sportReportNoteId,
         observation: { dossier: { ...dossier, matchLog }, evidence, verificationStatus: "requires_source_validation" },
+        citations: safeArray(sportReport.citations, 100),
         status: "dossier_requires_evidence_validation", observedAt: savedAt
       });
+      observationsSaved++;
     }
   }
 
   const learningReport = (run.workers || []).find((x: any) => x.departmentId === "D7");
   if (learningReport?.report) {
     await saveLearningNote({
+      id: run.id + ":D7:report",
       title: "D7 learning review — " + (run.brief?.event || run.id),
       note: learningReport.report, agentId: learningReport.workerId, runId: run.id,
-      validationStatus: "candidate_for_validation",
-      evidence: learningReport.citations || []
+      validationStatus: "candidate_for_validation", evidence: learningReport.citations || []
     });
     for (const lesson of lessonsFromReport(learningReport.report)) {
       if (typeof lesson?.lesson !== "string" || lesson.lesson.trim().length < 8) continue;
@@ -635,19 +691,17 @@ export async function archiveRunToLibrary(run: any) {
   if (run.brief?.taskType === "build_latest_coupon" || run.brief?.taskType === "compare_coupons" || run.brief?.taskType === "audit_existing_coupon") {
     await put("library/coupon-research-cases", run.id, {
       id: run.id, recordType: "coupon_research_case",
-      origin: "win", status: run.master?.report?.match(/FINAL DECISION:\s*([A-Z ]+)/i)?.[1]?.trim() || "reviewed",
+      origin: "win", status: run.master?.report?.match(/FINAL DECISION:\\s*([A-Z ]+)/i)?.[1]?.trim() || "reviewed",
       event: run.brief?.event, originalCoupon: run.brief?.existingCoupon || null,
       finalAnalysis: clean(run.master?.report, MAX_TEXT),
       winningExamplesRead: run.brief?.libraryReview?.counts?.winningCouponsMatched ?? 0,
       losingExamplesRead: run.brief?.libraryReview?.counts?.losingCouponsMatched ?? 0,
       createdAt: run.createdAt, savedAt
     });
-
     if ((run.brief?.taskType === "build_latest_coupon" || run.brief?.taskType === "compare_coupons") &&
-      /^\s*FINAL DECISION:\s*BET\b/im.test(run.master?.report || "")) {
+      /^\\s*FINAL DECISION:\\s*BET\\b/im.test(run.master?.report || "")) {
       await saveCouponRecord({
-        id: "win-" + run.id,
-        origin: "win",
+        id: "win-" + run.id, origin: "win",
         label: "WIN proposed coupon — " + clean(run.brief?.event, 180),
         couponText: clean(run.master?.report, MAX_TEXT),
         sport: run.brief?.sport, country: run.brief?.country, competition: run.brief?.competition,
@@ -657,5 +711,8 @@ export async function archiveRunToLibrary(run: any) {
       });
     }
   }
-  return { savedAt, reportsArchived: reports.length, entityProfilesUpdated: (network?.nodes || []).filter((n: any) => Boolean(nodeType[n.tier])).length };
+  return {
+    savedAt, reportsArchived: reports.length, reportNotesSaved: reports.length,
+    entityProfilesUpdated, observationsSaved
+  };
 }
