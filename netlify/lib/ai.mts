@@ -150,6 +150,37 @@ const commonInstructions = [
   "EVERY actual model worker pass that contributes to a coupon decision must independently review the supplied libraryReview payload and include its own machine-readable <WIN_LIBRARY_REVIEW_JSON> receipt with reviewed=true, winningRecordIds, losingRecordIds, validatedLessonIds, emptyCollections and keyLearning. This includes all eight department passes, all four adversarial debate reviewers and the Global Master. Receipts must list every supplied matching record ID in the winningCoupons, losingCoupons and validatedLessons arrays; do not claim to review data that was not supplied. Empty results are allowed but must be acknowledged. Missing or invalid receipt means the pass is blocked. Expose the blocker to the user; do not issue a betting decision.",
 ].join("\n");
 
+
+function compactPromptValue(value: any, depth = 0, arrayLimit = 12): any {
+  if (typeof value === "string") {
+    const limit = /report|scouting|notes|hypothesis|instruction|summary/i.test("") ? 1800 : 1800;
+    return value.length > limit ? value.slice(0, limit) + " [TRUNCATED FOR REQUEST BUDGET]" : value;
+  }
+  if (Array.isArray(value)) {
+    return value.slice(0, arrayLimit).map(item => compactPromptValue(item, depth + 1, arrayLimit));
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, any> = {};
+    const entries = Object.entries(value);
+    for (const [key, child] of entries) {
+      if (["rawReport", "sourceSnapshot", "debugTrace", "fullHtml"].includes(key)) continue;
+      if (depth > 5 && !["id", "name", "status", "outcome", "validationStatus"].includes(key)) continue;
+      out[key] = compactPromptValue(child, depth + 1, arrayLimit);
+    }
+    return out;
+  }
+  return value;
+}
+function promptJson(value: any, maxChars: number): string {
+  for (const arrayLimit of [12, 8, 5, 3, 1]) {
+    const serialized = JSON.stringify(compactPromptValue(value, 0, arrayLimit));
+    if (serialized.length <= maxChars) return serialized;
+  }
+  const serialized = JSON.stringify(compactPromptValue(value, 0, 1));
+  if (serialized.length <= maxChars) return serialized;
+  throw new Error("WIN request packet cannot fit its safe size after compaction (" + serialized.length + " characters; target " + maxChars + "). Split the work instead of dropping required evidence.");
+}
+
 function extractText(data: any): string {
   if (typeof data.output_text === "string") return data.output_text;
   const chunks: string[] = [];
@@ -214,7 +245,7 @@ async function askWorker(
   let input: string;
 
   if (phase === "initial_scout") {
-    input = "Original WIN brief:\n" + JSON.stringify(brief) +
+    input = "Original WIN brief:\n" + promptJson(brief, phase === "scheduled_learning" || phase === "scheduled_scout" ? 3000 : 8500) +
       "\nPerform Department D1 Public Offer & Scouting first. Discover only bounded, relevant public candidates. Produce the machine-readable WIN_CANDIDATES_JSON block exactly as specified in your assignment. No other department conclusion is final at this stage.";
   } else if (phase === "scheduled_scout") {
     input = "Perform a small, time-bounded public fixture and pre-match offer scan for the next 24 hours across sports. Return up to 10 candidates only, exact source URLs and timestamps, and clear coverage gaps. Do not construct a coupon or make betting recommendations. Include the required WIN_CANDIDATES_JSON block.\\n" + JSON.stringify(brief);
@@ -225,19 +256,25 @@ async function askWorker(
       JSON.stringify(brief);
   } else if (phase === "debate") {
     input = "Original WIN brief, worker-network manifest and all first-pass department reports follow. Challenge unsupported assumptions, correct mistakes, identify material disagreement and missing evidence. Do not simply agree. Re-check current/disputed claims.\nBRIEF AND NETWORK:\n" +
-      JSON.stringify(brief) + "\nDEPARTMENT REPORTS:\n" + JSON.stringify(peerReports ?? []);
+      JSON.stringify(brief) + "\nDEPARTMENT REPORTS:\n" + promptJson(peerReports ?? [], 7000);
   } else {
     const departmentReports = (peerReports ?? []).filter(report => report.phase === "initial_scout" || report.phase === "department");
     const debateReports = (peerReports ?? []).filter(report => report.phase === "debate");
     input = "You are WIN Global Master, an independent RISK ASSESSOR ONLY. You do not make the user\u2019s betting decision and have no authority to approve, reject, publish, hide or place a bet. Review the original brief, worker-network hierarchy, all eight department reports, four adversarial reviews and coupon-construction output. Do not treat report count or consensus as evidence. Assess risk for each constructed coupon and report an overall risk percentage.\\n" +
-      JSON.stringify({ brief, departmentReports, debateReports, mandatoryRules: [
+      promptJson({ brief, departmentReports, debateReports, mandatoryRules: [
         "Never output BET, WAIT or NO BET, and never tell the user whether to place the bet.",
         "Return exactly one <WIN_RISK_ASSESSMENT_JSON> block with { \"overallRiskPercent\": number|null, \"riskScale\": \"heuristic_0_to_100_higher_is_riskier\", \"isCalibratedLossProbability\": false, \"method\": string, \"components\": [ { \"factor\": string, \"riskPercent\": number|null, \"weightPercent\": number, \"evidence\": [string] } ], \"topRiskDrivers\": [string], \"uncertainties\": [string], \"couponRisks\": [ { \"couponId\": string, \"riskPercent\": number|null, \"reason\": [string] } ] }.",
         "The overallRiskPercent is a transparent heuristic risk score from 0 to 100, not a probability of losing or winning. Do not claim statistical calibration. If evidence is insufficient to score, return null rather than inventing a number.",
         "Explain scoring factors, weights and evidence. Missing/stale odds, unknown settlement, unresolved adverse findings, weak evidence, high correlation, lineup uncertainty and source quality should increase risk or remain explicitly unscored.",
         "Do not invent source checks, prices, statistics, calibration or risk precision. No bet placement, account login, stake advice or final decision.",
         "Return a concise human-readable explanation followed by the single machine-readable risk block."
-      ] });
+      ] }, 9000);
+  }
+
+  const maxInputChars = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 12000 : 25000;
+  const actualInputChars = instructions.length + input.length;
+  if (actualInputChars > maxInputChars) {
+    return failed("WIN compact request preflight blocked " + phase + ": " + actualInputChars + " characters exceeds " + maxInputChars + ". No API request was sent.");
   }
 
   let budgetId: string | null = null;
@@ -250,7 +287,7 @@ async function askWorker(
     const budget = await reserveAIRequest({
       id: requestBudgetId, model, phase, inputChars: instructions.length + input.length,
       maxOutputTokens, maxToolCalls,
-      maxInputChars: (phase === "scheduled_scout" || phase === "scheduled_learning") ? 12000 : 25000
+      maxInputChars
     });
     if (!budget.allowed) throw new Error(budget.reason);
     const sdkResult = await runWinAgent({
