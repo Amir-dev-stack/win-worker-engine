@@ -26,13 +26,13 @@ export default async (req: Request) => {
   try { body = await req.json(); } catch { return new Response("Bad JSON", { status: 400 }); }
   const run = await get<any>("runs", body.runId);
   if (!run) return new Response("Run not found", { status: 404 });
-  if (["completed", "failed"].includes(run.status) && run.learningReportVersion === 1) {
+  if (run.status === "completed" && run.learningReportVersion >= 2) {
     return new Response(null, { status: 202 });
   }
 
   const startedAt = new Date().toISOString();
   const stages: any[] = [];
-  await put("runs", run.id, { ...run, status: "scouting", startedAt, updatedAt: startedAt, learningReportVersion: 1 });
+  await put("runs", run.id, { ...run, status: "scouting", startedAt, updatedAt: startedAt, learningReportVersion: 2 });
 
   try {
     const reviewStarted = new Date().toISOString();
@@ -55,6 +55,7 @@ export default async (req: Request) => {
     }));
 
     const learningData = extractLearningCycle(scout.report || "");
+    const structuredLearningValid = Boolean(learningData && typeof learningData.cycleType === "string" && Array.isArray(learningData.candidateStrategies) && Array.isArray(learningData.coverageGaps) && Array.isArray(learningData.sourceRefs) && Array.isArray(learningData.validationBlockers));
     const strategyCandidates = Array.isArray(learningData?.candidateStrategies)
       ? learningData.candidateStrategies.slice(0, 20) : [];
     const completed = {
@@ -122,7 +123,7 @@ export default async (req: Request) => {
       },
       rawReport: scout.report || "",
       citations: Array.isArray(scout.citations) ? scout.citations : [],
-      learningStatus: "candidate_research_not_validated",
+      learningStatus: completed.status === "completed" ? "candidate_research_not_validated" : "failed_no_learning_claimed",
       warning: "A completed research report is not proof that a strategy is profitable or validated. Verify sources and test strategies prospectively."
     };
     await put("library/learning-cycles", run.id, report);
