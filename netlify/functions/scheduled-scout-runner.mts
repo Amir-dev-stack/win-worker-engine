@@ -56,6 +56,7 @@ export default async (req: Request) => {
 
     const learningData = extractLearningCycle(scout.report || "");
     const structuredLearningValid = Boolean(learningData && typeof learningData.cycleType === "string" && Array.isArray(learningData.candidateStrategies) && Array.isArray(learningData.coverageGaps) && Array.isArray(learningData.sourceRefs) && Array.isArray(learningData.validationBlockers));
+    if (stages[1]) { stages[1].status = aiCompleted && structuredLearningValid ? "completed" : "failed"; if (!structuredLearningValid && !stages[1].error) stages[1].error = "Required WIN_LEARNING_CYCLE_JSON block is missing or invalid."; }
     const strategyCandidates = Array.isArray(learningData?.candidateStrategies)
       ? learningData.candidateStrategies.slice(0, 20) : [];
     const completed = {
