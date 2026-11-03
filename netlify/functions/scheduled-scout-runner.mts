@@ -87,7 +87,7 @@ export default async (req: Request) => {
       await put("library/agent-task-queue", agentTask.id, { ...agentTask, status: taskStatus, updatedAt: completedAt, completedAt: cycleCompleted ? completedAt : null, error: cycleCompleted ? null : (scout.error || (entityAgentValid ? "learning_cycle_json_invalid" : "entity_agent_json_invalid")), reportRunId: run.id });
       if (cycleCompleted && entityAgentData) {
         const prior = await get<any>("library/persistent-agent-profiles", agentTask.agentId) || {};
-        const facts = entityAgentData.facts.filter((x:any) => typeof x?.claim === "string" && typeof x?.sourceUrl === "string" && /^https:\\/\\//i.test(x.sourceUrl)).slice(0, 50);
+        const facts = entityAgentData.facts.filter((x:any) => typeof x?.claim === "string" && typeof x?.sourceUrl === "string" && x.sourceUrl.startsWith("https://")).slice(0, 50);
         const profile = { ...prior, id: agentTask.agentId, name: agentTask.name, tier: agentTask.tier, scope: agentTask.scope,
           profileSummary: entityAgentData.profileSummary.slice(0, 5000), facts, unknowns: Array.isArray(entityAgentData.unknowns)?entityAgentData.unknowns.slice(0,50):[],
           nextResearch: Array.isArray(entityAgentData.nextResearch)?entityAgentData.nextResearch.slice(0,30):[],
