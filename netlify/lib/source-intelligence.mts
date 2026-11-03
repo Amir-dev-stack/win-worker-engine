@@ -143,6 +143,10 @@ export async function importTipsterCoupon(input: any) {
   if (!["manual_user_submission", "user_provided_export", "public_page_manual_capture"].includes(importMethod)) {
     throw new Error("Only manual_user_submission, user_provided_export and public_page_manual_capture are enabled. API and written-permission connectors require separate verification and implementation.");
   }
+  const contentClass = clean(input?.contentClass, 100).toLowerCase().replace(/[_-]+/g, " ").replace(/\\s+/g, " ").trim();
+  if (importMethod === "public_page_manual_capture" && !["original human coupon", "single human pick"].includes(contentClass)) {
+    throw new Error("Public captures must be explicitly classified as 'original human coupon' or 'single human pick'. Promotions, demos, consensus posts and unclassified material are not imported.");
+  }
   const couponText = clean(input?.couponText, 30000);
   if (couponText.length < 3) throw new Error("couponText must contain the human coupon selections.");
   const publishedAt = clean(input?.publishedAt, 100);
@@ -177,7 +181,8 @@ export async function importTipsterCoupon(input: any) {
     sourceMode: source.mode, automatedCollection: false,
     importMethod,
     authorizationAttested: true,
-    captureClass: importMethod === "public_page_manual_capture" ? "publicly_visible_material" : "user_attested_material",
+    captureClass: importMethod === "public_page_manual_capture" ? contentClass : "user_attested_material",
+    contentClass: contentClass || null,
     authorizationAttestedAt: new Date().toISOString(),
     tipsterName: tipsterName || null,
     publishedAt: publishedAt || null,
@@ -250,6 +255,7 @@ export async function ensureHumanCouponSeedExamples() {
   for (const example of examples) {
     results.push(await importTipsterCoupon({
       ...example, importMethod: "public_page_manual_capture", authorizedToStore: true,
+      contentClass: "original human coupon",
       label: "Reddit human parlay example — NBA player props"
     }));
   }
