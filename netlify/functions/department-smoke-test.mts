@@ -121,21 +121,28 @@ export default async (req: Request) => {
     });
 
     if (!upstream.ok) {
+      const providerContentType = upstream.headers.get("content-type") || null;
+      const providerRequestId = upstream.headers.get("x-request-id") || upstream.headers.get("request-id") || null;
+      const providerRawBody = await upstream.text();
       let providerPayload: any = null;
-      try { providerPayload = await upstream.json(); } catch { providerPayload = null; }
+      try { providerPayload = JSON.parse(providerRawBody); } catch { providerPayload = null; }
       const providerError = providerPayload?.error && typeof providerPayload.error === "object"
-        ? providerPayload.error : {};
-      const providerMessage = typeof providerError.message === "string"
+        ? providerPayload.error : providerPayload && typeof providerPayload === "object" ? providerPayload : {};
+      const sanitizeProviderText = (value: string) => value
+        .replaceAll(apiKey, "[REDACTED API KEY]")
+        .replace(/sk-[A-Za-z0-9_-]{8,}/g, "[REDACTED API KEY]")
+        .replace(/Bearer\\s+\\S+/gi, "Bearer [REDACTED]")
+        .replace(/(authorization["']?\\s*[:=]\\s*["']?)([^"',\\s}]+)/gi, "$1[REDACTED]")
+        .replace(/\\s+/g, " ")
+        .slice(0, 320);
+      const providerMessageRaw = typeof providerError.message === "string"
         ? providerError.message
-            .replaceAll(apiKey, "[REDACTED API KEY]")
-            .replace(/sk-[A-Za-z0-9_-]{12,}/g, "[REDACTED API KEY]")
-            .replace(/Bearer\s+\S+/gi, "Bearer [REDACTED]")
-            .slice(0, 240)
-        : null;
+        : typeof providerError.detail === "string" ? providerError.detail : null;
+      const providerMessage = providerMessageRaw ? sanitizeProviderText(providerMessageRaw) : null;
+      const providerResponseExcerpt = providerMessage ? null : providerRawBody ? sanitizeProviderText(providerRawBody) : null;
       const providerErrorCode = typeof providerError.code === "string" ? providerError.code.slice(0, 100) : null;
       const providerErrorType = typeof providerError.type === "string" ? providerError.type.slice(0, 100) : null;
       const providerErrorParam = typeof providerError.param === "string" ? providerError.param.slice(0, 100) : null;
-      const providerRequestId = upstream.headers.get("x-request-id") || upstream.headers.get("request-id") || null;
 
       if (upstream.status >= 500) {
         const settled = await settleAIRequest(id, null, 0, true);
@@ -147,7 +154,8 @@ export default async (req: Request) => {
         id, departmentId: department.id, departmentName: department.name,
         result: "request_rejected", providerStatus: upstream.status,
         providerErrorCode, providerErrorType, providerErrorParam,
-        providerErrorMessage: providerMessage, providerRequestId,
+        providerErrorMessage: providerMessage, providerResponseExcerpt,
+        providerContentType, providerRequestId,
         message: upstream.status === 401
           ? "OpenAI rejected the key during the Responses API request."
           : upstream.status === 403
