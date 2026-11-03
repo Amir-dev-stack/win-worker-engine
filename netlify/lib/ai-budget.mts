@@ -35,7 +35,7 @@ type BudgetAlert = {
   estimatedTotalUsd: number;
 };
 
-type BudgetSettings = { limitEnabled: boolean; updatedAt: string | null };
+type BudgetSettings = { limitEnabled: true; spendingLocked: boolean; lockedAt: string | null; lockReason: string | null; lastOwnerApprovalAt: string | null; updatedAt: string | null };
 
 function monthKey(date = new Date()) {
   return date.toISOString().slice(0, 7);
@@ -131,9 +131,40 @@ async function readLedger(month = monthKey()): Promise<Ledger> {
 async function readBudgetSettings(): Promise<BudgetSettings> {
   const found = await STORE().get(SETTINGS_KEY, { type: "json" }) as Partial<BudgetSettings> | null;
   return {
-    limitEnabled: found?.limitEnabled !== false,
+    limitEnabled: true,
+    spendingLocked: found?.spendingLocked === true,
+    lockedAt: found?.lockedAt || null,
+    lockReason: found?.lockReason || null,
+    lastOwnerApprovalAt: found?.lastOwnerApprovalAt || null,
     updatedAt: found?.updatedAt || null
   };
+}
+async function lockSpending(reason: string) {
+  const current = await readBudgetSettings();
+  if (current.spendingLocked) return current;
+  const next: BudgetSettings = { ...current, limitEnabled: true, spendingLocked: true,
+    lockedAt: new Date().toISOString(), lockReason: reason, updatedAt: new Date().toISOString() };
+  await STORE().setJSON(SETTINGS_KEY, next);
+  return next;
+}
+export async function ownerApproveBudgetUnlock(confirmation: string) {
+  if (confirmation !== "I AUTHORIZE WIN SPENDING UNLOCK") {
+    throw new Error("Owner confirmation phrase did not match. Spending remains locked.");
+  }
+  return withControllerLock(async () => {
+    const current = await readBudgetSettings();
+    const now = new Date().toISOString();
+    const next: BudgetSettings = { ...current, limitEnabled: true, spendingLocked: false,
+      lockedAt: null, lockReason: null, lastOwnerApprovalAt: now,
+      updatedAt: now };
+    await STORE().setJSON(SETTINGS_KEY, next);
+    const ledger = await readLedger();
+    addBudgetAlert(ledger, "owner_unlock_" + Date.now(), "info",
+      "Owner explicitly authorized WIN AI spending to resume. The monthly cap remains enabled.",
+      ledger.spentUsd + reservedTotal(ledger));
+    await writeLedger(ledger);
+    return next;
+  });
 }
 async function writeLedger(ledger: Ledger) {
   ledger.updatedAt = new Date().toISOString();
@@ -149,27 +180,6 @@ export type AIRequestBudget = {
   maxToolCalls: number;
   maxInputChars: number;
 };
-
-export async function setAIbudgetLimitEnabled(limitEnabled: boolean) {
-  return withControllerLock(async () => {
-    const current = await readBudgetSettings();
-    if (current.limitEnabled === limitEnabled) return current;
-    const next: BudgetSettings = { limitEnabled, updatedAt: new Date().toISOString() };
-    await STORE().setJSON(SETTINGS_KEY, next);
-    const ledger = await readLedger();
-    addBudgetAlert(
-      ledger,
-      "limit_toggle_" + Date.now(),
-      "info",
-      limitEnabled
-        ? "WIN's internal $3 monthly AI spending limit has been enabled."
-        : "WIN's internal $3 monthly AI spending limit has been disabled. WIN will continue tracking usage and issuing alerts, but will not block requests at its $2.95 threshold. OpenAI's provider-side limits are unchanged.",
-      ledger.spentUsd + reservedTotal(ledger)
-    );
-    await writeLedger(ledger);
-    return next;
-  });
-}
 
 export async function reserveAIRequest(input: AIRequestBudget) {
   const rates = MODEL_RATES[input.model];
@@ -189,14 +199,22 @@ export async function reserveAIRequest(input: AIRequestBudget) {
     const reserved = reservedTotal(ledger);
     const projectedTotal = roundUsd(ledger.spentUsd + reserved + estimate);
 
-    if (settings.limitEnabled && projectedTotal > OPERATING_LIMIT_USD) {
+    if (settings.spendingLocked) {
+      ledger.blockedCalls += 1;
+      ledger.lastError = "WIN AI spending is owner-locked; no request was sent to OpenAI.";
+      await writeLedger(ledger);
+      return { allowed: false as const, reason: "WIN AI spending is locked. Only the owner can explicitly authorize an unlock using the master internal token and confirmation phrase." };
+    }
+
+    if (projectedTotal >= OPERATING_LIMIT_USD) {
+      await lockSpending("Monthly operating stop reached or projected. Owner approval is required to resume spending.");
       ledger.blockedCalls += 1;
       ledger.lastError = "Monthly WIN AI budget limit reached; request denied before calling OpenAI.";
       evaluateBudgetAlerts(ledger, Math.max(projectedTotal, OPERATING_LIMIT_USD));
       await writeLedger(ledger);
       return {
         allowed: false as const,
-        reason: "WIN's $3 monthly application limit is enabled. This request was blocked before it was sent to OpenAI."
+        reason: "WIN has reached its $2.95 monthly operating stop and is now locked. This request was blocked before it was sent to OpenAI. Only the owner can unlock it."
       };
     }
 
@@ -241,7 +259,9 @@ export async function settleAIRequest(
       }
       delete ledger.reservations[reservationId];
       ledger.spentUsd = roundUsd(ledger.spentUsd + charge);
-      evaluateBudgetAlerts(ledger, ledger.spentUsd + reservedTotal(ledger));
+      const settledTotal = ledger.spentUsd + reservedTotal(ledger);
+      evaluateBudgetAlerts(ledger, settledTotal);
+      if (settledTotal >= OPERATING_LIMIT_USD) await lockSpending("Settled monthly usage reached the $2.95 operating stop. Owner approval is required to resume spending.");
       ledger.calls += 1;
       ledger.lastCallAt = new Date().toISOString();
       ledger.lastError = null;
@@ -274,9 +294,13 @@ export async function getAIbudgetStatus() {
     currency: "USD",
     monthlyLimitUsd: LIMIT_USD,
     operatingStopUsd: OPERATING_LIMIT_USD,
-    limitEnabled: settings.limitEnabled,
+    limitEnabled: true,
     limitUpdatedAt: settings.updatedAt,
-    limitMode: settings.limitEnabled ? "enforced" : "tracking_only",
+    limitMode: settings.spendingLocked ? "owner_locked" : "enforced",
+    spendingLocked: settings.spendingLocked,
+    lockedAt: settings.lockedAt,
+    lockReason: settings.lockReason,
+    lastOwnerApprovalAt: settings.lastOwnerApprovalAt,
     spentUsd: roundUsd(ledger.spentUsd),
     reservedUsd,
     totalTrackedUsd,
@@ -286,7 +310,7 @@ export async function getAIbudgetStatus() {
     lastCallAt: ledger.lastCallAt,
     lastError: ledger.lastError,
     alerts: (ledger.alerts || []).slice(0, 20),
-    enforcement: "application-level estimate only; NOT a provider hard cap or concurrency-safe financial ledger",
-    note: "WIN's internal limit can be disabled from the dashboard. Disabling it does not change OpenAI project or organisation spending limits. This Blobs ledger is advisory; monitor actual usage in OpenAI Platform."
+    enforcement: "application-level estimated stop with a persistent owner lock; NOT a provider hard cap or a guarantee against provider-side billing overshoot",
+    note: "The owner lock persists across calendar-month rollover. No agent, OAuth client, scheduled task or ordinary API request can unlock it. Unlock requires the WIN_INTERNAL_TOKEN and exact owner confirmation phrase. OpenAI provider-side spending limits remain separate."
   };
 }
