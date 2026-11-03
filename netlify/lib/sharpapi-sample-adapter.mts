@@ -59,7 +59,7 @@ async function syncOne(file:typeof FILES[number]){
    sportId,eventId:obj.event_id||"unknown",
    providerMarketId:obj.id||undefined,providerMarketName:obj.market_type||"unknown",
    canonicalMarketId:marketSlug(obj.market_type||"unknown"),
-   league:obj.league||undefined,homeTeam:obj.home_team||undefined,awayTeam:obj.away_team||undefined,selectionType:obj.selection_type||undefined,
+   league:obj.league||undefined,homeTeam:obj.home_team||undefined,awayTeam:obj.away_team||undefined,selectionType:obj.selection_type||undefined,selection:obj.selection||undefined,
    period:periodFor(obj.market_type||""),
    ...(obj.line!==""&&Number.isFinite(Number(obj.line))?{line:Number(obj.line)}:{}),
    selectionName:[obj.selection,obj.selection_type].filter(Boolean).join(" — "),
