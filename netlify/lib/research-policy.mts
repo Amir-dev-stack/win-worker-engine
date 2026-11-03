@@ -4,7 +4,11 @@
  */
 export const WIN_RESEARCH_POLICY = {
   autonomousDiscovery: {
-    enabledByDefault: false,
+    enabledByDefault: true,
+    mode: "public_metadata_only",
+    automaticIngestion: false,
+    automaticActivation: false,
+    humanApprovalRequiredForAdapter: true,
     permittedMethods: [
       "documented public API",
       "licensed provider API",
