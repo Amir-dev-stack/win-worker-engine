@@ -1,0 +1,60 @@
+import { list, put } from "./store.mts";
+
+type Observation={sport:string;eventStart:string;homeTeam:string;awayTeam:string;closing:any;settlements:any;homeScore:number|null;awayScore:number|null;providerId:string;};
+type Trial={p:number;y:number;};
+const clamp=(p:number)=>Math.max(1e-6,Math.min(1-1e-6,p));
+function binaryMetrics(trials:Trial[]){
+ const n=trials.length;if(!n)return null;
+ let brier=0,logLoss=0,correct=0;
+ const bins=Array.from({length:10},(_,i)=>({from:i/10,to:(i+1)/10,count:0,meanProbability:0,observedRate:0}));
+ for(const t of trials){const p=clamp(t.p);brier+=(p-t.y)**2;logLoss-=t.y*Math.log(p)+(1-t.y)*Math.log(1-p);if((p>=.5)===(t.y===1))correct++;
+  const idx=Math.min(9,Math.floor(p*10));bins[idx].count++;bins[idx].meanProbability+=p;bins[idx].observedRate+=t.y;
+ }
+ return {count:n,brier:brier/n,logLoss:logLoss/n,accuracy:correct/n,calibrationBins:bins.filter(b=>b.count).map(b=>({...b,meanProbability:b.meanProbability/b.count,observedRate:b.observedRate/b.count}))};
+}
+function multiclassMetrics(trials:{p:number[];y:number}[]){
+ const n=trials.length;if(!n)return null;let brier=0,logLoss=0,correct=0;
+ for(const t of trials){const sum=t.p.reduce((s,p)=>s+p,0);if(t.y<0||t.y>=t.p.length||sum<=0)continue;const probs=t.p.map(p=>clamp(p/sum));brier+=probs.reduce((s,p,i)=>s+(p-(i===t.y?1:0))**2,0);logLoss-=Math.log(probs[t.y]);if(probs.indexOf(Math.max(...probs))===t.y)correct++;}
+ return {count:n,brier:brier/n,logLoss:logLoss/n,accuracy:correct/n};
+}
+function validProb(x:any):x is number{return typeof x==="number"&&Number.isFinite(x)&&x>0&&x<1;}
+function binaryMarket(name:string,rows:Observation[],getP:(r:Observation)=>any,getY:(r:Observation)=>any){
+ const all=rows.map(r=>({p:getP(r),y:getY(r),date:r.eventStart})).filter(x=>validProb(x.p)&&(x.y===0||x.y===1)).sort((a,b)=>a.date.localeCompare(b.date));
+ if(all.length<30)return {market:name,status:"insufficient_sample",observations:all.length,minimum:30};
+ const cut=Math.floor(all.length*.7),train=all.slice(0,cut),test=all.slice(cut);
+ return {market:name,status:"evaluated",observations:all.length,trainingCount:train.length,testCount:test.length,trainingPeriod:{from:train[0].date,to:train.at(-1)?.date},testPeriod:{from:test[0].date,to:test.at(-1)?.date},testMetrics:binaryMetrics(test)};
+}
+function evaluateDataset(dataset:any){
+ const rows:Observation[]=(Array.isArray(dataset.records)?dataset.records:[]).filter((r:any)=>r.status==="completed"&&r.eventStart&&Number.isFinite(Date.parse(r.eventStart))).map((r:any)=>({...r,sport:r.sport||dataset.sport,providerId:dataset.providerId}));
+ const sorted=rows.sort((a,b)=>a.eventStart.localeCompare(b.eventStart));
+ const oneXTwo=sorted.map(r=>{
+  const c=r.closing||{},s=r.settlements||{};
+  const home=Number(c.homeWinProbability),draw=Number(c.drawProbability),away=Number(c.awayWinProbability);
+  let y=s.moneylineWinner==="home"?0:s.moneylineWinner==="draw"?1:s.moneylineWinner==="away"?2:-1;
+  if(y<0&&Number.isFinite(r.homeScore)&&Number.isFinite(r.awayScore))y=r.homeScore>r.awayScore?0:r.homeScore===r.awayScore?1:2;
+  const p=Number.isFinite(draw)&&draw>0?[home,draw,away]:[home,away];
+  if(p.length===2&&y===2)y=1;
+  return {date:r.eventStart,p,y};
+ }).filter(x=>x.y>=0&&x.p.every(validProb));
+ let moneyline:any={status:"insufficient_sample",observations:oneXTwo.length,minimum:30};
+ if(oneXTwo.length>=30){const cut=Math.floor(oneXTwo.length*.7),train=oneXTwo.slice(0,cut),test=oneXTwo.slice(cut);moneyline={status:"evaluated",observations:oneXTwo.length,trainingCount:train.length,testCount:test.length,trainingPeriod:{from:train[0].date,to:train.at(-1)?.date},testPeriod:{from:test[0].date,to:test.at(-1)?.date},testMetrics:multiclassMetrics(test)};}
+ const markets=[
+  binaryMarket("spread_or_puck_line",sorted,r=>r.closing?.homeSpreadCoverProbability,r=>r.settlements?.spreadResult==="home"?1:r.settlements?.spreadResult==="away"?0:null),
+  binaryMarket("game_total_over",sorted,r=>r.closing?.overProbability,r=>r.settlements?.totalResult==="over"?1:r.settlements?.totalResult==="under"?0:null),
+  binaryMarket("btts_yes",sorted,r=>r.closing?.bttsYesProbability,r=>r.settlements?.bttsResult==="yes"?1:r.settlements?.bttsResult==="no"?0:null)
+ ];
+ return {providerId:dataset.providerId,sport:dataset.sport,sourceLicence:dataset.sourceLicence,marketDataType:dataset.marketDataType,bookmakerIdentityIncluded:dataset.bookmakerIdentityIncluded===true,events:sorted.length,moneyline,markets};
+}
+export async function runMarketCalibrationLab(){
+ const datasets=await list<any>("library/model-lab/market-consensus-datasets",100);
+ const evaluated=datasets.map(evaluateDataset);
+ const id="market-calibration-"+new Date().toISOString().slice(0,10);
+ const totalEvents=evaluated.reduce((n,x)=>n+x.events,0);
+ const report={id,status:totalEvents?"completed":"waiting_for_data",createdAt:new Date().toISOString(),sourceDatasetCount:datasets.length,totalEvents,splitMethod:"chronological_70_30_per_dataset",reports:evaluated,interpretation:"This evaluates the closing consensus market as a benchmark, not a WIN predictive model. Test metrics are out-of-time. It does not establish betting ROI, bookmaker execution price or a profitable edge.",guardrails:["No random train/test split.","No future rows used in training portion.","Pushes excluded from binary market scoring.","Consensus fair probabilities are not bookmaker prices.","Human Coupon Lab was not read or written."],origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false};
+ await put("library/model-lab/market-calibration-reports",id,report);
+ return report;
+}
+export async function getMarketCalibrationStatus(){
+ const reports=await list<any>("library/model-lab/market-calibration-reports",20);
+ return {reportCount:reports.length,latest:reports.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]||null};
+}
