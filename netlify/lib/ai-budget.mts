@@ -2,8 +2,8 @@ import { getStore } from "@netlify/blobs";
 
 const STORE = () => getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" });
 const LOCK_KEY = "ai-budget/controller-lock";
-const LIMIT_USD = 5;
-const OPERATING_LIMIT_USD = 4.95;
+const LIMIT_USD = 3;
+const OPERATING_LIMIT_USD = 2.95;
 const WEB_SEARCH_USD = 0.01;
 const SEARCH_CONTENT_TOKENS_PER_CALL = 8000;
 const MODEL_RATES: Record<string, { input: number; output: number }> = {
@@ -111,7 +111,7 @@ export async function reserveAIRequest(input: AIRequestBudget) {
       await writeLedger(ledger);
       return {
         allowed: false as const,
-        reason: "WIN's $5 monthly API ceiling is protected. This request was blocked before it was sent to OpenAI."
+        reason: "WIN's $3 monthly API ceiling is protected. This request was blocked before it was sent to OpenAI."
       };
     }
 
