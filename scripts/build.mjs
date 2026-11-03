@@ -42,6 +42,8 @@ const required = [
   "netlify/functions/consensus-market-sync.mts",
   "netlify/lib/sharpapi-sample-adapter.mts",
   "netlify/functions/sharpapi-sample-sync.mts",
+  "netlify/lib/observed-market-settlement.mts",
+  "netlify/functions/observed-market-settlement.mts",
   "netlify/lib/market-calibration.mts",
   "scripts/quality-gates.mjs"
 ];
