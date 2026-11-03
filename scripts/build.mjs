@@ -95,7 +95,7 @@ const checks = [
   [health.includes('aiExecutionApproved') && health.includes('configured_but_disabled_pending_budget_approval'), "Health endpoint does not disclose the AI approval gate."],
   [scheduledRunner.includes("runScheduledLearning") && scheduledRunner.includes("authorized(req)") && scheduledRunner.includes("library/learning-cycles"), "Authenticated background scheduled learning runner is missing."],
   [budgetApi.includes("/api/ai-budget") && budgetApi.includes("getAIbudgetStatus"), "Authenticated AI budget status endpoint is missing."],
-  [aiBudget.includes("setAIbudgetLimitEnabled") && aiBudget.includes("evaluateBudgetAlerts") && budgetApi.includes('req.method === "POST"'), "WIN budget toggle and persistent spend alerts are missing."],
+  [aiBudget.includes("ownerApproveBudgetUnlock") && aiBudget.includes("spendingLocked") && aiBudget.includes("evaluateBudgetAlerts") && budgetApi.includes("owner_approve_unlock"), "WIN persistent owner-only spending lock and alerts are missing."],
   [health.includes("learningMonitor") && health.includes("learningCycles"), "Health endpoint does not disclose intensive-learning schedule."],
   [simulation.includes("Math.min(50") && simulation.includes("const minLegs=Math.min(50") && simulation.includes("performanceByLegCount"), "WIN 2–50 leg experiment sweep is missing."],
   [backtest.includes("chronologicalSplit") && backtest.includes("historically_tested_not_validated") && backtest.includes("hitRate95Wilson"), "Chronological strategy backtest and uncertainty reporting are missing."],
