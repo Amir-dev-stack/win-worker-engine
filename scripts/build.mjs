@@ -31,6 +31,11 @@ const required = [
   "netlify/functions/coverage.mts",
   "netlify/functions/coverage-monitor.mts",
   "netlify/functions/human-coupon-settlements.mts",
+  "netlify/lib/data-provider-registry.mts",
+  "netlify/lib/openfootball-adapter.mts",
+  "netlify/lib/model-lab.mts",
+  "netlify/functions/openfootball-sync.mts",
+  "netlify/functions/research-status.mts",
   "scripts/quality-gates.mjs"
 ];
 
