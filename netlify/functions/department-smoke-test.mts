@@ -62,7 +62,7 @@ export default async (req: Request) => {
 
   // This owner-only smoke test is the sole exception to the global inference
   // approval gate. It does not call the normal worker runner, enable schedules,
-  // or change WIN_AI_BUDGET_APPROVED. The persistent budget stop still applies.
+  // or change the global inference approval setting. The persistent budget stop still applies.
   const prompt = [
     "WIN DEPARTMENT ROUTING SMOKE TEST — NOT A SPORTS RESEARCH TASK.",
     "Department ID: " + department.id,
