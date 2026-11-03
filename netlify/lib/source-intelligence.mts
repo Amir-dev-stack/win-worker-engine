@@ -143,7 +143,7 @@ export async function importTipsterCoupon(input: any) {
   if (!["manual_user_submission", "user_provided_export", "public_page_manual_capture"].includes(importMethod)) {
     throw new Error("Only manual_user_submission, user_provided_export and public_page_manual_capture are enabled. API and written-permission connectors require separate verification and implementation.");
   }
-  const contentClass = clean(input?.contentClass, 100).toLowerCase().replace(/[_-]+/g, " ").replace(/\\s+/g, " ").trim();
+  const contentClass = clean(input?.contentClass, 100).toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
   if (importMethod === "public_page_manual_capture" && !["original human coupon", "single human pick"].includes(contentClass)) {
     throw new Error("Public captures must be explicitly classified as 'original human coupon' or 'single human pick'. Promotions, demos, consensus posts and unclassified material are not imported.");
   }
