@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 const read = path => readFile(path, "utf8");
 const checks = [];
 const add = (name, ok, detail) => checks.push({ name, ok: Boolean(ok), detail });
-const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner] = await Promise.all([
+const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library] = await Promise.all([
   read("netlify/lib/coverage.mts"), read("netlify/functions/coverage.mts"),
   read("netlify/functions/coverage-monitor.mts"), read("netlify/functions/human-coupon-settlements.mts"),
   read("netlify/lib/source-intelligence.mts"), read("netlify/functions/worker-runner.mts"),
@@ -11,7 +11,8 @@ const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, buil
   read("netlify/lib/data-provider-registry.mts"), read("netlify/lib/openfootball-adapter.mts"), read("netlify/lib/model-lab.mts"),
   read("netlify/functions/openfootball-sync.mts"), read("netlify/functions/research-status.mts"),
   read("netlify/lib/consensus-market-adapter.mts"), read("netlify/functions/consensus-market-sync.mts"),
-  read("netlify/lib/sharpapi-sample-adapter.mts"), read("netlify/functions/sharpapi-sample-sync.mts"), read("netlify/lib/market-calibration.mts"), read("netlify/lib/worker-org.mts"), read("netlify/functions/scheduled-scout-runner.mts")
+  read("netlify/lib/sharpapi-sample-adapter.mts"), read("netlify/functions/sharpapi-sample-sync.mts"), read("netlify/lib/market-calibration.mts"), read("netlify/lib/worker-org.mts"), read("netlify/functions/scheduled-scout-runner.mts"),
+  read("netlify/lib/openfootball-worldcup-adapter.mts"), read("netlify/functions/openfootball-worldcup-sync.mts"), read("netlify/lib/library.mts")
 ]);
 add("Coverage is calculated from persisted evidence", coverage.includes("library/research-evidence") && coverage.includes("not_observed") && coverage.includes("stale_or_undated"), "No missing coverage is fabricated.");
 add("Every registered sport is reported", coverage.includes("SPORT_REGISTRY.map") && coverage.includes("requiredDomains"), "Sport coverage is based on the current registry.");
@@ -39,6 +40,9 @@ add("Dynamic entity agents are independently queued", workerOrg.includes("queued
 add("Scheduled learning executes one queued entity agent per cycle", scheduledAgentRunner.includes("pendingAgentTasks") && scheduledAgentRunner.includes("WIN_ENTITY_AGENT_JSON") && scheduledAgentRunner.includes("library/persistent-agent-profiles"), "Entity agents run as separate budget-gated API calls and keep unvalidated profile histories.");
 add("Research agents receive the isolated Model Lab pack", worker.includes("getModelLabResearchPack") && scheduledAgentRunner.includes("getModelLabResearchPack") && ai.includes("modelLabResearchPack"), "Departments and scheduled agents can read Model Lab evidence without importing human coupons.");
 add("Research status exposes agent execution", statusFn.includes("persistentAgents") && statusFn.includes("library/agent-task-queue") && app.includes("agentQueue.queued"), "Queue, profile and execution status is visible through the authenticated status API.");
+add("World Cup data importer preserves CC0 provenance and player events", worldCupAdapter.includes("openfootball-worldcup-json") && worldCupAdapter.includes("player-event-datasets") && worldCupAdapter.includes("resultBasis:\"regulation_90min\"") && worldCupAdapter.includes("rawChecksum"), "Tournament results, goals, lineups, substitutions and cards remain source-attributed.");
+add("World Cup sync is separately scheduled and no-AI", worldCupSync.includes("17 4 * * *") && !worldCupSync.includes("runWinAgent"), "Tournament ingestion is bounded and does not consume model budget.");
+add("Persistent agent profiles are available in the WIN library", library.includes("persistent-agent-profiles") && library.includes("agent-task-queue"), "Agents can reuse profiles and users can inspect their queued and completed tasks.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
