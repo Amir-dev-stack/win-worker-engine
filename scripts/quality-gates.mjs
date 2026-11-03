@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 const read = path => readFile(path, "utf8");
 const checks = [];
 const add = (name, ok, detail) => checks.push({ name, ok: Boolean(ok), detail });
-const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library, settlementBridge, settlementFn] = await Promise.all([
+const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library, settlementBridge, settlementFn, sourceDiscovery, sourceDiscoveryFn, sourceReviewFn] = await Promise.all([
   read("netlify/lib/coverage.mts"), read("netlify/functions/coverage.mts"),
   read("netlify/functions/coverage-monitor.mts"), read("netlify/functions/human-coupon-settlements.mts"),
   read("netlify/lib/source-intelligence.mts"), read("netlify/functions/worker-runner.mts"),
@@ -13,7 +13,8 @@ const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, buil
   read("netlify/lib/consensus-market-adapter.mts"), read("netlify/functions/consensus-market-sync.mts"),
   read("netlify/lib/sharpapi-sample-adapter.mts"), read("netlify/functions/sharpapi-sample-sync.mts"), read("netlify/lib/market-calibration.mts"), read("netlify/lib/worker-org.mts"), read("netlify/functions/scheduled-scout-runner.mts"),
   read("netlify/lib/openfootball-worldcup-adapter.mts"), read("netlify/functions/openfootball-worldcup-sync.mts"), read("netlify/lib/library.mts"),
-  read("netlify/lib/observed-market-settlement.mts"), read("netlify/functions/observed-market-settlement.mts")
+  read("netlify/lib/observed-market-settlement.mts"), read("netlify/functions/observed-market-settlement.mts"),
+  read("netlify/lib/public-source-discovery.mts"), read("netlify/functions/public-source-discovery.mts"), read("netlify/functions/research-source-candidates.mts")
 ]);
 add("Coverage is calculated from persisted evidence", coverage.includes("library/research-evidence") && coverage.includes("not_observed") && coverage.includes("stale_or_undated"), "No missing coverage is fabricated.");
 add("Every registered sport is reported", coverage.includes("SPORT_REGISTRY.map") && coverage.includes("requiredDomains"), "Sport coverage is based on the current registry.");
@@ -51,6 +52,11 @@ add("Settled bookmaker observations feed the existing simulation engine", settle
 add("Settlement bridge excludes prediction markets and does not use AI", settlementBridge.includes("bookmakerType!==\"prediction_market\"") && !settlementFn.includes("runWinAgent") && settlementFn.includes("17 7 * * *"), "The bridge is deterministic, daily and leaves prediction-market expiry records out.");
 add("Model Lab agents can review actual settled-price simulation", modelLab.includes("latestObservedMarketSettlement") && modelLab.includes("settledObservedMarketRows") && statusFn.includes("observedMarketSettlement"), "Simulation reports are included in the bounded agent evidence pack.");
 add("Model Lab data is visible in the private library", library.includes("category === \"market-data\"") && html.includes("value=\"market-data\"") && app.includes("Settled bookmaker prices"), "Users can inspect imported datasets, settlement records and reports.");
+add("Autonomous source discovery scans public GitHub and Hugging Face metadata only", sourceDiscovery.includes("huggingface.co/api/datasets") && sourceDiscovery.includes("api.github.com/search/repositories") && sourceDiscovery.includes("automationAllowed:false") && sourceDiscovery.includes("aiCalls:0"), "Discovery stores source metadata and license candidates without downloading or activating unreviewed datasets.");
+add("Public source discovery runs on a no-AI schedule", sourceDiscoveryFn.includes("17 2 * * *") && !sourceDiscoveryFn.includes("runWinAgent"), "Daily metadata discovery does not consume the OpenAI budget.");
+add("Source approval is authenticated and cannot activate ingestion", sourceReviewFn.includes("requireAuth") && sourceReviewFn.includes("approved_for_adapter_review") && sourceReviewFn.includes("automationAllowed:false") && statusFn.includes("sourceDiscovery"), "User approval only authorizes adapter design and terms review; it never connects a provider.");
+add("Discovered sources are visible in the library and dashboard", library.includes('category === "sources"') && html.includes('value="sources"') && app.includes("Discovered public source candidates"), "The user can inspect source, licence and review status.");
+add("Historical odds adapter covers six sports including tennis", consensusAdapter.includes('sport==="tennis"') && consensusAdapter.includes("atp-wta-closing-odds-2025") && consensusAdapter.includes("mlb-closing-odds-2025") && providers.includes("hf-minmaxxxer-top3-europe-2025-26"), "Six sport families are imported through schema-specific normalization.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
