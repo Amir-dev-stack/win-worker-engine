@@ -21,7 +21,7 @@ export async function runOpenFootballBaselineLab() {
  await put("library/model-lab/experiments",id,result);return result;
 }
 export async function getModelLabResearchPack(){
- const [events,consensus,observed,calibrations,experiments,runs,playerEventDatasets,settledObservedMarkets,settlementRuns]=await Promise.all([
+ const [events,consensus,observed,calibrations,experiments,runs,playerEventDatasets,settledObservedMarkets,settlementRuns,sourceCandidates,sourceDiscoveryRuns]=await Promise.all([
   list<any>("library/model-lab/historical-event-datasets",1000),
   list<any>("library/model-lab/market-consensus-datasets",100),
   list<any>("library/model-lab/observed-market-snapshots",100),
@@ -30,7 +30,9 @@ export async function getModelLabResearchPack(){
   list<any>("library/model-lab/provider-sync-runs",30),
   list<any>("library/model-lab/player-event-datasets",1000),
   list<any>("library/model-lab/settled-observed-markets",100),
-  list<any>("library/model-lab/observed-market-settlement-runs",20)
+  list<any>("library/model-lab/observed-market-settlement-runs",20),
+  list<any>("library/research-source-candidates",1000),
+  list<any>("library/research-source-discovery-runs",20)
  ]);
  const latestCalibration=calibrations.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]||null;
  const latestSettlement=settlementRuns.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]||null;
@@ -60,6 +62,7 @@ export async function getModelLabResearchPack(){
    observedBookmakerSources:[...new Set(observed.flatMap(d=>(d.records||[]).map(r=>r.bookmakerId)))],
    observedMarketFamilies:[...new Set(observed.flatMap(d=>(d.records||[]).map(r=>r.canonicalMarketId)))]
   },
+  publicSourceDiscovery:{totalCandidates:sourceCandidates.length,openLicenseCandidates:sourceCandidates.filter(x=>x.licenseStatus==="open_data_license_candidate").length,reviewRequired:sourceCandidates.filter(x=>x.reviewStatus==="review_required").length,topCandidates:sourceCandidates.sort((a,b)=>Number(b.downloads||b.stars||0)-Number(a.downloads||a.stars||0)).slice(0,20).map(x=>({name:x.name,sourceType:x.sourceType,sourceUrl:x.sourceUrl,license:x.license,licenseStatus:x.licenseStatus,sports:x.sports,dataDomains:x.dataDomains,reviewStatus:x.reviewStatus,automationAllowed:false})),latestRun:sourceDiscoveryRuns.sort((a,b)=>String(b.startedAt).localeCompare(String(a.startedAt)))[0]||null},
   latestObservedMarketSettlement:latestSettlement?{status:latestSettlement.status,createdAt:latestSettlement.createdAt,snapshotRows:latestSettlement.snapshotRows,eligiblePreMatchRows:latestSettlement.eligiblePreMatchRows,excluded:latestSettlement.excluded,settledSelections:latestSettlement.settledSelections,uniqueEvents:latestSettlement.uniqueEvents,settledByMarket:latestSettlement.settledByMarket,settledByBookmaker:latestSettlement.settledByBookmaker,simulation:latestSettlement.simulation,caveats:latestSettlement.caveats}:null,
   latestCalibration:latestCalibration?{
    createdAt:latestCalibration.createdAt,status:latestCalibration.status,totalEvents:latestCalibration.totalEvents,
