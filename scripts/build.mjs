@@ -36,6 +36,8 @@ const required = [
   "netlify/lib/model-lab.mts",
   "netlify/functions/openfootball-sync.mts",
   "netlify/functions/research-status.mts",
+  "netlify/lib/consensus-market-adapter.mts",
+  "netlify/functions/consensus-market-sync.mts",
   "scripts/quality-gates.mjs"
 ];
 
