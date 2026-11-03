@@ -393,6 +393,7 @@ export async function saveEntityProfile(input: any) {
     sports: clean(input?.sports, 1000) || null,
     competition: clean(input?.competition, 200) || null,
     club: clean(input?.club, 200) || null,
+    manager: clean(input?.manager, 200) || null,
     providerId: clean(input?.providerId, 250) || null,
     aliases: safeArray(input?.aliases, 50).map((x) => clean(x, 200)).filter(Boolean)
   };
@@ -465,17 +466,18 @@ function lessonsFromReport(report: string): any[] {
   } catch { return []; }
 }
 
-function entityDossiersFromReport(report: string): { clubs: any[]; players: any[] } {
+function entityDossiersFromReport(report: string): { clubs: any[]; players: any[]; managers: any[] } {
   const startTag = "<WIN_ENTITY_DOSSIERS_JSON>";
   const endTag = "</WIN_ENTITY_DOSSIERS_JSON>";
   const start = report.indexOf(startTag);
   const end = report.indexOf(endTag);
-  if (start < 0 || end <= start) return { clubs: [], players: [] };
+  if (start < 0 || end <= start) return { clubs: [], players: [], managers: [] };
   try {
     const parsed = JSON.parse(report.slice(start + startTag.length, end).trim());
     return {
       clubs: safeArray(parsed?.clubs, 100),
-      players: safeArray(parsed?.players, 300)
+      players: safeArray(parsed?.players, 300),
+      managers: safeArray(parsed?.managers, 100)
     };
   } catch {
     return { clubs: [], players: [] };
@@ -518,7 +520,7 @@ export async function archiveRunToLibrary(run: any) {
   let entityProfilesUpdated = 0;
   let observationsSaved = 0;
   for (const node of network?.nodes || []) {
-    const entityType = nodeType[node.tier];
+    const entityType: EntityKind | undefined = node.tier === "T5" && node.id.startsWith("manager-") ? "manager" : nodeType[node.tier];
     if (!entityType) continue;
     const entityId = clean(node.id, 180);
     if (!entityId) continue;
@@ -528,9 +530,10 @@ export async function archiveRunToLibrary(run: any) {
       : entityType === "league" ? node.scope?.competition
       : entityType === "club" ? node.scope?.club
       : entityType === "player" ? node.scope?.player
+      : entityType === "manager" ? node.scope?.manager
       : entityType === "event" ? node.scope?.event : node.name;
     const departmentId = node.assignedDepartment ||
-      (["sport", "club", "player", "event"].includes(entityType) ? "D2" : "D1");
+      (["sport", "club", "player", "manager", "event"].includes(entityType) ? "D2" : "D1");
     const sourceReport = reports.find((x: any) => x.departmentId === departmentId && x.phase === "department")
       || reports.find((x: any) => x.departmentId === departmentId);
     const sourceLibraryNoteId = sourceReport
@@ -540,7 +543,7 @@ export async function archiveRunToLibrary(run: any) {
     const profile = await saveEntityProfile({
       entityType, id: entityId, name: entityName || node.name,
       sport: node.scope?.sport, country: node.scope?.country, sports: node.scope?.sports,
-      competition: node.scope?.competition, club: node.scope?.club,
+      competition: node.scope?.competition, club: node.scope?.club, manager: node.scope?.manager,
       providerId: node.scope?.providerId,
       aliases: typeof node.scope?.aliases === "string" ? node.scope.aliases.split("|").filter(Boolean) : node.scope?.aliases,
       profile: {
@@ -670,6 +673,44 @@ export async function archiveRunToLibrary(run: any) {
         runId: run.id, sourceReportId: sportReport.workerId,
         sourceLibraryNoteId: sportReportNoteId,
         observation: { dossier: { ...dossier, matchLog }, evidence, verificationStatus: "requires_source_validation" },
+        citations: safeArray(sportReport.citations, 100),
+        status: "dossier_requires_evidence_validation", observedAt: savedAt
+      });
+      observationsSaved++;
+    }
+    for (const dossier of dossiers.managers) {
+      const name = clean(dossier?.name || dossier?.manager || dossier?.coach, 200);
+      if (!name) continue;
+      const scope = {
+        sport: clean(dossier?.sport || run.brief?.sport, 100),
+        country: clean(dossier?.country || run.brief?.country, 100),
+        competition: clean(dossier?.competition || run.brief?.competition, 200),
+        club: clean(dossier?.club || dossier?.team, 200)
+      };
+      const node = (network?.nodes || []).find((n: any) => n.id.startsWith("manager-") &&
+        clean(n.scope?.manager || n.name.replace(/ Manager \/ Coach Agent$/, ""), 200).toLowerCase() === name.toLowerCase());
+      const id = clean(node?.id, 180) || "manager-" + slug([scope.sport, name].filter(Boolean).join(" × "));
+      const previous = await get<any>("library/entity-profiles", id);
+      const evidence = safeArray(dossier?.evidence, 100);
+      const profile = await saveEntityProfile({
+        entityType: "manager", id, name, ...scope,
+        providerId: clean(dossier?.providerId || dossier?.externalId, 250),
+        aliases: safeArray(dossier?.aliases, 50),
+        profile: { ...(previous?.profile || {}), dossier: dossier.profile || dossier,
+          tenure: clean(dossier?.tenure, 300), tacticalIdentity: dossier?.tacticalIdentity || null,
+          decisionHistory: safeArray(dossier?.decisionHistory, 200),
+          lastReviewedAt: savedAt, lastRunId: run.id, lastResearchReportId: sportReport.workerId,
+          dossierEvidenceStatus: evidence.length ? "references_supplied_needs_validation" : "evidence_missing" },
+        sources: [...safeArray(previous?.sources, 100), ...evidence].slice(-100),
+        agentMission: entityMission("manager")
+      });
+      const observationId = run.id + ":" + id + ":dossier";
+      await put("library/agent-observations", observationId, {
+        id: observationId, recordType: "entity_dossier",
+        agentId: profile.agentId, entityId: id, entityType: "manager",
+        runId: run.id, sourceReportId: sportReport.workerId,
+        sourceLibraryNoteId: sportReportNoteId,
+        observation: { dossier, evidence, verificationStatus: "requires_source_validation" },
         citations: safeArray(sportReport.citations, 100),
         status: "dossier_requires_evidence_validation", observedAt: savedAt
       });
