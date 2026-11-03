@@ -91,7 +91,7 @@ export async function searchWinLibrary(options: {
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 30));
   const category = clean(options.category || "all", 40).toLowerCase();
   const [coupons, winning, losing, pending, lessons, entities, profiles, observations, runs,
-    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements, learningCycles, strategyCandidates, backtestRuns, persistentAgentProfiles, agentTasks, historicalMarketData, consensusMarketData, observedMarketData, settledObservedMarketData, playerEventData, marketCalibrationReports, marketSettlementRuns, sourceCandidates, sourceDiscoveryRuns] = await Promise.all([
+    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements, learningCycles, strategyCandidates, backtestRuns, persistentAgentProfiles, agentTasks, historicalMarketData, consensusMarketData, observedMarketData, settledObservedMarketData, playerEventData, marketCalibrationReports, marketSettlementRuns, sourceCandidates, sourceDiscoveryRuns, agentProposals, agentSandboxEvaluations] = await Promise.all([
     list<any>("library/coupons", 500),
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
@@ -121,7 +121,9 @@ export async function searchWinLibrary(options: {
     list<any>("library/model-lab/market-calibration-reports", 20),
     list<any>("library/model-lab/observed-market-settlement-runs", 20),
     list<any>("library/research-source-candidates", 1000),
-    list<any>("library/research-source-discovery-runs", 20)
+    list<any>("library/research-source-discovery-runs", 20),
+    list<any>("library/agent-proposals", 500),
+    list<any>("library/agent-sandbox-evaluations", 500)
   ]);
   const marketDataItems = [
     ...historicalMarketData.map((d:any)=>({id:d.id,recordType:"model_lab_historical_event_dataset",providerId:d.providerId,sport:d.sport,competition:d.competition,season:d.season,sourceUrl:d.sourceUrl,sourceLicence:d.sourceLicence,retrievedAt:d.retrievedAt,totalRows:d.totalRows,scoredRows:d.scoredRows,playerEventRows:d.playerEventRows,origin:d.origin,lab:d.lab})),
@@ -139,7 +141,7 @@ export async function searchWinLibrary(options: {
   else if (category === "coupons") items = coupons;
   else if (category === "lessons") items = lessons;
   else if (category === "entities") items = entities;
-  else if (category === "agents") items = [...profiles, ...persistentAgentProfiles, ...agentTasks];
+  else if (category === "agents") items = [...profiles, ...persistentAgentProfiles, ...agentTasks, ...agentProposals, ...agentSandboxEvaluations];
   else if (category === "market-data") items = marketDataItems;
   else if (category === "sources") items = [...sourceCandidates.map((x:any)=>({id:x.id,recordType:"research_source_candidate",name:x.name,sourceType:x.sourceType,sourceUrl:x.sourceUrl,license:x.license,licenseStatus:x.licenseStatus,sports:x.sports,dataDomains:x.dataDomains,downloads:x.downloads,stars:x.stars,reviewStatus:x.reviewStatus,automationAllowed:false,lastSeenAt:x.lastSeenAt,reviewNote:x.reviewNote})),...sourceDiscoveryRuns];
   else if (category === "observations") items = observations;
@@ -155,7 +157,7 @@ export async function searchWinLibrary(options: {
   else if (category === "strategies") items = strategyCandidates;
   else if (category === "backtests") items = backtestRuns;
   else items = [...coupons, ...lessons, ...entities, ...profiles, ...observations, ...runs,
-    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns, ...persistentAgentProfiles, ...agentTasks, ...marketDataItems, ...sourceCandidates.map((x:any)=>({id:x.id,recordType:"research_source_candidate",name:x.name,sourceType:x.sourceType,sourceUrl:x.sourceUrl,license:x.license,licenseStatus:x.licenseStatus,sports:x.sports,dataDomains:x.dataDomains,downloads:x.downloads,stars:x.stars,reviewStatus:x.reviewStatus,automationAllowed:false,lastSeenAt:x.lastSeenAt})), ...sourceDiscoveryRuns];
+    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns, ...persistentAgentProfiles, ...agentTasks, ...agentProposals, ...agentSandboxEvaluations, ...marketDataItems, ...sourceCandidates.map((x:any)=>({id:x.id,recordType:"research_source_candidate",name:x.name,sourceType:x.sourceType,sourceUrl:x.sourceUrl,license:x.license,licenseStatus:x.licenseStatus,sports:x.sports,dataDomains:x.dataDomains,downloads:x.downloads,stars:x.stars,reviewStatus:x.reviewStatus,automationAllowed:false,lastSeenAt:x.lastSeenAt})), ...sourceDiscoveryRuns];
 
   let filtered = relevant(items, clean(options.query, 1000));
   if (options.outcome) filtered = filtered.filter((x: any) => x.outcome === options.outcome);
@@ -166,7 +168,7 @@ export async function searchWinLibrary(options: {
     items: filtered.slice(0, limit), reviewedAt: new Date().toISOString(),
     libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "coupons", "coupon-history",
       "human-tips", "lessons", "entity-profiles", "agent-profiles", "agent-observations",
-      "agent-notes", "persistent-agent-profiles", "agent-task-queue", "market-data", "research-source-candidates", "research-source-discovery-runs", "sources", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases", "learning-cycles", "strategy-candidates", "backtest-runs"]
+      "agent-notes", "persistent-agent-profiles", "agent-task-queue", "agent-proposals", "agent-sandbox-evaluations", "market-data", "research-source-candidates", "research-source-discovery-runs", "sources", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases", "learning-cycles", "strategy-candidates", "backtest-runs"]
   };
 }
 
