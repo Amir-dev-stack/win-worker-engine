@@ -195,14 +195,16 @@ function updateBudgetNotificationButton(){
  notify.disabled=Notification.permission==="denied";
 }
 function renderAIBudget(data){
- const enabled=data.limitEnabled!==false;
- $("#budgetStateTag").textContent=enabled?"INTERNAL LIMIT ON":"TRACKING ONLY";
- $("#budgetLimitEnabled").checked=enabled;
+ const enabled=true;
+ $("#budgetStateTag").textContent=data.spendingLocked?"OWNER LOCKED":"LIMIT ENFORCED";
+ $("#budgetLockStatus").className="budget-alert "+(data.spendingLocked?"level-limit_reached":"empty");
+ $("#budgetLockStatus").textContent=data.spendingLocked?("SPENDING LOCKED · "+(data.lockReason||"Owner approval required.")+" Locked at "+(data.lockedAt?new Date(data.lockedAt).toLocaleString():"unknown")+" · No automatic monthly reset."):("Spending is permitted under the enforced cap. Owner unlock history: "+(data.lastOwnerApprovalAt?new Date(data.lastOwnerApprovalAt).toLocaleString():"none recorded")+".");
+ $("#ownerUnlockBudget").disabled=!data.spendingLocked;
  $("#budgetSpent").textContent=money(data.spentUsd);
  $("#budgetSpendMeta").textContent=(data.month||"Current month")+" · tracked "+money(data.totalTrackedUsd);
  $("#budgetReserved").textContent=money(data.reservedUsd);
  $("#budgetLimitAmount").textContent=money(data.operatingStopUsd||2.95);
- $("#budgetRemaining").textContent=(enabled?"Remaining before WIN blocks":"Reference allowance")+" "+money(data.remainingUsd);
+ $("#budgetRemaining").textContent=(data.spendingLocked?"Spending locked · remaining":"Remaining before automatic lock")+" "+money(data.remainingUsd);
  $("#budgetCalls").textContent=Number(data.calls||0).toLocaleString();
  $("#budgetBlocked").textContent="Blocked before API call: "+Number(data.blockedCalls||0).toLocaleString();
  const alerts=data.alerts||[];
@@ -257,21 +259,20 @@ async function refresh(){
  }catch(e){$("#apiStatus").textContent="Authentication needed";$("#runsList").textContent=e.message}
 }
 $("#refreshBudget").addEventListener("click",refreshAIBudget);
-$("#budgetLimitEnabled").addEventListener("change",async e=>{
- const checkbox=e.currentTarget;
- const enabled=checkbox.checked;
- if(!enabled&&!confirm("Disable WIN's internal $3 monthly AI limit? WIN will continue tracking and alerting, but it will no longer block AI requests at $2.95. OpenAI's separate provider-side spending limit remains unchanged. Continue?")){
-  checkbox.checked=true;return;
- }
- checkbox.disabled=true;
+$("#ownerUnlockBudget").addEventListener("click",async()=>{
+ const confirmation=prompt("OWNER ONLY. To explicitly unlock WIN AI spending, type exactly: I AUTHORIZE WIN SPENDING UNLOCK");
+ if(confirmation===null)return;
+ const button=$("#ownerUnlockBudget");
+ button.disabled=true;
  try{
-  const data=await api("/api/ai-budget",{method:"POST",body:JSON.stringify({limitEnabled:enabled})});
+  const data=await api("/api/ai-budget",{method:"POST",body:JSON.stringify({action:"owner_approve_unlock",confirmation})});
   renderAIBudget(data);
   announceBudgetAlerts(data.alerts||[]);
+  alert("Owner authorization accepted. WIN spending is unlocked, but the monthly $2.95 operating stop remains enforced and will lock again when reached.");
  }catch(error){
-  alert("Could not update WIN's budget limit: "+error.message);
+  alert("WIN spending remains locked: "+error.message);
   await refreshAIBudget();
- }finally{checkbox.disabled=false;}
+ }finally{button.disabled=false;}
 });
 $("#budgetNotifications").addEventListener("click",async()=>{
  if(!("Notification" in window)){alert("This browser does not support desktop notifications.");return;}
