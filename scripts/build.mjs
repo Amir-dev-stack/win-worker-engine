@@ -38,6 +38,9 @@ const required = [
   "netlify/functions/research-status.mts",
   "netlify/lib/consensus-market-adapter.mts",
   "netlify/functions/consensus-market-sync.mts",
+  "netlify/lib/sharpapi-sample-adapter.mts",
+  "netlify/functions/sharpapi-sample-sync.mts",
+  "netlify/lib/market-calibration.mts",
   "scripts/quality-gates.mjs"
 ];
 
