@@ -286,7 +286,7 @@ export async function getMandatoryLearningPack(brief: any) {
     counts: {
       winningCouponsAvailable: winning.length, winningCouponsMatched: winners.length,
       losingCouponsAvailable: losing.length, losingCouponsMatched: losers.length,
-      validatedLessonsAvailable: lessons.filter(x => x.validationStatus === "validated").length,
+      validatedLessonsAvailable: lessons.filter(isIndependentlyValidatedLesson).length,
       validatedLessonsMatched: validatedLessons.length, candidateLessonsMatched: candidateLessons.length,
       entityProfilesMatched: entityProfiles.length, agentProfilesMatched: relevantAgentProfiles.length,
       agentObservationsMatched: priorAgentObservations.length, agentReportNotesMatched: priorAgentNotes.length,

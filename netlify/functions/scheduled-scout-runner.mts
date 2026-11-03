@@ -5,6 +5,7 @@ import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mt
 import { runScheduledLearning } from "../lib/ai.mts";
 import { getModelLabResearchPack } from "../lib/model-lab.mts";
 import { registerAgentProposals } from "../lib/agent-evolution.mts";
+import { getAIbudgetStatus } from "../lib/ai-budget.mts";
 
 function extractLearningCycle(report: string): any | null {
   const open = "<WIN_LEARNING_CYCLE_JSON>";
@@ -41,6 +42,14 @@ function stage(name: string, status: string, startedAt: string, extra: Record<st
 
 export default async (req: Request) => {
   if (!authorized(req)) return new Response("Unauthorized", { status: 401 });
+
+  if (Netlify.env.get("WIN_AI_BUDGET_APPROVED") !== "true") {
+    return Response.json({ error: "Scheduled research is disabled; no learning cycle was started." }, { status: 423 });
+  }
+  const budgetStatus = await getAIbudgetStatus();
+  if (budgetStatus.spendingLocked) {
+    return Response.json({ error: "WIN's persistent spending lock is active; no learning cycle was started." }, { status: 423 });
+  }
   let body: any;
   try { body = await req.json(); } catch { return new Response("Bad JSON", { status: 400 }); }
   const run = await get<any>("runs", body.runId);

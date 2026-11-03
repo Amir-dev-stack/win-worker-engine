@@ -1,6 +1,7 @@
 import { requireAuth } from "../lib/auth.mts";
 import { list, put } from "../lib/store.mts";
 import { saveCouponRecord } from "../lib/library.mts";
+import { getAIbudgetStatus } from "../lib/ai-budget.mts";
 
 const TASK_TYPES = new Set(["research_event", "build_latest_coupon", "audit_existing_coupon", "compare_coupons"]);
 
@@ -9,6 +10,20 @@ export default async (req: Request) => {
   if (denied) return denied;
   if (req.method === "GET") return Response.json(await list("runs", 100));
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+
+  if (Netlify.env.get("WIN_AI_BUDGET_APPROVED") !== "true") {
+    return Response.json({
+      error: "WIN research execution is disabled. No run was queued and no AI request was sent.",
+      status: "blocked_approval_required"
+    }, { status: 423 });
+  }
+  const budgetStatus = await getAIbudgetStatus();
+  if (budgetStatus.spendingLocked) {
+    return Response.json({
+      error: "WIN's persistent spending lock is active. No run was queued and no AI request was sent.",
+      status: "blocked_internal_budget_lock"
+    }, { status: 423 });
+  }
 
   let brief: any;
   try { brief = await req.json(); }

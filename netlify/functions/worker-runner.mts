@@ -6,6 +6,7 @@ import { WIN_DEPARTMENTS } from "../lib/worker-org.mts";
 import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
 import { importTipsterCoupon } from "../lib/source-intelligence.mts";
 import { getModelLabResearchPack } from "../lib/model-lab.mts";
+import { getAIbudgetStatus } from "../lib/ai-budget.mts";
 
 
 const REQUIRED_DEBATE_ROLES = [
@@ -224,6 +225,14 @@ function updateNetworkStatuses(network: any, reports: any[], debate: any[]) {
 
 export default async (req: Request) => {
   if (!authorized(req)) return new Response("Unauthorized", { status: 401 });
+
+  if (Netlify.env.get("WIN_AI_BUDGET_APPROVED") !== "true") {
+    return Response.json({ error: "WIN research execution is disabled; worker run blocked before research." }, { status: 423 });
+  }
+  const budgetStatus = await getAIbudgetStatus();
+  if (budgetStatus.spendingLocked) {
+    return Response.json({ error: "WIN's persistent spending lock is active; worker run blocked before research." }, { status: 423 });
+  }
   let body: any;
   try { body = await req.json(); } catch { return new Response("Bad JSON", { status: 400 }); }
   const run = await get<any>("runs", body.runId);

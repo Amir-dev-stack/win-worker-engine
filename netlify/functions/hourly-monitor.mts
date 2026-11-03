@@ -35,7 +35,7 @@ export default async (_req: Request, context: Context) => {
   let scoutStatus = "not_due";
   let scoutRunId: string | null = state.lastLearningRunId || null;
 
-  if (learningDue && aiBudgetApproved && budget.remainingUsd >= 0.03 && Netlify.env.get("OPENAI_API_KEY")) {
+  if (learningDue && aiBudgetApproved && !budget.spendingLocked && budget.remainingUsd >= 0.03 && Netlify.env.get("OPENAI_API_KEY")) {
     const runId = crypto.randomUUID();
     const brief = {
       taskType: "scheduled_learning",
@@ -74,6 +74,8 @@ export default async (_req: Request, context: Context) => {
     }
   } else if (learningDue && !aiBudgetApproved) {
     scoutStatus = "blocked_budget_approval_required";
+  } else if (learningDue && budget.spendingLocked) {
+    scoutStatus = "blocked_internal_budget_lock";
   } else if (learningDue && budget.remainingUsd < 0.03) {
     scoutStatus = "skipped_budget_guard";
   } else if (learningDue && !Netlify.env.get("OPENAI_API_KEY")) {
