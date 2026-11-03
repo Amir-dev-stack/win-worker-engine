@@ -1,10 +1,10 @@
 import { requireAuth } from "../lib/auth.mts";
-import { getTipsterSourceReport, importTipsterCoupon, listTipsterSources } from "../lib/source-intelligence.mts";
+import { ensureHumanCouponSeedExamples, getTipsterSourceReport, importTipsterCoupon, listTipsterSources } from "../lib/source-intelligence.mts";
 
 export default async (req: Request) => {
   const denied = requireAuth(req);
   if (denied) return denied;
-  if (req.method === "GET") return Response.json({ ...listTipsterSources(), report: await getTipsterSourceReport() });
+  if (req.method === "GET") { const seedImport = await ensureHumanCouponSeedExamples(); return Response.json({ ...listTipsterSources(), seedImport, report: await getTipsterSourceReport() }); }
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
   let body: any;
   try { body = await req.json(); } catch { return Response.json({ error: "Expected JSON body" }, { status: 400 }); }
