@@ -121,6 +121,15 @@ export async function searchWinLibrary(options: {
     list<any>("library/model-lab/market-calibration-reports", 20),
     list<any>("library/model-lab/observed-market-settlement-runs", 20)
   ]);
+  const marketDataItems = [
+    ...historicalMarketData.map((d:any)=>({id:d.id,recordType:"model_lab_historical_event_dataset",providerId:d.providerId,sport:d.sport,competition:d.competition,season:d.season,sourceUrl:d.sourceUrl,sourceLicence:d.sourceLicence,retrievedAt:d.retrievedAt,totalRows:d.totalRows,scoredRows:d.scoredRows,playerEventRows:d.playerEventRows,origin:d.origin,lab:d.lab})),
+    ...consensusMarketData.map((d:any)=>({id:d.id,recordType:"model_lab_consensus_market_dataset",providerId:d.providerId,sport:d.sport,repository:d.repository,sourceUrl:d.sourceUrl,sourceLicence:d.sourceLicence,retrievedAt:d.retrievedAt,totalRows:d.totalRows,settledRows:d.settledRows,marketDataType:d.marketDataType,origin:d.origin,lab:d.lab})),
+    ...observedMarketData.map((d:any)=>({id:d.id,recordType:"model_lab_observed_market_snapshot",providerId:d.providerId,sport:d.sport,sourceUrl:d.sourceUrl,sourceLicence:d.sourceLicence,retrievedAt:d.retrievedAt,recordCount:d.recordCount,rejectedRows:d.rejectedRows,origin:d.origin,lab:d.lab})),
+    ...settledObservedMarketData.map((d:any)=>({id:d.id,recordType:"model_lab_settled_observed_market_dataset",providerId:d.providerId,sourceLicence:d.sourceLicence,resultLicence:d.resultLicence,retrievedAt:d.retrievedAt,settledSelectionCount:d.settledSelectionCount,uniqueEvents:d.uniqueEvents,sourceHash:d.sourceHash,origin:d.origin,lab:d.lab})),
+    ...playerEventData.map((d:any)=>({id:d.id,recordType:"model_lab_player_event_dataset",providerId:d.providerId,competition:d.competition,season:d.season,sourceUrl:d.sourceUrl,sourceLicence:d.sourceLicence,totalRows:d.totalRows,origin:d.origin,lab:d.lab})),
+    ...marketCalibrationReports.map((d:any)=>({id:d.id,recordType:"model_lab_market_calibration_report",status:d.status,createdAt:d.createdAt,totalEvents:d.totalEvents,sourceDatasetCount:d.sourceDatasetCount,origin:d.origin,lab:d.lab})),
+    ...marketSettlementRuns.map((d:any)=>({id:d.id,recordType:"model_lab_market_settlement_run",status:d.status,createdAt:d.createdAt,settledSelections:d.settledSelections,uniqueEvents:d.uniqueEvents,simulationRunId:d.simulationRunId,simulation:d.simulation,caveats:d.caveats,sourceHash:d.sourceHash,origin:"provider_historical_data",lab:"model-lab"}))
+  ];
   let items: any[] = [];
   if (category === "winning") items = winning;
   else if (category === "losing") items = losing;
@@ -129,7 +138,7 @@ export async function searchWinLibrary(options: {
   else if (category === "lessons") items = lessons;
   else if (category === "entities") items = entities;
   else if (category === "agents") items = [...profiles, ...persistentAgentProfiles, ...agentTasks];
-  else if (category === "market-data") items = [...historicalMarketData, ...consensusMarketData, ...observedMarketData, ...settledObservedMarketData, ...playerEventData, ...marketCalibrationReports, ...marketSettlementRuns];
+  else if (category === "market-data") items = marketDataItems;
   else if (category === "observations") items = observations;
   else if (category === "runs") items = runs;
   else if (category === "tips") items = humanTips;
@@ -143,7 +152,7 @@ export async function searchWinLibrary(options: {
   else if (category === "strategies") items = strategyCandidates;
   else if (category === "backtests") items = backtestRuns;
   else items = [...coupons, ...lessons, ...entities, ...profiles, ...observations, ...runs,
-    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns, ...persistentAgentProfiles, ...agentTasks, ...historicalMarketData, ...consensusMarketData, ...observedMarketData, ...settledObservedMarketData, ...playerEventData, ...marketCalibrationReports, ...marketSettlementRuns];
+    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns, ...persistentAgentProfiles, ...agentTasks, ...marketDataItems];
 
   let filtered = relevant(items, clean(options.query, 1000));
   if (options.outcome) filtered = filtered.filter((x: any) => x.outcome === options.outcome);
