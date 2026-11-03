@@ -5,6 +5,7 @@ const SOURCES = [
  {id:"hf-minmaxxxer-nfl-2026",repo:"minmaxxxer/nfl-odds-2026",sport:"american_football"},
  {id:"hf-minmaxxxer-nba-2025-26",repo:"minmaxxxer/nba-closing-lines-ats-2025-26",sport:"basketball"},
  {id:"hf-minmaxxxer-nba-2026-27",repo:"minmaxxxer/nba-odds-2026-27",sport:"basketball"},
+ {id:"hf-minmaxxxer-nhl-2026-27",repo:"minmaxxxer/nhl-odds-2026-27",sport:"ice_hockey"},
  {id:"hf-minmaxxxer-epl-2025-26",repo:"minmaxxxer/premier-league-closing-odds-2025-26",sport:"football"},
  {id:"hf-minmaxxxer-epl-2026-27",repo:"minmaxxxer/premier-league-odds-2026-27",sport:"football"}
 ] as const;
@@ -60,13 +61,13 @@ async function syncOne(source:typeof SOURCES[number]){
    closing:{
     homeWinProbability:number(r.close_home_win_prob??r.close_home_prob),
     drawProbability:number(r.close_draw_prob),
-    awayWinProbability:number(r.close_away_prob),
+    awayWinProbability:number(r.close_away_prob??(number(r.close_home_win_prob)!==null?1-number(r.close_home_win_prob):null)),
     fairHomeOdds:number(r.close_fair_home_odds),
     fairDrawOdds:number(r.close_fair_draw_odds),
     fairAwayOdds:number(r.close_fair_away_odds),
     homeSpread:number(r.close_spread_home??r.close_ah_line_home),
     homeSpreadCoverProbability:number(r.close_home_cover_prob??r.close_ah_home_prob),
-    totalLine:number(r.close_total??2.5),
+    totalLine:number(r.close_total),
     overProbability:number(r.close_over_prob??r.close_over25_prob),
     bttsYesProbability:number(r.close_btts_prob)
    },
