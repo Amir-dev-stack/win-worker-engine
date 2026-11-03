@@ -68,7 +68,7 @@ async function syncOne(path:typeof PATHS[number]){
   playerEventRows:playerEventRows.length,records,origin:"provider_historical_data",lab:"model-lab",
   attribution:"OpenFootball worldcup.json — public-domain data (CC0-1.0)."
  });
- await put("library/model-lab/player-event-datasets",datasetId,{id:datasetId,providerId:"openfootball-worldcup-json",season:String(path.year),competition:parsed.name||path.competition,sourceUrl:url,sourceLicence:"CC0-1.0",rawChecksum:checksum,totalRows:playerEventRows.length,records:playerEventRows,origin:"provider_historical_data",lab:"model-lab"});
+ await put("library/model-lab/player-event-datasets",datasetId,{id:datasetId,providerId:"openfootball-worldcup-json",sport:"football",season:String(path.year),competition:parsed.name||path.competition,sourceUrl:url,sourceLicence:"CC0-1.0",rawChecksum:checksum,totalRows:playerEventRows.length,records:playerEventRows,origin:"provider_historical_data",lab:"model-lab"});
  return {datasetId,year:path.year,competition:parsed.name||path.competition,matches:records.length,scored:records.filter(x=>x.fullTimeScore).length,playerEvents:playerEventRows.length,checksum};
 }
 export async function syncOpenFootballWorldCupData(){
