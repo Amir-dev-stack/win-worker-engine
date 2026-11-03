@@ -4,6 +4,7 @@ import { get, list, put } from "../lib/store.mts";
 import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
 import { runScheduledLearning } from "../lib/ai.mts";
 import { getModelLabResearchPack } from "../lib/model-lab.mts";
+import { registerAgentProposals } from "../lib/agent-evolution.mts";
 
 function extractLearningCycle(report: string): any | null {
   const open = "<WIN_LEARNING_CYCLE_JSON>";
@@ -17,6 +18,14 @@ function extractLearningCycle(report: string): any | null {
   } catch { return null; }
 }
 
+
+function extractAgentProposals(report: string): any | null {
+  const open = "<WIN_AGENT_PROPOSALS_JSON>", close = "</WIN_AGENT_PROPOSALS_JSON>";
+  const start = report.indexOf(open), end = report.indexOf(close);
+  if (start < 0 || end <= start) return null;
+  try { const value = JSON.parse(report.slice(start + open.length, end).trim()); return value && typeof value === "object" && !Array.isArray(value) ? value : null; }
+  catch { return null; }
+}
 
 function extractEntityAgent(report: string): any | null {
   const open = "<WIN_ENTITY_AGENT_JSON>", close = "</WIN_ENTITY_AGENT_JSON>";
@@ -80,6 +89,9 @@ export default async (req: Request) => {
     }));
 
     const learningData = extractLearningCycle(scout.report || "");
+    const agentProposalData = extractAgentProposals(scout.report || "");
+    let agentEvolutionSummary:any=null;
+    if(agentProposalData){try{agentEvolutionSummary=await registerAgentProposals(agentProposalData,run.id,modelLabResearchPack);}catch(e){agentEvolutionSummary={status:"proposal_processing_failed",error:String(e).slice(0,300)};}}
     const entityAgentData = agentTask ? extractEntityAgent(scout.report || "") : null;
     const entityAgentValid = !agentTask || Boolean(entityAgentData && entityAgentData.agentId === agentTask.agentId && entityAgentData.scope && Object.entries(agentTask.scope || {}).every(([key,value]) => entityAgentData.scope[key] === value) && typeof entityAgentData.profileSummary === "string" && Array.isArray(entityAgentData.facts) && Array.isArray(entityAgentData.unknowns) && Array.isArray(entityAgentData.nextResearch));
     const structuredLearningValid = Boolean(learningData && typeof learningData.cycleType === "string" && Array.isArray(learningData.candidateStrategies) && Array.isArray(learningData.coverageGaps) && Array.isArray(learningData.sourceRefs) && Array.isArray(learningData.validationBlockers));
@@ -105,9 +117,10 @@ export default async (req: Request) => {
       ...run, brief, status: cycleCompleted ? "completed" : "failed",
       workers: [scout], debate: [], master: null,
       decision: "SCHEDULED LEARNING ONLY — no strategy was validated and no betting recommendation or coupon decision was made.",
-      updatedAt: completedAt, completedAt, learningReportVersion: 2,
+      updatedAt: completedAt, completedAt, learningReportVersion: 2, agentEvolution:agentEvolutionSummary,
       learningStages: stages,
-      scoutSummary: { status: scout.status, report: scout.report, citations: scout.citations, error: scout.error || null }
+      scoutSummary: { status: scout.status, report: scout.report, citations: scout.citations, error: scout.error || null },
+      agentEvolution:agentEvolutionSummary
     };
     await put("runs", run.id, completed);
 
