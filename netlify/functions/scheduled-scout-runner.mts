@@ -55,7 +55,7 @@ export default async (req: Request) => {
       await put("library/agent-task-queue", stale.id, { ...stale, status: Number(stale.attempts || 0) >= 3 ? "failed" : "queued", updatedAt: new Date().toISOString(), error: "Recovered stale running task after worker timeout." });
     }
     const pendingAgentTasks = allAgentTasks
-      .filter(task => task.status === "queued" || (task.status === "running" && Date.parse(task.lastAttemptAt || "") < staleBefore))
+      .filter(task => task.status === "queued" || (task.status === "running" && Number(task.attempts || 0) < 3 && Date.parse(task.lastAttemptAt || "") < staleBefore))
       .sort((a,b) => Date.parse(a.createdAt || "") - Date.parse(b.createdAt || ""));
     agentTask = pendingAgentTasks[0] || null;
     if (agentTask) {
