@@ -3,7 +3,7 @@ import { get, put, list } from "./store.mts";
 import { createSimulationRun, executeSimulationRun } from "./simulation.mts";
 
 const norm=(v:any)=>String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim();
-const aliases:Record<string,string>={"usa":"united states","us":"united states","korea republic":"south korea","republic of korea":"south korea","cote divoire":"ivory coast","cote d ivoire":"ivory coast","iran":"iran","ir iran":"iran","turkiye":"turkey","turkiye":"turkey","czechia":"czech republic","bosnia herzegovina":"bosnia and herzegovina"};
+const aliases:Record<string,string>={"usa":"united states","us":"united states","korea republic":"south korea","republic of korea":"south korea","cote divoire":"ivory coast","cote d ivoire":"ivory coast","iran":"iran","ir iran":"iran","turkiye":"turkey","czechia":"czech republic","bosnia herzegovina":"bosnia and herzegovina"};
 const teamKey=(v:any)=>aliases[norm(v)]||norm(v);
 const validDate=(v:any)=>Number.isFinite(Date.parse(String(v||"")));
 const dateShift=(date:string,days:number)=>{const d=new Date(date+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);};
