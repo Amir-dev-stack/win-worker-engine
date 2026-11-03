@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 const read = path => readFile(path, "utf8");
 const checks = [];
 const add = (name, ok, detail) => checks.push({ name, ok: Boolean(ok), detail });
-const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library, settlementBridge, settlementFn, sourceDiscovery, sourceDiscoveryFn, sourceReviewFn, agentEvolution, scheduledRunner, aiBudget, health, budgetApi] = await Promise.all([
+const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library, settlementBridge, settlementFn, sourceDiscovery, sourceDiscoveryFn, sourceReviewFn, agentEvolution, scheduledRunner, aiBudget, health, budgetApi, openaiKeyCheck] = await Promise.all([
   read("netlify/lib/coverage.mts"), read("netlify/functions/coverage.mts"),
   read("netlify/functions/coverage-monitor.mts"), read("netlify/functions/human-coupon-settlements.mts"),
   read("netlify/lib/source-intelligence.mts"), read("netlify/functions/worker-runner.mts"),
@@ -16,7 +16,7 @@ const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, buil
   read("netlify/lib/observed-market-settlement.mts"), read("netlify/functions/observed-market-settlement.mts"),
   read("netlify/lib/public-source-discovery.mts"), read("netlify/functions/public-source-discovery.mts"), read("netlify/functions/research-source-candidates.mts"),
   read("netlify/lib/agent-evolution.mts"), read("netlify/functions/scheduled-scout-runner.mts"),
-  read("netlify/lib/ai-budget.mts"), read("netlify/functions/health.mts"), read("netlify/functions/ai-budget.mts")
+  read("netlify/lib/ai-budget.mts"), read("netlify/functions/health.mts"), read("netlify/functions/ai-budget.mts"), read("netlify/functions/openai-key-check.mts")
 ]);
 add("Coverage is calculated from persisted evidence", coverage.includes("library/research-evidence") && coverage.includes("not_observed") && coverage.includes("stale_or_undated"), "No missing coverage is fabricated.");
 add("Every registered sport is reported", coverage.includes("SPORT_REGISTRY.map") && coverage.includes("requiredDomains"), "Sport coverage is based on the current registry.");
@@ -26,6 +26,7 @@ add("Human settlement claims cannot auto-settle", settlement.includes("pending_i
 add("Original tipster post cannot verify itself", settlement.includes("coupon.source") && settlement.includes("evidenceUrl"), "Original post is rejected as its own settlement evidence.");
 add("Public human imports require explicit content class", source.includes('"original human coupon", "single human pick"') && source.includes("contentClass"), "Only original coupons and single picks enter public archive.");
 add("D5 archive rejects unclassified content", worker.includes("missing_or_ineligible_content_class") && worker.includes('"original human coupon", "single human pick"'), "Promotions, demos, consensus and unclassified content are excluded.");
+add("OpenAI key diagnostic is owner-authenticated and non-inference", openaiKeyCheck.includes("requireAuth") && openaiKeyCheck.includes("https://api.openai.com/v1/models") && openaiKeyCheck.includes('method: "GET"') && !openaiKeyCheck.includes("responses.create") && html.includes('id="testOpenAIKey"') && app.includes("/api/openai-key-check"), "Only the authenticated OpenAI model-list endpoint is called; no prompt is generated and the WIN spending approval gate is untouched.");
 add("AI budget remains explicit and fail-closed", ai.includes("WIN_AI_BUDGET_APPROVED") && ai.includes("provider-side monthly spending limit"), "No new automatic AI spending is enabled.");
 add("AI spending cap matches the approved $3 plan", aiBudget.includes("const LIMIT_USD = 3;") && aiBudget.includes("const OPERATING_LIMIT_USD = 2.95;"), "The application estimate stops below the $3 monthly OpenAI allocation; production AI remains approval-gated.");
 add("WIN spending lock persists until explicit owner approval", aiBudget.includes("spendingLocked") && aiBudget.includes("ownerApproveBudgetUnlock") && aiBudget.includes("I AUTHORIZE WIN SPENDING UNLOCK") && aiBudget.includes("calendar-month rollover") && budgetApi.includes("owner_approve_unlock"), "The lock survives month rollover; unlock requires the owner master token and exact confirmation phrase.");

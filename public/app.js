@@ -274,6 +274,34 @@ $("#ownerUnlockBudget").addEventListener("click",async()=>{
   await refreshAIBudget();
  }finally{button.disabled=false;}
 });
+$("#testOpenAIKey").addEventListener("click",async()=>{
+ if(!confirm("WIN will send one authenticated GET request to OpenAI's model-list endpoint. It will not generate a response, consume inference tokens, change the budget ledger or unlock AI spending. Continue?"))return;
+ const button=$("#testOpenAIKey");
+ const result=$("#apiKeyCheckResult");
+ button.disabled=true;
+ result.className="budget-alert empty";
+ result.textContent="Checking OpenAI API-key authentication…";
+ try{
+  const data=await api("/api/openai-key-check",{method:"POST",body:JSON.stringify({action:"validate_api_key"})});
+  if(data.authentication==="valid"){
+   const modelNote=data.configuredModelListed===true
+    ?"The configured model is listed as available."
+    :data.configuredModelListed===false
+     ?"The configured model is not listed for this credential."
+     :"No OPENAI_MODEL is configured.";
+   result.className="budget-alert "+(data.configuredModelListed===false?"level-warning":"level-info");
+   result.textContent="API KEY AUTHENTICATED · "+modelNote+" No inference was performed; WIN spending approval was not changed.";
+  }else{
+   result.className="budget-alert "+(data.result==="inconclusive"||data.result==="timeout"||data.result==="network_error"?"level-warning":"level-critical");
+   result.textContent="API KEY CHECK "+String(data.result||"failed").toUpperCase().replaceAll("_"," ")+" · "+(data.message||"No additional diagnostic detail.")+" No inference was performed.";
+  }
+ }catch(error){
+  result.className="budget-alert level-warning";
+  result.textContent="API KEY CHECK UNAVAILABLE · "+error.message;
+ }finally{
+  button.disabled=false;
+ }
+});
 $("#budgetNotifications").addEventListener("click",async()=>{
  if(!("Notification" in window)){alert("This browser does not support desktop notifications.");return;}
  const permission=await Notification.requestPermission();

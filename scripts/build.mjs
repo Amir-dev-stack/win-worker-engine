@@ -15,6 +15,7 @@ const required = [
   "netlify/functions/hourly-monitor.mts",
   "netlify/functions/scheduled-scout-runner.mts",
   "netlify/functions/ai-budget.mts",
+  "netlify/functions/openai-key-check.mts",
   "netlify/lib/ai-budget.mts",
   "netlify/functions/simulations.mts",
   "netlify/functions/simulation-runner.mts",
