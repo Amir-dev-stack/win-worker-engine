@@ -35,6 +35,7 @@ export default async () => {
   },
   aiBudget: {
     month: budget.month, monthlyLimitUsd: budget.monthlyLimitUsd,
+    limitEnabled: budget.limitEnabled, limitMode: budget.limitMode,
     spentUsd: budget.spentUsd, reservedUsd: budget.reservedUsd,
     remainingUsd: budget.remainingUsd, calls: budget.calls,
     blockedCalls: budget.blockedCalls

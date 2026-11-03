@@ -2,6 +2,7 @@ import { getStore } from "@netlify/blobs";
 
 const STORE = () => getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" });
 const LOCK_KEY = "ai-budget/controller-lock";
+const SETTINGS_KEY = "ai-budget/settings";
 const LIMIT_USD = 3;
 const OPERATING_LIMIT_USD = 2.95;
 const WEB_SEARCH_USD = 0.01;
@@ -21,7 +22,20 @@ type Ledger = {
   lastCallAt: string | null;
   lastError: string | null;
   updatedAt: string;
+  alerts: BudgetAlert[];
+  alertKeys: string[];
 };
+
+type BudgetAlert = {
+  id: string;
+  key: string;
+  level: "info" | "warning" | "critical" | "limit_reached";
+  message: string;
+  createdAt: string;
+  estimatedTotalUsd: number;
+};
+
+type BudgetSettings = { limitEnabled: boolean; updatedAt: string | null };
 
 function monthKey(date = new Date()) {
   return date.toISOString().slice(0, 7);
@@ -33,11 +47,45 @@ function blankLedger(month: string): Ledger {
   return {
     month, limitUsd: LIMIT_USD, spentUsd: 0, reservations: {},
     calls: 0, blockedCalls: 0, lastCallAt: null, lastError: null,
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(), alerts: [], alertKeys: []
   };
 }
 function reservedTotal(ledger: Ledger) {
   return Object.values(ledger.reservations || {}).reduce((sum, item) => sum + Number(item.amountUsd || 0), 0);
+}
+
+function addBudgetAlert(
+  ledger: Ledger,
+  key: string,
+  level: BudgetAlert["level"],
+  message: string,
+  estimatedTotalUsd: number
+) {
+  ledger.alertKeys = ledger.alertKeys || [];
+  if (ledger.alertKeys.includes(key)) return;
+  const alert: BudgetAlert = {
+    id: crypto.randomUUID(), key, level, message,
+    createdAt: new Date().toISOString(),
+    estimatedTotalUsd: roundUsd(estimatedTotalUsd)
+  };
+  ledger.alerts = [alert, ...(ledger.alerts || [])].slice(0, 30);
+  ledger.alertKeys = [...ledger.alertKeys, key].slice(-100);
+}
+
+function evaluateBudgetAlerts(ledger: Ledger, estimatedTotalUsd: number) {
+  const amount = Math.max(0, estimatedTotalUsd);
+  if (amount >= LIMIT_USD * 0.8) {
+    addBudgetAlert(ledger, "threshold_80", "warning",
+      "WIN AI estimated monthly usage has reached 80% of the $3 reference budget.", amount);
+  }
+  if (amount >= LIMIT_USD * 0.95) {
+    addBudgetAlert(ledger, "threshold_95", "critical",
+      "WIN AI estimated monthly usage has reached 95% of the $3 reference budget.", amount);
+  }
+  if (amount >= OPERATING_LIMIT_USD) {
+    addBudgetAlert(ledger, "limit_reached", "limit_reached",
+      "WIN AI usage has reached the $2.95 internal stop threshold. The application limit blocks new requests only while enforcement is enabled; OpenAI's own project or organisation limit remains separate.", amount);
+  }
 }
 function roundUsd(value: number) {
   return Math.round(value * 1_000_000) / 1_000_000;
@@ -72,7 +120,20 @@ async function withControllerLock<T>(fn: () => Promise<T>): Promise<T> {
 
 async function readLedger(month = monthKey()): Promise<Ledger> {
   const found = await STORE().get(ledgerKey(month), { type: "json" }) as Ledger | null;
-  return found ? { ...blankLedger(month), ...found, reservations: found.reservations || {} } : blankLedger(month);
+  return found ? {
+    ...blankLedger(month), ...found,
+    reservations: found.reservations || {},
+    alerts: found.alerts || [],
+    alertKeys: found.alertKeys || []
+  } : blankLedger(month);
+}
+
+async function readBudgetSettings(): Promise<BudgetSettings> {
+  const found = await STORE().get(SETTINGS_KEY, { type: "json" }) as Partial<BudgetSettings> | null;
+  return {
+    limitEnabled: found?.limitEnabled !== false,
+    updatedAt: found?.updatedAt || null
+  };
 }
 async function writeLedger(ledger: Ledger) {
   ledger.updatedAt = new Date().toISOString();
@@ -89,6 +150,27 @@ export type AIRequestBudget = {
   maxInputChars: number;
 };
 
+export async function setAIbudgetLimitEnabled(limitEnabled: boolean) {
+  return withControllerLock(async () => {
+    const current = await readBudgetSettings();
+    if (current.limitEnabled === limitEnabled) return current;
+    const next: BudgetSettings = { limitEnabled, updatedAt: new Date().toISOString() };
+    await STORE().setJSON(SETTINGS_KEY, next);
+    const ledger = await readLedger();
+    addBudgetAlert(
+      ledger,
+      "limit_toggle_" + Date.now(),
+      "info",
+      limitEnabled
+        ? "WIN's internal $3 monthly AI spending limit has been enabled."
+        : "WIN's internal $3 monthly AI spending limit has been disabled. WIN will continue tracking usage and issuing alerts, but will not block requests at its $2.95 threshold. OpenAI's provider-side limits are unchanged.",
+      ledger.spentUsd + reservedTotal(ledger)
+    );
+    await writeLedger(ledger);
+    return next;
+  });
+}
+
 export async function reserveAIRequest(input: AIRequestBudget) {
   const rates = MODEL_RATES[input.model];
   if (!rates) return { allowed: false as const, reason: "No verified price policy exists for model " + input.model + "; AI call blocked." };
@@ -99,19 +181,22 @@ export async function reserveAIRequest(input: AIRequestBudget) {
   return withControllerLock(async () => {
     const month = monthKey();
     const ledger = await readLedger(month);
+    const settings = await readBudgetSettings();
     const estimatedInputTokens = Math.ceil(input.inputChars * 3) + input.maxToolCalls * SEARCH_CONTENT_TOKENS_PER_CALL;
     const rawEstimate = (estimatedInputTokens * rates.input + input.maxOutputTokens * rates.output) / 1_000_000
       + input.maxToolCalls * WEB_SEARCH_USD + 0.005;
     const estimate = roundUsd(rawEstimate * 1.15);
     const reserved = reservedTotal(ledger);
+    const projectedTotal = roundUsd(ledger.spentUsd + reserved + estimate);
 
-    if (ledger.spentUsd + reserved + estimate > OPERATING_LIMIT_USD) {
+    if (settings.limitEnabled && projectedTotal > OPERATING_LIMIT_USD) {
       ledger.blockedCalls += 1;
       ledger.lastError = "Monthly WIN AI budget limit reached; request denied before calling OpenAI.";
+      evaluateBudgetAlerts(ledger, Math.max(projectedTotal, OPERATING_LIMIT_USD));
       await writeLedger(ledger);
       return {
         allowed: false as const,
-        reason: "WIN's $3 monthly API ceiling is protected. This request was blocked before it was sent to OpenAI."
+        reason: "WIN's $3 monthly application limit is enabled. This request was blocked before it was sent to OpenAI."
       };
     }
 
@@ -119,8 +204,12 @@ export async function reserveAIRequest(input: AIRequestBudget) {
       amountUsd: estimate, createdAt: new Date().toISOString(),
       model: input.model, phase: input.phase
     };
+    evaluateBudgetAlerts(ledger, projectedTotal);
     await writeLedger(ledger);
-    return { allowed: true as const, reservationId: input.id, reservedUsd: estimate, month };
+    return {
+      allowed: true as const, reservationId: input.id, reservedUsd: estimate, month,
+      limitEnabled: settings.limitEnabled
+    };
   });
 }
 
@@ -152,6 +241,7 @@ export async function settleAIRequest(
       }
       delete ledger.reservations[reservationId];
       ledger.spentUsd = roundUsd(ledger.spentUsd + charge);
+      evaluateBudgetAlerts(ledger, ledger.spentUsd + reservedTotal(ledger));
       ledger.calls += 1;
       ledger.lastCallAt = new Date().toISOString();
       ledger.lastError = null;
@@ -176,21 +266,27 @@ export async function releaseAIRequest(reservationId: string, error?: string) {
 }
 
 export async function getAIbudgetStatus() {
-  const ledger = await readLedger();
+  const [ledger, settings] = await Promise.all([readLedger(), readBudgetSettings()]);
   const reservedUsd = roundUsd(reservedTotal(ledger));
+  const totalTrackedUsd = roundUsd(ledger.spentUsd + reservedUsd);
   return {
     month: ledger.month,
     currency: "USD",
     monthlyLimitUsd: LIMIT_USD,
     operatingStopUsd: OPERATING_LIMIT_USD,
+    limitEnabled: settings.limitEnabled,
+    limitUpdatedAt: settings.updatedAt,
+    limitMode: settings.limitEnabled ? "enforced" : "tracking_only",
     spentUsd: roundUsd(ledger.spentUsd),
     reservedUsd,
-    remainingUsd: roundUsd(Math.max(0, OPERATING_LIMIT_USD - ledger.spentUsd - reservedUsd)),
+    totalTrackedUsd,
+    remainingUsd: roundUsd(Math.max(0, OPERATING_LIMIT_USD - totalTrackedUsd)),
     calls: ledger.calls,
     blockedCalls: ledger.blockedCalls,
     lastCallAt: ledger.lastCallAt,
     lastError: ledger.lastError,
+    alerts: (ledger.alerts || []).slice(0, 20),
     enforcement: "application-level estimate only; NOT a provider hard cap or concurrency-safe financial ledger",
-    note: "This Blobs ledger is advisory and must not be relied on as a guaranteed spending ceiling. Configure a provider-side monthly limit and usage alerts, disable auto-recharge, and reconcile actual usage in OpenAI Platform. AI execution is separately disabled unless WIN_AI_BUDGET_APPROVED=true."
+    note: "WIN's internal limit can be disabled from the dashboard. Disabling it does not change OpenAI project or organisation spending limits. This Blobs ledger is advisory; monitor actual usage in OpenAI Platform."
   };
 }

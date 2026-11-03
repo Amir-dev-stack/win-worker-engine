@@ -9,7 +9,7 @@
 <div class="shell">
 <aside class="sidebar">
 <div class="brand"><div class="mark">W</div><div><b>WIN</b><small>WORKER ENGINE</small></div></div>
-<nav><a class="active" href="#overview">Overview</a><a href="#connections">Connections</a><a href="#simulations">Simulation lab</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#coverage">Evidence coverage</a><a href="#researchEngine">Data & agent engine</a><a href="#library">Knowledge library</a><a href="#ledger">Prediction ledger</a></nav>
+<nav><a class="active" href="#overview">Overview</a><a href="#aiBudget">AI budget</a><a href="#connections">Connections</a><a href="#simulations">Simulation lab</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#coverage">Evidence coverage</a><a href="#researchEngine">Data & agent engine</a><a href="#library">Knowledge library</a><a href="#ledger">Prediction ledger</a></nav>
 <div class="side-bottom"><span class="pulse"></span> Engine console <small>On-demand research · no automatic betting</small></div>
 </aside>
 <main>
@@ -19,6 +19,23 @@
 <article><label>Completed reports</label><strong id="workerCount">—</strong><small>Specialist and challenge reports</small></article>
 <article><label>Human tips</label><strong id="tipCount">—</strong><small>Imported evidence</small></article>
 <article><label>Frozen forecasts</label><strong id="predictionCount">—</strong><small>Pre-match ledger</small></article>
+</section>
+<section class="panel" id="aiBudget">
+<div class="panel-head"><div><div class="eyebrow">AI SPENDING CONTROL</div><h2>OpenAI budget and alerts</h2><p>Track WIN's estimated monthly API usage, receive limit alarms and control the internal application cap.</p></div><span class="tag" id="budgetStateTag">LOADING</span></div>
+<div class="budget-grid">
+<article class="budget-metric"><small>Estimated spend</small><strong id="budgetSpent">—</strong><span id="budgetSpendMeta">This month</span></article>
+<article class="budget-metric"><small>Reserved for running requests</small><strong id="budgetReserved">—</strong><span>Pre-call estimate</span></article>
+<article class="budget-metric"><small>WIN internal stop point</small><strong id="budgetLimitAmount">—</strong><span id="budgetRemaining">Remaining allowance —</span></article>
+<article class="budget-metric"><small>Completed API calls</small><strong id="budgetCalls">—</strong><span id="budgetBlocked">Blocked calls —</span></article>
+</div>
+<div class="budget-controls">
+<label class="budget-switch"><input type="checkbox" id="budgetLimitEnabled" checked><span><b>Enforce WIN's $3 monthly application limit</b><small>When enabled, WIN blocks new AI calls when projected usage would exceed its $2.95 operating stop.</small></span></label>
+<div class="budget-actions"><button type="button" class="subtle" id="budgetNotifications">Enable desktop alerts</button><button type="button" class="subtle" id="refreshBudget">Refresh budget ↻</button></div>
+</div>
+<div class="budget-policy">Important: turning this switch off disables only WIN's internal application-level spending gate. It does not change or bypass OpenAI's separate project or organisation spending limit. WIN continues tracking spend and showing alerts. Desktop notifications appear only while this dashboard is open.</div>
+<div id="budgetLatestAlert" class="budget-alert empty">No budget alarm recorded yet.</div>
+<h3 class="budget-history-title">Recent budget alerts</h3>
+<div id="budgetAlertHistory" class="mini-list"><div class="empty">Budget alert history will appear here.</div></div>
 </section>
 <section class="panel" id="connections">
 <div class="panel-head"><div><div class="eyebrow">SYSTEM CONNECTIONS</div><h2>Connected workflow</h2><p>Services run only when you ask WIN to research or inspect a record.</p></div><span class="tag">ON DEMAND</span></div>

@@ -1,6 +1,7 @@
 const $=s=>document.querySelector(s);
 let token=sessionStorage.getItem("win-token")||"";
 let selectedRunId=null;
+let knownBudgetAlertIds=new Set();
 const dialog=$("#tokenDialog");
 function headers(){return {"content-type":"application/json","authorization":"Bearer "+token}}
 async function api(path,options={}){const r=await fetch(path,{...options,headers:{...headers(),...(options.headers||{})}});if(r.status===401){if(!dialog.open)dialog.showModal();throw new Error("Connect using your WIN internal token.");}const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||"Request failed ("+r.status+")");return data}
@@ -186,6 +187,55 @@ async function refreshResearch(){
  }catch(e){$("#researchEngineStatus").innerHTML='<div class="empty">Research status unavailable: '+escapeHtml(e.message)+'</div>';}
 }
 
+function money(value){return "$"+Number(value||0).toFixed(2)}
+function updateBudgetNotificationButton(){
+ const notify=$("#budgetNotifications");
+ if(!("Notification" in window)){notify.textContent="Desktop alerts unsupported";notify.disabled=true;return;}
+ notify.textContent=Notification.permission==="granted"?"Desktop alerts enabled":Notification.permission==="denied"?"Desktop alerts blocked by browser":"Enable desktop alerts";
+ notify.disabled=Notification.permission==="denied";
+}
+function renderAIBudget(data){
+ const enabled=data.limitEnabled!==false;
+ $("#budgetStateTag").textContent=enabled?"INTERNAL LIMIT ON":"TRACKING ONLY";
+ $("#budgetLimitEnabled").checked=enabled;
+ $("#budgetSpent").textContent=money(data.spentUsd);
+ $("#budgetSpendMeta").textContent=(data.month||"Current month")+" · tracked "+money(data.totalTrackedUsd);
+ $("#budgetReserved").textContent=money(data.reservedUsd);
+ $("#budgetLimitAmount").textContent=money(data.operatingStopUsd||2.95);
+ $("#budgetRemaining").textContent=(enabled?"Remaining before WIN blocks":"Reference allowance")+" "+money(data.remainingUsd);
+ $("#budgetCalls").textContent=Number(data.calls||0).toLocaleString();
+ $("#budgetBlocked").textContent="Blocked before API call: "+Number(data.blockedCalls||0).toLocaleString();
+ const alerts=data.alerts||[];
+ const latest=alerts[0];
+ $("#budgetLatestAlert").className="budget-alert "+(latest?("level-"+latest.level):"empty");
+ $("#budgetLatestAlert").innerHTML=latest
+  ?'<b>'+escapeHtml(latest.level.replaceAll("_"," ").toUpperCase())+'</b><span>'+escapeHtml(latest.message)+'</span><small>'+new Date(latest.createdAt).toLocaleString()+' · estimated tracked spend '+money(latest.estimatedTotalUsd)+'</small>'
+  :(enabled?"No budget alarm recorded yet. WIN will alert at 80%, 95% and the $2.95 operating stop.":"No budget alarm recorded yet. WIN is tracking usage without enforcing its internal cap.");
+ $("#budgetAlertHistory").innerHTML=alerts.length?alerts.map(a=>'<article class="budget-alert-row"><span class="decision '+(a.level==="limit_reached"?"no":a.level==="critical"?"wait":"")+'">'+escapeHtml(a.level.replaceAll("_"," "))+'</span><div><b>'+escapeHtml(a.message)+'</b><small>'+new Date(a.createdAt).toLocaleString()+' · '+money(a.estimatedTotalUsd)+'</small></div></article>').join(""):'<div class="empty">No alerts this month.</div>';
+ updateBudgetNotificationButton();
+}
+function announceBudgetAlerts(alerts){
+ for(const alert of (alerts||[])){
+  if(knownBudgetAlertIds.has(alert.id))continue;
+  const created=Date.parse(alert.createdAt||"");
+  const recent=Number.isFinite(created)&&Date.now()-created<15*60*1000;
+  if(recent&&["critical","limit_reached"].includes(alert.level)&&"Notification" in window&&Notification.permission==="granted"){
+   try{new Notification("WIN AI budget alarm",{body:alert.message,tag:alert.key||alert.id});}catch{}
+  }
+  knownBudgetAlertIds.add(alert.id);
+ }
+}
+async function refreshAIBudget(){
+ try{
+  const data=await api("/api/ai-budget");
+  renderAIBudget(data);
+  announceBudgetAlerts(data.alerts||[]);
+ }catch(error){
+  $("#budgetStateTag").textContent="UNAVAILABLE";
+  $("#budgetLatestAlert").className="budget-alert level-critical";
+  $("#budgetLatestAlert").textContent="Could not load budget status: "+error.message;
+ }
+}
 async function refresh(){
  try{
   const health=await fetch("/api/health").then(r=>r.json());
@@ -203,8 +253,33 @@ async function refresh(){
   $("#mcpStatus").textContent="OAuth MCP endpoint deployed; plugin authorization test pending";
   await refreshLibrary();
   await refreshSimulations();
+  await refreshAIBudget();
  }catch(e){$("#apiStatus").textContent="Authentication needed";$("#runsList").textContent=e.message}
 }
+$("#refreshBudget").addEventListener("click",refreshAIBudget);
+$("#budgetLimitEnabled").addEventListener("change",async e=>{
+ const checkbox=e.currentTarget;
+ const enabled=checkbox.checked;
+ if(!enabled&&!confirm("Disable WIN's internal $3 monthly AI limit? WIN will continue tracking and alerting, but it will no longer block AI requests at $2.95. OpenAI's separate provider-side spending limit remains unchanged. Continue?")){
+  checkbox.checked=true;return;
+ }
+ checkbox.disabled=true;
+ try{
+  const data=await api("/api/ai-budget",{method:"POST",body:JSON.stringify({limitEnabled:enabled})});
+  renderAIBudget(data);
+  announceBudgetAlerts(data.alerts||[]);
+ }catch(error){
+  alert("Could not update WIN's budget limit: "+error.message);
+  await refreshAIBudget();
+ }finally{checkbox.disabled=false;}
+});
+$("#budgetNotifications").addEventListener("click",async()=>{
+ if(!("Notification" in window)){alert("This browser does not support desktop notifications.");return;}
+ const permission=await Notification.requestPermission();
+ updateBudgetNotificationButton();
+ if(permission==="granted")alert("WIN desktop budget alerts are enabled. Keep the dashboard open to receive limit notifications.");
+ else alert("Desktop notifications were not enabled. You will still see budget alarms inside the WIN dashboard.");
+});
 $("#saveToken").addEventListener("click",e=>{e.preventDefault();token=$("#tokenInput").value.trim();if(token){sessionStorage.setItem("win-token",token);dialog.close();refresh();refreshSources();refreshResearch()}});
 $("#runForm").addEventListener("submit",async e=>{
  e.preventDefault();
