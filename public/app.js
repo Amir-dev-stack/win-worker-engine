@@ -174,6 +174,14 @@ async function refreshResearch(){
    catch(e){btn.disabled=false;alert(e.message);}
   }));
 
+  $("#researchEngineStatus").querySelectorAll("[data-source-review]").forEach(btn=>btn.addEventListener("click",async()=>{
+   btn.disabled=true;
+   try{
+    await api("/api/research-source-candidates",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({candidateId:btn.dataset.candidateId,decision:btn.dataset.sourceReview,reviewNote:"Approved for adapter design only; verify source terms and schema before enabling ingestion."})});
+    await refreshResearch();
+   }catch(e){btn.disabled=false;alert(e.message);}
+  }));
+
  }catch(e){$("#researchEngineStatus").innerHTML='<div class="empty">Research status unavailable: '+escapeHtml(e.message)+'</div>';}
 }
 
