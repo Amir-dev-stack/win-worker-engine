@@ -94,12 +94,16 @@ export async function executeBetBuilderSimulationRun(id:string){
   else{voided++;returns+=1;sport.voided++;other.push(record);}
   for(const leg of combo.legs){const key=leg.market;const m=byMarket[key]||(byMarket[key]={combinations:0,won:0,lost:0,voided:0});m.combinations++;if(combo.result==="won")m.won++;else if(combo.result==="lost")m.lost++;else m.voided++;}
  }
- const batchId=run.id+"-0";
- if(wins.length)await put("library/simulation-winning-coupons",batchId,{id:batchId,runId:run.id,records:wins});
- if(losses.length)await put("library/simulation-losing-coupons",batchId,{id:batchId,runId:run.id,records:losses});
- if(other.length)await put("library/simulation-other-coupons",batchId,{id:batchId,runId:run.id,records:other});
+ let batch=0;
+ for(let offset=0;offset<combinations.length;offset+=500){
+  const batchId=run.id+"-"+batch++;
+  const winBatch=wins.slice(offset,offset+500),lossBatch=losses.slice(offset,offset+500),otherBatch=other.slice(offset,offset+500);
+  if(winBatch.length)await put("library/simulation-winning-coupons",batchId,{id:batchId,runId:run.id,records:winBatch});
+  if(lossBatch.length)await put("library/simulation-losing-coupons",batchId,{id:batchId,runId:run.id,records:lossBatch});
+  if(otherBatch.length)await put("library/simulation-other-coupons",batchId,{id:batchId,runId:run.id,records:otherBatch});
+ }
  const summary={couponCount:combinations.length,won,lost,voided,hitRate:Number((won/Math.max(1,won+lost)).toFixed(4)),flatStakeRoi:Number(((returns-combinations.length)/Math.max(1,combinations.length)).toFixed(4)),flatStakeReturnUnits:Number(returns.toFixed(3)),bySport,byMarket,caveat:"Descriptive historical audit of observed Bet Builder combinations. It is not an out-of-sample forecast test and does not establish a future edge."};
- const finished={...run,status:"completed",completedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),summary,batchCount:1};
+ const finished={...run,status:"completed",completedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),summary,batchCount:batch};
  await put("library/simulation-runs",id,finished);
  await put("library/simulation-lessons",id,{id:run.id,recordType:"bet_builder_simulation_analysis",runId:id,validationStatus:"candidate_for_validation",sampleSize:combinations.length,summary,createdAt:finished.completedAt});
  return finished;
