@@ -48,12 +48,14 @@ export async function getModelLabResearchPack(){
   playerStats.set(key,p);
  }
  const playerSummary=[...playerStats.values()];
+ const groupRows=(items:any[],key:string,countKey:string)=>items.reduce((out:any,d:any)=>{const k=String(d[key]||"unknown");out[k]=(out[k]||0)+Number(d[countKey]||0);return out;},{});
  return {
   generatedAt:new Date().toISOString(),
   dataSummary:{
    historicalEventDatasets:events.length,historicalEventRows:events.reduce((n,d)=>n+Number(d.totalRows||0),0),historicalScoredRows:events.reduce((n,d)=>n+Number(d.scoredRows||0),0),
+   eventRowsBySport:groupRows(events,"sport","totalRows"),consensusRowsBySport:groupRows(consensus,"sport","totalRows"),
    worldCupDatasets:events.filter(d=>d.providerId==="openfootball-worldcup-json").length,worldCupMatches:events.filter(d=>d.providerId==="openfootball-worldcup-json").reduce((n,d)=>n+Number(d.totalRows||0),0),worldCupScoredMatches:events.filter(d=>d.providerId==="openfootball-worldcup-json").reduce((n,d)=>n+Number(d.scoredRows||0),0),
-   consensusDatasets:consensus.length,consensusMarketRows:consensus.reduce((n,d)=>n+Number(d.totalRows||0),0),consensusSettledRows:consensus.reduce((n,d)=>n+Number(d.settledRows||0),0),
+   consensusDatasets:consensus.length,consensusMarketRows:consensus.reduce((n,d)=>n+Number(d.totalRows||0),0),consensusSettledRows:consensus.reduce((n,d)=>n+Number(d.settledRows||0),0),consensusSports:[...new Set(consensus.map(d=>d.sport))],
    observedMarketSnapshots:observed.length,observedMarketRows:observed.reduce((n,d)=>n+Number(d.recordCount||0),0),
    playerEventDatasets:playerEventDatasets.length,playerEventRows:playerEventDatasets.reduce((n,d)=>n+Number(d.totalRows||0),0),
    settledObservedMarketDatasets:settledObservedMarkets.length,settledObservedMarketRows:settledObservedMarkets.reduce((n,d)=>n+Number(d.settledSelectionCount||0),0),
