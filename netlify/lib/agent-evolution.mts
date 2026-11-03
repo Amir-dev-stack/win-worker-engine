@@ -12,7 +12,7 @@ function normalizeSport(v:any){
 function readiness(proposal:any,pack:any){
  const summary=pack?.dataSummary||{},scope=proposal.scope||{},sport=normalizeSport(scope.sport);
  const eventRows=Number(summary.eventRowsBySport?.[sport]||0),consensusRows=Number(summary.consensusRowsBySport?.[sport]||0);
- const observedSports=(summary.observedSports||[]).map(normalizeSport),observedRows=observedSports.includes(sport)?Number(summary.observedMarketRows||0):0;
+ const observedRows=Number(summary.observedRowsBySport?.[sport]||0);
  const playerRows=Number(summary.playerEventRows||0);
  const blockers:string[]=[];
  if(!sport)blockers.push("scope_sport_missing");
