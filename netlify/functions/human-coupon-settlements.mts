@@ -40,6 +40,7 @@ export default async (req: Request) => {
     id, couponId, sourceCouponUrl: coupon.source || null,
     claimedOutcome, evidenceUrl, evidenceSummary, reviewerNotes: reviewerNotes || null,
     reviewStatus: "pending_independent_review",
+    submitterCredentialId: "owner-internal-token",
     outcomeApplied: false,
     submittedAt: new Date().toISOString(),
     guardrails: [

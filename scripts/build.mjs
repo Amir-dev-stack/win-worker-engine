@@ -33,6 +33,7 @@ const required = [
   "netlify/functions/coverage.mts",
   "netlify/functions/coverage-monitor.mts",
   "netlify/functions/human-coupon-settlements.mts",
+  "netlify/functions/independent-review.mts",
   "netlify/lib/data-provider-registry.mts",
   "netlify/lib/openfootball-adapter.mts",
   "netlify/lib/model-lab.mts",
@@ -75,17 +76,20 @@ const [html, app, ai, org, mcp, authMeta, authorize, runner, library, libraryApi
 
 const simulation = await readFile("netlify/lib/simulation.mts", "utf8");
 const backtest = await readFile("netlify/lib/backtest.mts", "utf8");
-const [aiBudget, hourlyMonitor, scheduledRunner, budgetApi, health] = await Promise.all([
+const [aiBudget, hourlyMonitor, scheduledRunner, budgetApi, health, independentReview] = await Promise.all([
   readFile("netlify/lib/ai-budget.mts", "utf8"),
   readFile("netlify/functions/hourly-monitor.mts", "utf8"),
   readFile("netlify/functions/scheduled-scout-runner.mts", "utf8"),
   readFile("netlify/functions/ai-budget.mts", "utf8"),
-  readFile("netlify/functions/health.mts", "utf8")
+  readFile("netlify/functions/health.mts", "utf8"),
+  readFile("netlify/functions/independent-review.mts", "utf8")
 ]);
 
 const checks = [
   [packageJson.includes('"@openai/agents": "0.21.0"') && sdkRuntime.includes("from \"@openai/agents\"") && ai.includes("runWinAgent"), "OpenAI Agents SDK runtime is not installed or wired into WIN worker execution."],
   [html.includes("WIN Worker Engine"), "Dashboard title is missing."],
+  [independentReview.includes('path: "/api/independent-review"') && independentReview.includes("create_reviewer_access") && independentReview.includes("separate_reviewer_credential"), "Separate reviewer approval route is missing."],
+  [html.includes('id="createReviewerAccess"') && html.includes('id="reviewerQueue"') && app.includes("refreshReviewerQueue") && app.includes("reviewerApi"), "Dual-control reviewer dashboard is missing."],
   [aiBudget.includes("LIMIT_USD = 3") && aiBudget.includes("OPERATING_LIMIT_USD = 2.95") && aiBudget.includes("reserveAIRequest") && aiBudget.includes("onlyIfNew"), "Fail-closed monthly AI budget controller is missing."],
   [ai.includes('WIN_AI_BUDGET_APPROVED') && ai.includes('provider-side monthly spending limit'), "AI calls are not fail-closed pending provider budget approval."],
   [hourlyMonitor.includes('WIN_AI_BUDGET_APPROVED') && hourlyMonitor.includes('blocked_budget_approval_required'), "Scheduled AI is not disabled pending budget approval."],

@@ -1,10 +1,12 @@
 const $=s=>document.querySelector(s);
 let token=sessionStorage.getItem("win-token")||"";
+let reviewerToken=sessionStorage.getItem("win-reviewer-token")||"";
 let selectedRunId=null;
 let knownBudgetAlertIds=new Set();
 const dialog=$("#tokenDialog");
 function headers(){return {"content-type":"application/json","authorization":"Bearer "+token}}
 async function api(path,options={}){const r=await fetch(path,{...options,headers:{...headers(),...(options.headers||{})}});if(r.status===401){if(!dialog.open)dialog.showModal();throw new Error("Connect using your WIN internal token.");}const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||"Request failed ("+r.status+")");return data}
+async function reviewerApi(path,options={}){const r=await fetch(path,{...options,headers:{"content-type":"application/json","authorization":"Bearer "+reviewerToken,...(options.headers||{})}});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||"Reviewer request failed ("+r.status+")");return data}
 function escapeHtml(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function decisionClass(text=""){const t=String(text).toUpperCase();return t.includes("NO BET")?"no":t.includes("BET")?"bet":"wait"}
 function safeUrl(value){try{const u=new URL(value);return ["https:","http:"].includes(u.protocol)?u.href:""}catch{return ""}}
@@ -140,6 +142,33 @@ async function refreshSettlementQueue(){
   const items=data.items||[];
   $("#settlementQueue").innerHTML=items.length?'<h4>Pending independent review ('+items.length+')</h4>'+items.slice(0,30).map(x=>'<article class="mini-row"><div><b>'+escapeHtml(x.couponId)+'</b><small>'+escapeHtml(x.claimedOutcome)+' claimed · '+escapeHtml(x.reviewStatus)+' · '+escapeHtml(new Date(x.submittedAt).toLocaleString())+'</small><p>'+escapeHtml(x.evidenceSummary)+'</p><a href="'+escapeHtml(safeUrl(x.evidenceUrl))+'" target="_blank" rel="noopener noreferrer">Open evidence ↗</a></div></article>').join(""):'<div class="empty">No settlement evidence submissions awaiting review.</div>';
  }catch(e){$("#settlementQueue").textContent="Settlement queue unavailable: "+e.message}
+}
+
+function renderReviewerCase(item){
+ const isHuman=item.caseType==="human_coupon";
+ const title=isHuman?(item.coupon?.label||item.coupon?.id||"Human coupon"):((item.lesson?.title)||item.lesson?.id||"Lesson");
+ const evidence=(item.evidence||[]).map(x=>typeof x==="string"?x:(x.url||x.reference||x.sourceUrl||x.evidenceUrl||"")).filter(Boolean);
+ if(isHuman&&item.evidenceUrl)evidence.push(item.evidenceUrl);
+ const evidenceHtml=[...new Set(evidence)].map(url=>'<a href="'+escapeHtml(safeUrl(url))+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(url)+'</a>').join("<br>");
+ const summary=isHuman
+  ?'<p><b>Claimed outcome:</b> '+escapeHtml(item.claimedOutcome)+' · <b>Sport:</b> '+escapeHtml(item.coupon?.sport||"unknown")+' · <b>Competition:</b> '+escapeHtml(item.coupon?.competition||"unknown")+'</p><pre>'+escapeHtml((item.coupon?.couponText||"").slice(0,3500))+'</pre><p>'+escapeHtml(item.evidenceSummary||"")+'</p>'
+  :'<p><b>Lesson:</b> '+escapeHtml(item.lesson?.title||item.lesson?.id||"")+' · '+escapeHtml(item.lesson?.sport||"")+' '+escapeHtml(item.lesson?.competition||"")+'</p><p>'+escapeHtml(item.lesson?.note||"")+'</p>';
+ const checks=isHuman
+  ?'<label class="check-row"><input type="checkbox" data-check="eventIdentityConfirmed"> Event identity confirmed</label><label class="check-row"><input type="checkbox" data-check="marketRulesConfirmed"> Market settlement rules confirmed</label><label class="check-row"><input type="checkbox" data-check="everySelectionReviewed"> Every coupon selection reviewed</label><label class="check-row"><input type="checkbox" data-check="evidenceIndependent"> Evidence independent of original tipster post</label>'
+  :'<label class="check-row"><input type="checkbox" data-check="claimSupported"> Lesson claim is supported</label><label class="check-row"><input type="checkbox" data-check="independentEvidenceConfirmed"> Claim independently corroborated</label>';
+ return '<article class="mini-row review-case" data-case-type="'+escapeHtml(item.caseType)+'" data-case-id="'+escapeHtml(item.id)+'"><div><div class="report-title"><b>'+escapeHtml(title)+'</b><span class="decision wait">PENDING REVIEW</span></div><small>'+escapeHtml(item.id)+' · '+escapeHtml(new Date(item.submittedAt).toLocaleString())+'</small>'+summary+'<p><b>Submitted sources:</b><br>'+evidenceHtml+'</p></div><div class="review-form"><label>Reviewer name<input data-reviewer-name required minlength="2" placeholder="Your name"></label><label>Additional independent HTTPS source URL<textarea data-reviewer-evidence rows="2" placeholder="https://second-independent-source.example/…" required></textarea></label>'+checks+'<label>Review notes<textarea data-reviewer-notes rows="3" minlength="40" placeholder="Explain what you checked and why the evidence supports or contradicts the claim." required></textarea></label><div class="form-foot"><button type="button" class="subtle" data-review-decision="reject">Reject</button><button type="button" data-review-decision="approve">Approve</button></div></div></article>';
+}
+async function refreshReviewerQueue(){
+ if(!reviewerToken){$("#reviewerQueueStatus").textContent="Connect using the separate reviewer credential.";return;}
+ try{
+  const data=await reviewerApi("/api/independent-review");
+  const lessons=data.lessonCases||[],humans=data.humanSettlementCases||[];
+  $("#reviewerQueueStatus").textContent=lessons.length+" lesson cases · "+humans.length+" human coupon settlements awaiting review. WIN verifies separate credentials, not real-world identity.";
+  $("#reviewerQueue").innerHTML=(humans.map(renderReviewerCase).join("")+lessons.map(renderReviewerCase).join(""))||'<div class="empty">No pending review cases.</div>';
+ }catch(error){
+  $("#reviewerQueueStatus").textContent="Reviewer queue unavailable: "+error.message;
+  $("#reviewerQueue").innerHTML="";
+ }
 }
 
 
@@ -402,6 +431,46 @@ $("#runsList").addEventListener("click",e=>{const b=e.target.closest("[data-run-
 $("#refresh").addEventListener("click",refresh);
 $("#refreshCoverage").addEventListener("click",refreshCoverage);
 $("#refreshResearch").addEventListener("click",refreshResearch);
+
+$("#createReviewerAccess").addEventListener("click",async()=>{
+ const button=$("#createReviewerAccess");button.disabled=true;
+ try{
+  const data=await api("/api/independent-review",{method:"POST",body:JSON.stringify({action:"create_reviewer_access"})});
+  $("#reviewerCredentialOutput").value=data.token;
+  $("#reviewerCredentialStatus").textContent="Credential "+data.credentialId+" created and shown once. Copy it and share it only with a different trusted reviewer. Creating another credential revokes this one.";
+  try{await navigator.clipboard.writeText(data.token);$("#reviewerCredentialStatus").textContent+=" Copied to clipboard.";}catch{}
+ }catch(error){$("#reviewerCredentialStatus").textContent="Could not create reviewer credential: "+error.message;}
+ finally{button.disabled=false;}
+});
+$("#connectReviewer").addEventListener("click",async()=>{
+ reviewerToken=$("#reviewerTokenInput").value.trim();
+ if(!reviewerToken){$("#reviewerQueueStatus").textContent="Paste the separate reviewer credential first.";return;}
+ sessionStorage.setItem("win-reviewer-token",reviewerToken);
+ await refreshReviewerQueue();
+});
+$("#forgetReviewer").addEventListener("click",()=>{
+ reviewerToken="";sessionStorage.removeItem("win-reviewer-token");$("#reviewerTokenInput").value="";
+ $("#reviewerQueueStatus").textContent="Reviewer credential forgotten in this browser session.";
+ $("#reviewerQueue").innerHTML="";
+});
+$("#reviewerQueue").addEventListener("click",async e=>{
+ const button=e.target.closest("[data-review-decision]");
+ if(!button)return;
+ const card=button.closest("[data-case-id]");
+ const caseType=card.dataset.caseType,caseId=card.dataset.caseId,decision=button.dataset.reviewDecision;
+ const reviewerName=card.querySelector("[data-reviewer-name]").value.trim();
+ const reviewerNotes=card.querySelector("[data-reviewer-notes]").value.trim();
+ const evidenceUrls=card.querySelector("[data-reviewer-evidence]").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const checks={};card.querySelectorAll("[data-check]").forEach(input=>checks[input.dataset.check]=input.checked);
+ if(reviewerName.length<2||reviewerNotes.length<40){alert("Enter your name and at least 40 characters of review notes.");return;}
+ if(decision==="approve"&&(!evidenceUrls.length||Object.values(checks).some(value=>value!==true))){alert("Approval requires new corroborating evidence and every applicable review check.");return;}
+ button.disabled=true;
+ try{
+  const result=await reviewerApi("/api/independent-review",{method:"POST",body:JSON.stringify({action:"review_case",caseType,caseId,decision,reviewerName,reviewerNotes,evidenceUrls,checks})});
+  $("#reviewerQueueStatus").textContent=decision.toUpperCase()+" saved for "+caseId+". Outcome applied: "+(result.outcomeApplied?"yes":"no")+".";
+  await refreshReviewerQueue();await refreshLibrary();await refreshSettlementQueue();
+ }catch(error){alert(error.message);button.disabled=false;}
+});
 $("#settlementEvidenceForm").addEventListener("submit",async e=>{
  e.preventDefault();const form=e.currentTarget,f=new FormData(form),button=form.querySelector('button[type="submit"]');
  if(button){button.disabled=true;button.textContent="Submitting…";}
@@ -477,7 +546,7 @@ $("#libraryList").addEventListener("click",async e=>{
  }catch(err){alert(err.message);button.disabled=false}
 });
 
-if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();refreshResearch();}
+if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();refreshResearch();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
 setInterval(()=>{if(token&&!document.hidden)refresh()},20000);
 
 $("#simulationForm").addEventListener("submit",async e=>{

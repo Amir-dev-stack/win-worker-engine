@@ -31,19 +31,19 @@ function evidenceHasHttpsUrl(entry: any): boolean {
 }
 
 /**
- * Only a future reviewer flow with separately authenticated principals may promote a lesson.
- * The current shared-token API deliberately cannot satisfy this predicate.
+ * A lesson is trusted only after approval through the separate reviewer credential.
+ * This proves credential separation, not the holder's real-world identity.
  */
 function isIndependentlyValidatedLesson(lesson: any): boolean {
   const review = lesson?.independentReview;
-  const submitterPrincipalId = clean(lesson?.submitterPrincipalId, 256);
-  const reviewerPrincipalId = clean(review?.reviewerPrincipalId, 256);
+  const submitterCredentialId = clean(lesson?.submitterCredentialId, 256);
+  const reviewerCredential = clean(review?.reviewerCredentialId, 256);
   return lesson?.validationStatus === "validated"
     && review?.status === "approved"
-    && review?.reviewerAuth === "distinct_authenticated_principal"
-    && Boolean(submitterPrincipalId)
-    && Boolean(reviewerPrincipalId)
-    && reviewerPrincipalId !== submitterPrincipalId
+    && review?.reviewerAuth === "separate_reviewer_credential"
+    && Boolean(submitterCredentialId)
+    && Boolean(reviewerCredential)
+    && reviewerCredential !== submitterCredentialId
     && Number.isFinite(Date.parse(review?.reviewedAt || ""))
     && safeArray(review?.evidence, 30).some(evidenceHasHttpsUrl);
 }

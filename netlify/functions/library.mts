@@ -88,6 +88,7 @@ export default async (req: Request) => {
           previousValidatedAt: current.validatedAt || null,
           submittedAt,
           submittedBy: "shared_owner_token",
+          submitterCredentialId: "owner-internal-token",
           submitterIdentityVerified: false,
           independentReviewerRequired: true,
           outcomeApplied: false,
@@ -101,6 +102,7 @@ export default async (req: Request) => {
 
         const updated = {
           ...current,
+          submitterCredentialId: current.submitterCredentialId || "owner-internal-token",
           validationStatus: "pending_independent_review",
           validationEvidence: evidence,
           validationReviewCaseId: reviewCaseId,

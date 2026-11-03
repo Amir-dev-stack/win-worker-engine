@@ -123,6 +123,15 @@
 <div class="form-foot"><span id="settlementStatus">Evidence remains pending independent review.</span><button type="submit">Submit settlement evidence ↗</button></div>
 </form>
 <div id="settlementQueue" class="mini-list"></div>
+<div class="panel-head"><div><div class="eyebrow">DUAL-CONTROL APPROVAL</div><h2>Independent reviewer console</h2><p>Create a separate reviewer credential, then share it securely with a different trusted person. A separate credential does not prove the holder’s real-world identity.</p></div></div>
+<div class="review-console">
+  <div class="form-foot"><span>Owner action: mint a one-time reviewer credential. Minting a new one revokes the previous credential.</span><button type="button" class="subtle" id="createReviewerAccess">Create reviewer credential</button></div>
+  <div id="reviewerCredentialStatus" class="empty">No reviewer credential generated in this session.</div>
+  <label>One-time reviewer credential<textarea id="reviewerCredentialOutput" rows="2" readonly placeholder="Generated credential will appear here once."></textarea></label>
+  <div class="two"><label>Reviewer credential<input id="reviewerTokenInput" type="password" autocomplete="off" placeholder="Paste reviewer credential"></label><div class="form-foot"><button type="button" class="subtle" id="connectReviewer">Connect as reviewer</button><button type="button" class="subtle" id="forgetReviewer">Forget reviewer credential</button></div></div>
+  <div id="reviewerQueueStatus" class="empty">Reviewer queue is not connected.</div>
+  <div id="reviewerQueue" class="mini-list"></div>
+</div>
 </section>
 <section class="panel" id="simulations">
 <div class="panel-head"><div><div class="eyebrow">HISTORICAL EXPERIMENTS</div><h2>WIN Simulation Lab</h2><p>Generate and compare hypothetical coupons from 2 to 50 legs using real, settled historical selections. Results stay separate from real STS and human coupons.</p></div><span class="tag">HISTORICAL DATA ONLY</span></div>
