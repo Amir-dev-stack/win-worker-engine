@@ -27,15 +27,17 @@ async function archiveHumanCouponResearch(reports: any[]) {
     if (!allowed.has(sourceId)) { imports.push({ status: "skipped", reason: "unregistered_source" }); continue; }
     const sourceUrl = typeof item?.sourceUrl === "string" ? item.sourceUrl : "";
     const couponText = typeof item?.couponText === "string" ? item.couponText : "";
-    const contentClass = typeof item?.contentClass === "string" ? item.contentClass.toLowerCase() : "";
-    const excludedClasses = ["demo", "sample", "promotion", "marketing", "advert", "model-generated", "community consensus"];
-    if (excludedClasses.some(value => contentClass.includes(value))) { imports.push({ status: "skipped", reason: "not_an_original_human_coupon", sourceId }); continue; }
+    const contentClass = typeof item?.contentClass === "string"
+      ? item.contentClass.toLowerCase().replace(/[_-]+/g, " ").replace(/\\s+/g, " ").trim() : "";
+    if (!["original human coupon", "single human pick"].includes(contentClass)) {
+      imports.push({ status: "skipped", reason: "missing_or_ineligible_content_class", sourceId, contentClass: contentClass || null }); continue;
+    }
     if (!/^https:\/\//i.test(sourceUrl) || couponText.trim().length < 3) {
       imports.push({ status: "skipped", reason: "missing_public_source_url_or_coupon_text" }); continue;
     }
     try {
       const record = await importTipsterCoupon({
-        sourceId, sourceUrl, couponText,
+        sourceId, sourceUrl, couponText, contentClass,
         tipsterName: item?.tipsterName || "",
         publishedAt: item?.publishedAt || "",
         sport: item?.sport || "",
