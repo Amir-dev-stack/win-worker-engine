@@ -91,7 +91,7 @@ export async function searchWinLibrary(options: {
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 30));
   const category = clean(options.category || "all", 40).toLowerCase();
   const [coupons, winning, losing, pending, lessons, entities, profiles, observations, runs,
-    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements, learningCycles, strategyCandidates, backtestRuns, persistentAgentProfiles, agentTasks] = await Promise.all([
+    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements, learningCycles, strategyCandidates, backtestRuns, persistentAgentProfiles, agentTasks, historicalMarketData, consensusMarketData, observedMarketData, settledObservedMarketData, playerEventData, marketCalibrationReports, marketSettlementRuns] = await Promise.all([
     list<any>("library/coupons", 500),
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
@@ -112,7 +112,14 @@ export async function searchWinLibrary(options: {
     list<any>("library/strategy-candidates", 1000),
     list<any>("library/backtest-runs", 500),
     list<any>("library/persistent-agent-profiles", 1000),
-    list<any>("library/agent-task-queue", 1000)
+    list<any>("library/agent-task-queue", 1000),
+    list<any>("library/model-lab/historical-event-datasets", 1000),
+    list<any>("library/model-lab/market-consensus-datasets", 100),
+    list<any>("library/model-lab/observed-market-snapshots", 100),
+    list<any>("library/model-lab/settled-observed-markets", 100),
+    list<any>("library/model-lab/player-event-datasets", 1000),
+    list<any>("library/model-lab/market-calibration-reports", 20),
+    list<any>("library/model-lab/observed-market-settlement-runs", 20)
   ]);
   let items: any[] = [];
   if (category === "winning") items = winning;
@@ -122,6 +129,7 @@ export async function searchWinLibrary(options: {
   else if (category === "lessons") items = lessons;
   else if (category === "entities") items = entities;
   else if (category === "agents") items = [...profiles, ...persistentAgentProfiles, ...agentTasks];
+  else if (category === "market-data") items = [...historicalMarketData, ...consensusMarketData, ...observedMarketData, ...settledObservedMarketData, ...playerEventData, ...marketCalibrationReports, ...marketSettlementRuns];
   else if (category === "observations") items = observations;
   else if (category === "runs") items = runs;
   else if (category === "tips") items = humanTips;
@@ -135,7 +143,7 @@ export async function searchWinLibrary(options: {
   else if (category === "strategies") items = strategyCandidates;
   else if (category === "backtests") items = backtestRuns;
   else items = [...coupons, ...lessons, ...entities, ...profiles, ...observations, ...runs,
-    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns, ...persistentAgentProfiles, ...agentTasks];
+    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns, ...persistentAgentProfiles, ...agentTasks, ...historicalMarketData, ...consensusMarketData, ...observedMarketData, ...settledObservedMarketData, ...playerEventData, ...marketCalibrationReports, ...marketSettlementRuns];
 
   let filtered = relevant(items, clean(options.query, 1000));
   if (options.outcome) filtered = filtered.filter((x: any) => x.outcome === options.outcome);
@@ -146,7 +154,7 @@ export async function searchWinLibrary(options: {
     items: filtered.slice(0, limit), reviewedAt: new Date().toISOString(),
     libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "coupons", "coupon-history",
       "human-tips", "lessons", "entity-profiles", "agent-profiles", "agent-observations",
-      "agent-notes", "persistent-agent-profiles", "agent-task-queue", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases", "learning-cycles", "strategy-candidates", "backtest-runs"]
+      "agent-notes", "persistent-agent-profiles", "agent-task-queue", "market-data", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases", "learning-cycles", "strategy-candidates", "backtest-runs"]
   };
 }
 
