@@ -274,3 +274,19 @@ The published `hourly-monitor` function is configured to run every four hours (U
 WIN's department workers now execute through the OpenAI TypeScript Agents SDK (`@openai/agents`), pinned to `0.21.0`. The runtime creates a focused agent for each WIN worker pass, supports hosted web search when enabled, caps each agent run at two model turns, and records SDK-reported token usage in the existing WIN budget ledger. The same runtime is used by scouting, scheduled learning, department analysis, adversarial review and Global Master passes.
 
 The SDK receives the existing server-side `OPENAI_API_KEY` at runtime; keys are never stored in source control. Automatic SDK trace export is disabled by default so WIN research prompts and tool traces are not sent to the tracing service. The existing `WIN_AI_BUDGET_APPROVED=true` fail-closed gate remains mandatory before any model call. SDK integration does not place bets or bypass source, settlement, evidence or low-risk checks.
+
+
+## Public human betting research
+
+Department D5 now searches public web material for human-shared coupons and picks across the sports represented in a run. Its source discovery list includes BetBuddyRank (including its open leaderboard/JSON/RSS and links to original X posts), OLBG, Superbet Supersocial, Tipsto, 1x2.social, BetSlip Social, public Reddit threads, public X posts, public YouTube descriptions and STS Strefa Inspiracji.
+
+WIN separates original human coupons and single picks from consensus summaries, bookmaker marketing, tipster promotions, demo content and model-generated predictions. Public material is imported into the human coupon library with source URL, publication/retrieval context and an initial pending settlement state. A result is not learned as won/lost until independent settlement evidence is attached. Human records are stored separately from WIN-generated coupons.
+
+The authenticated endpoints are:
+- `GET /api/human-sources` — source catalog and import counts.
+- `POST /api/human-sources` — import an authorized public-page capture or user-provided coupon.
+- `GET /api/human-coupons` — search the human coupon library by text, sport, source and outcome.
+
+Automated harvesting is disabled by default. Public visibility does not automatically grant permission for bulk collection. API-based or scheduled collection is enabled only after the source's terms, robots policy, API access and rate limits are verified. WIN does not log into private groups, bypass paywalls/CAPTCHAs, reuse session cookies, or collect private messages. If a platform restricts automation, D5 can still analyse public search results and manually captured public posts without pretending that a full archive was obtained.
+
+Human-performance analysis must include the complete available record, losses, odds and timestamps. Follower counts, screenshots, selected wins and short streaks are not proof of skill. The system reports sample size, missing-history risk, ROI and market-relative performance only when the evidence supports them.
