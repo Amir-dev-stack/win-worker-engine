@@ -39,7 +39,8 @@ function classifySource(name:string):ObservedMarket["bookmakerType"]{
  const s=name.toLowerCase();
  if(["kalshi","polymarket"].some(x=>s.includes(x)))return "prediction_market";
  if(["betfair","matchbook","novig"].some(x=>s.includes(x)))return "exchange";
- return "sportsbook";
+ if(["draftkings","fanduel","pinnacle","bovada","betmgm","betrivers","caesars","espnbet","bet365","betway","fanatics","hardrock"].some(x=>s.includes(x)))return "sportsbook";
+ return "unknown";
 }
 async function syncOne(file:typeof FILES[number]){
  const url=BASE+file.path,res=await fetch(url,{headers:{"user-agent":"WIN-ResearchEngine/1.0"}});
@@ -64,6 +65,7 @@ async function syncOne(file:typeof FILES[number]){
    oddsDecimal:odds,oddsAmerican:obj.odds_american!==""&&Number.isFinite(Number(obj.odds_american))?Number(obj.odds_american):undefined,
    impliedProbability:obj.odds_probability!==""&&Number.isFinite(Number(obj.odds_probability))?Number(obj.odds_probability):undefined,
    bookmakerType:classifySource(obj.sportsbook),sourceSnapshotOnly:true,
+   eventTimeSemantics:classifySource(obj.sportsbook)==="prediction_market"?"market_expiry":"scheduled_event_start",
    observedAt,startsAt,live:parseBool(obj.is_live),
    sourceRecordId:[obj.event_id,obj.sportsbook,obj.market_type,obj.selection,obj.selection_type,obj.line,observedAt].join("|"),
    availabilityStatus:"unknown"
