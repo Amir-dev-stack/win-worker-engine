@@ -111,8 +111,17 @@ export type ObservedMarket = {
 };
 
 export function listMarketFamilies(sportId: string): MarketFamilyDefinition[] {
-  const ids = new Set([ ...common.map(x => x.id), ...(sportSpecific[sportId] || []) ]);
-  return common.filter(x => ids.has(x.id));
+  const specific = (sportSpecific[sportId] || []).map(id => ({
+    id,
+    label: id.split("_").map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(" "),
+    description: "Sport-specific market family; exact outcomes, period and settlement are defined by the observed bookmaker offering.",
+    periods: ["full_event", "regulation", "first_half", "second_half", "quarter", "period", "inning", "set", "map", "round", "player_performance", "race", "tournament", "unknown"] as MarketPeriod[],
+    settlement: "provider_defined" as SettlementKind,
+    supportsLine: true,
+    supportsPlayer: /player|scorer|assist|rebounds|points|yards|strikeouts|saves|goals|kills|deaths|aces|fouls|cards/.test(id),
+    supportsBuilder: true
+  }));
+  return [...common, ...specific];
 }
 
 export function listSportSpecificMarketIds(sportId: string): string[] {
