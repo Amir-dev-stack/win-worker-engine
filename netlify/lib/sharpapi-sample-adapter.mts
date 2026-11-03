@@ -69,7 +69,7 @@ async function syncOne(file:typeof FILES[number]){
    bookmakerType:classifySource(obj.sportsbook),sourceSnapshotOnly:true,
    eventTimeSemantics:classifySource(obj.sportsbook)==="prediction_market"?"market_expiry":"scheduled_event_start",
    observedAt,startsAt,live:parseBool(obj.is_live),
-   sourceRecordId:[obj.event_id,obj.sportsbook,obj.market_type,obj.selection,obj.selection_type,obj.line,observedAt].join("|"),
+   sourceRecordId:[obj.event_id,obj.sportsbook,obj.market_type,obj.selection,obj.selection_type,obj.line,obj.home_team,observedAt].join("|"),
    availabilityStatus:"unknown"
   };
   if(validateObservedMarket(m).length||!Number.isFinite(Date.parse(startsAt))||!Number.isFinite(Date.parse(observedAt))){rejected++;continue;}
