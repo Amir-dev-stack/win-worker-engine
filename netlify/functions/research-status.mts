@@ -22,7 +22,7 @@ export default async (req: Request) => {
  return Response.json({
   providers:DATA_PROVIDER_REGISTRY.map(p=>({
    id:p.id,name:p.name,accessMode:p.accessMode,licenceReview:p.licenceReview,automationAllowed:p.automationAllowed,
-   status:p.id==="openfootball"?openfootball.status:p.id==="openfootball-worldcup-json"?openfootballWorldCup.status:p.id.startsWith("hf-minmaxxxer-")?consensus.status:p.id==="sharpapi-sample-data"?sharpapi.status:"not_connected"
+   status:p.id==="openfootball"?openfootball.status:p.id==="openfootball-worldcup-json"?openfootballWorldCup.status:p.id.startsWith("hf-minmaxxxer-")?(consensus.sourceStatuses?.[p.id]||"not_yet_run"):p.id==="sharpapi-sample-data"?sharpapi.status:"not_connected"
   })),
   openfootball,openfootballWorldCup,consensus,sharpapi,calibration,
   persistentAgents:{profiles:agentProfiles.length,queued:agentTasks.filter(x=>x.status==="queued").length,running:agentTasks.filter(x=>x.status==="running").length,completed:agentTasks.filter(x=>x.status==="completed").length,failed:agentTasks.filter(x=>x.status==="failed").length,recentTasks:agentTasks.sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0,10).map(x=>({id:x.id,agentId:x.agentId,name:x.name,tier:x.tier,status:x.status,attempts:x.attempts,createdAt:x.createdAt,updatedAt:x.updatedAt}))},
