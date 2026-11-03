@@ -464,7 +464,7 @@ $("#libraryQuery").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventD
 $("#libraryList").addEventListener("click",async e=>{
  const button=e.target.closest("[data-settle-id]");
  if(!button)return;
- const settlementSource=prompt("Enter the result or settlement source (URL/reference) to support this classification:");
+ const settlementSource=prompt("Enter an HTTPS URL for an official result or settlement source. Human-origin coupons must use the separate independent review queue:");
  if(!settlementSource||!settlementSource.trim())return;
  button.disabled=true;
  try{

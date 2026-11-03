@@ -2,10 +2,18 @@ import type { Config } from "@netlify/functions";
 import { authorized } from "../lib/auth.mts";
 import { get, list, put } from "../lib/store.mts";
 import { runDebate, runGlobalMaster, runIndependentWorkers } from "../lib/ai.mts";
+import { WIN_DEPARTMENTS } from "../lib/worker-org.mts";
 import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
 import { importTipsterCoupon } from "../lib/source-intelligence.mts";
 import { getModelLabResearchPack } from "../lib/model-lab.mts";
 
+
+const REQUIRED_DEBATE_ROLES = [
+  "Independent FOR-side challenger / Small Chef A review",
+  "Independent AGAINST-side challenger / Small Chef B review",
+  "Markets, price and settlement red-team auditor",
+  "Quantitative evidence and correlation challenger"
+];
 
 async function enqueuePersistentAgentTasks(workerNetwork: any, runId: string) {
   const nodes = (workerNetwork?.nodes || []).filter((node: any) =>
@@ -258,6 +266,16 @@ export default async (req: Request) => {
 
     const debate = await runDebate(brief, reports);
     const networkAfterDebate = updateNetworkStatuses(networkWithQueue, reports, debate);
+    const departmentReportsComplete = reports.length === WIN_DEPARTMENTS.length &&
+      WIN_DEPARTMENTS.every(department =>
+        reports.filter(report => report.departmentId === department.id &&
+          report.status === "completed" && Boolean(report.report?.trim())).length === 1
+      );
+    const debateReportsComplete = debate.length === REQUIRED_DEBATE_ROLES.length &&
+      REQUIRED_DEBATE_ROLES.every(role =>
+        debate.filter(report => report.role === role &&
+          report.status === "completed" && Boolean(report.report?.trim())).length === 1
+      );
 
     // Calculate the receipt gate BEFORE building objects that use it. Keep the same
     // gated network in the intermediate and final run so the gate cannot be lost.
@@ -288,9 +306,9 @@ export default async (req: Request) => {
     await put("runs", run.id, withDebate);
 
     const failed = [...reports, ...debate].filter(x => x.status !== "completed" || !x.report?.trim());
-    const gateFailures = [...failed.map(x => (x.departmentId ? x.departmentId + " — " : "") + x.role + ": " + (x.error || "empty report")), ...missingLibraryReceipts];
+    const gateFailures = [...failed.map(x => (x.departmentId ? x.departmentId + " — " : "") + x.role + ": " + (x.error || "empty report")), ...(!departmentReportsComplete ? ["Expected exactly one completed report for every registered department."] : []), ...(!debateReportsComplete ? ["Expected exactly one completed report from each required adversarial reviewer."] : []), ...missingLibraryReceipts];
     const coupons = collectCouponCandidates(reports);
-    const master = failed.length || missingLibraryReceipts.length
+    const master = !departmentReportsComplete || !debateReportsComplete || failed.length || missingLibraryReceipts.length
       ? {
           workerId: crypto.randomUUID(),
           role: "WIN Global Master — risk assessment unavailable",
@@ -309,7 +327,8 @@ export default async (req: Request) => {
         failures: missingLibraryReceipts
       };
     }
-    const masterExecutionValid = master.status === "completed" && Boolean(master.report?.trim()) &&
+    const masterExecutionValid = departmentReportsComplete && debateReportsComplete &&
+      master.status === "completed" && Boolean(master.report?.trim()) &&
       missingLibraryReceipts.length === 0;
     const riskAssessment = masterExecutionValid
       ? extractJsonBlock(master.report || "", "WIN_RISK_ASSESSMENT_JSON") : null;
@@ -325,11 +344,13 @@ export default async (req: Request) => {
       Array.isArray(riskAssessment.uncertainties) &&
       Array.isArray(riskAssessment.couponRisks)
     );
-    const freezeEligible = masterExecutionValid && riskAssessmentValid;
+    const freezeEligible = departmentReportsComplete && debateReportsComplete && masterExecutionValid && riskAssessmentValid;
 
     gatedWorkerNetwork.riskAssessmentGate = {
       status: freezeEligible ? "passed" : "failed",
       failures: freezeEligible ? [] : [
+        ...(!departmentReportsComplete ? ["The full registered department report set is incomplete or contains duplicates."] : []),
+        ...(!debateReportsComplete ? ["The four required adversarial reviewer reports are incomplete or duplicated."] : []),
         ...(!masterExecutionValid ? ["Required department/challenge reports, Global Master response or library review failed."] : []),
         ...(!riskAssessmentValid ? ["Global Master risk-assessment JSON is missing or invalid."] : [])
       ]

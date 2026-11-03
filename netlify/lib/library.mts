@@ -17,6 +17,18 @@ function slug(value: string): string {
 function safeArray(value: unknown, max = 100): any[] {
   return Array.isArray(value) ? value.slice(0, max) : [];
 }
+function isHttpsUrl(value: unknown): boolean {
+  const raw = clean(value, 1500);
+  try {
+    const parsed = new URL(raw);
+    return parsed.protocol === "https:" && Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+function evidenceHasHttpsUrl(entry: any): boolean {
+  return isHttpsUrl(typeof entry === "string" ? entry : entry?.url || entry?.reference || entry?.sourceUrl || entry?.evidenceUrl);
+}
 function searchText(value: unknown): string {
   try { return JSON.stringify(value).toLowerCase(); } catch { return ""; }
 }
@@ -319,6 +331,7 @@ export async function settleCouponRecord(input: any) {
   if (!id) throw new Error("couponId is required");
   const current = await get<any>("library/coupons", id);
   if (!current) throw new Error("Coupon not found");
+  if (current.origin === "human") throw new Error("Human-origin coupons must use the independent settlement review queue; direct settlement is disabled.");
   const outcome = clean(input?.outcome, 20).toLowerCase() as LibraryOutcome;
   if (!OUTCOMES.has(outcome) || outcome === "pending" || outcome === "unknown") {
     throw new Error("settlement outcome must be won, lost, void, partial or cancelled");
@@ -326,13 +339,16 @@ export async function settleCouponRecord(input: any) {
   const settlementSource = clean(input?.settlementSource, 1000);
   if (!settlementSource) throw new Error("settlementSource is required");
   const settlementEvidence = safeArray(input?.evidence, 30);
-  if (!settlementEvidence.length) throw new Error("At least one settlement evidence reference is required");
+  if (!isHttpsUrl(settlementSource) || !settlementEvidence.some(evidenceHasHttpsUrl)) {
+    throw new Error("Provide an HTTPS settlement source URL and at least one HTTPS evidence URL.");
+  }
   const updated = {
     ...current, outcome, settlementSource,
     settlementEvidence,
     settledAt: clean(input?.settledAt, 100) || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    learningStatus: "available_for_review"
+    learningStatus: "available_for_review",
+    settlementReviewStatus: "owner_submitted_reference_pending_independent_review"
   };
   await put("library/coupons", id, updated);
   await remove("library/winning-coupons", id);
@@ -365,7 +381,7 @@ export async function settleCouponRecord(input: any) {
     competition: updated.competition, combinedOdds: updated.combinedOdds ?? null,
     selections: selectionSummary, settlementSource,
     evidence: updated.settlementEvidence,
-    observation: "Verified coupon settlement recorded. This is an outcome observation, not proof that any individual selection or strategy caused the result.",
+    observation: "Owner-submitted coupon outcome classification recorded with an HTTPS evidence reference. WIN has not independently verified the source or settlement. This is an observation candidate, not proof that any individual selection or strategy caused the result.",
     validationStatus: "candidate_for_validation",
     createdAt: updated.settledAt, updatedAt: new Date().toISOString()
   };
@@ -394,14 +410,14 @@ export async function settleCouponRecord(input: any) {
       observation: learningRecord.observation,
       settlementLearningId: learningId,
       evidence: updated.settlementEvidence,
-      status: "verified_coupon_outcome_unattributed",
+      status: "owner_submitted_outcome_unverified",
       observedAt: updated.settledAt
     });
     await put("library/agent-profiles", profile.agentId, {
       ...(await get<any>("library/agent-profiles", profile.agentId) || {}),
       agentId: profile.agentId, entityId: profile.id, entityType: profile.entityType,
       name: profile.name, scope: profile.scope,
-      lastSettlementLearningId: learningId, lastSettlementOutcome: outcome,
+      lastUserSubmittedSettlementLearningId: learningId, lastUserSubmittedOutcome: outcome,
       lastLearningAt: updated.settledAt
     });
   }

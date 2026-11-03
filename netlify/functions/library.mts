@@ -4,6 +4,19 @@ import {
   saveEntityProfile, saveLearningNote
 } from "../lib/library.mts";
 
+function isHttpsUrl(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  try {
+    const parsed = new URL(value.trim());
+    return parsed.protocol === "https:" && Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+function evidenceHasHttpsUrl(entry: any): boolean {
+  return isHttpsUrl(typeof entry === "string" ? entry : entry?.url || entry?.reference || entry?.sourceUrl || entry?.evidenceUrl);
+}
+
 export default async (req: Request) => {
   const denied = requireAuth(req);
   if (denied) return denied;
@@ -44,7 +57,7 @@ export default async (req: Request) => {
         const current = await get<any>("library/lessons", body.lessonId);
         if (!current) return Response.json({ error: "Lesson not found" }, { status: 404 });
         const evidence = Array.isArray(body.evidence) ? body.evidence.slice(0, 30) : [];
-        if (!evidence.length) return Response.json({ error: "At least one evidence reference is required to validate a lesson" }, { status: 400 });
+        if (!evidence.some(evidenceHasHttpsUrl)) return Response.json({ error: "At least one HTTPS evidence URL is required to validate a lesson" }, { status: 400 });
         const updated = {
           ...current, validationStatus: "validated",
           validationEvidence: evidence,

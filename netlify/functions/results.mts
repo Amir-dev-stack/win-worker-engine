@@ -6,6 +6,18 @@ const text = (value: unknown, max = 1000) =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 const array = (value: unknown, max = 100) =>
   Array.isArray(value) ? value.slice(0, max) : [];
+const isHttpsUrl = (value: unknown) => {
+  const raw = text(value, 1500);
+  try {
+    const parsed = new URL(raw);
+    return parsed.protocol === "https:" && Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
+};
+const evidenceHasHttpsUrl = (entry: any) => isHttpsUrl(
+  typeof entry === "string" ? entry : entry?.url || entry?.reference || entry?.sourceUrl || entry?.evidenceUrl
+);
 const searchable = (value: unknown) => {
   try { return JSON.stringify(value).toLowerCase(); } catch { return ""; }
 };
@@ -28,7 +40,7 @@ async function archivePredictionLearning(prediction: any, result: any) {
     }))
   );
   const observation =
-    "A frozen WIN prediction has a recorded, evidence-linked settlement. The coupon outcome is an observed result; it does not by itself establish which selection, department or strategy caused the outcome.";
+    "A frozen WIN prediction has a user-submitted outcome classification and an HTTPS evidence reference. WIN has not independently verified the source or settlement. This is an observation candidate, not proof that any selection, department or strategy caused the outcome.";
   const learningRecord = {
     id: learningId,
     recordType: "prediction_settlement_learning_case",
@@ -50,6 +62,7 @@ async function archivePredictionLearning(prediction: any, result: any) {
     settlementSource: result.settlementSource,
     evidence: result.evidence,
     observation,
+    settlementReviewStatus: "pending_independent_review",
     validationStatus: "candidate_for_validation",
     createdAt: result.recordedAt,
     updatedAt: new Date().toISOString()
@@ -98,7 +111,7 @@ async function archivePredictionLearning(prediction: any, result: any) {
       observation,
       settlementLearningId: learningId,
       evidence: result.evidence,
-      status: "verified_prediction_outcome_unattributed",
+      status: "user_submitted_outcome_unverified",
       observedAt: result.recordedAt
     });
     await put("library/agent-profiles", agentId, {
@@ -108,8 +121,8 @@ async function archivePredictionLearning(prediction: any, result: any) {
       entityType: profile.entityType,
       name: profile.name,
       scope: profile.scope,
-      lastSettlementLearningId: learningId,
-      lastSettlementOutcome: result.outcome,
+      lastUserSubmittedSettlementLearningId: learningId,
+      lastUserSubmittedOutcome: result.outcome,
       lastLearningAt: result.recordedAt
     });
   }
@@ -143,8 +156,10 @@ export default async (req: Request) => {
   if (!SETTLED_OUTCOMES.has(outcome)) {
     return Response.json({ error: "outcome must be won, lost, void, partial or cancelled" }, { status: 400 });
   }
-  if (!evidence.length) {
-    return Response.json({ error: "At least one settlement evidence reference is required" }, { status: 400 });
+  if (!isHttpsUrl(settlementSource) || !evidence.some(evidenceHasHttpsUrl)) {
+    return Response.json({
+      error: "Provide an HTTPS settlement source URL and at least one HTTPS evidence URL. User-submitted outcomes remain pending independent verification."
+    }, { status: 400 });
   }
 
   const prediction = await get<any>("predictions", predictionId);
@@ -162,13 +177,15 @@ export default async (req: Request) => {
 
   const result = existing
     ? { ...existing, settlementSource: existing.settlementSource || settlementSource,
-        evidence: existing.evidence || evidence }
+        evidence: existing.evidence || evidence,
+        settlementReviewStatus: existing.settlementReviewStatus || "pending_independent_review" }
     : {
         id: crypto.randomUUID(),
         predictionId,
         outcome,
         settlementSource,
         evidence,
+        settlementReviewStatus: "pending_independent_review",
         recordedAt: new Date().toISOString()
       };
 

@@ -22,7 +22,7 @@ export default async (req: Request) => {
     prediction.workerNetworkSummary?.completedDepartmentReports === 8 &&
     prediction.workerNetworkSummary?.completedDebateReports === 4 &&
     prediction.libraryReviewGate?.status === "passed" &&
-    prediction.riskAssessmentGate?.status !== "failed"
+    prediction.riskAssessmentGate?.status === "passed"
   );
 
   return Response.json(valid, { headers: { "cache-control": "no-store" } });
