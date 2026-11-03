@@ -48,6 +48,8 @@ export async function getModelLabResearchPack(){
   playerStats.set(key,p);
  }
  const playerSummary=[...playerStats.values()];
+ const observedRowsBySport:Record<string,number>={};
+ for(const dataset of observed)for(const record of (Array.isArray(dataset.records)?dataset.records:[])){const sport=String(record.sportId||"unknown");observedRowsBySport[sport]=(observedRowsBySport[sport]||0)+1;}
  const groupRows=(items:any[],key:string,countKey:string)=>items.reduce((out:any,d:any)=>{const k=String(d[key]||"unknown");out[k]=(out[k]||0)+Number(d[countKey]||0);return out;},{});
  return {
   generatedAt:new Date().toISOString(),
@@ -56,7 +58,7 @@ export async function getModelLabResearchPack(){
    eventRowsBySport:groupRows(events,"sport","totalRows"),consensusRowsBySport:groupRows(consensus,"sport","totalRows"),
    worldCupDatasets:events.filter(d=>d.providerId==="openfootball-worldcup-json").length,worldCupMatches:events.filter(d=>d.providerId==="openfootball-worldcup-json").reduce((n,d)=>n+Number(d.totalRows||0),0),worldCupScoredMatches:events.filter(d=>d.providerId==="openfootball-worldcup-json").reduce((n,d)=>n+Number(d.scoredRows||0),0),
    consensusDatasets:consensus.length,consensusMarketRows:consensus.reduce((n,d)=>n+Number(d.totalRows||0),0),consensusSettledRows:consensus.reduce((n,d)=>n+Number(d.settledRows||0),0),consensusSports:[...new Set(consensus.map(d=>d.sport))],
-   observedMarketSnapshots:observed.length,observedMarketRows:observed.reduce((n,d)=>n+Number(d.recordCount||0),0),
+   observedMarketSnapshots:observed.length,observedMarketRows:observed.reduce((n,d)=>n+Number(d.recordCount||0),0),observedRowsBySport,
    playerEventDatasets:playerEventDatasets.length,playerEventRows:playerEventDatasets.reduce((n,d)=>n+Number(d.totalRows||0),0),
    settledObservedMarketDatasets:settledObservedMarkets.length,settledObservedMarketRows:settledObservedMarkets.reduce((n,d)=>n+Number(d.settledSelectionCount||0),0),
    worldCupPlayerStats:{uniquePlayers:playerSummary.length,topScorers:playerSummary.filter(x=>x.goals>0).sort((a,b)=>b.goals-a.goals).slice(0,20),mostYellowCards:playerSummary.filter(x=>x.yellowCards>0).sort((a,b)=>b.yellowCards-a.yellowCards).slice(0,10),mostStarts:playerSummary.filter(x=>x.starts>0).sort((a,b)=>b.starts-a.starts).slice(0,10)},
