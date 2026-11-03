@@ -7,8 +7,9 @@
     "node": ">=20.12.2"
   },
   "scripts": {
-    "build": "node scripts/build.mjs",
-    "dev": "netlify dev"
+    "build": "node scripts/build.mjs && node scripts/quality-gates.mjs",
+    "dev": "netlify dev",
+    "test": "node scripts/quality-gates.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest",
