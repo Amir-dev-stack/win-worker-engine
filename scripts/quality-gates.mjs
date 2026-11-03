@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 const read = path => readFile(path, "utf8");
 const checks = [];
 const add = (name, ok, detail) => checks.push({ name, ok: Boolean(ok), detail });
-const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library, settlementBridge, settlementFn, sourceDiscovery, sourceDiscoveryFn, sourceReviewFn] = await Promise.all([
+const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library, settlementBridge, settlementFn, sourceDiscovery, sourceDiscoveryFn, sourceReviewFn, agentEvolution, scheduledRunner] = await Promise.all([
   read("netlify/lib/coverage.mts"), read("netlify/functions/coverage.mts"),
   read("netlify/functions/coverage-monitor.mts"), read("netlify/functions/human-coupon-settlements.mts"),
   read("netlify/lib/source-intelligence.mts"), read("netlify/functions/worker-runner.mts"),
@@ -14,7 +14,8 @@ const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, buil
   read("netlify/lib/sharpapi-sample-adapter.mts"), read("netlify/functions/sharpapi-sample-sync.mts"), read("netlify/lib/market-calibration.mts"), read("netlify/lib/worker-org.mts"), read("netlify/functions/scheduled-scout-runner.mts"),
   read("netlify/lib/openfootball-worldcup-adapter.mts"), read("netlify/functions/openfootball-worldcup-sync.mts"), read("netlify/lib/library.mts"),
   read("netlify/lib/observed-market-settlement.mts"), read("netlify/functions/observed-market-settlement.mts"),
-  read("netlify/lib/public-source-discovery.mts"), read("netlify/functions/public-source-discovery.mts"), read("netlify/functions/research-source-candidates.mts")
+  read("netlify/lib/public-source-discovery.mts"), read("netlify/functions/public-source-discovery.mts"), read("netlify/functions/research-source-candidates.mts"),
+  read("netlify/lib/agent-evolution.mts"), read("netlify/functions/scheduled-scout-runner.mts")
 ]);
 add("Coverage is calculated from persisted evidence", coverage.includes("library/research-evidence") && coverage.includes("not_observed") && coverage.includes("stale_or_undated"), "No missing coverage is fabricated.");
 add("Every registered sport is reported", coverage.includes("SPORT_REGISTRY.map") && coverage.includes("requiredDomains"), "Sport coverage is based on the current registry.");
@@ -57,6 +58,9 @@ add("Public source discovery runs on a no-AI schedule", sourceDiscoveryFn.includ
 add("Source approval is authenticated and cannot activate ingestion", sourceReviewFn.includes("requireAuth") && sourceReviewFn.includes("approved_for_adapter_review") && sourceReviewFn.includes("automationAllowed:false") && statusFn.includes("sourceDiscovery"), "User approval only authorizes adapter design and terms review; it never connects a provider.");
 add("Discovered sources are visible in the library and dashboard", library.includes('category === "sources"') && html.includes('value="sources"') && app.includes("Discovered public source candidates"), "The user can inspect source, licence and review status.");
 add("Historical odds adapter covers six sports including tennis", consensusAdapter.includes('sport==="tennis"') && consensusAdapter.includes("atp-wta-closing-odds-2025") && consensusAdapter.includes("mlb-closing-odds-2025") && providers.includes("hf-minmaxxxer-top3-europe-2025-26"), "Six sport families are imported through schema-specific normalization.");
+add("AI research proposes specialist agents only with evidence", ai.includes("WIN_AGENT_PROPOSALS_JSON") && scheduledRunner.includes("registerAgentProposals"), "The existing WIN research agent can propose at most three specialist candidates per cycle.");
+add("Agent sandbox readiness checks data without creating production agents", agentEvolution.includes("data_readiness_only_not_performance_test") && agentEvolution.includes("productionPromotion") && agentEvolution.includes("productionEnabled:false") && agentEvolution.includes("agentCreated:false"), "Readiness is not a predictive test; creation and promotion remain gated.");
+add("Agent proposals and sandbox evaluations are persistent", library.includes("agent-proposals") && library.includes("agent-sandbox-evaluations") && statusFn.includes("agentEvolution"), "Proposal versions and data blockers are visible to the user and research agents.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
