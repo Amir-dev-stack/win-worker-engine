@@ -268,7 +268,7 @@ $("#ownerUnlockBudget").addEventListener("click",async()=>{
   const data=await api("/api/ai-budget",{method:"POST",body:JSON.stringify({action:"owner_approve_unlock",confirmation})});
   renderAIBudget(data);
   announceBudgetAlerts(data.alerts||[]);
-  alert("Owner authorization accepted. WIN spending is unlocked, but the monthly $2.95 operating stop remains enforced and will lock again when reached.");
+  alert("Owner authorization accepted. The previous budget cycle was archived and a fresh $3 spending cycle has started. The $2.95 operating stop remains enforced.");
  }catch(error){
   alert("WIN spending remains locked: "+error.message);
   await refreshAIBudget();
