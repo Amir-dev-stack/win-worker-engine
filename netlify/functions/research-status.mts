@@ -8,12 +8,14 @@ import { list } from "../lib/store.mts";
 export default async (req: Request) => {
  const denied=requireAuth(req);if(denied)return denied;
  if(req.method!=="GET")return new Response("Method not allowed",{status:405});
- const [openfootball,consensus,sharpapi,calibration,experiments,datasets,consensusDatasets,observedMarketDatasets]=await Promise.all([
+ const [openfootball,consensus,sharpapi,calibration,experiments,datasets,consensusDatasets,observedMarketDatasets,agentTasks,agentProfiles]=await Promise.all([
   getOpenFootballSyncStatus(),getConsensusMarketSyncStatus(),getSharpApiSampleStatus(),getMarketCalibrationStatus(),
   list<any>("library/model-lab/experiments",30),
   list<any>("library/model-lab/historical-event-datasets",1000),
   list<any>("library/model-lab/market-consensus-datasets",100),
-  list<any>("library/model-lab/observed-market-snapshots",100)
+  list<any>("library/model-lab/observed-market-snapshots",100),
+  list<any>("library/agent-task-queue",1000),
+  list<any>("library/persistent-agent-profiles",1000)
  ]);
  return Response.json({
   providers:DATA_PROVIDER_REGISTRY.map(p=>({
@@ -21,6 +23,7 @@ export default async (req: Request) => {
    status:p.id==="openfootball"?openfootball.status:p.id.startsWith("hf-minmaxxxer-")?consensus.status:p.id==="sharpapi-sample-data"?sharpapi.status:"not_connected"
   })),
   openfootball,consensus,sharpapi,calibration,
+  persistentAgents:{profiles:agentProfiles.length,queued:agentTasks.filter(x=>x.status==="queued").length,running:agentTasks.filter(x=>x.status==="running").length,completed:agentTasks.filter(x=>x.status==="completed").length,failed:agentTasks.filter(x=>x.status==="failed").length,recentTasks:agentTasks.sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0,10).map(x=>({id:x.id,agentId:x.agentId,name:x.name,tier:x.tier,status:x.status,attempts:x.attempts,createdAt:x.createdAt,updatedAt:x.updatedAt}))},
   modelLab:{
    eventDatasetCount:datasets.length,
    eventMatchCount:datasets.reduce((n,d)=>n+Number(d.totalRows||0),0),
