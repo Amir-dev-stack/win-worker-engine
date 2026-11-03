@@ -23,6 +23,13 @@ export type ProviderRecord = {
 
 export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
   {
+    id:"sharpapi-sample-data", name:"SharpAPI multi-source sample odds", website:"https://github.com/Sharp-API/SharpAPI-Sample-Data",
+    sports:["football","baseball"], dataDomains:["observed_bookmaker_odds","market_catalogue","multi_source_price_snapshots"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none",
+    licenceReview:"approved", automationAllowed:true,
+    notes:"Two static CC BY 4.0 snapshots: 6,132 World Cup prices across 20 sources and 3,673 MLB prices across 14 sources. Preserve sportsbook/exchange/prediction-market identity; snapshots are not live odds or settled results. Attribution required."
+  },
+  {
     id:"football-data-co-uk", name:"Football-Data.co.uk", website:"https://www.football-data.co.uk/",
     sports:["football"], dataDomains:["fixtures","results","historical_odds","match_statistics"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
@@ -71,6 +78,13 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
     licenceReview:"approved", automationAllowed:true,
     notes:"CC BY 4.0 dataset; current-season consensus opening/closing 1X2, totals, BTTS and Asian handicap lines with results. Not bookmaker-level raw odds."
+  },
+  {
+    id:"hf-minmaxxxer-nhl-2026-27", name:"Hugging Face — NHL 2026/27 closing-line consensus", website:"https://huggingface.co/datasets/minmaxxxer/nhl-odds-2026-27",
+    sports:["ice_hockey"], dataDomains:["historical_consensus_market_lines","results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none",
+    licenceReview:"approved", automationAllowed:true,
+    notes:"CC BY 4.0 consensus opening/closing moneyline, puck-line and total probabilities with settled results. Bookmaker identities and individual prices are not included."
   },
   {
     id:"sportmonks", name:"Sportmonks", website:"https://www.sportmonks.com/",
