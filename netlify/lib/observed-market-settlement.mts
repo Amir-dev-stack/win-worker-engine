@@ -42,15 +42,17 @@ function settleMarket(price:any,match:any,orientationReversed:boolean){
  const goals=Array.isArray(match.playerEvents?.goals)?match.playerEvents.goals:[];
  const bookings=Array.isArray(match.playerEvents?.bookings)?match.playerEvents.bookings:[];
  if(/player.*(total_goals|goals_total)/.test(market)){
-  if(line===null)return null;const player=teamKey(selection),count=goals.filter((g:any)=>teamKey(g.player)===player).length,sideOU=overUnder(selection,selectionType);if(!player||!sideOU)return null;
+  if(!match.playerEvents?.goalsAvailable||line===null)return null;const player=teamKey(selection),count=goals.filter((g:any)=>teamKey(g.player)===player).length,sideOU=overUnder(selection,selectionType);if(!player||!sideOU)return null;
   return {result:settleOverUnder(count,line,sideOU),rule:"player_total_goals",actual:count,line,selected:selection};
  }
  if(/player.*(to_score|goalscorer|anytime)|anytime.*goalscorer/.test(market)){
+  if(!match.playerEvents?.goalsAvailable)return null;
   const player=teamKey(selection);if(!player)return null;
   const scored=goals.some((g:any)=>teamKey(g.player)===player);
   return {result:scored?"won":"lost",rule:"player_anytime_goalscorer",actual:scored,selected:selection};
  }
  if(/player.*(card|booked)|to_be_booked/.test(market)){
+  if(!match.playerEvents?.bookingsAvailable)return null;
   const player=teamKey(selection);if(!player)return null;const booked=bookings.some((b:any)=>teamKey(b.player)===player);
   return {result:booked?"won":"lost",rule:"player_to_be_booked",actual:booked,selected:selection};
  }
@@ -74,10 +76,10 @@ function settleMarket(price:any,match:any,orientationReversed:boolean){
   return {result:margin===0?"void":margin>0?"won":"lost",rule:"asian_handicap_whole_or_half_line",actualMargin:margin,line,selected:side};
  }
  if(/total_cards|cards_total/.test(market)){
-  if(line===null)return null;const sideOU=overUnder(selection,selectionType);if(!sideOU)return null;return {result:settleOverUnder(bookings.length,line,sideOU),rule:"total_bookings",actual:bookings.length,line,selected:sideOU};
+  if(!match.playerEvents?.bookingsAvailable||line===null)return null;const sideOU=overUnder(selection,selectionType);if(!sideOU)return null;return {result:settleOverUnder(bookings.length,line,sideOU),rule:"total_bookings",actual:bookings.length,line,selected:sideOU};
  }
  if(/red_cards/.test(market)){
-  if(line===null)return null;const reds=bookings.filter((b:any)=>String(b.cardType).toUpperCase()==="R").length,sideOU=overUnder(selection,selectionType);if(!sideOU)return null;return {result:settleOverUnder(reds,line,sideOU),rule:"total_red_cards",actual:reds,line,selected:sideOU};
+  if(!match.playerEvents?.bookingsAvailable||line===null)return null;const reds=bookings.filter((b:any)=>String(b.cardType).toUpperCase()==="R").length,sideOU=overUnder(selection,selectionType);if(!sideOU)return null;return {result:settleOverUnder(reds,line,sideOU),rule:"total_red_cards",actual:reds,line,selected:sideOU};
  }
  if(/total_goals|goals_total|over_under_goals/.test(market)){
   if(line===null)return null;const sideOU=overUnder(selection,selectionType);if(!sideOU)return null;return {result:settleOverUnder(home+away,line,sideOU),rule:"total_goals_90min",actual:home+away,line,selected:sideOU};
