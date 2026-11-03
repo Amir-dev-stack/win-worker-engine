@@ -35,6 +35,8 @@ const required = [
   "netlify/lib/openfootball-adapter.mts",
   "netlify/lib/model-lab.mts",
   "netlify/functions/openfootball-sync.mts",
+  "netlify/lib/openfootball-worldcup-adapter.mts",
+  "netlify/functions/openfootball-worldcup-sync.mts",
   "netlify/functions/research-status.mts",
   "netlify/lib/consensus-market-adapter.mts",
   "netlify/functions/consensus-market-sync.mts",
