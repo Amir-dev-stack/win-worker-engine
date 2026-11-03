@@ -145,10 +145,11 @@ async function refreshResearch(){
  try{
   const d=await api("/api/research-status");
   const providers=(d.providers||[]).map(p=>'<article class="mini-row"><div><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.status||"unknown")+' · '+escapeHtml(p.accessMode||"")+' · licence '+escapeHtml(p.licenceReview||"unverified")+'</small></div></article>').join("");
-  const open=d.openfootball||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{};
+  const open=d.openfootball||{},worldCup=d.openfootballWorldCup||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{};
   const couponSims=(cal.reports||[]).flatMap(r=>r.couponSimulation?.results||[]);
   const sections=[
    '<article class="mini-row"><div><b>OpenFootball historical results</b><small>'+escapeHtml(open.status||"not yet run")+' · '+Number(open.totals?.matchesImported||0).toLocaleString()+' matches imported · last check '+escapeHtml(open.lastCheck||"not yet")+'</small></div></article>',
+   '<article class="mini-row"><div><b>World Cup history and player events</b><small>'+escapeHtml(worldCup.status||"not yet run")+' · '+Number(lab.worldCupMatchCount||0).toLocaleString()+' matches · '+Number(lab.playerEventRows||0).toLocaleString()+' player events · '+Number(lab.worldCupDatasetCount||0)+' tournament datasets</small></div></article>',
    '<article class="mini-row"><div><b>Consensus market history</b><small>'+escapeHtml(cons.status||"not yet run")+' · '+Number(lab.consensusMarketRows||0).toLocaleString()+' rows · '+Number(lab.consensusSettledRows||0).toLocaleString()+' settled events</small></div></article>',
    '<article class="mini-row"><div><b>SharpAPI multi-source snapshots</b><small>'+escapeHtml(sharp.status||"not yet run")+' · '+Number(lab.observedMarketRows||0).toLocaleString()+' observed prices · '+Number(lab.observedMarketFamilies?.length||0)+' market families</small></div></article>',
    '<article class="mini-row"><div><b>Market calibration lab</b><small>'+escapeHtml(cal.status||"waiting for first report")+' · '+Number(cal.totalEvents||0).toLocaleString()+' events · '+Number(cal.reports?.length||0)+' dataset reports · consensus benchmark only · '+Number(couponSims.length||0)+' coupon simulation bands</small></div></article>',
