@@ -59,7 +59,7 @@ export async function getModelLabResearchPack(){
    createdAt:latestCalibration.createdAt,status:latestCalibration.status,totalEvents:latestCalibration.totalEvents,
    datasets:(latestCalibration.reports||[]).map(x=>({providerId:x.providerId,sport:x.sport,events:x.events,moneylineStatus:x.moneyline?.status,moneylineTestMetrics:x.moneyline?.testMetrics,markets:x.markets,couponSimulation:x.couponSimulation}))
   }:null,
-  recentExperiments:experiments.slice(-8).map(x=>({id:x.id,status:x.status,scoredMatches:x.scoredMatches,testMatches:x.testMatches,createdAt:x.createdAt})),
+  recentExperiments:experiments.slice(-8).map(x=>({id:x.id,status:x.status,scoredMatches:x.scoredMatches,evaluatedDatasets:x.evaluatedDatasets,insufficientSampleDatasets:x.insufficientSampleDatasets,reports:(x.reports||[]).slice(0,30).map((r:any)=>({providerId:r.providerId,competition:r.competition,season:r.season,status:r.status,scoredMatches:r.scoredMatches,testMatches:r.testMatches,oneXTwo:r.oneXTwo,goalLines:r.goalLines})),createdAt:x.createdAt})),
   recentProviderSyncs:runs.sort((a,b)=>String(b.startedAt).localeCompare(String(a.startedAt))).slice(0,8).map(x=>({id:x.id,status:x.status,startedAt:x.startedAt,completedAt:x.completedAt,rowsImported:x.rowsImported??x.matchesImported??x.marketsImported??0,failures:(x.failures||[]).length})),
   restrictions:["This is a read-only research context for WIN agents.","Consensus probabilities are benchmarks, not individual bookmaker prices.","Static SharpAPI samples are point-in-time snapshots, not live odds.","No human coupon or tipster-origin data is included.","No strategy is validated by this summary."]
  };
