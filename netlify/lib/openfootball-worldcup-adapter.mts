@@ -62,7 +62,7 @@ async function syncOne(path:typeof PATHS[number]){
   ...m.playerEvents.lineup.map((e:any)=>({...e,eventId:m.id,eventStart:m.eventStart,competition:m.competition,sourceUrl:url,sourceLicence:"CC0-1.0",origin:"provider_historical_data"}))
  ]);
  await put("library/model-lab/historical-event-datasets",datasetId,{
-  id:datasetId,providerId:"openfootball-worldcup-json",season:String(path.year),competition:parsed.name||path.competition,
+  id:datasetId,providerId:"openfootball-worldcup-json",sport:"football",season:String(path.year),competition:parsed.name||path.competition,
   sourceUrl:url,sourceLicence:"CC0-1.0",licenceReference:"https://creativecommons.org/publicdomain/zero/1.0/",
   retrievedAt:new Date().toISOString(),rawChecksum:checksum,totalRows:records.length,scoredRows:records.filter(x=>x.fullTimeScore).length,
   playerEventRows:playerEventRows.length,records,origin:"provider_historical_data",lab:"model-lab",
