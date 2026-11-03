@@ -60,7 +60,7 @@ export async function getModelLabResearchPack(){
    observedBookmakerSources:[...new Set(observed.flatMap(d=>(d.records||[]).map(r=>r.bookmakerId)))],
    observedMarketFamilies:[...new Set(observed.flatMap(d=>(d.records||[]).map(r=>r.canonicalMarketId)))]
   },
-  latestObservedMarketSettlement:latestSettlement?{status:latestSettlement.status,createdAt:latestSettlement.createdAt,settledSelections:latestSettlement.settledSelections,uniqueEvents:latestSettlement.uniqueEvents,settledByMarket:latestSettlement.settledByMarket,settledByBookmaker:latestSettlement.settledByBookmaker,simulation:latestSettlement.simulation,caveats:latestSettlement.caveats}:null,
+  latestObservedMarketSettlement:latestSettlement?{status:latestSettlement.status,createdAt:latestSettlement.createdAt,snapshotRows:latestSettlement.snapshotRows,eligiblePreMatchRows:latestSettlement.eligiblePreMatchRows,excluded:latestSettlement.excluded,settledSelections:latestSettlement.settledSelections,uniqueEvents:latestSettlement.uniqueEvents,settledByMarket:latestSettlement.settledByMarket,settledByBookmaker:latestSettlement.settledByBookmaker,simulation:latestSettlement.simulation,caveats:latestSettlement.caveats}:null,
   latestCalibration:latestCalibration?{
    createdAt:latestCalibration.createdAt,status:latestCalibration.status,totalEvents:latestCalibration.totalEvents,
    datasets:(latestCalibration.reports||[]).map(x=>({providerId:x.providerId,sport:x.sport,events:x.events,moneylineStatus:x.moneyline?.status,moneylineTestMetrics:x.moneyline?.testMetrics,markets:x.markets,couponSimulation:x.couponSimulation}))
