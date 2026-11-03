@@ -47,6 +47,7 @@ export async function getModelLabResearchPack(){
   generatedAt:new Date().toISOString(),
   dataSummary:{
    historicalEventDatasets:events.length,historicalEventRows:events.reduce((n,d)=>n+Number(d.totalRows||0),0),historicalScoredRows:events.reduce((n,d)=>n+Number(d.scoredRows||0),0),
+   worldCupDatasets:events.filter(d=>d.providerId==="openfootball-worldcup-json").length,worldCupMatches:events.filter(d=>d.providerId==="openfootball-worldcup-json").reduce((n,d)=>n+Number(d.totalRows||0),0),worldCupScoredMatches:events.filter(d=>d.providerId==="openfootball-worldcup-json").reduce((n,d)=>n+Number(d.scoredRows||0),0),
    consensusDatasets:consensus.length,consensusMarketRows:consensus.reduce((n,d)=>n+Number(d.totalRows||0),0),consensusSettledRows:consensus.reduce((n,d)=>n+Number(d.settledRows||0),0),
    observedMarketSnapshots:observed.length,observedMarketRows:observed.reduce((n,d)=>n+Number(d.recordCount||0),0),
    playerEventDatasets:playerEventDatasets.length,playerEventRows:playerEventDatasets.reduce((n,d)=>n+Number(d.totalRows||0),0),
