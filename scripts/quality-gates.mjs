@@ -3,13 +3,14 @@ import { readFile } from "node:fs/promises";
 const read = path => readFile(path, "utf8");
 const checks = [];
 const add = (name, ok, detail) => checks.push({ name, ok: Boolean(ok), detail });
-const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn] = await Promise.all([
+const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync] = await Promise.all([
   read("netlify/lib/coverage.mts"), read("netlify/functions/coverage.mts"),
   read("netlify/functions/coverage-monitor.mts"), read("netlify/functions/human-coupon-settlements.mts"),
   read("netlify/lib/source-intelligence.mts"), read("netlify/functions/worker-runner.mts"),
   read("netlify/lib/ai.mts"), read("package.json"), read("scripts/build.mjs"), read("public/index.html"), read("public/app.js"),
   read("netlify/lib/data-provider-registry.mts"), read("netlify/lib/openfootball-adapter.mts"), read("netlify/lib/model-lab.mts"),
-  read("netlify/functions/openfootball-sync.mts"), read("netlify/functions/research-status.mts")
+  read("netlify/functions/openfootball-sync.mts"), read("netlify/functions/research-status.mts"),
+  read("netlify/lib/consensus-market-adapter.mts"), read("netlify/functions/consensus-market-sync.mts")
 ]);
 add("Coverage is calculated from persisted evidence", coverage.includes("library/research-evidence") && coverage.includes("not_observed") && coverage.includes("stale_or_undated"), "No missing coverage is fabricated.");
 add("Every registered sport is reported", coverage.includes("SPORT_REGISTRY.map") && coverage.includes("requiredDomains"), "Sport coverage is based on the current registry.");
@@ -27,6 +28,8 @@ add("Daily historical sync is deterministic and no-AI", syncFn.includes("17 3 * 
 add("Model Lab uses chronological held-out data", modelLab.includes("chronological_70_30") && modelLab.includes("testBrier") && modelLab.includes("humanCouponLabTouched:false"), "Historical score baseline is evaluated out of sample and isolated.");
 add("Research status endpoint is authenticated", statusFn.includes("requireAuth") && statusFn.includes("/api/research-status"), "Provider and Model Lab status is private.");
 add("Provider registry distinguishes candidates from approved sources", providers.includes("licenceReview") && providers.includes("automationAllowed"), "Commercial feeds remain disabled pending credentials and terms approval.");
+add("Consensus market datasets are licence-labelled and isolated", consensusAdapter.includes("CC-BY-4.0") && consensusAdapter.includes("library/model-lab/market-consensus-datasets") && consensusAdapter.includes("bookmakerIdentityIncluded:false"), "Consensus market lines are not mislabelled as individual bookmaker odds.");
+add("Consensus market sync is scheduled without AI", consensusSync.includes("17 5 * * *") && !consensusSync.includes("runWinAgent"), "Daily public dataset refresh uses no AI budget.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
