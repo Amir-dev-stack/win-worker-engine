@@ -145,7 +145,8 @@ async function refreshResearch(){
  try{
   const d=await api("/api/research-status");
   const providers=(d.providers||[]).map(p=>'<article class="mini-row"><div><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.status||"unknown")+' · '+escapeHtml(p.accessMode||"")+' · licence '+escapeHtml(p.licenceReview||"unverified")+'</small></div></article>').join("");
-  const open=d.openfootball||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{};\n  const couponSims=(cal.reports||[]).flatMap(r=>r.couponSimulation?.results||[]);
+  const open=d.openfootball||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{};
+  const couponSims=(cal.reports||[]).flatMap(r=>r.couponSimulation?.results||[]);
   const sections=[
    '<article class="mini-row"><div><b>OpenFootball historical results</b><small>'+escapeHtml(open.status||"not yet run")+' · '+Number(open.totals?.matchesImported||0).toLocaleString()+' matches imported · last check '+escapeHtml(open.lastCheck||"not yet")+'</small></div></article>',
    '<article class="mini-row"><div><b>Consensus market history</b><small>'+escapeHtml(cons.status||"not yet run")+' · '+Number(lab.consensusMarketRows||0).toLocaleString()+' rows · '+Number(lab.consensusSettledRows||0).toLocaleString()+' settled events</small></div></article>',
