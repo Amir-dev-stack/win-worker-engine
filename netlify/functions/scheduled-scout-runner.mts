@@ -3,6 +3,7 @@ import { authorized } from "../lib/auth.mts";
 import { get, put } from "../lib/store.mts";
 import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
 import { runScheduledLearning } from "../lib/ai.mts";
+import { getModelLabResearchPack } from "../lib/model-lab.mts";
 
 function extractLearningCycle(report: string): any | null {
   const open = "<WIN_LEARNING_CYCLE_JSON>";
@@ -37,12 +38,13 @@ export default async (req: Request) => {
   try {
     const reviewStarted = new Date().toISOString();
     const libraryReview = await getMandatoryLearningPack(run.brief);
+    const modelLabResearchPack = await getModelLabResearchPack();
     stages.push(stage("review_existing_WIN_knowledge", "completed", reviewStarted, {
       counts: libraryReview.counts, areasReviewed: libraryReview.areasReviewed
     }));
 
     const aiStarted = new Date().toISOString();
-    const brief = { ...run.brief, runId: run.id, libraryReview };
+    const brief = { ...run.brief, runId: run.id, libraryReview, modelLabResearchPack };
     const scout = await runScheduledLearning(brief);
     const completedAt = new Date().toISOString();
     const aiCompleted = scout.status === "completed" && Boolean(scout.report?.trim());
