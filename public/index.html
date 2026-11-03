@@ -29,10 +29,11 @@
 <article class="budget-metric"><small>Completed API calls</small><strong id="budgetCalls">—</strong><span id="budgetBlocked">Blocked calls —</span></article>
 </div>
 <div class="budget-controls">
-<label class="budget-switch"><input type="checkbox" id="budgetLimitEnabled" checked><span><b>Enforce WIN's $3 monthly application limit</b><small>When enabled, WIN blocks new AI calls when projected usage would exceed its $2.95 operating stop.</small></span></label>
+<div class="budget-switch"><span><b>WIN monthly spending limit: permanently enforced</b><small>At $2.95 estimated usage, WIN locks all new AI spending. Calendar-month rollover does not unlock it.</small></span></div>
 <div class="budget-actions"><button type="button" class="subtle" id="budgetNotifications">Enable desktop alerts</button><button type="button" class="subtle" id="refreshBudget">Refresh budget ↻</button></div>
 </div>
-<div class="budget-policy">Important: turning this switch off disables only WIN's internal application-level spending gate. It does not change or bypass OpenAI's separate project or organisation spending limit. WIN continues tracking spend and showing alerts. Desktop notifications appear only while this dashboard is open.</div>
+<div class="budget-policy">Owner lock: once the operating stop is reached, no agent, OAuth client, scheduled task or new calendar month can restore spending. Only a request authenticated with WIN_INTERNAL_TOKEN plus the exact owner confirmation phrase can unlock it. OpenAI provider-side spending limits are separate. Desktop notifications require this dashboard to remain open.</div>
+<div class="budget-controls"><div id="budgetLockStatus" class="budget-alert empty">Checking owner lock…</div><button type="button" class="danger" id="ownerUnlockBudget" disabled>Owner-authorized spending unlock</button></div>
 <div id="budgetLatestAlert" class="budget-alert empty">No budget alarm recorded yet.</div>
 <h3 class="budget-history-title">Recent budget alerts</h3>
 <div id="budgetAlertHistory" class="mini-list"><div class="empty">Budget alert history will appear here.</div></div>
