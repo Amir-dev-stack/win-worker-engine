@@ -78,10 +78,10 @@ export default async (req: Request) => {
     const entityAgentData = agentTask ? extractEntityAgent(scout.report || "") : null;
     const entityAgentValid = !agentTask || Boolean(entityAgentData && entityAgentData.agentId === agentTask.agentId && entityAgentData.scope && typeof entityAgentData.profileSummary === "string" && Array.isArray(entityAgentData.facts) && Array.isArray(entityAgentData.unknowns) && Array.isArray(entityAgentData.nextResearch));
     const structuredLearningValid = Boolean(learningData && typeof learningData.cycleType === "string" && Array.isArray(learningData.candidateStrategies) && Array.isArray(learningData.coverageGaps) && Array.isArray(learningData.sourceRefs) && Array.isArray(learningData.validationBlockers));
+    const cycleCompleted = aiCompleted && structuredLearningValid && entityAgentValid;
     if (stages[1]) { stages[1].status = cycleCompleted ? "completed" : "failed"; if (!structuredLearningValid && !stages[1].error) stages[1].error = "Required WIN_LEARNING_CYCLE_JSON block is missing or invalid."; if (agentTask && !entityAgentValid) stages[1].error = "Required WIN_ENTITY_AGENT_JSON block is missing or invalid."; }
     const strategyCandidates = Array.isArray(learningData?.candidateStrategies)
       ? learningData.candidateStrategies.slice(0, 20) : [];
-    const cycleCompleted = aiCompleted && structuredLearningValid && entityAgentValid;
     if (agentTask) {
       const taskStatus = cycleCompleted ? "completed" : agentTask.attempts >= 3 ? "failed" : "queued";
       await put("library/agent-task-queue", agentTask.id, { ...agentTask, status: taskStatus, updatedAt: completedAt, completedAt: cycleCompleted ? completedAt : null, error: cycleCompleted ? null : (scout.error || (entityAgentValid ? "learning_cycle_json_invalid" : "entity_agent_json_invalid")), reportRunId: run.id });
