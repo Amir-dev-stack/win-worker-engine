@@ -1,6 +1,6 @@
 import { list, put } from "./store.mts";
 
-type Observation={sport:string;eventStart:string;homeTeam:string;awayTeam:string;closing:any;settlements:any;homeScore:number|null;awayScore:number|null;providerId:string;};
+type Observation={id:string;sport:string;eventStart:string;homeTeam:string;awayTeam:string;closing:any;settlements:any;homeScore:number|null;awayScore:number|null;providerId:string;};
 type Trial={p:number;y:number;};
 const clamp=(p:number)=>Math.max(1e-6,Math.min(1-1e-6,p));
 function binaryMetrics(trials:Trial[]){
@@ -41,7 +41,7 @@ function simulateConsensusCoupons(rows:Observation[],providerId:string){
   if(valid.length===2&&winner===2)winner=1;
   if(winner<0)return null;
   return {eventId:r.id,eventStart:r.eventStart,p:valid[favouriteIndex],won:winner===favouriteIndex};
- }).filter((x):x is NonNullable<typeof x>=>Boolean(x)).sort((a,b)=>a.eventStart.localeCompare(b.eventStart));
+ }).filter((x:any)=>x!==null).sort((a,b)=>a.eventStart.localeCompare(b.eventStart));
  if(favourites.length<30)return {status:"insufficient_sample",settledEvents:favourites.length,minimum:30,couponCount:0};
  const holdout=favourites.slice(Math.floor(favourites.length*.7));
  if(holdout.length<10)return {status:"insufficient_holdout",settledEvents:favourites.length,holdoutEvents:holdout.length,couponCount:0};
