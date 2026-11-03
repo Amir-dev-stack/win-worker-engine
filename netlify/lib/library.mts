@@ -484,6 +484,62 @@ function entityDossiersFromReport(report: string): { clubs: any[]; players: any[
   }
 }
 
+function researchEvidenceFromReport(report: string): any[] {
+  const startTag = "<WIN_RESEARCH_EVIDENCE_JSON>";
+  const endTag = "</WIN_RESEARCH_EVIDENCE_JSON>";
+  const start = report.indexOf(startTag), end = report.indexOf(endTag);
+  if (start < 0 || end <= start) return [];
+  try {
+    const parsed = JSON.parse(report.slice(start + startTag.length, end).trim());
+    return safeArray(parsed?.records, 500);
+  } catch { return []; }
+}
+
+export async function saveResearchEvidence(input: any) {
+  const id = clean(input?.id, 180) || crypto.randomUUID();
+  const domain = clean(input?.domain || input?.dataType, 80).toLowerCase();
+  const metric = clean(input?.metric, 160);
+  if (!domain || !metric) throw new Error("domain and metric are required");
+  const retrievedAt = clean(input?.retrievedAt, 100) || new Date().toISOString();
+  if (!Number.isFinite(Date.parse(retrievedAt))) throw new Error("retrievedAt must be a valid timestamp");
+  const confidence = input?.confidence == null ? null : Number(input.confidence);
+  if (confidence !== null && (!Number.isFinite(confidence) || confidence < 0 || confidence > 1)) throw new Error("confidence must be between 0 and 1");
+  const record = {
+    id, recordType: "research_evidence",
+    sport: clean(input?.sport, 100) || null, country: clean(input?.country, 100) || null,
+    competition: clean(input?.competition, 200) || null, season: clean(input?.season, 80) || null,
+    eventId: clean(input?.eventId, 180) || null, entityId: clean(input?.entityId, 180) || null,
+    entityType: clean(input?.entityType, 40) || null, domain, metric,
+    value: input?.value ?? null, unit: clean(input?.unit, 60) || null,
+    sourceName: clean(input?.sourceName, 200) || null,
+    sourceUrl: clean(input?.sourceUrl, 1500) || null,
+    evidenceRefs: safeArray(input?.evidenceRefs, 30),
+    publishedAt: clean(input?.publishedAt, 100) || null, retrievedAt,
+    validFrom: clean(input?.validFrom, 100) || null, validTo: clean(input?.validTo, 100) || null,
+    freshnessTtlHours: Number.isFinite(Number(input?.freshnessTtlHours)) ? Math.max(0, Number(input.freshnessTtlHours)) : null,
+    evidenceGrade: clean(input?.evidenceGrade, 40) || "ungraded",
+    confidence, conflictStatus: clean(input?.conflictStatus, 40) || "not_checked",
+    rawSnapshot: input?.rawSnapshot ?? null,
+    rawSnapshotHash: clean(input?.rawSnapshotHash, 128) || null,
+    runId: clean(input?.runId, 100) || null,
+    evidenceStatus: clean(input?.sourceUrl, 1500) || safeArray(input?.evidenceRefs, 30).length ? "source_reference_attached" : "source_reference_missing",
+    createdAt: new Date().toISOString()
+  };
+  await put("library/research-evidence", id, record);
+  return record;
+}
+
+export async function searchResearchEvidence(options: any = {}) {
+  const items = await list<any>("library/research-evidence", 2000);
+  let filtered = items;
+  for (const key of ["sport", "country", "competition", "eventId", "entityId", "domain", "metric"] as const) {
+    const value = clean(options?.[key], 300).toLowerCase();
+    if (value) filtered = filtered.filter((x: any) => clean(x?.[key], 300).toLowerCase() === value);
+  }
+  const limit = Math.min(200, Math.max(1, Number(options?.limit) || 50));
+  return { count: filtered.length, items: filtered.slice(0, limit), reviewedAt: new Date().toISOString() };
+}
+
 export async function archiveRunToLibrary(run: any) {
   const savedAt = new Date().toISOString();
   const network = run?.workerNetwork;
@@ -511,6 +567,25 @@ export async function archiveRunToLibrary(run: any) {
       startedAt: report.startedAt || null, createdAt: report.completedAt || savedAt,
       archivedAt: savedAt
     });
+  }
+
+  // Store normalized event/entity facts and metrics emitted by department reports.
+  // Original reports remain archived; these records add searchable, append-only evidence rows.
+  let researchEvidenceSaved = 0;
+  for (const report of reports) {
+    for (const [index, evidence] of researchEvidenceFromReport(clean(report.report, MAX_TEXT)).entries()) {
+      try {
+        await saveResearchEvidence({
+          ...evidence,
+          id: clean(evidence?.id, 180) || run.id + ":" + (report.workerId || slug(report.role || "worker")) + ":evidence:" + index,
+          runId: run.id,
+          evidenceRefs: [...safeArray(evidence?.evidenceRefs, 30), ...safeArray(report.citations, 10)]
+        });
+        researchEvidenceSaved++;
+      } catch {
+        // Keep the full report and note archived even when a malformed evidence row is rejected.
+      }
+    }
   }
 
   const nodeType: Record<string, EntityKind> = {
