@@ -94,6 +94,42 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     notes:"CC BY 4.0 consensus opening/closing moneyline, puck-line and total probabilities with settled results. Bookmaker identities and individual prices are not included."
   },
   {
+    id:"hf-minmaxxxer-nfl-2025", name:"Hugging Face — NFL 2025 closing lines", website:"https://huggingface.co/datasets/minmaxxxer/nfl-closing-lines-ats-2025",
+    sports:["american_football"], dataDomains:["historical_consensus_moneyline","spread","totals","settled_results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
+    notes:"285 NFL games, CC BY 4.0. Consensus opening/closing probabilities and graded moneyline, spread and total outcomes; not individual bookmaker prices."
+  },
+  {
+    id:"hf-minmaxxxer-nba-2024-25", name:"Hugging Face — NBA 2024/25 closing lines", website:"https://huggingface.co/datasets/minmaxxxer/nba-closing-lines-ats-2024-25",
+    sports:["basketball"], dataDomains:["historical_consensus_moneyline","spread","totals","settled_results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
+    notes:"About 1,310 NBA games, CC BY 4.0. Consensus opening/closing probabilities and graded results; not individual bookmaker prices."
+  },
+  {
+    id:"hf-minmaxxxer-nhl-2025-26", name:"Hugging Face — NHL 2025/26 closing odds", website:"https://huggingface.co/datasets/minmaxxxer/nhl-closing-odds-2025-26",
+    sports:["ice_hockey"], dataDomains:["historical_consensus_moneyline","puck_line","totals","settled_results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
+    notes:"1,394 NHL games, CC BY 4.0. Consensus opening/closing probabilities and graded moneyline, puck-line and totals; overtime/shootout included as described by dataset."
+  },
+  {
+    id:"hf-minmaxxxer-mlb-2025", name:"Hugging Face — MLB 2025 closing odds", website:"https://huggingface.co/datasets/minmaxxxer/mlb-closing-odds-2025",
+    sports:["baseball"], dataDomains:["historical_consensus_moneyline","run_line","totals","settled_results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
+    notes:"2,480 MLB games, CC BY 4.0. Consensus opening/closing probabilities and graded moneyline, run-line and totals; extra innings included."
+  },
+  {
+    id:"hf-minmaxxxer-top3-europe-2025-26", name:"Hugging Face — LaLiga, Serie A and Bundesliga 2025/26", website:"https://huggingface.co/datasets/minmaxxxer/laliga-serie-a-bundesliga-closing-odds-2025-26",
+    sports:["football"], dataDomains:["historical_consensus_1x2","totals","btts","asian_handicap","settled_results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
+    notes:"1,066 matches across three European leagues, CC BY 4.0. Consensus market probabilities and graded outcomes; bookmaker-level prices are not included."
+  },
+  {
+    id:"hf-minmaxxxer-atp-wta-2025", name:"Hugging Face — ATP/WTA 2025 closing odds", website:"https://huggingface.co/datasets/minmaxxxer/atp-wta-closing-odds-2025",
+    sports:["tennis"], dataDomains:["historical_match_winner_probabilities","fair_closing_odds","best_available_closing_price","match_results","player_metadata"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
+    notes:"5,791 ATP/WTA singles matches, CC BY 4.0. Includes consensus fair prices and best available closing prices, but the best-price bookmaker identity is not supplied; retired and walkover matches must be excluded from ordinary settlement calibration."
+  },
+  {
     id:"sportmonks", name:"Sportmonks", website:"https://www.sportmonks.com/",
     sports:["football","cricket"], dataDomains:["fixtures","results","teams","players","lineups","statistics","odds"],
     accessMode:"licensed_api", historicalSupport:"possible", authentication:"api_key",
