@@ -3,10 +3,16 @@ import { get, put, list } from "./store.mts";
 
 const SOURCES = [
  {id:"hf-minmaxxxer-nfl-2026",repo:"minmaxxxer/nfl-odds-2026",sport:"american_football"},
+ {id:"hf-minmaxxxer-nfl-2025",repo:"minmaxxxer/nfl-closing-lines-ats-2025",sport:"american_football"},
  {id:"hf-minmaxxxer-nba-2025-26",repo:"minmaxxxer/nba-closing-lines-ats-2025-26",sport:"basketball"},
+ {id:"hf-minmaxxxer-nba-2024-25",repo:"minmaxxxer/nba-closing-lines-ats-2024-25",sport:"basketball"},
  {id:"hf-minmaxxxer-nba-2026-27",repo:"minmaxxxer/nba-odds-2026-27",sport:"basketball"},
  {id:"hf-minmaxxxer-nhl-2026-27",repo:"minmaxxxer/nhl-odds-2026-27",sport:"ice_hockey"},
+ {id:"hf-minmaxxxer-nhl-2025-26",repo:"minmaxxxer/nhl-closing-odds-2025-26",sport:"ice_hockey"},
+ {id:"hf-minmaxxxer-mlb-2025",repo:"minmaxxxer/mlb-closing-odds-2025",sport:"baseball"},
  {id:"hf-minmaxxxer-epl-2025-26",repo:"minmaxxxer/premier-league-closing-odds-2025-26",sport:"football"},
+ {id:"hf-minmaxxxer-top3-europe-2025-26",repo:"minmaxxxer/laliga-serie-a-bundesliga-closing-odds-2025-26",sport:"football"},
+ {id:"hf-minmaxxxer-atp-wta-2025",repo:"minmaxxxer/atp-wta-closing-odds-2025",sport:"tennis"},
  {id:"hf-minmaxxxer-epl-2026-27",repo:"minmaxxxer/premier-league-odds-2026-27",sport:"football"}
 ] as const;
 
@@ -40,39 +46,54 @@ async function syncOne(source:typeof SOURCES[number]){
  const rawRows=parsed.slice(1);
  const rows=rawRows.map(cells=>Object.fromEntries(headers.map((h,i)=>[h,cells[i]??""])));
  const first=rows[0] as any;
- const football=source.sport==="football";
- const required=football?["kickoff_utc","home_team","away_team","home_goals","away_goals","close_home_prob","close_draw_prob","close_away_prob"]:["start_time_utc","home_team","away_team","home_score","away_score","close_home_win_prob","close_spread_home","close_total"];
+ const football=source.sport==="football",tennis=source.sport==="tennis";
+ const required=football
+  ? ["kickoff_utc","home_team","away_team","home_goals","away_goals","close_home_prob","close_draw_prob","close_away_prob"]
+  : tennis
+   ? ["start_time_utc","player1","player2","winner","status","close_prob1","close_fair_odds1","close_fair_odds2"]
+   : ["start_time_utc","home_team","away_team","home_score","away_score","close_home_win_prob","close_spread_home","close_total"];
  const missing=required.filter(k=>!(k in first));if(missing.length)throw Error("schema_missing_"+missing.join("_"));
  const records=rows.map((r:any,index:number)=>{
-  const homeScore=number(r.home_score??r.home_goals),awayScore=number(r.away_score??r.away_goals);
+  const homeScore=number(tennis?r.sets_won1:(r.home_score??r.home_goals));
+  const awayScore=number(tennis?r.sets_won2:(r.away_score??r.away_goals));
+  const homeTeam=String(tennis?r.player1:(r.home_team||"")).trim();
+  const awayTeam=String(tennis?r.player2:(r.away_team||"")).trim();
+  const eventStart=String(r.start_time_utc||r.kickoff_utc||r.date_utc||"");
   const id=String(r.game_id||r.match_id||source.id+"-"+index);
+  const closeHome=number(tennis?r.close_prob1:(r.close_home_win_prob??r.close_home_prob));
+  const closeAway=tennis?(closeHome===null?null:1-closeHome):number(r.close_away_prob??(closeHome!==null&&!football?1-closeHome:null));
+  const moneylineWinner=tennis?(Number(r.winner)===1?"home":Number(r.winner)===2?"away":""):String(r.moneyline_winner||r.result||"");
+  const completed=tennis?String(r.status).toLowerCase()==="finished"&&(Number(r.winner)===1||Number(r.winner)===2):homeScore!==null&&awayScore!==null;
   return {
-   id,providerId:source.id,sport:source.sport,
-   eventStart:String(r.start_time_utc||r.kickoff_utc||""),
-   homeTeam:String(r.home_team||""),awayTeam:String(r.away_team||""),
-   homeScore,awayScore,status:homeScore!==null&&awayScore!==null?"completed":"unsettled",
+   id,providerId:source.id,sport:source.sport,season:String(r.season||""),
+   competition:String(r.league||r.tournament||r.tour||""),
+   eventStart,homeTeam,awayTeam,
+   ...(tennis?{participantType:"tennis_player",participant1:homeTeam,participant2:awayTeam,tour:String(r.tour||""),surface:String(r.surface||""),tournamentCountry:String(r.tournament_country||""),rawMatchStatus:String(r.status||"")} : {}),
+   homeScore,awayScore,status:completed?"completed":"unsettled",
    bookmakerCount:number(r.bookmakers),
    marketDataType:"consensus_market_lines",
    opening:{
-    homeWinProbability:number(r.open_home_win_prob??r.open_home_prob),
-    drawProbability:number(r.open_draw_prob),
-    awayWinProbability:number(r.open_away_prob)
+    homeWinProbability:number(tennis?r.open_prob1:(r.open_home_win_prob??r.open_home_prob)),
+    drawProbability:football?number(r.open_draw_prob):null,
+    awayWinProbability:tennis?(number(r.open_prob1)===null?null:1-number(r.open_prob1)):number(r.open_away_prob??(number(r.open_home_win_prob)!==null&&!football?1-number(r.open_home_win_prob):null))
    },
    closing:{
-    homeWinProbability:number(r.close_home_win_prob??r.close_home_prob),
-    drawProbability:number(r.close_draw_prob),
-    awayWinProbability:number(r.close_away_prob??(number(r.close_home_win_prob)!==null?1-number(r.close_home_win_prob):null)),
-    fairHomeOdds:number(r.close_fair_home_odds),
-    fairDrawOdds:number(r.close_fair_draw_odds),
-    fairAwayOdds:number(r.close_fair_away_odds),
-    homeSpread:number(r.close_spread_home??r.close_ah_line_home),
-    homeSpreadCoverProbability:number(r.close_home_cover_prob??r.close_ah_home_prob),
+    homeWinProbability:closeHome,
+    drawProbability:football?number(r.close_draw_prob):null,
+    awayWinProbability:closeAway,
+    fairHomeOdds:number(tennis?r.close_fair_odds1:r.close_fair_home_odds),
+    fairDrawOdds:football?number(r.close_fair_draw_odds):null,
+    fairAwayOdds:number(tennis?r.close_fair_odds2:r.close_fair_away_odds),
+    bestHomeOdds:tennis?number(r.best_close_odds1):null,
+    bestAwayOdds:tennis?number(r.best_close_odds2):null,
+    homeSpread:number(football?r.close_ah_line_home:r.close_spread_home),
+    homeSpreadCoverProbability:number(football?r.close_ah_home_prob:r.close_home_cover_prob),
     totalLine:number(r.close_total),
-    overProbability:number(r.close_over_prob??r.close_over25_prob),
+    overProbability:number(football?r.close_over25_prob:r.close_over_prob),
     bttsYesProbability:number(r.close_btts_prob)
    },
    settlements:{
-    moneylineWinner:String(r.moneyline_winner||r.result||""),
+    moneylineWinner,
     spreadResult:String(r.ats_result||r.ah_result||""),
     totalResult:String(r.total_result||r.ou25_result||""),
     bttsResult:String(r.btts_result||"")
@@ -89,7 +110,7 @@ async function syncOne(source:typeof SOURCES[number]){
   sourceUrl:url,sourceLicence:"CC-BY-4.0",licenceReference:"https://creativecommons.org/licenses/by/4.0/",
   retrievedAt:new Date().toISOString(),rawChecksum:checksum,
   totalRows:records.length,settledRows:records.filter(x=>x.status==="completed").length,
-  marketDataType:"consensus_market_lines",bookmakerIdentityIncluded:false,
+  marketDataType:"consensus_market_lines",bookmakerIdentityIncluded:false,priceType:"consensus_fair_probabilities",bestPriceAvailable:source.sport==="tennis",bestPriceBookmakerIdentityIncluded:false,
   records,origin:"provider_historical_data",lab:"model-lab",
   attribution:"Dataset by minmaxxxer, via Hugging Face. CC BY 4.0."
  };
