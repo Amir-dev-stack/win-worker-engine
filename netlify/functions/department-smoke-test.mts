@@ -121,6 +121,22 @@ export default async (req: Request) => {
     });
 
     if (!upstream.ok) {
+      let providerPayload: any = null;
+      try { providerPayload = await upstream.json(); } catch { providerPayload = null; }
+      const providerError = providerPayload?.error && typeof providerPayload.error === "object"
+        ? providerPayload.error : {};
+      const providerMessage = typeof providerError.message === "string"
+        ? providerError.message
+            .replaceAll(apiKey, "[REDACTED API KEY]")
+            .replace(/sk-[A-Za-z0-9_-]{12,}/g, "[REDACTED API KEY]")
+            .replace(/Bearer\s+\S+/gi, "Bearer [REDACTED]")
+            .slice(0, 240)
+        : null;
+      const providerErrorCode = typeof providerError.code === "string" ? providerError.code.slice(0, 100) : null;
+      const providerErrorType = typeof providerError.type === "string" ? providerError.type.slice(0, 100) : null;
+      const providerErrorParam = typeof providerError.param === "string" ? providerError.param.slice(0, 100) : null;
+      const providerRequestId = upstream.headers.get("x-request-id") || upstream.headers.get("request-id") || null;
+
       if (upstream.status >= 500) {
         const settled = await settleAIRequest(id, null, 0, true);
         ledgerCharge = { chargedUsd: settled.chargedUsd, source: settled.source };
@@ -130,6 +146,8 @@ export default async (req: Request) => {
       const result = {
         id, departmentId: department.id, departmentName: department.name,
         result: "request_rejected", providerStatus: upstream.status,
+        providerErrorCode, providerErrorType, providerErrorParam,
+        providerErrorMessage: providerMessage, providerRequestId,
         message: upstream.status === 401
           ? "OpenAI rejected the key during the Responses API request."
           : upstream.status === 403

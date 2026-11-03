@@ -350,7 +350,7 @@ $("#runDepartmentSmokeTest").addEventListener("click",async()=>{
    result.textContent="DEPARTMENT ROUTING PASSED · "+data.departmentId+" "+data.departmentName+" · "+(data.usage?"Tokens "+data.usage.input_tokens+"/"+data.usage.output_tokens:"Usage unavailable")+" · ledger charge $"+Number(data.chargedUsd||0).toFixed(6)+". No sports research or normal worker execution occurred.";
   }else{
    result.className="budget-alert "+(data.result==="blocked_by_budget"?"level-warning":"level-critical");
-   result.textContent="DEPARTMENT TEST "+String(data.result||"failed").toUpperCase().replaceAll("_"," ")+" · "+(data.message||"No additional detail.")+(data.chargedUsd!==undefined&&data.chargedUsd!==null?" · ledger charge $"+Number(data.chargedUsd).toFixed(6):"");
+   result.textContent="DEPARTMENT TEST "+String(data.result||"failed").toUpperCase().replaceAll("_"," ")+" · "+(data.message||"No additional detail.")+(data.providerErrorCode?" · OpenAI code: "+data.providerErrorCode:"")+(data.providerErrorType?" · type: "+data.providerErrorType:"")+(data.providerErrorMessage?" · detail: "+data.providerErrorMessage:"")+(data.providerRequestId?" · request ID: "+data.providerRequestId:"")+(data.chargedUsd!==undefined&&data.chargedUsd!==null?" · ledger charge $"+Number(data.chargedUsd).toFixed(6):"");
   }
   await Promise.all([refreshAIBudget(),refreshDepartmentSmokeTests()]);
  }catch(error){
