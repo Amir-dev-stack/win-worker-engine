@@ -28,7 +28,7 @@ async function archiveHumanCouponResearch(reports: any[]) {
     const sourceUrl = typeof item?.sourceUrl === "string" ? item.sourceUrl : "";
     const couponText = typeof item?.couponText === "string" ? item.couponText : "";
     const contentClass = typeof item?.contentClass === "string"
-      ? item.contentClass.toLowerCase().replace(/[_-]+/g, " ").replace(/\\s+/g, " ").trim() : "";
+      ? item.contentClass.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim() : "";
     if (!["original human coupon", "single human pick"].includes(contentClass)) {
       imports.push({ status: "skipped", reason: "missing_or_ineligible_content_class", sourceId, contentClass: contentClass || null }); continue;
     }
