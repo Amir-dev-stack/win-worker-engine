@@ -50,7 +50,7 @@ async function syncOne(path:typeof PATHS[number]){
    round:m.round||null,group:m.group||null,venue:m.ground||null,attendance:Number.isFinite(Number(m.attendance))?Number(m.attendance):null,
    fullTimeScore:ft,halfTimeScore:ht,extraTimeScore:validScore(m.score?.et)?m.score.et:null,penaltyShootoutScore:validScore(m.score?.p)?m.score.p:null,
    resultBasis:"regulation_90min",status:ft?"completed":"scheduled_or_unscored",
-   playerEvents:{goals,lineup:playerLineup.players,substitutions:playerLineup.substitutions,bookings},
+   playerEvents:{goals,lineup:playerLineup.players,substitutions:playerLineup.substitutions,bookings,goalsAvailable:Array.isArray(m.goals1)&&Array.isArray(m.goals2),bookingsAvailable:Array.isArray(m.bookings),lineupAvailable:Array.isArray(m.lineup)},
    referee:m.referee||m.referees||null,sourceProvider:"openfootball-worldcup-json",sourceUrl:url,
    retrievedAt:new Date().toISOString(),sourceLicence:"CC0-1.0",origin:"provider_historical_data"}];
  });
