@@ -274,7 +274,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
       id: cid, parentId: "worker-network-director", tier: "T2",
       name: country + " Country Intelligence Agent",
       scope: { country, sports: relatedSports.join(",") },
-      status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D1"
+      status: "queued", executionMode: "queued_independent_api_request", assignedDepartment: "D1"
     });
   }
   for (const value of competitions) {
