@@ -1,5 +1,5 @@
 import { requireAuth } from "../lib/auth.mts";
-import { get, list, put } from "../lib/store.mts";
+import { get, put } from "../lib/store.mts";
 import { getPublicResearchSourceDiscoveryStatus } from "../lib/public-source-discovery.mts";
 export default async (req:Request)=>{
  const denied=requireAuth(req);if(denied)return denied;
