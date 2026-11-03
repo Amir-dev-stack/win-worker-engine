@@ -110,7 +110,7 @@ async function syncOne(source:typeof SOURCES[number]){
   sourceUrl:url,sourceLicence:"CC-BY-4.0",licenceReference:"https://creativecommons.org/licenses/by/4.0/",
   retrievedAt:new Date().toISOString(),rawChecksum:checksum,
   totalRows:records.length,settledRows:records.filter(x=>x.status==="completed").length,
-  marketDataType:"consensus_market_lines",bookmakerIdentityIncluded:false,priceType:"consensus_fair_probabilities",bestPriceAvailable:source.sport==="tennis",bestPriceBookmakerIdentityIncluded:false,
+  marketDataType:"consensus_market_lines",bookmakerIdentityIncluded:false,priceType:source.sport==="tennis"?"consensus_fair_probabilities_with_unattributed_best_prices":"consensus_fair_probabilities",bestPriceAvailable:source.sport==="tennis",bestPriceBookmakerIdentityIncluded:false,
   records,origin:"provider_historical_data",lab:"model-lab",
   attribution:"Dataset by minmaxxxer, via Hugging Face. CC BY 4.0."
  };
