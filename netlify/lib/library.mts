@@ -840,6 +840,6 @@ export async function archiveRunToLibrary(run: any) {
   }
   return {
     savedAt, reportsArchived: reports.length, reportNotesSaved: reports.length,
-    entityProfilesUpdated, observationsSaved
+    entityProfilesUpdated, observationsSaved, researchEvidenceSaved
   };
 }
