@@ -49,8 +49,13 @@ export default async (req: Request) => {
     const reviewStarted = new Date().toISOString();
     const libraryReview = await getMandatoryLearningPack(run.brief);
     const modelLabResearchPack = await getModelLabResearchPack();
-    const pendingAgentTasks = (await list<any>("library/agent-task-queue", 1000))
-      .filter(task => task.status === "queued")
+    const allAgentTasks = await list<any>("library/agent-task-queue", 1000);
+    const staleBefore = Date.now() - 30 * 60 * 1000;
+    for (const stale of allAgentTasks.filter(task => task.status === "running" && Date.parse(task.lastAttemptAt || "") < staleBefore)) {
+      await put("library/agent-task-queue", stale.id, { ...stale, status: Number(stale.attempts || 0) >= 3 ? "failed" : "queued", updatedAt: new Date().toISOString(), error: "Recovered stale running task after worker timeout." });
+    }
+    const pendingAgentTasks = allAgentTasks
+      .filter(task => task.status === "queued" || (task.status === "running" && Date.parse(task.lastAttemptAt || "") < staleBefore))
       .sort((a,b) => Date.parse(a.createdAt || "") - Date.parse(b.createdAt || ""));
     agentTask = pendingAgentTasks[0] || null;
     if (agentTask) {
@@ -76,7 +81,7 @@ export default async (req: Request) => {
 
     const learningData = extractLearningCycle(scout.report || "");
     const entityAgentData = agentTask ? extractEntityAgent(scout.report || "") : null;
-    const entityAgentValid = !agentTask || Boolean(entityAgentData && entityAgentData.agentId === agentTask.agentId && entityAgentData.scope && typeof entityAgentData.profileSummary === "string" && Array.isArray(entityAgentData.facts) && Array.isArray(entityAgentData.unknowns) && Array.isArray(entityAgentData.nextResearch));
+    const entityAgentValid = !agentTask || Boolean(entityAgentData && entityAgentData.agentId === agentTask.agentId && entityAgentData.scope && Object.entries(agentTask.scope || {}).every(([key,value]) => entityAgentData.scope[key] === value) && typeof entityAgentData.profileSummary === "string" && Array.isArray(entityAgentData.facts) && Array.isArray(entityAgentData.unknowns) && Array.isArray(entityAgentData.nextResearch));
     const structuredLearningValid = Boolean(learningData && typeof learningData.cycleType === "string" && Array.isArray(learningData.candidateStrategies) && Array.isArray(learningData.coverageGaps) && Array.isArray(learningData.sourceRefs) && Array.isArray(learningData.validationBlockers));
     const cycleCompleted = aiCompleted && structuredLearningValid && entityAgentValid;
     if (stages[1]) { stages[1].status = cycleCompleted ? "completed" : "failed"; if (!structuredLearningValid && !stages[1].error) stages[1].error = "Required WIN_LEARNING_CYCLE_JSON block is missing or invalid."; if (agentTask && !entityAgentValid) stages[1].error = "Required WIN_ENTITY_AGENT_JSON block is missing or invalid."; }
@@ -87,7 +92,7 @@ export default async (req: Request) => {
       await put("library/agent-task-queue", agentTask.id, { ...agentTask, status: taskStatus, updatedAt: completedAt, completedAt: cycleCompleted ? completedAt : null, error: cycleCompleted ? null : (scout.error || (entityAgentValid ? "learning_cycle_json_invalid" : "entity_agent_json_invalid")), reportRunId: run.id });
       if (cycleCompleted && entityAgentData) {
         const prior = await get<any>("library/persistent-agent-profiles", agentTask.agentId) || {};
-        const facts = entityAgentData.facts.filter((x:any) => typeof x?.claim === "string" && typeof x?.sourceUrl === "string" && x.sourceUrl.startsWith("https://")).slice(0, 50);
+        const facts = entityAgentData.facts.filter((x:any) => typeof x?.claim === "string" && typeof x?.sourceUrl === "string" && x.sourceUrl.startsWith("https://") && typeof x?.retrievedAt === "string" && ["high","medium","low"].includes(x?.confidence)).slice(0, 50);
         const profile = { ...prior, id: agentTask.agentId, name: agentTask.name, tier: agentTask.tier, scope: agentTask.scope,
           profileSummary: entityAgentData.profileSummary.slice(0, 5000), facts, unknowns: Array.isArray(entityAgentData.unknowns)?entityAgentData.unknowns.slice(0,50):[],
           nextResearch: Array.isArray(entityAgentData.nextResearch)?entityAgentData.nextResearch.slice(0,30):[],
