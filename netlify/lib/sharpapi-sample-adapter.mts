@@ -47,7 +47,7 @@ async function syncOne(file:typeof FILES[number]){
  if(!res.ok)throw Error("source_http_"+res.status);
  const raw=await res.text();if(raw.length>5_000_000)throw Error("source_file_over_5mb");
  const rows=parseCsv(raw);if(rows.length<2)throw Error("no_csv_rows");
- const headers=rows[0].map(x=>x.trim()),required=["id","sportsbook","event_id","sport","league","market_type","selection","selection_type","odds_decimal","event_start_time","is_live","timestamp"];
+ const headers=rows[0].map(x=>x.trim()),required=["id","sportsbook","event_id","sport","league","market_type","selection","selection_type","odds_american","odds_decimal","odds_probability","event_start_time","is_live","timestamp"];
  const missing=required.filter(x=>!headers.includes(x));if(missing.length)throw Error("schema_missing_"+missing.join("_"));
  const records:ObservedMarket[]=[];let rejected=0;
  for(let i=1;i<rows.length;i++){
