@@ -3,7 +3,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 export const WIN_ISSUER = "https://win-worker-engine.netlify.app";
 export const WIN_RESOURCE = WIN_ISSUER + "/mcp";
-export const WIN_SCOPES = ["win:read", "win:research"] as const;
+export const WIN_SCOPES = ["win:read", "win:research", "offline_access"] as const;
 
 const store = getStore({ name: "win-oauth", consistency: "strong" });
 const recordKey = (kind: string, id: string) => "oauth/" + kind + "/" + id;
