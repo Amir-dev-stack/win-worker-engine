@@ -97,6 +97,11 @@ export type ObservedMarket = {
   providerMarketId?: string;
   providerMarketName: string;
   canonicalMarketId: string;
+  league?: string;
+  homeTeam?: string;
+  awayTeam?: string;
+  selectionType?: string;
+  impliedProbabilityType?: "vig_included" | "no_vig_fair" | "unknown";
   period: MarketPeriod;
   line?: number | string;
   participantId?: string;
