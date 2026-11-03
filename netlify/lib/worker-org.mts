@@ -1,3 +1,4 @@
+import { listSportCapabilities, getSportCapability, normalizeSportName } from "./sport-registry.mts";
 export type WorkerDepartment = {
   id: string;
   name: string;
@@ -185,7 +186,7 @@ function extractCandidateBlock(report: string): any[] {
 function normalizeCandidate(value: any, source: string, index: number) {
   const event = text(value?.event || value?.name || value?.match);
   if (event.length < 3) return null;
-  const sport = text(value?.sport);
+  const sport = normalizeSportName(value?.sport);
   const country = text(value?.country);
   const competition = text(value?.competition || value?.league || value?.tournament);
   const startTime = text(value?.startTime || value?.kickoff || value?.commenceTime);
@@ -263,7 +264,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
 
   for (const sport of sports) {
     const sid = "sport-" + slug(sport);
-    nodes.push({ id: sid, parentId: "worker-network-director", tier: "T1", name: sport + " Sport Chief", scope: { sport }, status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2" });
+    nodes.push({ id: sid, parentId: "worker-network-director", tier: "T1", name: sport + " Sport Chief", scope: { sport, marketFamilies: getSportCapability(sport)?.marketFamilies.join(",") || "provider_defined" }, status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2" });
   }
   for (const country of countries) {
     const relatedSports = [...new Set(candidates.filter((x: any) => x.country === country).map((x: any) => x.sport).filter(Boolean))];
@@ -371,6 +372,15 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
     }, status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2" });
     for (const specialist of EVENT_SPECIALISTS) {
       nodes.push({ id: eventId + ":" + specialist.id, parentId: eventId, tier: "T7", name: specialist.name, scope: { event: candidate.event, purpose: specialist.purpose }, status: "assigned_to_department_pass", assignedDepartment: specialist.department, executionMode: "covered_by_department_checklist" });
+    }
+    for (const marketFamily of (getSportCapability(candidate.sport)?.marketFamilies || [])) {
+      nodes.push({
+        id: eventId + ":market:" + slug(marketFamily), parentId: eventId, tier: "T7",
+        name: marketFamily.replace(/_/g, " ") + " Market Specialist",
+        scope: { event: candidate.event, sport: candidate.sport || "unknown", marketFamily },
+        status: "assigned_to_department_pass", assignedDepartment: "D3",
+        executionMode: "covered_by_department_checklist"
+      });
     }
   }
 
