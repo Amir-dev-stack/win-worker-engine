@@ -43,3 +43,9 @@ No provider credentials or spending approvals are assumed. AI scheduling remains
 - A full simulation/backtest run is reproduced from a frozen historical dataset with chronological holdout and source provenance.
 - Scheduled snapshots are visible in `library/coverage-snapshots`.
 - No strategy is promoted to validated without prospective or genuinely out-of-sample evidence and calibration review.
+
+## Dashboard workflow
+
+The command center now includes an Evidence Coverage section showing evidence counts, freshness and missing domains for every sport, plus a Human Coupon Settlement Review form and queue. The form submits a separate evidence case and explicitly leaves the original coupon pending.
+
+The dashboard uses the same authenticated WIN internal token as the other private API workflows. The six-hour coverage snapshot is independent of the four-hour AI learning schedule and does not consume AI tokens.
