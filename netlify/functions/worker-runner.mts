@@ -6,6 +6,35 @@ import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mt
 import { importTipsterCoupon } from "../lib/source-intelligence.mts";
 import { getModelLabResearchPack } from "../lib/model-lab.mts";
 
+
+async function enqueuePersistentAgentTasks(workerNetwork: any, runId: string) {
+  const nodes = (workerNetwork?.nodes || []).filter((node: any) =>
+    node.executionMode === "queued_independent_api_request" && ["T1","T2","T3","T4"].includes(node.tier)
+  ).slice(0, 100);
+  const queued = await list<any>("library/agent-task-queue", 1000);
+  const now = new Date();
+  const cooldownDays: Record<string, number> = { T1: 30, T2: 21, T3: 14, T4: 3 };
+  let created = 0, alreadyActive = 0, freshProfile = 0;
+  for (const node of nodes) {
+    const active = queued.some(task => task.agentId === node.id && ["queued","running"].includes(task.status));
+    if (active) { alreadyActive++; continue; }
+    const profile = await get<any>("library/persistent-agent-profiles", node.id);
+    const updated = Date.parse(profile?.updatedAt || "");
+    const cooldown = (cooldownDays[node.tier] || 7) * 24 * 60 * 60 * 1000;
+    if (Number.isFinite(updated) && now.getTime() - updated < cooldown) { freshProfile++; continue; }
+    const taskId = runId + ":" + node.id;
+    await put("library/agent-task-queue", taskId, {
+      id: taskId, agentId: node.id, name: node.name, tier: node.tier,
+      department: node.assignedDepartment || null, scope: node.scope || {},
+      sourceRunId: runId, status: "queued", attempts: 0,
+      createdAt: now.toISOString(), updatedAt: now.toISOString(),
+      validationStatus: "research_only_unvalidated"
+    });
+    created++;
+  }
+  return { eligibleNodes: nodes.length, queued: created, alreadyActive, freshProfile, executionMode: "one_budget_gated_entity_agent_per_learning_cycle" };
+}
+
 function extractJsonBlock(report: string, tag: string): any | null {
   const open = "<" + tag + ">";
   const close = "</" + tag + ">";
@@ -218,15 +247,17 @@ export default async (req: Request) => {
     // D1 scouts first. The result creates the dynamic sport/country/competition/club/player/event graph.
     const firstPass = await runIndependentWorkers(brief, run.id);
     const { reports, workerNetwork } = firstPass;
+    const agentQueue = await enqueuePersistentAgentTasks(workerNetwork, run.id);
+    const networkWithQueue = { ...workerNetwork, agentQueue };
     const withDepartments = {
       ...run, brief, status: "debating", workers: reports,
-      workerNetwork: updateNetworkStatuses(workerNetwork, reports, []),
+      workerNetwork: updateNetworkStatuses(networkWithQueue, reports, []),
       updatedAt: new Date().toISOString()
     };
     await put("runs", run.id, withDepartments);
 
     const debate = await runDebate(brief, reports);
-    const networkAfterDebate = updateNetworkStatuses(workerNetwork, reports, debate);
+    const networkAfterDebate = updateNetworkStatuses(networkWithQueue, reports, debate);
 
     // Calculate the receipt gate BEFORE building objects that use it. Keep the same
     // gated network in the intermediate and final run so the gate cannot be lost.
