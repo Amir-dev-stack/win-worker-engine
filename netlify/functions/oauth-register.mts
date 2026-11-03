@@ -69,7 +69,7 @@ export default async (req: Request) => {
     grant_types: ["authorization_code", "refresh_token"],
     response_types: ["code"],
     token_endpoint_auth_method: "none",
-    scope: "win:read win:research"
+    scope: "win:read win:research offline_access"
   }, { status: 201, headers: { "cache-control": "no-store" } });
 };
 
