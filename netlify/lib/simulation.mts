@@ -95,7 +95,7 @@ export async function executeBetBuilderSimulationRun(id:string){
   for(const leg of combo.legs){const key=leg.market;const m=byMarket[key]||(byMarket[key]={combinations:0,won:0,lost:0,voided:0});m.combinations++;if(combo.result==="won")m.won++;else if(combo.result==="lost")m.lost++;else m.voided++;}
  }
  let batch=0;
- for(let offset=0;offset<combinations.length;offset+=500){
+ for(let offset=0;offset<Math.max(wins.length,losses.length,other.length);offset+=500){
   const batchId=run.id+"-"+batch++;
   const winBatch=wins.slice(offset,offset+500),lossBatch=losses.slice(offset,offset+500),otherBatch=other.slice(offset,offset+500);
   if(winBatch.length)await put("library/simulation-winning-coupons",batchId,{id:batchId,runId:run.id,records:winBatch});
