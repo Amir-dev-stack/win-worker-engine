@@ -367,13 +367,14 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
   ];
   const independentReview = reviewMetadata(reviewer, reviewerName, notes, reviewedAt, evidenceUrls, checks);
   const learning = {
-    id: settlementLearningId, recordType: "settlement_learning_case",
+    id: settlementLearningId, recordType: caseType === "human_coupon" ? "settlement_learning_case" : "verified_coupon_outcome",
     couponId: coupon.id, outcome: claimedOutcome,
     sport: coupon.sport || null, country: coupon.country || null,
     competition: coupon.competition || null, combinedOdds: coupon.combinedOdds ?? null,
     selections: Array.isArray(coupon.selections) ? coupon.selections.slice(0, 100) : [],
     settlementSource: record.evidenceUrl || (Array.isArray(record.sourceUrls) ? record.sourceUrls[0] || null : null), evidence: allEvidence,
-    validationStatus: "validated", submitterCredentialId, independentReview,
+    validationStatus: caseType === "human_coupon" ? "validated" : "outcome_verified_cause_unvalidated",
+    submitterCredentialId, independentReview,
     observation: caseType === "human_coupon"
       ? "Human coupon outcome was approved after a separate reviewer credential supplied distinct-host corroboration and attested to event identity, market rules, every selection and evidence independence. WIN verifies credential separation, not the holder's identity."
       : "WIN research-coupon outcome was approved after a separate reviewer credential corroborated match identity, market rules and every leg. The coupon was not placed by WIN; the result is a forecast calibration observation, not a record of a real wager.",
@@ -400,7 +401,8 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
     id: historyId, couponId: coupon.id, action: "independent_settlement_review_approved",
     outcome: claimedOutcome, at: reviewedAt, reviewerCredentialId: reviewer.credentialId, reviewOperationId: operationId
   });
-  await put("library/lessons", settlementLearningId, learning);
+  if (caseType === "human_coupon") await put("library/lessons", settlementLearningId, learning);
+  if (caseType === "win_coupon") await put("library/win-settlement-learning", settlementLearningId, learning);
   await put("library/settlement-learning", settlementLearningId, learning);
   const approved = {
     ...record, reviewStatus: "approved", reviewerCredentialId: reviewer.credentialId,

@@ -57,7 +57,9 @@ export async function getLearningObservatory(){
  const recentRate=hit(recent),priorRate=hit(prior);
  const trend=recent.length>=10&&prior.length>=10?(recentRate>priorRate+0.02?"higher_than_previous_30_days":recentRate<priorRate-0.02?"lower_than_previous_30_days":"similar_to_previous_30_days"):"insufficient_verified_sample";
  const mistakes=validated.filter((x:any)=>x.recordType==="post_match_diagnostic_candidate").slice().sort((a:any,b:any)=>timeOf(b.independentReview?.reviewedAt)-timeOf(a.independentReview?.reviewedAt)).slice(0,12).map((x:any)=>({
-  id:x.id,title:x.title,note:x.note||x.observation,sport:x.sport||null,competition:x.competition||null,
+  id:x.id,title:x.title,
+  note:x.independentReview?.reviewerNotes||x.note||x.observation,
+  diagnosticQuestions:x.note||null,sport:x.sport||null,competition:x.competition||null,
   outcome:x.outcome,reviewedAt:x.independentReview?.reviewedAt||null,evidence:x.independentReview?.evidence||[]
  }));
  const pendingReview=lessonCases.filter((x:any)=>x.reviewStatus==="pending_independent_review").length+
