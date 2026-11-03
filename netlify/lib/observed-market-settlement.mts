@@ -69,6 +69,7 @@ function settleMarket(price:any,match:any,orientationReversed:boolean){
   const a=Number(m[1]),b=Number(m[2]),targetHome=orientationReversed?b:a,targetAway=orientationReversed?a:b;
   return {result:regulation[0]===targetHome&&regulation[1]===targetAway?"won":"lost",rule:"exact_regulation_score",actual:regulation,selected:[targetHome,targetAway]};
  }
+ if(/first_half.*handicap/.test(market))return null;
  if(/asian_handicap|handicap/.test(market)&&!/player/.test(market)){
   if(line===null||Math.abs(line*2-Math.round(line*2))>1e-8)return null;
   if(!side||side==="draw")return null;
