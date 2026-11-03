@@ -36,6 +36,42 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     licenceReview:"approved", automationAllowed:true,
     notes:"Specific football.json dataset documents CC0/public-domain data. Adapter stores source URL, retrieval timestamp and SHA-256 checksum; this approval does not extend to every OpenFootball repository."
   },
+
+  {
+    id:"hf-minmaxxxer-nfl-2026", name:"Hugging Face — NFL 2026 closing-line consensus", website:"https://huggingface.co/datasets/minmaxxxer/nfl-odds-2026",
+    sports:["american_football"], dataDomains:["historical_consensus_market_lines","results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none",
+    licenceReview:"approved", automationAllowed:true,
+    notes:"CC BY 4.0 dataset; consensus opening/closing moneyline probabilities, spreads, totals and settled results. Bookmaker identities and individual prices are not included."
+  },
+  {
+    id:"hf-minmaxxxer-nba-2025-26", name:"Hugging Face — NBA 2025/26 closing-line consensus", website:"https://huggingface.co/datasets/minmaxxxer/nba-closing-lines-ats-2025-26",
+    sports:["basketball"], dataDomains:["historical_consensus_market_lines","results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none",
+    licenceReview:"approved", automationAllowed:true,
+    notes:"CC BY 4.0 dataset; consensus opening/closing moneyline probabilities, spreads, totals and settled results. Not bookmaker-level raw odds."
+  },
+  {
+    id:"hf-minmaxxxer-nba-2026-27", name:"Hugging Face — NBA 2026/27 closing-line consensus", website:"https://huggingface.co/datasets/minmaxxxer/nba-odds-2026-27",
+    sports:["basketball"], dataDomains:["historical_consensus_market_lines","results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none",
+    licenceReview:"approved", automationAllowed:true,
+    notes:"CC BY 4.0 dataset; current-season consensus opening/closing lines and results as published. Not bookmaker-level raw odds."
+  },
+  {
+    id:"hf-minmaxxxer-epl-2025-26", name:"Hugging Face — Premier League 2025/26 closing-line consensus", website:"https://huggingface.co/datasets/minmaxxxer/premier-league-closing-odds-2025-26",
+    sports:["football"], dataDomains:["historical_consensus_market_lines","results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none",
+    licenceReview:"approved", automationAllowed:true,
+    notes:"CC BY 4.0 dataset; consensus opening/closing 1X2, totals, BTTS and Asian handicap lines with results. Not bookmaker-level raw odds."
+  },
+  {
+    id:"hf-minmaxxxer-epl-2026-27", name:"Hugging Face — Premier League 2026/27 closing-line consensus", website:"https://huggingface.co/datasets/minmaxxxer/premier-league-odds-2026-27",
+    sports:["football"], dataDomains:["historical_consensus_market_lines","results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none",
+    licenceReview:"approved", automationAllowed:true,
+    notes:"CC BY 4.0 dataset; current-season consensus opening/closing 1X2, totals, BTTS and Asian handicap lines with results. Not bookmaker-level raw odds."
+  },
   {
     id:"sportmonks", name:"Sportmonks", website:"https://www.sportmonks.com/",
     sports:["football","cricket"], dataDomains:["fixtures","results","teams","players","lineups","statistics","odds"],
