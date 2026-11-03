@@ -131,6 +131,10 @@ export async function syncConsensusMarketDatasets(){
 }
 export async function getConsensusMarketSyncStatus(){
  const state=await get<any>("scheduler-state","consensus-market-daily-sync");
- const datasets=await list<any>("library/model-lab/market-consensus-datasets",100);
- return {status:state?.status||"not_yet_run",lastCheck:state?.lastCheck||null,totals:state||null,datasetCount:datasets.length,rowCount:datasets.reduce((n,d)=>n+Number(d.totalRows||0),0),settledRows:datasets.reduce((n,d)=>n+Number(d.settledRows||0),0)};
+ const [datasets,runs]=await Promise.all([list<any>("library/model-lab/market-consensus-datasets",100),list<any>("library/model-lab/provider-sync-runs",30)]);
+ const latest=runs.filter(x=>String(x.id||"").startsWith("consensus-market-sync-")).sort((a,b)=>String(b.startedAt).localeCompare(String(a.startedAt)))[0]||null;
+ const sourceStatuses:Record<string,string>={};
+ for(const x of latest?.results||[])sourceStatuses[x.providerId]="imported";
+ for(const x of latest?.failures||[])sourceStatuses[x.providerId]="failed";
+ return {status:state?.status||"not_yet_run",lastCheck:state?.lastCheck||null,totals:state||null,datasetCount:datasets.length,rowCount:datasets.reduce((n,d)=>n+Number(d.totalRows||0),0),settledRows:datasets.reduce((n,d)=>n+Number(d.settledRows||0),0),sourceStatuses,latestRun:latest?{id:latest.id,status:latest.status,startedAt:latest.startedAt,datasetsImported:latest.datasetsImported,rowsImported:latest.rowsImported,failures:latest.failures}:null};
 }
