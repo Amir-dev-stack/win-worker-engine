@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 const read = path => readFile(path, "utf8");
 const checks = [];
 const add = (name, ok, detail) => checks.push({ name, ok: Boolean(ok), detail });
-const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration] = await Promise.all([
+const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner] = await Promise.all([
   read("netlify/lib/coverage.mts"), read("netlify/functions/coverage.mts"),
   read("netlify/functions/coverage-monitor.mts"), read("netlify/functions/human-coupon-settlements.mts"),
   read("netlify/lib/source-intelligence.mts"), read("netlify/functions/worker-runner.mts"),
@@ -11,7 +11,7 @@ const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, buil
   read("netlify/lib/data-provider-registry.mts"), read("netlify/lib/openfootball-adapter.mts"), read("netlify/lib/model-lab.mts"),
   read("netlify/functions/openfootball-sync.mts"), read("netlify/functions/research-status.mts"),
   read("netlify/lib/consensus-market-adapter.mts"), read("netlify/functions/consensus-market-sync.mts"),
-  read("netlify/lib/sharpapi-sample-adapter.mts"), read("netlify/functions/sharpapi-sample-sync.mts"), read("netlify/lib/market-calibration.mts")
+  read("netlify/lib/sharpapi-sample-adapter.mts"), read("netlify/functions/sharpapi-sample-sync.mts"), read("netlify/lib/market-calibration.mts"), read("netlify/lib/worker-org.mts"), read("netlify/functions/scheduled-scout-runner.mts")
 ]);
 add("Coverage is calculated from persisted evidence", coverage.includes("library/research-evidence") && coverage.includes("not_observed") && coverage.includes("stale_or_undated"), "No missing coverage is fabricated.");
 add("Every registered sport is reported", coverage.includes("SPORT_REGISTRY.map") && coverage.includes("requiredDomains"), "Sport coverage is based on the current registry.");
@@ -35,6 +35,10 @@ add("SharpAPI sample importer preserves observed multi-book odds", sharpAdapter.
 add("SharpAPI importer is bounded and scheduled weekly", sharpAdapter.includes("source_file_over_5mb") && sharpSync.includes("37 6 * * 1"), "Static snapshots are not misrepresented as a live feed.");
 add("Market calibration is chronological and isolated", calibration.includes("chronological_70_30_per_dataset") && calibration.includes("humanCouponLabTouched:false") && calibration.includes("testMetrics"), "Market consensus is evaluated out of time without using human coupon records.");
 add("Model Lab excludes bookmaker ROI claims for consensus prices", calibration.includes("does not establish betting ROI") && calibration.includes("Consensus fair probabilities are not bookmaker prices"), "No false execution-price or profitability claim.");
+add("Dynamic entity agents are independently queued", workerOrg.includes("queued_independent_api_request") && workerOrg.includes("deduplicated by stable agent ID") && worker.includes("enqueuePersistentAgentTasks") && worker.includes("library/agent-task-queue"), "Sport, country, competition, club, player, manager and event identities become separate queued tasks.");
+add("Scheduled learning executes one queued entity agent per cycle", scheduledAgentRunner.includes("pendingAgentTasks") && scheduledAgentRunner.includes("WIN_ENTITY_AGENT_JSON") && scheduledAgentRunner.includes("library/persistent-agent-profiles"), "Entity agents run as separate budget-gated API calls and keep unvalidated profile histories.");
+add("Research agents receive the isolated Model Lab pack", worker.includes("getModelLabResearchPack") && scheduledAgentRunner.includes("getModelLabResearchPack") && ai.includes("modelLabResearchPack"), "Departments and scheduled agents can read Model Lab evidence without importing human coupons.");
+add("Research status exposes agent execution", statusFn.includes("persistentAgents") && statusFn.includes("library/agent-task-queue"), "Queue, profile and execution status is visible through the authenticated status API.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
