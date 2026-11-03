@@ -286,7 +286,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
       parentId: nodes.some(n => n.id === cid) ? cid : sid,
       tier: "T3", name: competition + " League / Competition Agent",
       scope: { sport, country, competition },
-      status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D1"
+      status: "queued", executionMode: "queued_independent_api_request", assignedDepartment: "D1"
     });
   }
   for (const candidate of candidates as any[]) {
@@ -312,7 +312,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
         scope: { sport: candidate.sport || "unknown", country: candidate.country || "unknown",
           competition: candidate.competition || "unknown", club: clubName, side: text(club.side),
           providerId: text(club.providerId), aliases: (club.aliases || []).join("|") },
-        status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2"
+        status: "queued", executionMode: "queued_independent_api_request", assignedDepartment: "D2"
       });
     }
 
@@ -343,7 +343,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
         scope: { sport: candidate.sport || "unknown", country: candidate.country || "unknown",
           competition: candidate.competition || "unknown", player: playerName, club: clubName || "unknown",
           providerId: text(player.providerId), aliases: (player.aliases || []).join("|") },
-        status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2"
+        status: "queued", executionMode: "queued_independent_api_request", assignedDepartment: "D2"
       });
     }
 
@@ -361,7 +361,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
         scope: { sport: candidate.sport || "unknown", country: candidate.country || "unknown",
           competition: candidate.competition || "unknown", manager: managerName, club: text(manager.club) || "unknown",
           providerId: text(manager.providerId), aliases: (manager.aliases || []).join("|") },
-        status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2"
+        status: "queued", executionMode: "queued_independent_api_request", assignedDepartment: "D2"
       });
     }
 
@@ -370,7 +370,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
       event: candidate.event, sport: candidate.sport || "unknown", country: candidate.country || "unknown",
       competition: candidate.competition || "unknown", sourceType: candidate.sourceType,
       relatedClubAgents: clubIds.join(","), relatedPlayerAgents: playerIds.join(","), relatedManagerAgents: managerIds.join(",")
-    }, status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2" });
+    }, status: "queued", executionMode: "queued_independent_api_request", assignedDepartment: "D2" });
     for (const specialist of EVENT_SPECIALISTS) {
       nodes.push({ id: eventId + ":" + specialist.id, parentId: eventId, tier: "T7", name: specialist.name, scope: { event: candidate.event, purpose: specialist.purpose }, status: "assigned_to_department_pass", assignedDepartment: specialist.department, executionMode: "covered_by_department_checklist" });
     }
