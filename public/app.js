@@ -141,12 +141,21 @@ async function refreshSettlementQueue(){
  }catch(e){$("#settlementQueue").textContent="Settlement queue unavailable: "+e.message}
 }
 
+
+function renderSourceCandidates(candidates=[]){
+ return candidates.slice(0,5).map(x=>{
+  const url=safeUrl(x.sourceUrl);
+  return '<article class="mini-row"><div><b>'+escapeHtml(x.name)+'</b><small>'+escapeHtml(x.license||"Licence missing")+' · '+escapeHtml(x.licenseStatus||"unverified")+' · '+escapeHtml((x.sports||[]).join(", ")||"sport unclassified")+' · '+escapeHtml(x.reviewStatus||"review required")+'</small></div>'+(url?'<a href="'+escapeHtml(url)+'" target="_blank" rel="noopener">Source</a>':'')+'</article>';
+ }).join("");
+}
+
 async function refreshResearch(){
  try{
   const d=await api("/api/research-status");
   const providers=(d.providers||[]).map(p=>'<article class="mini-row"><div><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.status||"unknown")+' · '+escapeHtml(p.accessMode||"")+' · licence '+escapeHtml(p.licenceReview||"unverified")+'</small></div></article>').join("");
-  const open=d.openfootball||{},worldCup=d.openfootballWorldCup||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{};
+  const open=d.openfootball||{},worldCup=d.openfootballWorldCup||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{};
   const couponSims=(cal.reports||[]).flatMap(r=>r.couponSimulation?.results||[]);
+  const candidateRows=renderSourceCandidates(discovery.topCandidates||[]);
   const sections=[
    '<article class="mini-row"><div><b>OpenFootball historical results</b><small>'+escapeHtml(open.status||"not yet run")+' · '+Number(open.totals?.matchesImported||0).toLocaleString()+' matches imported · last check '+escapeHtml(open.lastCheck||"not yet")+'</small></div></article>',
    '<article class="mini-row"><div><b>World Cup history and player events</b><small>'+escapeHtml(worldCup.status||"not yet run")+' · '+Number(lab.worldCupMatchCount||0).toLocaleString()+' matches · '+Number(lab.playerEventRows||0).toLocaleString()+' player events · '+Number(lab.worldCupDatasetCount||0)+' tournament datasets</small></div></article>',
@@ -154,9 +163,10 @@ async function refreshResearch(){
    '<article class="mini-row"><div><b>SharpAPI multi-source snapshots</b><small>'+escapeHtml(sharp.status||"not yet run")+' · '+Number(lab.observedMarketRows||0).toLocaleString()+' observed prices · '+Number(lab.observedMarketFamilies?.length||0)+' market families</small></div></article>',
    '<article class="mini-row"><div><b>Market calibration lab</b><small>'+escapeHtml(cal.status||"waiting for first report")+' · '+Number(cal.totalEvents||0).toLocaleString()+' events · '+Number(cal.reports?.length||0)+' dataset reports · consensus benchmark only · '+Number(couponSims.length||0)+' coupon simulation bands</small></div></article>',
    '<article class="mini-row"><div><b>Settled bookmaker prices → existing simulation</b><small>'+escapeHtml(settlement.status||"not yet run")+' · '+Number(bridge.snapshotRows||0).toLocaleString()+' snapshot rows → '+Number(bridge.eligiblePreMatchRows||0).toLocaleString()+' eligible pre-match → '+Number(settlement.settledSelections||0).toLocaleString()+' settled selections · '+Number(settlement.uniqueEvents||0)+' events · '+(sim.flatStakeRoi!==undefined?'descriptive historical ROI '+(Number(sim.flatStakeRoi)*100).toFixed(1)+'%':'simulation pending')+' · not a predictive edge</small></div></article>',
+   '<article class="mini-row"><div><b>Public source discovery</b><small>'+escapeHtml(discovery.status||"not yet run")+' · '+Number(discovery.totalCandidates||0)+' candidates · '+Number(discovery.openLicenseCandidates||0)+' open-license candidates · '+Number(discovery.reviewRequired||0)+' awaiting review · last check '+escapeHtml(discovery.lastCheck||"not yet")+'</small></div></article>',
    '<article class="mini-row"><div><b>Persistent entity agents</b><small>'+Number(agents.profiles||0)+' profiles · '+Number(agents.queued||0)+' queued · '+Number(agents.running||0)+' running · '+Number(agents.completed||0)+' completed · '+Number(agents.failed||0)+' failed</small></div></article>'
   ];
-  $("#researchEngineStatus").innerHTML='<h4>Data providers</h4>'+providers+'<h4>Pipeline status</h4>'+sections.join("")+'<p class="detail-meta">Human Coupon Lab remains isolated. AI entity agents execute one queued task per four-hour cycle only when the OpenAI key, model and explicit budget approval gates allow it.</p>';
+  $("#researchEngineStatus").innerHTML='<h4>Data providers</h4>'+providers+'<h4>Pipeline status</h4>'+sections.join("")+'<h4>Discovered public source candidates</h4>'+(candidateRows||'<div class="empty">No candidates discovered yet.</div>')+'<p class="detail-meta">Discovered sources remain review-only. Approving a source for adapter review does not connect or activate automatic ingestion. Human Coupon Lab remains isolated. AI entity agents execute one queued task per four-hour cycle only when the OpenAI key, model and explicit budget approval gates allow it.</p>';
  }catch(e){$("#researchEngineStatus").innerHTML='<div class="empty">Research status unavailable: '+escapeHtml(e.message)+'</div>';}
 }
 
