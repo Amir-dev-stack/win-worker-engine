@@ -26,7 +26,12 @@ const required = [
   "netlify/lib/agents-sdk.mts",
   "netlify/lib/worker-org.mts",
   "netlify/lib/library.mts",
-  "netlify/lib/oauth-store.mts"
+  "netlify/lib/oauth-store.mts",
+  "netlify/lib/coverage.mts",
+  "netlify/functions/coverage.mts",
+  "netlify/functions/coverage-monitor.mts",
+  "netlify/functions/human-coupon-settlements.mts",
+  "scripts/quality-gates.mjs"
 ];
 
 for (const file of required) await access(file);
