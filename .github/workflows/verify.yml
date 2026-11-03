@@ -22,5 +22,5 @@ jobs:
           node-version: 22
       - name: Run WIN architecture checks
         run: node scripts/build.mjs
-      - name: Parse and bundle every Netlify function
+      - name: Parse dashboard JavaScript\n        run: node --check public/app.js\n      - name: Parse and bundle every Netlify function
         run: npx --yes esbuild@0.25.0 --bundle --packages=external --platform=node --target=node22 --outdir=/tmp/win-engine-build-check netlify/functions/*.mts
