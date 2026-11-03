@@ -206,6 +206,14 @@ function normalizeCandidate(value: any, source: string, index: number) {
         providerId: text(player?.providerId || player?.externalId || player?.id),
         aliases: Array.isArray(player?.aliases) ? player.aliases.map(text).filter(Boolean).slice(0, 20) : []
       }).filter((player: any) => player.name).slice(0, 100);
+  const managers = (Array.isArray(value?.managers) ? value.managers : (value?.manager ? [value.manager] : [])).map((manager: any) => typeof manager === "string"
+    ? { name: text(manager), club: "", providerId: "", aliases: [] }
+    : {
+        name: text(manager?.name || manager?.manager || manager?.coach),
+        club: text(manager?.club || manager?.team),
+        providerId: text(manager?.providerId || manager?.externalId || manager?.id),
+        aliases: Array.isArray(manager?.aliases) ? manager.aliases.map(text).filter(Boolean).slice(0, 20) : []
+      }).filter((manager: any) => manager.name).slice(0, 30);
   const sourceType = source === "scout_report" ? "SCOUT_REPORT_NEEDS_SECONDARY_VERIFICATION" : "USER_SUPPLIED";
   const providerEventId = text(value?.providerEventId || value?.eventId || value?.id);
   const eventIdentity = providerEventId
@@ -214,7 +222,7 @@ function normalizeCandidate(value: any, source: string, index: number) {
   return {
     eventId: "evt-" + slug(eventIdentity),
     providerEventId: providerEventId || null,
-    event, sport, country, competition, startTime, status, clubs, players,
+    event, sport, country, competition, startTime, status, clubs, players, managers,
     sourceType, sourceUrl: url.startsWith("https://") ? url : undefined,
     observedMarket: text(value?.market),
     observedSelection: text(value?.selection),
@@ -337,11 +345,29 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
       });
     }
 
+    const managerIds: string[] = [];
+    for (const manager of candidate.managers || []) {
+      const managerName = text(manager.name);
+      if (!managerName) continue;
+      const managerId = manager.providerId
+        ? "manager-" + slug(candidate.sport || "unknown") + "-provider-" + slug(manager.providerId)
+        : "manager-" + slug([candidate.sport, managerName].filter(Boolean).join(" × "));
+      managerIds.push(managerId);
+      if (!nodes.some(n => n.id === managerId)) nodes.push({
+        id: managerId, parentId: nodes.some(n => n.id === parent) ? parent : "worker-network-director",
+        tier: "T5", name: managerName + " Manager / Coach Agent",
+        scope: { sport: candidate.sport || "unknown", country: candidate.country || "unknown",
+          competition: candidate.competition || "unknown", manager: managerName, club: text(manager.club) || "unknown",
+          providerId: text(manager.providerId), aliases: (manager.aliases || []).join("|") },
+        status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2"
+      });
+    }
+
     const eventId = candidate.eventId;
     nodes.push({ id: eventId, parentId: nodes.some(n => n.id === parent) ? parent : "worker-network-director", tier: "T6", name: candidate.event + " Event Chief", scope: {
       event: candidate.event, sport: candidate.sport || "unknown", country: candidate.country || "unknown",
       competition: candidate.competition || "unknown", sourceType: candidate.sourceType,
-      relatedClubAgents: clubIds.join(","), relatedPlayerAgents: playerIds.join(",")
+      relatedClubAgents: clubIds.join(","), relatedPlayerAgents: playerIds.join(","), relatedManagerAgents: managerIds.join(",")
     }, status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2" });
     for (const specialist of EVENT_SPECIALISTS) {
       nodes.push({ id: eventId + ":" + specialist.id, parentId: eventId, tier: "T7", name: specialist.name, scope: { event: candidate.event, purpose: specialist.purpose }, status: "assigned_to_department_pass", assignedDepartment: specialist.department, executionMode: "covered_by_department_checklist" });
@@ -372,12 +398,13 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
       sportCountryBranches: countries.length,
       competitions: competitions.length, events: candidates.length,
       clubs: nodes.filter(n => n.tier === "T4").length,
-      players: nodes.filter(n => n.tier === "T5").length,
+      players: nodes.filter(n => n.tier === "T5" && n.id.startsWith("player-")).length,
+      managers: nodes.filter(n => n.tier === "T5" && n.id.startsWith("manager-")).length,
       eventSpecialistAssignments: candidates.length * EVENT_SPECIALISTS.length,
       departmentApiRequests: WIN_DEPARTMENTS.length,
       hierarchySpecialistAssignmentsAreIndependentApiSessions: false
     },
-    executionDisclosure: "Eight main department director passes are separate OpenAI Responses API requests. Sport, country, league, club, player and event nodes are persistent named agent identities activated on demand. Their entity-specific work is routed through the relevant department report; they are not always-on processes or falsely counted as separate model API sessions. Event specialist roles are assignments covered within department requests."
+    executionDisclosure: "Eight main department director passes are separate OpenAI Responses API requests. Sport, country, league, club, player, manager/coach and event nodes are persistent named agent identities activated on demand. Their entity-specific work is routed through the relevant department report; they are not always-on processes or falsely counted as separate model API sessions. Event specialist roles are assignments covered within department requests."
   };
 }
 
