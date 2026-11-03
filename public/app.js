@@ -156,7 +156,8 @@ async function refreshResearch(){
   $("#researchEngineStatus").innerHTML='<h4>Data providers</h4>'+providers+'<h4>Pipeline status</h4>'+sections.join("")+'<p class="detail-meta">Human Coupon Lab remains isolated. AI entity agents execute one queued task per four-hour cycle only when the OpenAI key, model and explicit budget approval gates allow it.</p>';
  }catch(e){$("#researchEngineStatus").innerHTML='<div class="empty">Research status unavailable: '+escapeHtml(e.message)+'</div>';}
 }
-\nasync function refresh(){
+
+async function refresh(){
  try{
   const health=await fetch("/api/health").then(r=>r.json());
   $("#apiStatus").textContent=health.status==="online"?"API online":"API unavailable";
@@ -208,7 +209,8 @@ $("#runForm").addEventListener("submit",async e=>{
 $("#tipForm").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget;const f=new FormData(form);try{await api("/api/tips",{method:"POST",body:JSON.stringify({tip:f.get("tip"),sourceUrl:f.get("sourceUrl"),tipster:f.get("tipster")})});form.reset();await refresh()}catch(err){alert(err.message)}});
 $("#runsList").addEventListener("click",e=>{const b=e.target.closest("[data-run-id]");if(b)openRun(b.dataset.runId)});
 $("#refresh").addEventListener("click",refresh);
-$("#refreshCoverage").addEventListener("click",refreshCoverage);\n$("#refreshResearch").addEventListener("click",refreshResearch);
+$("#refreshCoverage").addEventListener("click",refreshCoverage);
+$("#refreshResearch").addEventListener("click",refreshResearch);
 $("#settlementEvidenceForm").addEventListener("submit",async e=>{
  e.preventDefault();const form=e.currentTarget,f=new FormData(form),button=form.querySelector('button[type="submit"]');
  if(button){button.disabled=true;button.textContent="Submitting…";}
