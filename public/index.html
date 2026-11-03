@@ -36,6 +36,10 @@
 <div class="budget-actions"><button type="button" class="subtle" id="testOpenAIKey">Test OpenAI API key</button></div>
 <div id="apiKeyCheckResult" class="budget-alert empty" role="status">Key authentication has not been tested. This check only reads OpenAI's model list; it does not generate a response or unlock WIN spending.</div>
 </div>
+<div class="budget-controls">
+<div class="budget-actions"><button type="button" class="subtle" id="testModelResponse">Send one minimal model response</button></div>
+<div id="modelResponseTestResult" class="budget-alert empty" role="status">No model-response request has been sent. This test makes one billable request with a maximum of 16 output tokens and records usage in the WIN budget ledger.</div>
+</div>
 <div class="budget-policy">Owner lock: once the operating stop is reached, no agent, OAuth client, scheduled task or new calendar month can restore spending. Only a request authenticated with WIN_INTERNAL_TOKEN plus the exact owner confirmation phrase can unlock it. OpenAI provider-side spending limits are separate. Desktop notifications require this dashboard to remain open.</div>
 <div class="budget-controls"><div id="budgetLockStatus" class="budget-alert empty">Checking owner lock…</div><button type="button" class="danger" id="ownerUnlockBudget" disabled>Owner-authorized spending unlock</button></div>
 <div id="budgetLatestAlert" class="budget-alert empty">No budget alarm recorded yet.</div>

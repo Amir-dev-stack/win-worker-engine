@@ -302,6 +302,30 @@ $("#testOpenAIKey").addEventListener("click",async()=>{
   button.disabled=false;
  }
 });
+$("#testModelResponse").addEventListener("click",async()=>{
+ if(!confirm("This will make exactly one billable OpenAI Responses API request using the configured model. The prompt asks for WIN_OK and caps generated output at 16 tokens. WIN will record usage in its budget ledger. No other agents, schedules or AI workers will be enabled. Continue?"))return;
+ const button=$("#testModelResponse");
+ const result=$("#modelResponseTestResult");
+ button.disabled=true;
+ result.className="budget-alert empty";
+ result.textContent="Sending one minimal model-response request…";
+ try{
+  const data=await api("/api/openai-key-check",{method:"POST",body:JSON.stringify({action:"validate_model_response"})});
+  if(data.result==="response_received"){
+   result.className="budget-alert level-info";
+   result.textContent="MODEL RESPONSE RECEIVED · "+data.model+" · Output: "+(data.responseText||"(empty)")+" · WIN usage estimate: $"+Number(data.chargedUsd||0).toFixed(6)+" · Input/output tokens: "+(data.usage?data.usage.input_tokens+"/"+data.usage.output_tokens:"usage unavailable")+". Only one diagnostic call ran; normal WIN AI remains disabled.";
+  }else{
+   result.className="budget-alert "+(data.result==="blocked_by_budget"?"level-warning":"level-critical");
+   result.textContent="MODEL TEST "+String(data.result||"failed").toUpperCase().replaceAll("_"," ")+" · "+(data.message||"No additional diagnostic detail.")+(data.chargedUsd!==undefined?" · WIN ledger charge: $"+Number(data.chargedUsd).toFixed(6):"");
+  }
+  await refreshAIBudget();
+ }catch(error){
+  result.className="budget-alert level-warning";
+  result.textContent="MODEL TEST UNAVAILABLE · "+error.message;
+ }finally{
+  button.disabled=false;
+ }
+});
 $("#budgetNotifications").addEventListener("click",async()=>{
  if(!("Notification" in window)){alert("This browser does not support desktop notifications.");return;}
  const permission=await Notification.requestPermission();
