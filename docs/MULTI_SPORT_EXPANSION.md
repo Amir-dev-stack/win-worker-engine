@@ -40,3 +40,17 @@ Archive normalized records for fixtures, schedules, results, H2H, standings, ros
 
 ## Implementation status note
 Implemented in source: extensible 20-sport capability registry and authenticated /api/sports endpoint; manager/coach entity profiles and event-network nodes; sport-specific market specialist assignments; explicit mixed-sport accumulator simulation mode; historical same-event Bet Builder audit mode at /api/simulations using supplied, bookmaker-observed combined prices and settled results; authenticated append-only /api/research-data evidence storage; and automatic archival of WIN_RESEARCH_EVIDENCE_JSON rows emitted by department reports.\n\nStill not complete or runtime-verified: automatic discovery of every bookmaker sport/market, provider ingestion adapters for all statistical domains, exhaustive Bet Builder combination generation from a live offer, automatic result resolution for all sports, chronological predictive backtesting with leakage controls, and a full UI coverage dashboard. The Bet Builder audit evaluates supplied historical combinations; it does not invent same-game prices. Mixed-sport simulations are historical coupon-construction analysis, not evidence of predictive edge. Production deployment and runtime API tests must be confirmed separately.
+
+
+## Human betting behaviour intelligence
+
+WIN Department D5 has public-web research instructions and a source catalog covering BetBuddyRank, OLBG, Superbet Supersocial, Tipsto, 1x2.social, BetSlip Social, Reddit, X, YouTube and STS Strefa Inspiracji. D5 emits a machine-readable human-coupon evidence block; the worker runner validates source domains and imports eligible original human coupons into the separate human coupon library as pending records. Demo, sample, promotional, marketing and model-generated material is excluded. Publicly accessible records retain source links and capture context.
+
+Authenticated endpoints:
+- `GET /api/human-sources` — source register, permissions status and import counts.
+- `POST /api/human-sources` — import an authorized public-page capture or user-provided coupon.
+- `GET /api/human-coupons` — search/filter the human coupon archive.
+
+All automated collection remains disabled by default. Public web search and individual manual captures are distinct from permission to bulk harvest a platform. API or scheduled collection requires terms/robots/API/rate-limit review and appropriate access. No private groups, private messages, login bypass, session reuse, paywall or CAPTCHA circumvention.
+
+Human records are not automatically marked won/lost. Settlement requires separate evidence. Learning analyses must distinguish single picks from complete coupons, original human content from promotion/demo material, and verified historical performance from self-reported claims.
