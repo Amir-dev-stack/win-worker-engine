@@ -12,7 +12,7 @@ import { list } from "../lib/store.mts";
 export default async (req: Request) => {
  const denied=requireAuth(req);if(denied)return denied;
  if(req.method!=="GET")return new Response("Method not allowed",{status:405});
- const [openfootball,openfootballWorldCup,consensus,sharpapi,calibration,observedMarketSettlement,sourceDiscovery,agentEvolution,agentEvolution,experiments,datasets,consensusDatasets,observedMarketDatasets,playerEventDatasets,settledObservedMarketDatasets,agentTasks,agentProfiles]=await Promise.all([
+ const [openfootball,openfootballWorldCup,consensus,sharpapi,calibration,observedMarketSettlement,sourceDiscovery,agentEvolution,experiments,datasets,consensusDatasets,observedMarketDatasets,playerEventDatasets,settledObservedMarketDatasets,agentTasks,agentProfiles]=await Promise.all([
   getOpenFootballSyncStatus(),getOpenFootballWorldCupSyncStatus(),getConsensusMarketSyncStatus(),getSharpApiSampleStatus(),getMarketCalibrationStatus(),getObservedMarketSettlementStatus(),getPublicResearchSourceDiscoveryStatus(),getAgentEvolutionStatus(),
   list<any>("library/model-lab/experiments",30),
   list<any>("library/model-lab/historical-event-datasets",1000),
