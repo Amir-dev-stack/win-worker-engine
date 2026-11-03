@@ -326,6 +326,40 @@ $("#testModelResponse").addEventListener("click",async()=>{
   button.disabled=false;
  }
 });
+async function refreshDepartmentSmokeTests(){
+ try{
+  const data=await api("/api/department-smoke-test");
+  const tests=data.tests||[];
+  $("#departmentSmokeTestHistory").innerHTML=tests.length?tests.slice(0,10).map(t=>'<article class="budget-alert-row"><span class="decision '+(t.result==="passed"?"bet":"wait")+'">'+escapeHtml(String(t.result||"unknown").replaceAll("_"," "))+'</span><div><b>'+escapeHtml(t.departmentId+" · "+t.departmentName)+'</b><small>'+new Date(t.createdAt).toLocaleString()+' · '+(t.chargedUsd===null?"charge uncertain":"$"+Number(t.chargedUsd||0).toFixed(6))+'</small></div></article>').join(""):'<div class="empty">No department smoke-test history.</div>';
+ }catch(error){
+  $("#departmentSmokeTestHistory").textContent="Could not load smoke-test history: "+error.message;
+ }
+}
+$("#runDepartmentSmokeTest").addEventListener("click",async()=>{
+ const departmentId=$("#departmentSmokeSelect").value;
+ if(!confirm("Run one isolated "+departmentId+" department-routing smoke test? It makes one billable Responses API request with no web tools and at most 120 output tokens. It does not perform sports research, create an investigation, enable normal AI workers or change WIN_AI_BUDGET_APPROVED. Existing budget lock and $2.95 stop still apply."))return;
+ const button=$("#runDepartmentSmokeTest");
+ const result=$("#departmentSmokeTestResult");
+ button.disabled=true;
+ result.className="budget-alert empty";
+ result.textContent="Testing "+departmentId+" department routing…";
+ try{
+  const data=await api("/api/department-smoke-test",{method:"POST",body:JSON.stringify({action:"smoke_test",departmentId})});
+  if(data.result==="passed"){
+   result.className="budget-alert level-info";
+   result.textContent="DEPARTMENT ROUTING PASSED · "+data.departmentId+" "+data.departmentName+" · "+(data.usage?"Tokens "+data.usage.input_tokens+"/"+data.usage.output_tokens:"Usage unavailable")+" · ledger charge $"+Number(data.chargedUsd||0).toFixed(6)+". No sports research or normal worker execution occurred.";
+  }else{
+   result.className="budget-alert "+(data.result==="blocked_by_budget"?"level-warning":"level-critical");
+   result.textContent="DEPARTMENT TEST "+String(data.result||"failed").toUpperCase().replaceAll("_"," ")+" · "+(data.message||"No additional detail.")+(data.chargedUsd!==undefined&&data.chargedUsd!==null?" · ledger charge $"+Number(data.chargedUsd).toFixed(6):"");
+  }
+  await Promise.all([refreshAIBudget(),refreshDepartmentSmokeTests()]);
+ }catch(error){
+  result.className="budget-alert level-warning";
+  result.textContent="DEPARTMENT TEST UNAVAILABLE · "+error.message;
+ }finally{
+  button.disabled=false;
+ }
+});
 $("#budgetNotifications").addEventListener("click",async()=>{
  if(!("Notification" in window)){alert("This browser does not support desktop notifications.");return;}
  const permission=await Notification.requestPermission();
