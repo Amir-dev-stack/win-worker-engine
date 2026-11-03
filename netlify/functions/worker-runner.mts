@@ -4,6 +4,7 @@ import { get, list, put } from "../lib/store.mts";
 import { runDebate, runGlobalMaster, runIndependentWorkers } from "../lib/ai.mts";
 import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
 import { importTipsterCoupon } from "../lib/source-intelligence.mts";
+import { getModelLabResearchPack } from "../lib/model-lab.mts";
 
 function extractJsonBlock(report: string, tag: string): any | null {
   const open = "<" + tag + ">";
@@ -196,6 +197,7 @@ export default async (req: Request) => {
 
   try {
     const libraryReview = await getMandatoryLearningPack(run.brief);
+    const modelLabResearchPack = await getModelLabResearchPack();
     // Attach a small, relevant slice of prior frozen records for Department 7.
     const priorPredictions = (await list<any>("predictions", 200)).slice(0, 20).map(p => ({
       id: p.id, runId: p.runId, recordedAt: p.recordedAt,
@@ -209,7 +211,8 @@ export default async (req: Request) => {
       ...run.brief,
       runId: run.id,
       priorLearning: { priorPredictions, priorResults },
-      libraryReview
+      libraryReview,
+      modelLabResearchPack
     };
 
     // D1 scouts first. The result creates the dynamic sport/country/competition/club/player/event graph.
