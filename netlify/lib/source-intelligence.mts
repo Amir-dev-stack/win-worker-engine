@@ -219,3 +219,39 @@ export async function listHumanCouponRecords(options: any = {}) {
   const limit = Math.min(200, Math.max(1, Number(options?.limit) || 50));
   return { count: filtered.length, items: filtered.slice(0, limit), retrievedAt: new Date().toISOString() };
 }
+
+export async function ensureHumanCouponSeedExamples() {
+  const examples = [
+    {
+      sourceId: "reddit",
+      sourceUrl: "https://www.reddit.com/r/sportsbook/comments/1qves75/nba_props_daily_2426_wednesday/",
+      tipsterName: "Novel_Calendar5168",
+      publishedAt: "2026-02-04",
+      sport: "basketball",
+      couponText: "Public Reddit comment described a 3-leg NBA player-prop parlay: Jaylin Williams over 29.5 PRA; Kenrich Williams over 24.5 PRA; Aaron Wiggins 4+ assists. The author wrote that the +650 parlay cashed. The result is self-reported in the thread and remains pending until independently checked.",
+      selections: [
+        { event: null, market: "player points+rebounds+assists", selection: "Jaylin Williams over 29.5 PRA", line: "29.5", odds: null, bookmaker: null },
+        { event: null, market: "player points+rebounds+assists", selection: "Kenrich Williams over 24.5 PRA", line: "24.5", odds: null, bookmaker: null },
+        { event: null, market: "player assists", selection: "Aaron Wiggins 4+ assists", line: "4+", odds: null, bookmaker: null }
+      ],
+      sourceSnapshot: JSON.stringify({
+        captureType: "manual_public_web_research",
+        retrievedAt: new Date().toISOString(),
+        threadTitle: "NBA Props Daily - 2/4/26 (Wednesday)",
+        publicCommentExcerpt: "Jaylin Williams over 29.5 PRA, Kenrich Williams over 24.5 PRA, Aaron Wiggins 4+ assists +650",
+        authorClaim: "The commenter described the parlay as cashed.",
+        resultVerification: "not_independently_verified",
+        oddsNotation: "+650 American odds as written by the commenter; no normalized price stored",
+        limitations: ["No bookmaker slip image or bet receipt", "Event mapping and individual leg prices not supplied", "Self-reported result only", "Must remain pending until independent settlement evidence is found"]
+      })
+    }
+  ];
+  const results = [];
+  for (const example of examples) {
+    results.push(await importTipsterCoupon({
+      ...example, importMethod: "public_page_manual_capture", authorizedToStore: true,
+      label: "Reddit human parlay example — NBA player props"
+    }));
+  }
+  return { seeded: results.length, imported: results.filter(x => !x.duplicate).length, duplicates: results.filter(x => x.duplicate).length };
+}
