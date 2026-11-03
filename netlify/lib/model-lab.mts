@@ -12,3 +12,32 @@ export async function runOpenFootballBaselineLab() {
  const result={id,status:"completed",lab:"model-lab",origin:"provider_historical_data",scoredMatches:rows.length,trainingMatches:train.length,testMatches:test.length,split:"chronological_70_30",oneXTwoTrainingProbabilities:{home:pHome,draw:pDraw,away:pAway},goalLines,limitations:["No historical bookmaker odds; no ROI or CLV.","Baseline frequencies only, not a demonstrated betting edge."],humanCouponLabTouched:false,createdAt:new Date().toISOString()};
  await put("library/model-lab/experiments",id,result);return result;
 }
+export async function getModelLabResearchPack(){
+ const [events,consensus,observed,calibrations,experiments,runs]=await Promise.all([
+  list<any>("library/model-lab/historical-event-datasets",1000),
+  list<any>("library/model-lab/market-consensus-datasets",100),
+  list<any>("library/model-lab/observed-market-snapshots",100),
+  list<any>("library/model-lab/market-calibration-reports",20),
+  list<any>("library/model-lab/experiments",50),
+  list<any>("library/model-lab/provider-sync-runs",30)
+ ]);
+ const latestCalibration=calibrations.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]||null;
+ return {
+  generatedAt:new Date().toISOString(),
+  dataSummary:{
+   historicalEventDatasets:events.length,historicalEventRows:events.reduce((n,d)=>n+Number(d.totalRows||0),0),historicalScoredRows:events.reduce((n,d)=>n+Number(d.scoredRows||0),0),
+   consensusDatasets:consensus.length,consensusMarketRows:consensus.reduce((n,d)=>n+Number(d.totalRows||0),0),consensusSettledRows:consensus.reduce((n,d)=>n+Number(d.settledRows||0),0),
+   observedMarketSnapshots:observed.length,observedMarketRows:observed.reduce((n,d)=>n+Number(d.recordCount||0),0),
+   observedSports:[...new Set(observed.flatMap(d=>(d.records||[]).map(r=>r.sportId)))],
+   observedBookmakerSources:[...new Set(observed.flatMap(d=>(d.records||[]).map(r=>r.bookmakerId)))],
+   observedMarketFamilies:[...new Set(observed.flatMap(d=>(d.records||[]).map(r=>r.canonicalMarketId)))]
+  },
+  latestCalibration:latestCalibration?{
+   createdAt:latestCalibration.createdAt,status:latestCalibration.status,totalEvents:latestCalibration.totalEvents,
+   datasets:(latestCalibration.reports||[]).map(x=>({providerId:x.providerId,sport:x.sport,events:x.events,moneylineStatus:x.moneyline?.status,moneylineTestMetrics:x.moneyline?.testMetrics,markets:x.markets}))
+  }:null,
+  recentExperiments:experiments.slice(-8).map(x=>({id:x.id,status:x.status,scoredMatches:x.scoredMatches,testMatches:x.testMatches,createdAt:x.createdAt})),
+  recentProviderSyncs:runs.sort((a,b)=>String(b.startedAt).localeCompare(String(a.startedAt))).slice(0,8).map(x=>({id:x.id,status:x.status,startedAt:x.startedAt,completedAt:x.completedAt,rowsImported:x.rowsImported??x.matchesImported??x.marketsImported??0,failures:(x.failures||[]).length})),
+  restrictions:["This is a read-only research context for WIN agents.","Consensus probabilities are benchmarks, not individual bookmaker prices.","Static SharpAPI samples are point-in-time snapshots, not live odds.","No human coupon or tipster-origin data is included.","No strategy is validated by this summary."]
+ };
+}
