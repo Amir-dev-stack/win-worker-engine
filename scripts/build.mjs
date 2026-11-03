@@ -34,6 +34,7 @@ const required = [
   "netlify/lib/data-provider-registry.mts",
   "netlify/lib/openfootball-adapter.mts",
   "netlify/lib/model-lab.mts",
+  "netlify/lib/agent-evolution.mts",
   "netlify/functions/openfootball-sync.mts",
   "netlify/lib/openfootball-worldcup-adapter.mts",
   "netlify/functions/openfootball-worldcup-sync.mts",
