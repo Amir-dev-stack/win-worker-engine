@@ -108,7 +108,7 @@ function collectCouponCandidates(reports: any[]) {
       market: typeof leg?.market === "string" ? leg.market : "Unspecified market",
       selection: typeof leg?.selection === "string" ? leg.selection : "Unspecified selection",
       odds: typeof leg?.odds === "number" && Number.isFinite(leg.odds) && leg.odds > 1 ? leg.odds : null,
-      sourceUrl: typeof leg?.sourceUrl === "string" && /^https?:\\/\\//i.test(leg.sourceUrl) ? leg.sourceUrl : null,
+      sourceUrl: typeof leg?.sourceUrl === "string" && (leg.sourceUrl.startsWith("https://") || leg.sourceUrl.startsWith("http://")) ? leg.sourceUrl : null,
       observedAt: typeof leg?.observedAt === "string" ? leg.observedAt : null,
       settlementRule: typeof leg?.settlementRule === "string" ? leg.settlementRule : null,
       blockers: Array.isArray(leg?.blockers) ? leg.blockers : []
