@@ -84,7 +84,7 @@ const [aiBudget, hourlyMonitor, scheduledRunner, budgetApi, health] = await Prom
 const checks = [
   [packageJson.includes('"@openai/agents": "0.21.0"') && sdkRuntime.includes("from \"@openai/agents\"") && ai.includes("runWinAgent"), "OpenAI Agents SDK runtime is not installed or wired into WIN worker execution."],
   [html.includes("WIN Worker Engine"), "Dashboard title is missing."],
-  [aiBudget.includes("OPERATING_LIMIT_USD = 4.95") && aiBudget.includes("reserveAIRequest") && aiBudget.includes("onlyIfNew"), "Fail-closed monthly AI budget controller is missing."],
+  [aiBudget.includes("LIMIT_USD = 3") && aiBudget.includes("OPERATING_LIMIT_USD = 2.95") && aiBudget.includes("reserveAIRequest") && aiBudget.includes("onlyIfNew"), "Fail-closed monthly AI budget controller is missing."],
   [ai.includes('WIN_AI_BUDGET_APPROVED') && ai.includes('provider-side monthly spending limit'), "AI calls are not fail-closed pending provider budget approval."],
   [hourlyMonitor.includes('WIN_AI_BUDGET_APPROVED') && hourlyMonitor.includes('blocked_budget_approval_required'), "Scheduled AI is not disabled pending budget approval."],
   [hourlyMonitor.includes('0 */4 * * *') && hourlyMonitor.includes('strategy_hypothesis') && hourlyMonitor.includes('validation_readiness'), "Four-hour intensive-learning cycle rotation is missing."],
