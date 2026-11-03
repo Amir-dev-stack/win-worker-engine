@@ -30,11 +30,11 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     notes:"Public downloadable historical football CSVs; validate per-season columns, completeness and reuse terms before automated ingestion."
   },
   {
-    id:"openfootball", name:"OpenFootball", website:"https://github.com/openfootball",
+    id:"openfootball", name:"OpenFootball football.json", website:"https://github.com/openfootball/football.json",
     sports:["football"], dataDomains:["fixtures","results","competition_metadata"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
-    licenceReview:"required", automationAllowed:false,
-    notes:"Open repositories with repository-specific data and licence conditions; inspect each dataset and attribution requirements."
+    licenceReview:"approved", automationAllowed:true,
+    notes:"Specific football.json dataset documents CC0/public-domain data. Adapter stores source URL, retrieval timestamp and SHA-256 checksum; this approval does not extend to every OpenFootball repository."
   },
   {
     id:"sportmonks", name:"Sportmonks", website:"https://www.sportmonks.com/",
