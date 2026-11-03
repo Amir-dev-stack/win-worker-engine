@@ -173,7 +173,7 @@ The private plugin package is configured to use Streamable HTTP MCP with OAuth a
 - `/oauth/authorize`
 - `/oauth/token`
 
-The owner authorizes on the WIN domain using the private WIN internal token. The token is not embedded in the plugin. ChatGPT receives scoped access tokens (`win:read`, `win:research`).
+The owner authorizes on the WIN domain using the private WIN internal token. The token is not embedded in the plugin. ChatGPT and separately registered MCP clients receive scoped access tokens (`win:read`, `win:research`). The server also advertises `offline_access` and issues one-hour access tokens with rotating 30-day refresh tokens.
 
 MCP tools:
 
