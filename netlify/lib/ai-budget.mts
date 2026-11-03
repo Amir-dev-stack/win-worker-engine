@@ -35,7 +35,7 @@ type BudgetAlert = {
   estimatedTotalUsd: number;
 };
 
-type BudgetSettings = { limitEnabled: true; spendingLocked: boolean; lockedAt: string | null; lockReason: string | null; lastOwnerApprovalAt: string | null; updatedAt: string | null };
+type BudgetSettings = { limitEnabled: true; spendingLocked: boolean; lockedAt: string | null; lockReason: string | null; lastOwnerApprovalAt: string | null; ownerApprovalCount: number; updatedAt: string | null };
 
 function monthKey(date = new Date()) {
   return date.toISOString().slice(0, 7);
@@ -84,7 +84,7 @@ function evaluateBudgetAlerts(ledger: Ledger, estimatedTotalUsd: number) {
   }
   if (amount >= OPERATING_LIMIT_USD) {
     addBudgetAlert(ledger, "limit_reached", "limit_reached",
-      "WIN AI usage has reached the $2.95 internal stop threshold. The application limit blocks new requests only while enforcement is enabled; OpenAI's own project or organisation limit remains separate.", amount);
+      "WIN AI usage has reached the $2.95 internal stop threshold. Spending is now persistently locked until the owner explicitly authorizes a new spending cycle. OpenAI's own project or organisation limit remains separate.", amount);
   }
 }
 function roundUsd(value: number) {
@@ -136,6 +136,7 @@ async function readBudgetSettings(): Promise<BudgetSettings> {
     lockedAt: found?.lockedAt || null,
     lockReason: found?.lockReason || null,
     lastOwnerApprovalAt: found?.lastOwnerApprovalAt || null,
+    ownerApprovalCount: Number(found?.ownerApprovalCount || 0),
     updatedAt: found?.updatedAt || null
   };
 }
@@ -148,21 +149,30 @@ async function lockSpending(reason: string) {
   return next;
 }
 export async function ownerApproveBudgetUnlock(confirmation: string) {
-  if (confirmation !== "I AUTHORIZE WIN SPENDING UNLOCK") {
-    throw new Error("Owner confirmation phrase did not match. Spending remains locked.");
-  }
   return withControllerLock(async () => {
+    const ledger = await readLedger();
+    if (confirmation !== "I AUTHORIZE WIN SPENDING UNLOCK") {
+      addBudgetAlert(ledger, "unlock_rejected_" + Date.now(), "critical",
+        "Rejected WIN spending reset attempt: owner confirmation phrase did not match. Spending remains locked.",
+        ledger.spentUsd + reservedTotal(ledger));
+      await writeLedger(ledger);
+      throw new Error("Owner confirmation phrase did not match. Spending remains locked.");
+    }
     const current = await readBudgetSettings();
     const now = new Date().toISOString();
+    const archiveId = now.replace(/[^0-9]/g, "");
+    await STORE().setJSON("ai-budget/archive/" + ledger.month + "/" + archiveId, {
+      ...ledger, archivedAt: now, archiveReason: "Explicit owner-authorized spending-cycle reset"
+    });
+    const fresh = blankLedger(ledger.month);
+    addBudgetAlert(fresh, "owner_unlock_" + archiveId, "info",
+      "Owner explicitly approved a fresh $3 WIN AI spending cycle. Previous cycle was archived; the $2.95 stop remains enforced.",
+      0);
+    await writeLedger(fresh);
     const next: BudgetSettings = { ...current, limitEnabled: true, spendingLocked: false,
       lockedAt: null, lockReason: null, lastOwnerApprovalAt: now,
-      updatedAt: now };
+      ownerApprovalCount: current.ownerApprovalCount + 1, updatedAt: now };
     await STORE().setJSON(SETTINGS_KEY, next);
-    const ledger = await readLedger();
-    addBudgetAlert(ledger, "owner_unlock_" + Date.now(), "info",
-      "Owner explicitly authorized WIN AI spending to resume. The monthly cap remains enabled.",
-      ledger.spentUsd + reservedTotal(ledger));
-    await writeLedger(ledger);
     return next;
   });
 }
@@ -301,6 +311,7 @@ export async function getAIbudgetStatus() {
     lockedAt: settings.lockedAt,
     lockReason: settings.lockReason,
     lastOwnerApprovalAt: settings.lastOwnerApprovalAt,
+    ownerApprovalCount: settings.ownerApprovalCount,
     spentUsd: roundUsd(ledger.spentUsd),
     reservedUsd,
     totalTrackedUsd,
