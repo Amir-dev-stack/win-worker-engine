@@ -152,7 +152,8 @@ export async function getMandatoryLearningPack(brief: any) {
   await ensureLegacyLibraryImport();
   const query = [
     brief?.event, brief?.sport, brief?.country, brief?.competition, brief?.context,
-    brief?.existingCoupon, ...(Array.isArray(brief?.teams) ? brief.teams : []),
+    brief?.existingCoupon, brief?.manager, ...(Array.isArray(brief?.managers) ? brief.managers : []),
+    ...(Array.isArray(brief?.teams) ? brief.teams : []),
     ...(Array.isArray(brief?.clubs) ? brief.clubs : []), ...(Array.isArray(brief?.players) ? brief.players : [])
   ].filter(Boolean).join(" ");
   const [winning, losing, lessons, profiles, agentProfiles, humanTips, couponHistory,
