@@ -91,7 +91,7 @@ export async function searchWinLibrary(options: {
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 30));
   const category = clean(options.category || "all", 40).toLowerCase();
   const [coupons, winning, losing, pending, lessons, entities, profiles, observations, runs,
-    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements, learningCycles, strategyCandidates, backtestRuns] = await Promise.all([
+    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements, learningCycles, strategyCandidates, backtestRuns, persistentAgentProfiles, agentTasks] = await Promise.all([
     list<any>("library/coupons", 500),
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
@@ -110,7 +110,9 @@ export async function searchWinLibrary(options: {
     list<any>("library/other-settlements", 500),
     list<any>("library/learning-cycles", 500),
     list<any>("library/strategy-candidates", 1000),
-    list<any>("library/backtest-runs", 500)
+    list<any>("library/backtest-runs", 500),
+    list<any>("library/persistent-agent-profiles", 1000),
+    list<any>("library/agent-task-queue", 1000)
   ]);
   let items: any[] = [];
   if (category === "winning") items = winning;
@@ -119,7 +121,7 @@ export async function searchWinLibrary(options: {
   else if (category === "coupons") items = coupons;
   else if (category === "lessons") items = lessons;
   else if (category === "entities") items = entities;
-  else if (category === "agents") items = profiles;
+  else if (category === "agents") items = [...profiles, ...persistentAgentProfiles, ...agentTasks];
   else if (category === "observations") items = observations;
   else if (category === "runs") items = runs;
   else if (category === "tips") items = humanTips;
@@ -133,7 +135,7 @@ export async function searchWinLibrary(options: {
   else if (category === "strategies") items = strategyCandidates;
   else if (category === "backtests") items = backtestRuns;
   else items = [...coupons, ...lessons, ...entities, ...profiles, ...observations, ...runs,
-    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns];
+    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns, ...persistentAgentProfiles, ...agentTasks];
 
   let filtered = relevant(items, clean(options.query, 1000));
   if (options.outcome) filtered = filtered.filter((x: any) => x.outcome === options.outcome);
@@ -144,7 +146,7 @@ export async function searchWinLibrary(options: {
     items: filtered.slice(0, limit), reviewedAt: new Date().toISOString(),
     libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "coupons", "coupon-history",
       "human-tips", "lessons", "entity-profiles", "agent-profiles", "agent-observations",
-      "agent-notes", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases", "learning-cycles", "strategy-candidates", "backtest-runs"]
+      "agent-notes", "persistent-agent-profiles", "agent-task-queue", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases", "learning-cycles", "strategy-candidates", "backtest-runs"]
   };
 }
 
@@ -156,13 +158,14 @@ export async function getMandatoryLearningPack(brief: any) {
     ...(Array.isArray(brief?.teams) ? brief.teams : []),
     ...(Array.isArray(brief?.clubs) ? brief.clubs : []), ...(Array.isArray(brief?.players) ? brief.players : [])
   ].filter(Boolean).join(" ");
-  const [winning, losing, lessons, profiles, agentProfiles, humanTips, couponHistory,
+  const [winning, losing, lessons, profiles, agentProfiles, persistentAgentProfiles, humanTips, couponHistory,
     learningCycles, strategyCandidates, backtestRuns, agentObservations, agentNotes] = await Promise.all([
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
     list<any>("library/lessons", 500),
     list<any>("library/entity-profiles", 1000),
     list<any>("library/agent-profiles", 1000),
+    list<any>("library/persistent-agent-profiles", 1000),
     list<any>("library/human-tips", 300),
     list<any>("library/coupon-history", 300),
     list<any>("library/learning-cycles", 100),
@@ -186,7 +189,7 @@ export async function getMandatoryLearningPack(brief: any) {
   const validatedLessons = newestFirst(relevant(lessons.filter(x => x.validationStatus === "validated"), query), ["createdAt"]).slice(0, 12);
   const candidateLessons = newestFirst(relevant(lessons.filter(x => x.validationStatus !== "validated"), query), ["createdAt"]).slice(0, 8);
   const entityProfiles = newestFirst(relevant(profiles, query), ["updatedAt", "createdAt"]).slice(0, 12);
-  const relevantAgentProfiles = newestFirst(relevant(agentProfiles, query), ["updatedAt", "createdAt"]).slice(0, 12);
+  const relevantAgentProfiles = newestFirst(relevant([...agentProfiles, ...persistentAgentProfiles], query), ["updatedAt", "createdAt"]).slice(0, 20);
 
   // Bring back prior entity-specific research as well as the full department reports.
   // This is what lets the on-demand identities reuse earlier findings rather than start from zero.
