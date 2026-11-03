@@ -9,7 +9,7 @@
 <div class="shell">
 <aside class="sidebar">
 <div class="brand"><div class="mark">W</div><div><b>WIN</b><small>WORKER ENGINE</small></div></div>
-<nav><a class="active" href="#overview">Overview</a><a href="#connections">Connections</a><a href="#simulations">Simulation lab</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#library">Knowledge library</a><a href="#ledger">Prediction ledger</a></nav>
+<nav><a class="active" href="#overview">Overview</a><a href="#connections">Connections</a><a href="#simulations">Simulation lab</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#coverage">Evidence coverage</a><a href="#library">Knowledge library</a><a href="#ledger">Prediction ledger</a></nav>
 <div class="side-bottom"><span class="pulse"></span> Engine console <small>On-demand research · no automatic betting</small></div>
 </aside>
 <main>
@@ -61,6 +61,19 @@
 <label class="check-row"><input name="authorizedToStore" type="checkbox" required> I confirm I am entitled to provide and retain this coupon information.</label>
 <div class="form-foot"><span>WIN will not log into third-party accounts or bypass platform restrictions. Imported records begin as PENDING.</span><button type="submit">Import coupon into WIN ↗</button></div>
 </form>
+</section>
+<section class="panel" id="coverage">
+<div class="panel-head"><div><div class="eyebrow">EVIDENCE QUALITY & SETTLEMENT GOVERNANCE</div><h2>Coverage monitor</h2><p>See what WIN has actually stored, what is missing and what has gone stale. Registry entries are not counted as connected data.</p></div><button class="subtle" type="button" id="refreshCoverage">Refresh coverage ↻</button></div>
+<div id="coverageSummary" class="empty">Coverage has not been loaded.</div>
+<div id="coverageList" class="mini-list"></div>
+<div class="panel-head"><div><div class="eyebrow">HUMAN COUPON SETTLEMENT REVIEW</div><h2>Submit independent evidence</h2><p>Submissions enter a review queue only. WIN will not mark a human coupon won or lost from a self-reported claim.</p></div></div>
+<form id="settlementEvidenceForm" class="run-form">
+<label>Human coupon record ID<input name="couponId" required placeholder="tipster-…"></label>
+<div class="two"><label>Claimed outcome<select name="claimedOutcome" required><option value="won">Won</option><option value="lost">Lost</option><option value="void">Void</option><option value="partial">Partially settled</option><option value="cancelled">Cancelled</option></select></label><label>Independent evidence URL<input name="evidenceUrl" type="url" required placeholder="https://official-results-or-bookmaker-rules…"></label></div>
+<label>Evidence summary<textarea name="evidenceSummary" rows="3" minlength="30" required placeholder="Explain how this independent source verifies the event, market, every selection and settlement."></textarea></label>
+<div class="form-foot"><span id="settlementStatus">Evidence remains pending independent review.</span><button type="submit">Submit settlement evidence ↗</button></div>
+</form>
+<div id="settlementQueue" class="mini-list"></div>
 </section>
 <section class="panel" id="simulations">
 <div class="panel-head"><div><div class="eyebrow">HISTORICAL EXPERIMENTS</div><h2>WIN Simulation Lab</h2><p>Generate and compare hypothetical coupons from 2 to 50 legs using real, settled historical selections. Results stay separate from real STS and human coupons.</p></div><span class="tag">HISTORICAL DATA ONLY</span></div>
