@@ -34,6 +34,7 @@ export const WIN_DEPARTMENTS: WorkerDepartment[] = [
       "Dynamic Sport / Discipline Master for each represented sport",
       "Persistent Club / Team Agent for each identified club",
       "Persistent Player / Athlete Agent for each identified athlete",
+      "Persistent Manager / Coach Agent for each identified manager or coach",
       "Performance & Form Upper Agent",
       "Availability & Context Upper Agent",
       "Competition & Event Context Upper Agent",
@@ -402,6 +403,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
     tiers: IMWFD_TIERS,
     departments: WIN_DEPARTMENTS,
     candidates,
+    availableSportCapabilities: listSportCapabilities(),
     nodes,
     nodeCounts: {
       sports: sports.length, countries: countries.length,
@@ -411,6 +413,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
       players: nodes.filter(n => n.tier === "T5" && n.id.startsWith("player-")).length,
       managers: nodes.filter(n => n.tier === "T5" && n.id.startsWith("manager-")).length,
       eventSpecialistAssignments: candidates.length * EVENT_SPECIALISTS.length,
+      sportMarketSpecialistAssignments: nodes.filter(n => n.id.includes(":market:")).length,
       departmentApiRequests: WIN_DEPARTMENTS.length,
       hierarchySpecialistAssignmentsAreIndependentApiSessions: false
     },
