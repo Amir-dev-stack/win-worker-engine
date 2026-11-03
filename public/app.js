@@ -119,6 +119,26 @@ async function refreshSimulations(){
   }).join(""):'<div class="empty">No records in this simulation collection yet.</div>';
  }catch(e){$("#simulationLibraryStatus").textContent="Simulation library unavailable: "+e.message}
 }
+async function refreshCoverage(){
+ try{
+  const data=await api("/api/coverage");
+  const domains=data.evidence?.domains||[];
+  const sports=data.sports||[];
+  const observed=sports.filter(x=>x.evidenceRecords>0).length;
+  $("#coverageSummary").innerHTML='<div class="network-stats"><span>'+Number(data.evidence?.total||0)+' evidence records</span><span>'+observed+'/'+sports.length+' sports with evidence</span><span>'+domains.filter(x=>x.status==="fresh").length+'/'+domains.length+' fresh evidence domains</span><span>'+Number(data.humanIntelligence?.importedSourceRecords||0)+' human-source imports</span></div><p class="detail-meta">Generated '+escapeHtml(new Date(data.generatedAt).toLocaleString())+'. Counts reflect persisted WIN evidence only.</p>';
+  const domainHtml=domains.map(x=>'<article class="mini-row"><div><b>'+escapeHtml(x.label)+'</b><small>'+Number(x.records||0)+' records · '+escapeHtml(x.status)+' · freshness limit '+Number(x.freshnessLimitHours||0)+'h</small><p>Latest: '+escapeHtml(x.latestRetrievedAt||"No timestamp")+'</p></div></article>').join("");
+  const sportHtml=sports.map(x=>'<article class="mini-row"><div><b>'+escapeHtml(x.sport)+'</b><small>'+Number(x.evidenceRecords||0)+' evidence records · '+Number(x.observedDomains||0)+'/'+Number(x.requiredDomains||0)+' domains · '+escapeHtml(x.status)+'</small><p>'+x.domains.map(d=>escapeHtml(d.id)+': '+escapeHtml(d.status)).join(' · ')+'</p></div></article>').join("");
+  $("#coverageList").innerHTML='<h4>Evidence domains</h4>'+domainHtml+'<h4>Sport-by-sport coverage</h4>'+sportHtml;
+  await refreshSettlementQueue();
+ }catch(e){$("#coverageSummary").textContent="Coverage unavailable: "+e.message}
+}
+async function refreshSettlementQueue(){
+ try{
+  const data=await api("/api/human-coupon-settlements?status=pending_independent_review");
+  const items=data.items||[];
+  $("#settlementQueue").innerHTML=items.length?'<h4>Pending independent review ('+items.length+')</h4>'+items.slice(0,30).map(x=>'<article class="mini-row"><div><b>'+escapeHtml(x.couponId)+'</b><small>'+escapeHtml(x.claimedOutcome)+' claimed · '+escapeHtml(x.reviewStatus)+' · '+escapeHtml(new Date(x.submittedAt).toLocaleString())+'</small><p>'+escapeHtml(x.evidenceSummary)+'</p><a href="'+escapeHtml(safeUrl(x.evidenceUrl))+'" target="_blank" rel="noopener noreferrer">Open evidence ↗</a></div></article>').join(""):'<div class="empty">No settlement evidence submissions awaiting review.</div>';
+ }catch(e){$("#settlementQueue").textContent="Settlement queue unavailable: "+e.message}
+}
 async function refresh(){
  try{
   const health=await fetch("/api/health").then(r=>r.json());
@@ -171,6 +191,18 @@ $("#runForm").addEventListener("submit",async e=>{
 $("#tipForm").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget;const f=new FormData(form);try{await api("/api/tips",{method:"POST",body:JSON.stringify({tip:f.get("tip"),sourceUrl:f.get("sourceUrl"),tipster:f.get("tipster")})});form.reset();await refresh()}catch(err){alert(err.message)}});
 $("#runsList").addEventListener("click",e=>{const b=e.target.closest("[data-run-id]");if(b)openRun(b.dataset.runId)});
 $("#refresh").addEventListener("click",refresh);
+$("#refreshCoverage").addEventListener("click",refreshCoverage);
+$("#settlementEvidenceForm").addEventListener("submit",async e=>{
+ e.preventDefault();const form=e.currentTarget,f=new FormData(form),button=form.querySelector('button[type="submit"]');
+ if(button){button.disabled=true;button.textContent="Submitting…";}
+ try{
+  const result=await api("/api/human-coupon-settlements",{method:"POST",body:JSON.stringify({couponId:f.get("couponId"),claimedOutcome:f.get("claimedOutcome"),evidenceUrl:f.get("evidenceUrl"),evidenceSummary:f.get("evidenceSummary")})});
+  $("#settlementStatus").textContent="Submitted "+result.record.id+" · pending independent review. Coupon outcome unchanged.";
+  form.reset();await refreshSettlementQueue();
+ }catch(err){$("#settlementStatus").textContent="Submission failed: "+err.message;alert(err.message);}
+ finally{if(button){button.disabled=false;button.textContent="Submit settlement evidence ↗";}}
+});
+
 $("#couponForm").addEventListener("submit",async e=>{
  e.preventDefault();
  const form=e.currentTarget;
@@ -235,7 +267,7 @@ $("#libraryList").addEventListener("click",async e=>{
  }catch(err){alert(err.message);button.disabled=false}
 });
 
-if(!token)dialog.showModal();else {refresh();refreshSources();}
+if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();}
 setInterval(()=>{if(token&&!document.hidden)refresh()},20000);
 
 $("#simulationForm").addEventListener("submit",async e=>{
