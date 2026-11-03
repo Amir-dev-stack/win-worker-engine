@@ -1,10 +1,10 @@
 import { get, list, put, remove } from "./store.mts";
 
 export type LibraryOutcome = "pending" | "won" | "lost" | "void" | "partial" | "cancelled" | "unknown";
-export type EntityKind = "sport" | "country" | "league" | "club" | "player" | "event" | "specialist";
+export type EntityKind = "sport" | "country" | "league" | "club" | "player" | "manager" | "event" | "specialist";
 
 const OUTCOMES = new Set<LibraryOutcome>(["pending", "won", "lost", "void", "partial", "cancelled", "unknown"]);
-const ENTITY_KINDS = new Set<EntityKind>(["sport", "country", "league", "club", "player", "event", "specialist"]);
+const ENTITY_KINDS = new Set<EntityKind>(["sport", "country", "league", "club", "player", "manager", "event", "specialist"]);
 const MAX_TEXT = 30000;
 
 function clean(value: unknown, max = 3000): string {
@@ -426,6 +426,7 @@ function entityMission(type: EntityKind): string {
     league: "Maintain competition format, standings, schedule, incentives, form trends and settlement context.",
     club: "Maintain team history, squad, tactics, management, results, home/away splits, roster availability and performance.",
     player: "Maintain individual match logs, minutes, goals/assists or sport-specific output, discipline, injuries, availability and performance trends.",
+    manager: "Maintain coach/manager identity, tenure, tactical and strategic tendencies, lineup/rotation decisions, substitutions, performance history, press-conference evidence and source freshness.",
     event: "Maintain event identity, schedule, participants, conditions, market context and verified outcome.",
     specialist: "Maintain specialist methodology, market-specific evidence standards, recurring failure modes and validated lessons relevant to the assigned discipline."
   };
