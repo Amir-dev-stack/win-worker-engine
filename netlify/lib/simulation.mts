@@ -52,3 +52,55 @@ export async function executeSimulationRun(id:string){
  const finished={...run,status:"completed",completedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),summary,batchCount:batch};
  await put("library/simulation-runs",id,finished);await put("library/simulation-lessons",id,{id,recordType:"simulation_analysis",runId:id,validationStatus:"candidate_for_validation",sampleSize:run.couponCount,summary,createdAt:finished.completedAt});return finished;
 }
+
+
+type BetBuilderCandidate = {
+ id:string; eventId:string; event:string; sport:string; competition?:string;
+ legs:Array<{market:string;pick:string;line?:string;period?:string}>;
+ combinedOdds:number; result:"won"|"lost"|"void"; eventStart:string;
+ oddsCapturedAt:string; oddsSource:string; resultSource:string;
+};
+function validateBetBuilderCandidates(raw:any[]):BetBuilderCandidate[]{
+ if(!Array.isArray(raw)||raw.length<1||raw.length>10000)throw Error("Provide 1–10,000 historically offered Bet Builder combinations.");
+ const ids=new Set<string>();
+ return raw.map((x:any,i:number)=>{
+  const legs=Array.isArray(x?.legs)?x.legs.slice(0,20).map((leg:any)=>({market:clean(leg?.market),pick:clean(leg?.pick),line:clean(leg?.line)||undefined,period:clean(leg?.period)||undefined})):[];
+  const item:BetBuilderCandidate={id:clean(x?.id)||"builder-"+i,eventId:clean(x?.eventId),event:clean(x?.event),sport:clean(x?.sport),competition:clean(x?.competition)||undefined,legs,combinedOdds:Number(x?.combinedOdds),result:x?.result,eventStart:clean(x?.eventStart),oddsCapturedAt:clean(x?.oddsCapturedAt),oddsSource:clean(x?.oddsSource),resultSource:clean(x?.resultSource)};
+  if(!item.eventId||!item.event||!item.sport||item.legs.length<2||item.legs.some(l=>!l.market||!l.pick)||!Number.isFinite(item.combinedOdds)||item.combinedOdds<=1||!["won","lost","void"].includes(item.result)||!item.eventStart||!item.oddsCapturedAt||!item.oddsSource||!item.resultSource)throw Error("Bet Builder combination "+(i+1)+" is missing legs, a real combined price, settlement or provenance.");
+  const start=Date.parse(item.eventStart),captured=Date.parse(item.oddsCapturedAt);if(!Number.isFinite(start)||!Number.isFinite(captured)||captured>=start)throw Error("Bet Builder odds must be captured before the event starts for "+item.id+".");
+  if(ids.has(item.id))throw Error("Duplicate Bet Builder combination id: "+item.id);ids.add(item.id);return item;
+ });
+}
+export async function createBetBuilderSimulationRun(input:any){
+ const combinations=validateBetBuilderCandidates(input?.combinations);
+ const id=crypto.randomUUID(),datasetId="builder-dataset-"+id,createdAt=new Date().toISOString();
+ const sports=[...new Set(combinations.map(x=>x.sport))];
+ const run={id,datasetId,status:"queued",createdAt,updatedAt:createdAt,runType:"bet_builder",mode:"historical_same_event_bet_builder_audit",couponType:"single_event_bet_builder",couponCount:combinations.length,selectionCount:combinations.reduce((n,x)=>n+x.legs.length,0),sports,sportScope:sports.length>1?"multi_sport_builder_audit":sports[0]||"unknown",dataQuality:{allCombinedPricesObserved:true,allOddsPreEvent:true,allResultsSettled:true,uniqueEvents:new Set(combinations.map(x=>x.eventId)).size},sourceDisclosure:"Audits only historically offered same-event combinations with bookmaker-observed combined prices and evidenced settlements. It does not invent correlated prices or imply future predictive edge."};
+ await put("library/simulation-datasets",datasetId,{id:datasetId,runId:id,combinations,createdAt});
+ await put("library/simulation-runs",id,run);return run;
+}
+export async function executeBetBuilderSimulationRun(id:string){
+ const run=await get<any>("library/simulation-runs",id);if(!run)throw Error("Bet Builder simulation run not found");if(run.status==="completed")return run;
+ const data=await get<any>("library/simulation-datasets",run.datasetId);if(!data)throw Error("Bet Builder dataset missing");
+ const combinations=validateBetBuilderCandidates(data.combinations);
+ const wins:any[]=[],losses:any[]=[],other:any[]=[];let returns=0,won=0,lost=0,voided=0;
+ const bySport:Record<string,{combinations:number;won:number;lost:number;voided:number}>={};
+ const byMarket:Record<string,{combinations:number;won:number;lost:number;voided:number}>={};
+ for(const combo of combinations){
+  const record={id:run.id+"-"+combo.id,runId:run.id,recordType:"simulation_coupon",origin:"simulation",couponType:"single_event_bet_builder",eventId:combo.eventId,event:combo.event,sport:combo.sport,competition:combo.competition||null,legs:combo.legs,legCount:combo.legs.length,combinedOdds:combo.combinedOdds,outcome:combo.result,oddsSource:combo.oddsSource,resultSource:combo.resultSource,oddsCapturedAt:combo.oddsCapturedAt,eventStart:combo.eventStart,createdAt:new Date().toISOString()};
+  const sport=bySport[combo.sport]||(bySport[combo.sport]={combinations:0,won:0,lost:0,voided:0});sport.combinations++;
+  if(combo.result==="won"){won++;returns+=combo.combinedOdds;sport.won++;wins.push(record);}
+  else if(combo.result==="lost"){lost++;sport.lost++;losses.push(record);}
+  else{voided++;returns+=1;sport.voided++;other.push(record);}
+  for(const leg of combo.legs){const key=leg.market;const m=byMarket[key]||(byMarket[key]={combinations:0,won:0,lost:0,voided:0});m.combinations++;if(combo.result==="won")m.won++;else if(combo.result==="lost")m.lost++;else m.voided++;}
+ }
+ const batchId=run.id+"-0";
+ if(wins.length)await put("library/simulation-winning-coupons",batchId,{id:batchId,runId:run.id,records:wins});
+ if(losses.length)await put("library/simulation-losing-coupons",batchId,{id:batchId,runId:run.id,records:losses});
+ if(other.length)await put("library/simulation-other-coupons",batchId,{id:batchId,runId:run.id,records:other});
+ const summary={couponCount:combinations.length,won,lost,voided,hitRate:Number((won/Math.max(1,won+lost)).toFixed(4)),flatStakeRoi:Number(((returns-combinations.length)/Math.max(1,combinations.length)).toFixed(4)),flatStakeReturnUnits:Number(returns.toFixed(3)),bySport,byMarket,caveat:"Descriptive historical audit of observed Bet Builder combinations. It is not an out-of-sample forecast test and does not establish a future edge."};
+ const finished={...run,status:"completed",completedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),summary,batchCount:1};
+ await put("library/simulation-runs",id,finished);
+ await put("library/simulation-lessons",id,{id:run.id,recordType:"bet_builder_simulation_analysis",runId:id,validationStatus:"candidate_for_validation",sampleSize:combinations.length,summary,createdAt:finished.completedAt});
+ return finished;
+}
