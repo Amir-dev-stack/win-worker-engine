@@ -35,11 +35,11 @@ function periodFor(v:string):ObservedMarket["period"]{
  if(/futures|outright|champion|winner/.test(s))return "tournament";
  return "unknown";
 }
-function classifySource(name:string){
+function classifySource(name:string):ObservedMarket["bookmakerType"]{
  const s=name.toLowerCase();
  if(["kalshi","polymarket"].some(x=>s.includes(x)))return "prediction_market";
- if(["betfair","matchbook","novig"].some(x=>s.includes(x)))return "exchange_or_exchange_style";
- return "sportsbook_or_unknown";
+ if(["betfair","matchbook","novig"].some(x=>s.includes(x)))return "exchange";
+ return "sportsbook";
 }
 async function syncOne(file:typeof FILES[number]){
  const url=BASE+file.path,res=await fetch(url,{headers:{"user-agent":"WIN-ResearchEngine/1.0"}});
@@ -61,7 +61,10 @@ async function syncOne(file:typeof FILES[number]){
    period:periodFor(obj.market_type||""),
    ...(obj.line!==""&&Number.isFinite(Number(obj.line))?{line:Number(obj.line)}:{}),
    selectionName:[obj.selection,obj.selection_type].filter(Boolean).join(" — "),
-   oddsDecimal:odds,observedAt,startsAt,live:parseBool(obj.is_live),
+   oddsDecimal:odds,oddsAmerican:Number.isFinite(Number(obj.odds_american))?Number(obj.odds_american):undefined,
+   impliedProbability:Number.isFinite(Number(obj.odds_probability))?Number(obj.odds_probability):undefined,
+   bookmakerType:classifySource(obj.sportsbook),sourceSnapshotOnly:true,
+   observedAt,startsAt,live:parseBool(obj.is_live),
    sourceRecordId:[obj.event_id,obj.sportsbook,obj.market_type,obj.selection,obj.selection_type,obj.line,observedAt].join("|"),
    availabilityStatus:"unknown"
   };
