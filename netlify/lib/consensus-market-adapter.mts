@@ -120,7 +120,10 @@ async function syncOne(source:typeof SOURCES[number]){
 
 export async function syncConsensusMarketDatasets(){
  const startedAt=new Date().toISOString(),results:any[]=[],failures:any[]=[];
- for(const source of SOURCES){try{results.push(await syncOne(source));}catch(e){failures.push({providerId:source.id,error:String(e).slice(0,400)});}}
+ for(let i=0;i<SOURCES.length;i+=3){
+  const batch=await Promise.all(SOURCES.slice(i,i+3).map(async source=>{try{return {ok:true,value:await syncOne(source)};}catch(e){return {ok:false,providerId:source.id,error:String(e).slice(0,400)};}}));
+  for(const item of batch){if(item.ok)results.push(item.value);else failures.push(item);}
+ }
  const summary={id:"consensus-market-sync-"+startedAt.slice(0,10),startedAt,completedAt:new Date().toISOString(),status:results.length===SOURCES.length?"completed":results.length?"partial":"failed",datasetsImported:results.length,rowsImported:results.reduce((n,x)=>n+x.rows,0),settledRows:results.reduce((n,x)=>n+x.settledRows,0),results,failures,origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false};
  await put("library/model-lab/provider-sync-runs",summary.id,summary);
  await put("scheduler-state","consensus-market-daily-sync",{lastCheck:summary.completedAt,status:summary.status,datasetsImported:summary.datasetsImported,rowsImported:summary.rowsImported,settledRows:summary.settledRows,failures:failures.length});
