@@ -21,16 +21,19 @@ export async function runOpenFootballBaselineLab() {
  await put("library/model-lab/experiments",id,result);return result;
 }
 export async function getModelLabResearchPack(){
- const [events,consensus,observed,calibrations,experiments,runs,playerEventDatasets]=await Promise.all([
+ const [events,consensus,observed,calibrations,experiments,runs,playerEventDatasets,settledObservedMarkets,settlementRuns]=await Promise.all([
   list<any>("library/model-lab/historical-event-datasets",1000),
   list<any>("library/model-lab/market-consensus-datasets",100),
   list<any>("library/model-lab/observed-market-snapshots",100),
   list<any>("library/model-lab/market-calibration-reports",20),
   list<any>("library/model-lab/experiments",50),
   list<any>("library/model-lab/provider-sync-runs",30),
-  list<any>("library/model-lab/player-event-datasets",1000)
+  list<any>("library/model-lab/player-event-datasets",1000),
+  list<any>("library/model-lab/settled-observed-markets",100),
+  list<any>("library/model-lab/observed-market-settlement-runs",20)
  ]);
  const latestCalibration=calibrations.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]||null;
+ const latestSettlement=settlementRuns.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]||null;
  const playerStats=new Map<string,any>();
  for(const dataset of playerEventDatasets)for(const event of (Array.isArray(dataset.records)?dataset.records:[])){
   if(event.origin!=="provider_historical_data"||typeof event.player!=="string")continue;
@@ -51,11 +54,13 @@ export async function getModelLabResearchPack(){
    consensusDatasets:consensus.length,consensusMarketRows:consensus.reduce((n,d)=>n+Number(d.totalRows||0),0),consensusSettledRows:consensus.reduce((n,d)=>n+Number(d.settledRows||0),0),
    observedMarketSnapshots:observed.length,observedMarketRows:observed.reduce((n,d)=>n+Number(d.recordCount||0),0),
    playerEventDatasets:playerEventDatasets.length,playerEventRows:playerEventDatasets.reduce((n,d)=>n+Number(d.totalRows||0),0),
+   settledObservedMarketDatasets:settledObservedMarkets.length,settledObservedMarketRows:settledObservedMarkets.reduce((n,d)=>n+Number(d.settledSelectionCount||0),0),
    worldCupPlayerStats:{uniquePlayers:playerSummary.length,topScorers:playerSummary.filter(x=>x.goals>0).sort((a,b)=>b.goals-a.goals).slice(0,20),mostYellowCards:playerSummary.filter(x=>x.yellowCards>0).sort((a,b)=>b.yellowCards-a.yellowCards).slice(0,10),mostStarts:playerSummary.filter(x=>x.starts>0).sort((a,b)=>b.starts-a.starts).slice(0,10)},
    observedSports:[...new Set(observed.flatMap(d=>(d.records||[]).map(r=>r.sportId)))],
    observedBookmakerSources:[...new Set(observed.flatMap(d=>(d.records||[]).map(r=>r.bookmakerId)))],
    observedMarketFamilies:[...new Set(observed.flatMap(d=>(d.records||[]).map(r=>r.canonicalMarketId)))]
   },
+  latestObservedMarketSettlement:latestSettlement?{status:latestSettlement.status,createdAt:latestSettlement.createdAt,settledSelections:latestSettlement.settledSelections,uniqueEvents:latestSettlement.uniqueEvents,settledByMarket:latestSettlement.settledByMarket,settledByBookmaker:latestSettlement.settledByBookmaker,simulation:latestSettlement.simulation,caveats:latestSettlement.caveats}:null,
   latestCalibration:latestCalibration?{
    createdAt:latestCalibration.createdAt,status:latestCalibration.status,totalEvents:latestCalibration.totalEvents,
    datasets:(latestCalibration.reports||[]).map(x=>({providerId:x.providerId,sport:x.sport,events:x.events,moneylineStatus:x.moneyline?.status,moneylineTestMetrics:x.moneyline?.testMetrics,markets:x.markets,couponSimulation:x.couponSimulation}))
