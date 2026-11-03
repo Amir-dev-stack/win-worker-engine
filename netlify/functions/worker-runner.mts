@@ -9,11 +9,11 @@ import { getModelLabResearchPack } from "../lib/model-lab.mts";
 
 async function enqueuePersistentAgentTasks(workerNetwork: any, runId: string) {
   const nodes = (workerNetwork?.nodes || []).filter((node: any) =>
-    node.executionMode === "queued_independent_api_request" && ["T1","T2","T3","T4"].includes(node.tier)
+    node.executionMode === "queued_independent_api_request" && ["T1","T2","T3","T4","T5","T6"].includes(node.tier)
   ).slice(0, 100);
   const queued = await list<any>("library/agent-task-queue", 1000);
   const now = new Date();
-  const cooldownDays: Record<string, number> = { T1: 30, T2: 21, T3: 14, T4: 3 };
+  const cooldownDays: Record<string, number> = { T1: 30, T2: 21, T3: 14, T4: 7, T5: 3, T6: 1 };
   let created = 0, alreadyActive = 0, freshProfile = 0;
   for (const node of nodes) {
     const active = queued.some(task => task.agentId === node.id && ["queued","running"].includes(task.status));
