@@ -30,6 +30,13 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     notes:"Two static CC BY 4.0 snapshots: 6,132 World Cup prices across 20 sources and 3,673 MLB prices across 14 sources. Preserve sportsbook/exchange/prediction-market identity; snapshots are not live odds or settled results. Attribution required."
   },
   {
+    id:"openfootball-worldcup-json", name:"OpenFootball World Cup JSON", website:"https://github.com/openfootball/worldcup.json",
+    sports:["football"], dataDomains:["fixtures","results","goalscorers","lineups","substitutions","bookings","venues","player_events"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none",
+    licenceReview:"approved", automationAllowed:true,
+    notes:"CC0 public-domain data for men's World Cups 1930–2026 and 2025 Club World Cup. Full match files include scorer, lineup, substitution and booking events where available. Upstream is community-maintained, not a guaranteed live feed."
+  },
+  {
     id:"football-data-co-uk", name:"Football-Data.co.uk", website:"https://www.football-data.co.uk/",
     sports:["football"], dataDomains:["fixtures","results","historical_odds","match_statistics"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
