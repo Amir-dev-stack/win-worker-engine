@@ -3,6 +3,7 @@ import { authorized } from "../lib/auth.mts";
 import { get, list, put } from "../lib/store.mts";
 import { runDebate, runGlobalMaster, runIndependentWorkers } from "../lib/ai.mts";
 import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
+import { importTipsterCoupon } from "../lib/source-intelligence.mts";
 
 function extractJsonBlock(report: string, tag: string): any | null {
   const open = "<" + tag + ">";
@@ -12,6 +13,53 @@ function extractJsonBlock(report: string, tag: string): any | null {
   if (start < 0 || end <= start) return null;
   try { return JSON.parse(report.slice(start + open.length, end).trim()); }
   catch { return null; }
+}
+
+
+async function archiveHumanCouponResearch(reports: any[]) {
+  const d5 = reports.find(x => x.departmentId === "D5");
+  const parsed = d5 ? extractJsonBlock(d5.report || "", "WIN_HUMAN_COUPONS_JSON") : null;
+  const coupons = Array.isArray(parsed?.coupons) ? parsed.coupons.slice(0, 100) : [];
+  const imports: any[] = [];
+  const allowed = new Set(["betbuddyrank", "olbg", "supersocial", "tipsto", "1x2-social", "betslip-social", "reddit", "x-public", "youtube-public", "sts-strefa-inspiracji", "tippium", "blogabet", "tipstrr", "oddra"]);
+  for (const item of coupons) {
+    const sourceId = typeof item?.sourceId === "string" ? item.sourceId.trim().toLowerCase() : "";
+    if (!allowed.has(sourceId)) { imports.push({ status: "skipped", reason: "unregistered_source" }); continue; }
+    const sourceUrl = typeof item?.sourceUrl === "string" ? item.sourceUrl : "";
+    const couponText = typeof item?.couponText === "string" ? item.couponText : "";
+    if (!/^https:\/\//i.test(sourceUrl) || couponText.trim().length < 3) {
+      imports.push({ status: "skipped", reason: "missing_public_source_url_or_coupon_text" }); continue;
+    }
+    try {
+      const record = await importTipsterCoupon({
+        sourceId, sourceUrl, couponText,
+        tipsterName: item?.tipsterName || "",
+        publishedAt: item?.publishedAt || "",
+        sport: item?.sport || "",
+        combinedOdds: item?.combinedOdds,
+        selections: Array.isArray(item?.selections) ? item.selections : [],
+        label: item?.couponType ? "Public human " + item.couponType : "Public human coupon",
+        bookmaker: item?.bookmaker || "Source odds (unverified bookmaker attribution)",
+        sourceSnapshot: JSON.stringify({
+          retrievedAt: item?.retrievedAt || new Date().toISOString(),
+          contentClass: item?.contentClass || "unclassified",
+          couponType: item?.couponType || "unknown",
+          settlementStatus: item?.settlementStatus || "pending",
+          evidenceRefs: Array.isArray(item?.evidenceRefs) ? item.evidenceRefs : [],
+          limitations: Array.isArray(item?.limitations) ? item.limitations : []
+        }),
+        importMethod: "public_page_manual_capture",
+        authorizedToStore: true
+      });
+      imports.push({ status: record.duplicate ? "duplicate" : "imported", id: record.id, sourceId });
+    } catch (error) {
+      imports.push({ status: "rejected", sourceId, reason: String(error) });
+    }
+  }
+  return { discovered: coupons.length, imported: imports.filter(x => x.status === "imported").length,
+    duplicates: imports.filter(x => x.status === "duplicate").length,
+    skipped: imports.filter(x => x.status === "skipped").length,
+    rejected: imports.filter(x => x.status === "rejected").length, records: imports };
 }
 
 function collectCouponCandidates(reports: any[]) {
@@ -254,8 +302,10 @@ export default async (req: Request) => {
     };
     await put("predictions", predictionId, prediction);
     await put("library/frozen-predictions", predictionId, prediction);
-    const libraryArchive = await archiveRunToLibrary({ ...completed, libraryArchive: undefined });
-    await put("runs", run.id, { ...completed, libraryArchive });
+    const humanCouponArchive = await archiveHumanCouponResearch(reports);
+    const completedWithHumanResearch = { ...completed, humanCouponArchive };
+    const libraryArchive = await archiveRunToLibrary({ ...completedWithHumanResearch, libraryArchive: undefined });
+    await put("runs", run.id, { ...completedWithHumanResearch, libraryArchive });
   } catch (error) {
     const latest = await get<any>("runs", run.id) ?? run;
     const failedRun = {
