@@ -864,6 +864,10 @@ export async function archiveRunToLibrary(run: any) {
   // candidates enter the pending tracker; WIN does not place any bet.
   let winCouponCandidatesSaved = 0;
   let qualifiedWinCouponsTracked = 0;
+  const runResearchPassed = run.status === "completed" &&
+    run.workerNetwork?.libraryReviewGate?.status === "passed" &&
+    run.workerNetwork?.riskAssessmentGate?.status === "passed" &&
+    /^\s*FINAL DECISION:\s*BET\b/im.test(run.master?.report || "");
   for (const [index, candidate] of safeArray(run.coupons, 100).entries()) {
     const candidateId = "win-candidate-" + slug(run.id + "-" + (candidate?.id || index));
     const legs = safeArray(candidate?.legs, 100).map((leg: any) => ({
@@ -877,7 +881,8 @@ export async function archiveRunToLibrary(run: any) {
       blockers: safeArray(leg?.blockers, 20)
     }));
     const blockers = safeArray(candidate?.blockers, 200).map((item: any) => clean(item, 300)).filter(Boolean);
-    const fullyQualified = candidate?.status === "QUALIFIED" && legs.length > 0 && blockers.length === 0 &&
+    if (!runResearchPassed) blockers.push("Global Master did not approve the coupon or the full research, library and risk gates did not pass.");
+    const fullyQualified = runResearchPassed && candidate?.status === "QUALIFIED" && legs.length > 0 && blockers.length === 0 &&
       legs.every((leg: any) =>
         leg.event !== "Unspecified event" && leg.market !== "Unspecified market" &&
         leg.selection !== "Unspecified selection" && leg.odds !== null && Boolean(leg.sourceUrl) &&
@@ -887,6 +892,9 @@ export async function archiveRunToLibrary(run: any) {
     const candidateRecord = {
       id: candidateId, recordType: "win_coupon_candidate", origin: "win",
       runId: run.id, label: clean(candidate?.label, 250) || "WIN coupon candidate " + (index + 1),
+      sport: clean(run.brief?.sport, 100) || null,
+      country: clean(run.brief?.country, 100) || null,
+      competition: clean(run.brief?.competition, 200) || null,
       status: fullyQualified ? "QUALIFIED" : "BLOCKED",
       combinedOdds: fullyQualified && Number.isFinite(candidate?.combinedOdds) ? candidate.combinedOdds : null,
       legs, blockers: fullyQualified ? [] : blockers.length ? blockers : ["Candidate did not pass all structured D6 qualification checks."],

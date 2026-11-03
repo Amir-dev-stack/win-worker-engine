@@ -110,13 +110,18 @@ async function refreshCouponBoards(){
  const status=$("#couponBoardStatus");
  if(!status)return;
  try{
-  const [built,won,lost]=await Promise.all([
+  const [built,allCoupons,won,lost]=await Promise.all([
    api("/api/library?category=win-candidates&limit=40"),
+   api("/api/library?category=coupons&limit=100"),
    api("/api/library?category=winning&limit=40"),
    api("/api/library?category=losing&limit=40")
   ]);
+  const candidates=built.items||[];
+  const candidateIds=new Set(candidates.map(item=>item.id));
+  const legacyWinCoupons=(allCoupons.items||[]).filter(item=>item.origin==="win"&&!candidateIds.has(item.winCandidateId));
+  const winBuiltItems=[...candidates,...legacyWinCoupons];
   const lists=[
-   {id:"#winBuiltList",count:"#winBuiltCount",items:built.items||[],mode:"candidate",empty:"No WIN-built candidates archived yet. Build a coupon from the Research Runs section."},
+   {id:"#winBuiltList",count:"#winBuiltCount",items:winBuiltItems,mode:"candidate",empty:"No WIN-built coupons archived yet. Build a coupon from the Research Runs section."},
    {id:"#wonCouponList",count:"#wonCouponCount",items:won.items||[],mode:"outcome",empty:"No coupons have a recorded won outcome yet."},
    {id:"#lostCouponList",count:"#lostCouponCount",items:lost.items||[],mode:"outcome",empty:"No coupons have a recorded lost outcome yet."}
   ];
@@ -124,7 +129,7 @@ async function refreshCouponBoards(){
    $(list.count).textContent=String(list.items.length);
    $(list.id).innerHTML=list.items.length?list.items.map(item=>renderCouponBoardCard(item,list.mode)).join(""):'<div class="empty">'+list.empty+'</div>';
   }
-  status.textContent="Loaded "+(built.count||0)+" WIN-built candidates · "+(won.count||0)+" won · "+(lost.count||0)+" lost. Outcomes appear here after evidence is submitted.";
+  status.textContent="Loaded "+winBuiltItems.length+" WIN-built candidates / legacy WIN records · "+(won.count||0)+" won · "+(lost.count||0)+" lost. Outcomes appear here after evidence is submitted.";
  }catch(error){status.textContent="Coupon boards could not be refreshed: "+error.message;}
 }
 async function refreshLibrary(){
