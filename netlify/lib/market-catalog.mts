@@ -101,6 +101,7 @@ export type ObservedMarket = {
   homeTeam?: string;
   awayTeam?: string;
   selectionType?: string;
+  selection?: string;
   impliedProbabilityType?: "vig_included" | "no_vig_fair" | "unknown";
   period: MarketPeriod;
   line?: number | string;
