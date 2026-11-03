@@ -102,6 +102,10 @@ export type ObservedMarket = {
   participantId?: string;
   selectionName: string;
   oddsDecimal: number;
+  oddsAmerican?: number;
+  impliedProbability?: number;
+  bookmakerType?: "sportsbook" | "exchange" | "prediction_market" | "unknown";
+  sourceSnapshotOnly?: boolean;
   observedAt: string;
   startsAt?: string;
   live: boolean;
