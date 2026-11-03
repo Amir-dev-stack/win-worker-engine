@@ -877,6 +877,11 @@ export async function archiveRunToLibrary(run: any) {
       odds: Number.isFinite(leg?.odds) && leg.odds > 1 ? leg.odds : null,
       sourceUrl: clean(leg?.sourceUrl, 1500) || null,
       observedAt: clean(leg?.observedAt, 100) || null,
+      eventStart: clean(leg?.eventStart || leg?.kickoff || leg?.matchDateTimeUTC, 100) || null,
+      leagueShortcut: clean(leg?.leagueShortcut, 40) || null,
+      leagueSeason: Number.isInteger(leg?.leagueSeason) ? leg.leagueSeason : null,
+      homeTeam: clean(leg?.homeTeam, 160) || null,
+      awayTeam: clean(leg?.awayTeam, 160) || null,
       settlementRule: clean(leg?.settlementRule, 500) || null,
       blockers: safeArray(leg?.blockers, 20)
     }));
@@ -912,6 +917,8 @@ export async function archiveRunToLibrary(run: any) {
       const selections = legs.map((leg: any) => ({
         event: leg.event, market: leg.market, pick: leg.selection,
         odds: leg.odds, sourceUrl: leg.sourceUrl, observedAt: leg.observedAt,
+        eventStart: leg.eventStart, leagueShortcut: leg.leagueShortcut,
+        leagueSeason: leg.leagueSeason, homeTeam: leg.homeTeam, awayTeam: leg.awayTeam,
         settlementRule: leg.settlementRule, result: "pending"
       }));
       const couponText = [

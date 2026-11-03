@@ -199,26 +199,26 @@ async function refreshSettlementQueue(){
 }
 
 function renderReviewerCase(item){
- const isHuman=item.caseType==="human_coupon";
- const title=isHuman?(item.coupon?.label||item.coupon?.id||"Human coupon"):((item.lesson?.title)||item.lesson?.id||"Lesson");
+ const isHuman=item.caseType==="human_coupon",isWin=item.caseType==="win_coupon",isCoupon=isHuman||isWin;
+ const title=isCoupon?(item.coupon?.label||item.coupon?.id||(isWin?"WIN coupon":"Human coupon")):((item.lesson?.title)||item.lesson?.id||"Lesson");
  const evidence=(item.evidence||[]).map(x=>typeof x==="string"?x:(x.url||x.reference||x.sourceUrl||x.evidenceUrl||"")).filter(Boolean);
- if(isHuman&&item.evidenceUrl)evidence.push(item.evidenceUrl);
+ if(isCoupon){if(Array.isArray(item.sourceUrls))evidence.push(...item.sourceUrls);if(item.evidenceUrl)evidence.push(item.evidenceUrl);}
  const evidenceHtml=[...new Set(evidence)].map(url=>'<a href="'+escapeHtml(safeUrl(url))+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(url)+'</a>').join("<br>");
- const summary=isHuman
-  ?'<p><b>Claimed outcome:</b> '+escapeHtml(item.claimedOutcome)+' · <b>Sport:</b> '+escapeHtml(item.coupon?.sport||"unknown")+' · <b>Competition:</b> '+escapeHtml(item.coupon?.competition||"unknown")+'</p><pre>'+escapeHtml((item.coupon?.couponText||"").slice(0,3500))+'</pre><p>'+escapeHtml(item.evidenceSummary||"")+'</p>'
+ const summary=isCoupon
+  ?'<p><b>Claimed result:</b> '+escapeHtml(item.claimedOutcome)+' · <b>Origin:</b> '+(isWin?"WIN research forecast (not placed)":"human coupon")+' · <b>Sport:</b> '+escapeHtml(item.coupon?.sport||"unknown")+' · <b>Competition:</b> '+escapeHtml(item.coupon?.competition||"unknown")+'</p><pre>'+escapeHtml((item.coupon?.couponText||"").slice(0,3500))+'</pre>'+((item.legs||[]).length?'<pre>'+escapeHtml(JSON.stringify(item.legs,null,2).slice(0,5000))+'</pre>':"")
   :'<p><b>Lesson:</b> '+escapeHtml(item.lesson?.title||item.lesson?.id||"")+' · '+escapeHtml(item.lesson?.sport||"")+' '+escapeHtml(item.lesson?.competition||"")+'</p><p>'+escapeHtml(item.lesson?.note||"")+'</p>';
- const checks=isHuman
-  ?'<label class="check-row"><input type="checkbox" data-check="eventIdentityConfirmed"> Event identity confirmed</label><label class="check-row"><input type="checkbox" data-check="marketRulesConfirmed"> Market settlement rules confirmed</label><label class="check-row"><input type="checkbox" data-check="everySelectionReviewed"> Every coupon selection reviewed</label><label class="check-row"><input type="checkbox" data-check="evidenceIndependent"> Evidence independent of original tipster post</label>'
+ const checks=isCoupon
+  ?'<label class="check-row"><input type="checkbox" data-check="eventIdentityConfirmed"> Event identity confirmed</label><label class="check-row"><input type="checkbox" data-check="marketRulesConfirmed"> Market settlement rules confirmed</label><label class="check-row"><input type="checkbox" data-check="everySelectionReviewed"> Every coupon selection reviewed</label><label class="check-row"><input type="checkbox" data-check="evidenceIndependent"> Evidence independent of original result source</label>'
   :'<label class="check-row"><input type="checkbox" data-check="claimSupported"> Lesson claim is supported</label><label class="check-row"><input type="checkbox" data-check="independentEvidenceConfirmed"> Claim independently corroborated</label>';
- return '<article class="mini-row review-case" data-case-type="'+escapeHtml(item.caseType)+'" data-case-id="'+escapeHtml(item.id)+'"><div><div class="report-title"><b>'+escapeHtml(title)+'</b><span class="decision wait">PENDING REVIEW</span></div><small>'+escapeHtml(item.id)+' · '+escapeHtml(new Date(item.submittedAt).toLocaleString())+'</small>'+summary+'<p><b>Submitted sources:</b><br>'+evidenceHtml+'</p></div><div class="review-form"><label>Reviewer name<input data-reviewer-name required minlength="2" placeholder="Your name"></label><label>Additional independent HTTPS source URL<textarea data-reviewer-evidence rows="2" placeholder="https://second-independent-source.example/…" required></textarea></label>'+checks+'<label>Review notes<textarea data-reviewer-notes rows="3" minlength="40" placeholder="Explain what you checked and why the evidence supports or contradicts the claim." required></textarea></label><div class="form-foot"><button type="button" class="subtle" data-review-decision="reject">Reject</button><button type="button" data-review-decision="approve">Approve</button></div></div></article>';
+ return '<article class="mini-row review-case" data-case-type="'+escapeHtml(item.caseType)+'" data-case-id="'+escapeHtml(item.id)+'"><div><div class="report-title"><b>'+escapeHtml(title)+'</b><span class="decision wait">PENDING REVIEW</span></div><small>'+escapeHtml(item.id)+' · '+escapeHtml(new Date(item.submittedAt).toLocaleString())+'</small>'+summary+'<p><b>Submitted sources:</b><br>'+evidenceHtml+'</p></div><div class="review-form"><label>Reviewer name<input data-reviewer-name required minlength="2" placeholder="Your name"></label><label>Additional independent HTTPS source URL<textarea data-reviewer-evidence rows="2" placeholder="https://independent-official-source.example/…" required></textarea></label>'+checks+'<label>Review notes<textarea data-reviewer-notes rows="3" minlength="40" placeholder="Explain what you checked and why the evidence supports or contradicts the claim." required></textarea></label><div class="form-foot"><button type="button" class="subtle" data-review-decision="reject">Reject</button><button type="button" data-review-decision="approve">Approve</button></div></div></article>';
 }
 async function refreshReviewerQueue(){
  if(!reviewerToken){$("#reviewerQueueStatus").textContent="Connect using the separate reviewer credential.";return;}
  try{
   const data=await reviewerApi("/api/independent-review");
-  const lessons=data.lessonCases||[],humans=data.humanSettlementCases||[];
-  $("#reviewerQueueStatus").textContent=lessons.length+" lesson cases · "+humans.length+" human coupon settlements awaiting review. WIN verifies separate credentials, not real-world identity.";
-  $("#reviewerQueue").innerHTML=(humans.map(renderReviewerCase).join("")+lessons.map(renderReviewerCase).join(""))||'<div class="empty">No pending review cases.</div>';
+  const lessons=data.lessonCases||[],humans=data.humanSettlementCases||[],winCoupons=data.winCouponCases||[];
+  $("#reviewerQueueStatus").textContent=lessons.length+" lesson cases · "+humans.length+" human coupon settlements · "+winCoupons.length+" WIN post-match results awaiting review. A separate credential is not identity proof.";
+  $("#reviewerQueue").innerHTML=(winCoupons.map(renderReviewerCase).join("")+humans.map(renderReviewerCase).join("")+lessons.map(renderReviewerCase).join(""))||'<div class="empty">No pending review cases.</div>';
  }catch(error){
   $("#reviewerQueueStatus").textContent="Reviewer queue unavailable: "+error.message;
   $("#reviewerQueue").innerHTML="";
@@ -321,6 +321,70 @@ async function refreshAIBudget(){
   $("#budgetLatestAlert").textContent="Could not load budget status: "+error.message;
  }
 }
+function learningLabel(value){
+ const map={locked:"LOCKED",enabled:"ENABLED",not_yet_run:"NOT YET RUN",completed:"COMPLETED",partial:"PARTIAL",failed:"FAILED",
+ credential_not_created:"REVIEWER NOT SET UP",credential_created_waiting_for_review:"WAITING FOR REVIEW",
+ review_recorded:"REVIEW RECORDED",higher_than_previous_30_days:"HIGHER THAN PRIOR PERIOD",
+ lower_than_previous_30_days:"LOWER THAN PRIOR PERIOD",similar_to_previous_30_days:"SIMILAR TO PRIOR PERIOD",
+ insufficient_verified_sample:"NOT ENOUGH VERIFIED DATA"};
+ return map[value]||String(value||"UNKNOWN").replaceAll("_"," ").toUpperCase();
+}
+async function refreshLearning(){
+ try{
+  const data=await api("/api/learning-observatory");
+  const l=data.learning||{},p=data.postMatch||{},r=data.reviewer||{},s=data.openSources||{};
+  $("#postMatchStatus").textContent=learningLabel(p.status);
+  $("#postMatchUpdated").textContent=(p.lastCheck?"Checked "+new Date(p.lastCheck).toLocaleString():"No scheduled check recorded")+" · "+Number(p.awaitingIndependentReview||0)+" awaiting review";
+  $("#learningAiStatus").textContent=learningLabel(data.liveResearch?.status);
+  $("#learningReviewerStatus").textContent=learningLabel(r.status);
+  $("#learningReviewerNote").textContent=Number(r.pendingCases||0)+" review cases pending · "+Number(r.completedOperations||0)+" completed review operations";
+  $("#learningSourcesStatus").textContent=learningLabel(s.status);
+  $("#learningSourcesNote").textContent=Number(s.totalCandidates||0).toLocaleString()+" public source metadata candidates";
+  $("#learningWins").textContent=Number(l.verifiedWins||0).toLocaleString();
+  $("#learningLosses").textContent=Number(l.verifiedLosses||0).toLocaleString();
+  $("#learningValidatedLessons").textContent=Number(l.independentlyValidatedLessons||0).toLocaleString();
+  $("#learningCandidateLessons").textContent=Number(l.candidateLessons||0).toLocaleString();
+  $("#learningPendingReviews").textContent=Number(r.pendingCases||0).toLocaleString();
+  $("#learningWinRate").textContent=l.verifiedCouponWinRate===null?"Not measurable":Number(l.verifiedCouponWinRate).toFixed(1)+"%";
+  let trend="Trend: "+learningLabel(l.performanceTrend)+".";
+  if(l.recent30Day?.count>=10&&l.prior30Day?.count>=10)trend+=" Previous 30 days "+l.prior30Day.winRate+"% ("+l.prior30Day.count+"); latest 30 days "+l.recent30Day.winRate+"% ("+l.recent30Day.count+").";
+  else trend+=" At least 10 reviewed outcomes in each of the two 30-day periods are needed before comparing.";
+  $("#learningTrend").textContent=trend;
+  $("#learningCaveat").textContent=l.trendCaveat||"Whole-coupon descriptive rate only; not selection accuracy or profitability.";
+  const mistakes=l.mistakes||[];
+  $("#learningMistakes").innerHTML=mistakes.length?mistakes.map(x=>{
+   const urls=(x.evidence||[]).map(e=>typeof e==="string"?e:e.url||e.reference||"").filter(Boolean);
+   return '<article class="observatory-entry"><b>'+escapeHtml(x.title||"Post-match review")+'</b><p>'+escapeHtml(x.note||"")+'</p><small>'+escapeHtml(x.sport||"")+' · '+escapeHtml(x.competition||"")+' · reviewed '+escapeHtml(x.reviewedAt||"")+'</small><div>'+urls.map(u=>'<a target="_blank" rel="noopener noreferrer" href="'+escapeHtml(safeUrl(u))+'">Evidence ↗</a>').join("")+'</div></article>';
+  }).join(""):'<div class="empty">No independently validated post-match mistake lessons yet. Candidate diagnoses remain outside trusted learning until review.</div>';
+  const recent=p.recent||[];
+  $("#postMatchRecent").innerHTML=recent.length?recent.slice(0,10).map(x=>{
+   const state=x.status==="independently_reviewed"?learningLabel(x.outcome):learningLabel(x.status)+(x.outcome?" · CLAIMED "+learningLabel(x.outcome):"");
+   const lost=(x.legs||[]).filter(z=>z.status==="lost").length;
+   const unresolved=(x.legs||[]).filter(z=>!["won","lost","void"].includes(z.status)).length;
+   return '<article class="observatory-entry"><b>'+escapeHtml(x.couponId||x.id)+' · '+escapeHtml(state)+'</b><p>'+Number(x.legCount||0)+' legs · '+lost+' lost · '+unresolved+' unresolved/unsupported · '+escapeHtml(x.updatedAt||"")+'</p>'+((x.legs||[]).slice(0,4).map(z=>'<small>'+escapeHtml(z.event||"Event")+' — '+escapeHtml(z.status||"unresolved")+(z.homeScore!==undefined?" ("+z.homeScore+"-"+z.awayScore+")":"")+'</small><br>').join(""))+'</article>';
+  }).join(""):'<div class="empty">No post-match follow-up records yet.</div>';
+  const d=data.datasets||{};
+  const counts=[
+   ["Historical match datasets",d.historicalEventDatasets,d.scoredEventRows+" scored rows"],
+   ["Consensus market datasets",d.consensusDatasets,d.consensusMarketRows+" rows"],
+   ["Player-event datasets",d.playerEventDatasets,d.playerEventRows+" rows"],
+   ["Observed price snapshots",d.observedMarketSnapshots,d.observedMarketRows+" prices"],
+   ["Settled market observations",d.settledObservedMarketDatasets,d.settledObservedMarketRows+" selections"],
+   ["Calibration reports",d.calibrationReports,"chronological benchmark reports"],
+   ["Open-licence candidates",s.openLicenseCandidates,"metadata only; review still required"],
+   ["WIN post-match checks",p.totalCoupons,(p.awaitingIndependentReview||0)+" awaiting review"]
+  ];
+  $("#learningDataSources").innerHTML=counts.map(([title,note,detail])=>'<article class="observatory-data-item"><b>'+Number(note||0).toLocaleString()+'</b><small>'+escapeHtml(String(title))+' · '+escapeHtml(String(detail||""))+'</small></article>').join("");
+  $("#learningDepartments").innerHTML=(data.system?.departments||[]).map(d=>{
+   const cls=d.status==="passed"?"bet":d.status==="not_tested"?"wait":"no";
+   return '<article class="observatory-department"><b>'+escapeHtml(d.id+" · "+d.name)+'</b><small>'+(d.lastTestAt?escapeHtml(new Date(d.lastTestAt).toLocaleString()):"No recorded smoke test")+'</small><span class="decision '+cls+'">'+escapeHtml(learningLabel(d.status))+'</span></article>';
+  }).join("");
+  $("#learningUpdated").textContent="Updated "+new Date(data.generatedAt).toLocaleString();
+ }catch(error){
+  $("#learningUpdated").textContent="Monitor unavailable: "+error.message;
+  $("#postMatchStatus").textContent="STATUS UNAVAILABLE";
+ }
+}
 async function refresh(){
  try{
   const health=await fetch("/api/health").then(r=>r.json());
@@ -342,6 +406,7 @@ async function refresh(){
  }catch(e){$("#apiStatus").textContent="Authentication needed";$("#runsList").textContent=e.message}
 }
 $("#refreshBudget").addEventListener("click",refreshAIBudget);
+$("#refreshLearning").addEventListener("click",refreshLearning);
 $("#ownerUnlockBudget").addEventListener("click",async()=>{
  const confirmation=prompt("OWNER ONLY. To explicitly unlock WIN AI spending, type exactly: I AUTHORIZE WIN SPENDING UNLOCK");
  if(confirmation===null)return;
@@ -600,8 +665,9 @@ $("#libraryList").addEventListener("click",async e=>{
  }catch(err){alert(err.message);button.disabled=false}
 });
 
-if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();refreshResearch();refreshCouponBoards();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
+if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();refreshResearch();refreshCouponBoards();refreshLearning();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
 setInterval(()=>{if(token&&!document.hidden)refresh()},20000);
+setInterval(()=>{if(token&&!document.hidden)refreshLearning()},60000);
 
 $("#simulationForm").addEventListener("submit",async e=>{
  e.preventDefault();const form=e.currentTarget,f=new FormData(form),button=form.querySelector('button[type="submit"]');

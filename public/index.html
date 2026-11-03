@@ -9,7 +9,7 @@
 <div class="shell">
 <aside class="sidebar">
 <div class="brand"><div class="mark">W</div><div><b>WIN</b><small>WORKER ENGINE</small></div></div>
-<nav><a class="active" href="#overview">Overview</a><a href="#aiBudget">AI budget</a><a href="#connections">Connections</a><a href="#simulations">Simulation lab</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#coverage">Evidence coverage</a><a href="#researchEngine">Data & agent engine</a><a href="#library">Knowledge library</a><a href="#ledger">Prediction ledger</a></nav>
+<nav><a class="active" href="#overview">Overview</a><a href="#learning">Learning monitor</a><a href="#aiBudget">AI budget</a><a href="#connections">Connections</a><a href="#simulations">Simulation lab</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#coverage">Evidence coverage</a><a href="#researchEngine">Data & agent engine</a><a href="#library">Knowledge library</a><a href="#ledger">Prediction ledger</a></nav>
 <div class="side-bottom"><span class="pulse"></span> Engine console <small>On-demand research · no automatic betting</small></div>
 </aside>
 <main>
@@ -73,6 +73,35 @@
 <div><b>Research storage</b><span>Netlify Blobs · runs, tips and frozen forecasts</span></div>
 <div><b>STS prices</b><span>Public/authorized data only · no official STS API connection</span></div>
 </div>
+</section>
+<section class="panel" id="learning">
+<div class="panel-head"><div><div class="eyebrow">POST-MATCH / SELF-LEARNING</div><h2>WIN Learning Monitor</h2><p>WIN checks finished events, records each leg, creates loss-review candidates and tracks only independently reviewed coupon outcomes as verified learning.</p></div><div class="form-foot"><span id="learningUpdated">Loading status…</span><button type="button" class="subtle" id="refreshLearning">Refresh ↻</button></div></div>
+<div class="observatory-status-grid">
+<article class="observatory-card"><small>Post-match checker</small><strong id="postMatchStatus">—</strong><span id="postMatchUpdated">Last run not known</span></article>
+<article class="observatory-card"><small>Paid AI research</small><strong id="learningAiStatus">—</strong><span>Separate from no-AI result checks</span></article>
+<article class="observatory-card"><small>Independent reviewer</small><strong id="learningReviewerStatus">—</strong><span id="learningReviewerNote">Not yet connected</span></article>
+<article class="observatory-card"><small>Open-source discovery</small><strong id="learningSourcesStatus">—</strong><span id="learningSourcesNote">Public indexes searched</span></article>
+</div>
+<h3 class="budget-history-title">Verified WIN learning</h3>
+<div class="observatory-metric-grid">
+<article class="observatory-metric"><small>Reviewed wins</small><strong id="learningWins">—</strong></article>
+<article class="observatory-metric"><small>Reviewed losses</small><strong id="learningLosses">—</strong></article>
+<article class="observatory-metric"><small>Independently validated lessons</small><strong id="learningValidatedLessons">—</strong></article>
+<article class="observatory-metric"><small>Lesson candidates</small><strong id="learningCandidateLessons">—</strong></article>
+<article class="observatory-metric"><small>Awaiting independent review</small><strong id="learningPendingReviews">—</strong></article>
+<article class="observatory-metric"><small>Verified coupon win rate</small><strong id="learningWinRate">—</strong></article>
+</div>
+<div id="learningTrend" class="budget-alert empty">Accuracy trend not measurable yet.</div>
+<p id="learningCaveat" class="observatory-note">Only independently reviewed research-coupon outcomes count. This is not betting ROI or selection-level model accuracy.</p>
+<div class="observatory-two">
+<div><h3 class="budget-history-title">Loss reviews and lesson candidates</h3><div id="learningMistakes" class="mini-list"><div class="empty">Loading diagnostics…</div></div></div>
+<div><h3 class="budget-history-title">Recent post-match checks</h3><div id="postMatchRecent" class="mini-list"><div class="empty">Loading match results…</div></div></div>
+</div>
+<h3 class="budget-history-title">Public result and historical data sources</h3>
+<div id="learningDataSources" class="observatory-dataset-grid"></div>
+<div class="observatory-note">Automatic match-result checks are currently enabled for supported football fixtures through OpenLigaDB. Other sports and unsupported markets remain unresolved until a verified result adapter is approved. Worldwide metadata discovery is not the same as live result coverage.</div>
+<h3 class="budget-history-title">Department routing checks already recorded (no new AI tests)</h3>
+<div id="learningDepartments" class="observatory-departments"><div class="empty">Loading test history…</div></div>
 </section>
 <section class="panel" id="overview">
 <div class="panel-head"><div><div class="eyebrow">NEW INVESTIGATION</div><h2>Start a research run</h2><p>Each specialist starts with the event brief independently.</p></div><span class="tag">8 SPECIALISTS + 4 REVIEWERS + GLOBAL MASTER</span></div>

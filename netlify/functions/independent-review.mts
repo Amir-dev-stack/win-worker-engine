@@ -58,9 +58,10 @@ function reviewOperationId(caseType: string, caseId: string): string {
 }
 
 async function pendingQueue() {
-  const [lessonCases, humanCases, operations] = await Promise.all([
+  const [lessonCases, humanCases, winCouponCases, operations] = await Promise.all([
     list<any>("library/lesson-review-cases", 1000),
     list<any>("library/human-settlement-cases", 2000),
+    list<any>("library/win-post-match-review-cases", 1000),
     list<any>("library/review-operations", 1000)
   ]);
   const operationById = new Map(operations.map((operation: any) => [operation.id, operation]));
@@ -102,11 +103,32 @@ async function pendingQueue() {
       }
     } : null;
   }));
+  const winCoupons = await Promise.all(winCouponCases.filter(item =>
+    item.reviewStatus === "pending_independent_review" ||
+    operationById.get(reviewOperationId("win_coupon", item.id))?.status === "in_progress"
+  ).slice(0, 200).map(async item => {
+    const operation: any = operationById.get(reviewOperationId("win_coupon", item.id));
+    const recoveryRequired = operation?.status === "in_progress";
+    const coupon = await get<any>("library/coupons", item.couponId);
+    return coupon ? {
+      id: item.id, caseType: "win_coupon", submittedAt: item.submittedAt,
+      claimedOutcome: item.claimedOutcome, sourceUrls: item.sourceUrls || [],
+      legs: item.legs || [], lessonCandidateIds: item.lessonCandidateIds || [],
+      recoveryRequired, recoveryLeaseExpiresAt: recoveryRequired ? operation.leaseExpiresAt : null,
+      coupon: {
+        id: coupon.id, label: coupon.label, couponText: coupon.couponText,
+        selections: Array.isArray(coupon.selections) ? coupon.selections.slice(0, 100) : [],
+        sport: coupon.sport || null, competition: coupon.competition || null,
+        outcome: coupon.outcome, executionStatus: coupon.executionStatus || "not_placed_by_WIN"
+      }
+    } : null;
+  }));
   return {
     lessonCases: lessons.filter(Boolean),
     humanSettlementCases: humans.filter(Boolean),
+    winCouponCases: winCoupons.filter(Boolean),
     reviewerAccessMode: "separate_credential",
-    identityLimitation: "A separate token is not proof of a separate human identity. Share it only with a different trusted person."
+    identityLimitation: "A separate token is not proof of a separate human identity. Share it only with a different trusted reviewer."
   };
 }
 
@@ -201,8 +223,8 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
   const checks = body?.checks && typeof body.checks === "object" && !Array.isArray(body.checks) ? body.checks : {};
   if (!caseId || !["approve", "reject"].includes(decision) || reviewerName.length < 2 || notes.length < 40)
     return { status: 400, body: { error: "caseId, approve/reject decision, reviewer name and at least 40 characters of reviewer notes are required." } };
-  if (!["lesson", "human_coupon"].includes(caseType))
-    return { status: 400, body: { error: "caseType must be lesson or human_coupon." } };
+  if (!["lesson", "human_coupon", "win_coupon"].includes(caseType))
+    return { status: 400, body: { error: "caseType must be lesson, human_coupon or win_coupon." } };
 
   const operationId = reviewOperationId(caseType, caseId);
   const fingerprint = reviewFingerprint({
@@ -223,7 +245,9 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
       return { status: 409, body: { error: "This review is already being processed. Retry the exact same submission after the operation lease expires.", retryAfterSeconds: Math.max(1, Math.ceil((Date.parse(prior.leaseExpiresAt) - Date.now()) / 1000)) } };
   }
 
-  const collection = caseType === "lesson" ? "library/lesson-review-cases" : "library/human-settlement-cases";
+  const collection = caseType === "lesson" ? "library/lesson-review-cases"
+    : caseType === "human_coupon" ? "library/human-settlement-cases"
+    : "library/win-post-match-review-cases";
   const record = await get<any>(collection, caseId);
   if (!record || (!priorOperation && record.reviewStatus !== "pending_independent_review"))
     return { status: 404, body: { error: "Pending review case not found; it may already have been reviewed." } };
@@ -234,7 +258,8 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
   let lesson: any = null;
   let coupon: any = null;
   const claimedOutcome = clean(record.claimedOutcome, 30).toLowerCase();
-  const settlementLearningId = caseType === "human_coupon" ? "human-settlement-" + clean(record.couponId, 180) : "";
+  const settlementLearningId = caseType === "human_coupon" ? "human-settlement-" + clean(record.couponId, 180)
+    : caseType === "win_coupon" ? "win-settlement-" + clean(record.couponId, 180) : "";
 
   if (decision === "approve") {
     if (!evidenceUrls.length)
@@ -252,20 +277,23 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
     } else {
       if (checks.eventIdentityConfirmed !== true || checks.marketRulesConfirmed !== true ||
           checks.everySelectionReviewed !== true || checks.evidenceIndependent !== true)
-        return { status: 400, body: { error: "Human-coupon approval requires confirming event identity, market rules, every selection and independent evidence." } };
+        return { status: 400, body: { error: "Coupon approval requires confirming event identity, market rules, every selection and independent evidence." } };
       if (!HUMAN_OUTCOMES.has(claimedOutcome))
         return { status: 400, body: { error: "The claimed settlement outcome is unsupported." } };
       coupon = await get<any>("library/coupons", record.couponId);
-      const alreadyApplied = Boolean(priorOperation) && coupon?.origin === "human" &&
+      const expectedOrigin = caseType === "human_coupon" ? "human" : "win";
+      const alreadyApplied = Boolean(priorOperation) && coupon?.origin === expectedOrigin &&
         clean(coupon?.outcome).toLowerCase() === claimedOutcome && coupon?.settlementLearningId === settlementLearningId;
-      if (!coupon || coupon.origin !== "human" ||
+      if (!coupon || coupon.origin !== expectedOrigin ||
           (clean(coupon.outcome).toLowerCase() !== "pending" && !alreadyApplied))
-        return { status: 409, body: { error: "Coupon is missing, not human-origin, or was settled by a different operation." } };
-      const submittedUrls = [record.sourceCouponUrl, record.evidenceUrl].filter((value: any) =>
+        return { status: 409, body: { error: "Coupon is missing, has the wrong origin, or was settled by a different operation." } };
+      const submittedUrls = caseType === "human_coupon"
+        ? [record.sourceCouponUrl, record.evidenceUrl]
+        : (Array.isArray(record.sourceUrls) ? record.sourceUrls : []);
+      if (!hasNewEvidenceDomain(evidenceUrls, submittedUrls.filter((value: any) =>
         typeof value === "string" && Boolean(httpsUrl(value))
-      );
-      if (!hasNewEvidenceDomain(evidenceUrls, submittedUrls))
-        return { status: 400, body: { error: "Reviewer corroboration must include a different HTTPS host from the original coupon source and submitted settlement evidence." } };
+      )))
+        return { status: 400, body: { error: "Reviewer corroboration must include a different HTTPS host from the submitted match-result evidence." } };
     }
   }
 
@@ -292,6 +320,14 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
       });
     }
     await put(collection, caseId, rejected);
+    if (caseType === "win_coupon") {
+      const followupId = "post-match-" + clean(record.couponId, 180);
+      const followup = await get<any>("library/post-match-followups", followupId);
+      if (followup) await put("library/post-match-followups", followupId, {
+        ...followup, status: "review_rejected", reviewRejectedAt: reviewedAt,
+        reviewRejectNotes: notes, updatedAt: reviewedAt
+      });
+    }
     const response = { accepted: true, decision, reviewCase: rejected, outcomeApplied: false };
     await completeReviewOperation(operationId, claimed.operation, operationEtag, response);
     return { status: 200, body: response };
@@ -322,8 +358,11 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
     return { status: 200, body: response };
   }
 
+  const submittedEvidence = caseType === "human_coupon"
+    ? [{ type: "submitted_settlement_evidence", url: record.evidenceUrl }]
+    : (Array.isArray(record.sourceUrls) ? record.sourceUrls : []).map((url: string) => ({ type: "automated_match_result", url }));
   const allEvidence = [
-    { type: "submitted_settlement_evidence", url: record.evidenceUrl },
+    ...submittedEvidence,
     ...evidenceUrls.map(url => ({ type: "reviewer_corroboration", url }))
   ];
   const independentReview = reviewMetadata(reviewer, reviewerName, notes, reviewedAt, evidenceUrls, checks);
@@ -333,14 +372,16 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
     sport: coupon.sport || null, country: coupon.country || null,
     competition: coupon.competition || null, combinedOdds: coupon.combinedOdds ?? null,
     selections: Array.isArray(coupon.selections) ? coupon.selections.slice(0, 100) : [],
-    settlementSource: record.evidenceUrl, evidence: allEvidence,
+    settlementSource: record.evidenceUrl || (Array.isArray(record.sourceUrls) ? record.sourceUrls[0] || null : null), evidence: allEvidence,
     validationStatus: "validated", submitterCredentialId, independentReview,
-    observation: "Human coupon outcome was approved after a separate reviewer credential supplied distinct-host corroboration and attested to event identity, market rules, every selection and evidence independence. WIN verifies credential separation, not the holder's identity.",
+    observation: caseType === "human_coupon"
+      ? "Human coupon outcome was approved after a separate reviewer credential supplied distinct-host corroboration and attested to event identity, market rules, every selection and evidence independence. WIN verifies credential separation, not the holder's identity."
+      : "WIN research-coupon outcome was approved after a separate reviewer credential corroborated match identity, market rules and every leg. The coupon was not placed by WIN; the result is a forecast calibration observation, not a record of a real wager.",
     createdAt: reviewedAt, updatedAt: reviewedAt, reviewOperationId: operationId
   };
   const updatedCoupon = {
     ...coupon, outcome: claimedOutcome, settledAt: coupon.settledAt || reviewedAt,
-    updatedAt: reviewedAt, settlementSource: record.evidenceUrl,
+    updatedAt: reviewedAt, settlementSource: record.evidenceUrl || (Array.isArray(record.sourceUrls) ? record.sourceUrls[0] || null : null),
     settlementEvidence: allEvidence,
     settlementReviewStatus: "approved_by_separate_reviewer_credential",
     independentSettlementReview: independentReview,
@@ -368,6 +409,13 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
     appliedCouponOutcome: claimedOutcome, settlementLearningId, reviewOperationId: operationId
   };
   await put(collection, caseId, approved);
+  if (caseType === "win_coupon") {
+    await put("library/post-match-followups", "post-match-" + coupon.id, {
+      ...(await get<any>("library/post-match-followups", "post-match-" + coupon.id) || {}),
+      status: "independently_reviewed", outcome: claimedOutcome,
+      independentReview, reviewedAt, settlementLearningId, updatedAt: reviewedAt
+    });
+  }
   const response = { accepted: true, decision, reviewCase: approved, coupon: updatedCoupon, outcomeApplied: true, settlementLearningId };
   await completeReviewOperation(operationId, claimed.operation, operationEtag, response);
   return { status: 200, body: response };

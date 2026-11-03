@@ -52,6 +52,10 @@ const required = [
   "netlify/lib/observed-market-settlement.mts",
   "netlify/functions/observed-market-settlement.mts",
   "netlify/lib/market-calibration.mts",
+  "netlify/functions/post-match-followup.mts",
+  "netlify/lib/post-match-followup.mts",
+  "netlify/functions/learning-observatory.mts",
+  "netlify/lib/learning-observatory.mts",
   "scripts/quality-gates.mjs"
 ];
 
