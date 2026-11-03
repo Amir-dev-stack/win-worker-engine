@@ -17,7 +17,7 @@ export async function createSimulationRun(input:any){
  const minLegs=Math.min(50,Math.max(2,Math.floor(Number(input?.minLegs)||2))),maxLegs=Math.min(50,Math.max(minLegs,Math.floor(Number(input?.maxLegs)||5)));
  const uniqueEvents=new Set(picks.map(p=>p.eventId)).size;if(uniqueEvents<maxLegs)throw Error("Dataset has "+uniqueEvents+" distinct events; at least "+maxLegs+" are required.");
  const id=crypto.randomUUID(),datasetId="dataset-"+id,createdAt=new Date().toISOString();
- const sportSet=[...new Set(picks.map(p=>p.sport))];const run={id,datasetId,status:"queued",createdAt,updatedAt:createdAt,mode:"historical_random_coupon_combinations",couponType:"multi_event_accumulator",sportScope:sportSet.length>1?"mixed_sport":sportSet[0]||"unknown",sports:sportSet,mixedSportEnabled:true,couponCount:count,minLegs,maxLegs,seed:clean(input?.seed)||id,selectionCount:picks.length,dataQuality:{uniqueEvents,uniqueSports:sportSet.length,allOddsPreEvent:true,allResultsSettled:true},sourceDisclosure:"Supplied historical odds and settled results only. This is descriptive coupon-construction analysis, not proof of predictive edge."};
+ const sportSet=[...new Set(picks.map(p=>p.sport))];const mixedSportOnly=input?.couponType==="mixed_sport"||input?.mixedSportOnly===true;if(mixedSportOnly&&sportSet.length<2)throw Error("Mixed-sport mode requires settled selections from at least two sports.");const run={id,datasetId,status:"queued",createdAt,updatedAt:createdAt,mode:"historical_random_coupon_combinations",couponType:mixedSportOnly?"mixed_sport_multi_event":"multi_event_accumulator",mixedSportOnly,sportScope:sportSet.length>1?"mixed_sport":sportSet[0]||"unknown",sports:sportSet,mixedSportEnabled:sportSet.length>1,couponCount:count,minLegs,maxLegs,seed:clean(input?.seed)||id,selectionCount:picks.length,dataQuality:{uniqueEvents,uniqueSports:sportSet.length,allOddsPreEvent:true,allResultsSettled:true},sourceDisclosure:"Supplied historical odds and settled results only. This is descriptive coupon-construction analysis, not proof of predictive edge."};
  await put("library/simulation-datasets",datasetId,{id:datasetId,runId:id,selections:picks,createdAt});await put("library/simulation-runs",id,run);return run;
 }
 export async function executeSimulationRun(id:string){
@@ -31,7 +31,15 @@ export async function executeSimulationRun(id:string){
  await put("library/simulation-runs",id,{...run,status:"running",startedAt:new Date().toISOString()});
  for(let n=0;n<run.couponCount;n++){
   const legCount=run.minLegs+Math.floor(rand()*(run.maxLegs-run.minLegs+1)),pool=events.slice(),chosen:Pick[]=[];
-  for(let j=0;j<legCount;j++){const ix=Math.floor(rand()*pool.length),group=pool.splice(ix,1)[0];chosen.push(group[Math.floor(rand()*group.length)]);}
+  if(run.mixedSportOnly){
+   const sportGroups=new Map<string,Pick[][]>();for(const group of pool){const sport=group[0]?.sport||"unknown";const list=sportGroups.get(sport)||[];list.push(group);sportGroups.set(sport,list);}
+   const available=[...sportGroups.entries()].filter(([,groups])=>groups.length>0);
+   if(available.length<2)throw Error("Mixed-sport simulation requires at least two sports with distinct events.");
+   const firstIndex=Math.floor(rand()*available.length),first=available.splice(firstIndex,1)[0];
+   const secondIndex=Math.floor(rand()*available.length),second=available.splice(secondIndex,1)[0];
+   for(const [,groups] of [first,second]){const ix=Math.floor(rand()*groups.length),group=groups[ix];pool.splice(pool.indexOf(group),1);chosen.push(group[Math.floor(rand()*group.length)]);}
+  }
+  while(chosen.length<legCount){const ix=Math.floor(rand()*pool.length),group=pool.splice(ix,1)[0];chosen.push(group[Math.floor(rand()*group.length)]);}
   const active=chosen.filter(p=>p.result!=="void"),couponSports=[...new Set(chosen.map(p=>p.sport))],outcome=active.length===0?"void":active.some(p=>p.result==="lost")?"lost":"won";
   const odds=active.reduce((v,p)=>v*p.odds,1),legKey=String(legCount),legStats=byLegCount[legKey]||(byLegCount[legKey]={coupons:0,won:0,lost:0,voided:0}),record={id:id+"-coupon-"+(n+1),runId:id,recordType:"simulation_coupon",origin:"simulation",couponType:couponSports.length>1?"mixed_sport_multi_event":"single_sport_multi_event",sports:couponSports,isMixedSport:couponSports.length>1,outcome,combinedOdds:Number(odds.toFixed(5)),legCount,selections:chosen,createdAt:new Date().toISOString()};
   if(couponSports.length>1)mixedSportCouponCount++;for(const p of chosen){const ss=bySport[p.sport]||(bySport[p.sport]={selections:0,won:0,lost:0,voided:0});ss.selections++;if(p.result==="won")ss.won++;else if(p.result==="lost")ss.lost++;else ss.voided++;}legStats.coupons++;if(outcome==="won")legStats.won++;else if(outcome==="lost")legStats.lost++;else legStats.voided++;
