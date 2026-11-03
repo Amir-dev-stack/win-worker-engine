@@ -140,7 +140,23 @@ async function refreshSettlementQueue(){
   $("#settlementQueue").innerHTML=items.length?'<h4>Pending independent review ('+items.length+')</h4>'+items.slice(0,30).map(x=>'<article class="mini-row"><div><b>'+escapeHtml(x.couponId)+'</b><small>'+escapeHtml(x.claimedOutcome)+' claimed · '+escapeHtml(x.reviewStatus)+' · '+escapeHtml(new Date(x.submittedAt).toLocaleString())+'</small><p>'+escapeHtml(x.evidenceSummary)+'</p><a href="'+escapeHtml(safeUrl(x.evidenceUrl))+'" target="_blank" rel="noopener noreferrer">Open evidence ↗</a></div></article>').join(""):'<div class="empty">No settlement evidence submissions awaiting review.</div>';
  }catch(e){$("#settlementQueue").textContent="Settlement queue unavailable: "+e.message}
 }
-async function refresh(){
+
+async function refreshResearch(){
+ try{
+  const d=await api("/api/research-status");
+  const providers=(d.providers||[]).map(p=>'<article class="mini-row"><div><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.status||"unknown")+' · '+escapeHtml(p.accessMode||"")+' · licence '+escapeHtml(p.licenceReview||"unverified")+'</small></div></article>').join("");
+  const open=d.openfootball||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{};
+  const sections=[
+   '<article class="mini-row"><div><b>OpenFootball historical results</b><small>'+escapeHtml(open.status||"not yet run")+' · '+Number(open.totals?.matchesImported||0).toLocaleString()+' matches imported · last check '+escapeHtml(open.lastCheck||"not yet")+'</small></div></article>',
+   '<article class="mini-row"><div><b>Consensus market history</b><small>'+escapeHtml(cons.status||"not yet run")+' · '+Number(lab.consensusMarketRows||0).toLocaleString()+' rows · '+Number(lab.consensusSettledRows||0).toLocaleString()+' settled events</small></div></article>',
+   '<article class="mini-row"><div><b>SharpAPI multi-source snapshots</b><small>'+escapeHtml(sharp.status||"not yet run")+' · '+Number(lab.observedMarketRows||0).toLocaleString()+' observed prices · '+Number(lab.observedMarketFamilies?.length||0)+' market families</small></div></article>',
+   '<article class="mini-row"><div><b>Market calibration lab</b><small>'+escapeHtml(cal.status||"waiting for first report")+' · '+Number(cal.totalEvents||0).toLocaleString()+' events · '+Number(cal.reports?.length||0)+' dataset reports · consensus benchmark only</small></div></article>',
+   '<article class="mini-row"><div><b>Persistent entity agents</b><small>'+Number(agents.profiles||0)+' profiles · '+Number(agents.queued||0)+' queued · '+Number(agents.running||0)+' running · '+Number(agents.completed||0)+' completed · '+Number(agents.failed||0)+' failed</small></div></article>'
+  ];
+  $("#researchEngineStatus").innerHTML='<h4>Data providers</h4>'+providers+'<h4>Pipeline status</h4>'+sections.join("")+'<p class="detail-meta">Human Coupon Lab remains isolated. AI entity agents execute one queued task per four-hour cycle only when the OpenAI key, model and explicit budget approval gates allow it.</p>';
+ }catch(e){$("#researchEngineStatus").innerHTML='<div class="empty">Research status unavailable: '+escapeHtml(e.message)+'</div>';}
+}
+\nasync function refresh(){
  try{
   const health=await fetch("/api/health").then(r=>r.json());
   $("#apiStatus").textContent=health.status==="online"?"API online":"API unavailable";
@@ -159,7 +175,7 @@ async function refresh(){
   await refreshSimulations();
  }catch(e){$("#apiStatus").textContent="Authentication needed";$("#runsList").textContent=e.message}
 }
-$("#saveToken").addEventListener("click",e=>{e.preventDefault();token=$("#tokenInput").value.trim();if(token){sessionStorage.setItem("win-token",token);dialog.close();refresh();refreshSources()}});
+$("#saveToken").addEventListener("click",e=>{e.preventDefault();token=$("#tokenInput").value.trim();if(token){sessionStorage.setItem("win-token",token);dialog.close();refresh();refreshSources();refreshResearch()}});
 $("#runForm").addEventListener("submit",async e=>{
  e.preventDefault();
  const form=e.currentTarget;
@@ -192,7 +208,7 @@ $("#runForm").addEventListener("submit",async e=>{
 $("#tipForm").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget;const f=new FormData(form);try{await api("/api/tips",{method:"POST",body:JSON.stringify({tip:f.get("tip"),sourceUrl:f.get("sourceUrl"),tipster:f.get("tipster")})});form.reset();await refresh()}catch(err){alert(err.message)}});
 $("#runsList").addEventListener("click",e=>{const b=e.target.closest("[data-run-id]");if(b)openRun(b.dataset.runId)});
 $("#refresh").addEventListener("click",refresh);
-$("#refreshCoverage").addEventListener("click",refreshCoverage);
+$("#refreshCoverage").addEventListener("click",refreshCoverage);\n$("#refreshResearch").addEventListener("click",refreshResearch);
 $("#settlementEvidenceForm").addEventListener("submit",async e=>{
  e.preventDefault();const form=e.currentTarget,f=new FormData(form),button=form.querySelector('button[type="submit"]');
  if(button){button.disabled=true;button.textContent="Submitting…";}
@@ -268,7 +284,7 @@ $("#libraryList").addEventListener("click",async e=>{
  }catch(err){alert(err.message);button.disabled=false}
 });
 
-if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();}
+if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();refreshResearch();}
 setInterval(()=>{if(token&&!document.hidden)refresh()},20000);
 
 $("#simulationForm").addEventListener("submit",async e=>{
