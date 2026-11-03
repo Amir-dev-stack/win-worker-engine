@@ -9,7 +9,7 @@
 <div class="shell">
 <aside class="sidebar">
 <div class="brand"><div class="mark">W</div><div><b>WIN</b><small>WORKER ENGINE</small></div></div>
-<nav><a class="active" href="#overview">Overview</a><a href="#connections">Connections</a><a href="#simulations">Simulation lab</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#coverage">Evidence coverage</a><a href="#library">Knowledge library</a><a href="#ledger">Prediction ledger</a></nav>
+<nav><a class="active" href="#overview">Overview</a><a href="#connections">Connections</a><a href="#simulations">Simulation lab</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#coverage">Evidence coverage</a><a href="#researchEngine">Data & agent engine</a><a href="#library">Knowledge library</a><a href="#ledger">Prediction ledger</a></nav>
 <div class="side-bottom"><span class="pulse"></span> Engine console <small>On-demand research · no automatic betting</small></div>
 </aside>
 <main>
@@ -24,7 +24,7 @@
 <div class="panel-head"><div><div class="eyebrow">SYSTEM CONNECTIONS</div><h2>Connected workflow</h2><p>Services run only when you ask WIN to research or inspect a record.</p></div><span class="tag">ON DEMAND</span></div>
 <div class="connection-grid">
 <div><b>ChatGPT ↔ WIN MCP</b><span id="mcpStatus">OAuth connection setup in progress</span></div>
-<div><b>WIN ↔ AI workers</b><span>OpenAI Responses API · configured in Netlify</span></div>
+<div><b>WIN ↔ AI workers</b><span>OpenAI Agents SDK + Responses API · fail-closed budget approval gate</span></div>
 <div><b>Research storage</b><span>Netlify Blobs · runs, tips and frozen forecasts</span></div>
 <div><b>STS prices</b><span>Public/authorized data only · no official STS API connection</span></div>
 </div>
@@ -61,6 +61,10 @@
 <label class="check-row"><input name="authorizedToStore" type="checkbox" required> I confirm I am entitled to provide and retain this coupon information.</label>
 <div class="form-foot"><span>WIN will not log into third-party accounts or bypass platform restrictions. Imported records begin as PENDING.</span><button type="submit">Import coupon into WIN ↗</button></div>
 </form>
+</section>
+<section class="panel" id="researchEngine">
+<div class="panel-head"><div><div class="eyebrow">AUTONOMOUS DATA & AGENT OPERATIONS</div><h2>Research data and persistent agents</h2><p>Public datasets, observed market snapshots, chronological calibration and separately queued entity agents. A registered source is not treated as connected until a successful sync is recorded.</p></div><button class="subtle" type="button" id="refreshResearch">Refresh research engine ↻</button></div>
+<div id="researchEngineStatus" class="mini-list"><div class="empty">Research engine status has not been loaded.</div></div>
 </section>
 <section class="panel" id="coverage">
 <div class="panel-head"><div><div class="eyebrow">EVIDENCE QUALITY & SETTLEMENT GOVERNANCE</div><h2>Coverage monitor</h2><p>See what WIN has actually stored, what is missing and what has gone stale. Registry entries are not counted as connected data.</p></div><button class="subtle" type="button" id="refreshCoverage">Refresh coverage ↻</button></div>
