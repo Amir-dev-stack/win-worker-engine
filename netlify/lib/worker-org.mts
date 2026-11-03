@@ -163,7 +163,7 @@ export type WorkerNode = {
   name: string;
   scope: Record<string, string>;
   status: string;
-  executionMode: "orchestrator" | "department_api_request" | "covered_by_department_checklist";
+  executionMode: "orchestrator" | "department_api_request" | "covered_by_department_checklist" | "queued_independent_api_request";
   assignedDepartment?: string;
 };
 
@@ -265,7 +265,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
 
   for (const sport of sports) {
     const sid = "sport-" + slug(sport);
-    nodes.push({ id: sid, parentId: "worker-network-director", tier: "T1", name: sport + " Sport Chief", scope: { sport, marketFamilies: getSportCapability(sport)?.marketFamilies.join(",") || "provider_defined" }, status: "assigned", executionMode: "covered_by_department_checklist", assignedDepartment: "D2" });
+    nodes.push({ id: sid, parentId: "worker-network-director", tier: "T1", name: sport + " Sport Chief", scope: { sport, marketFamilies: getSportCapability(sport)?.marketFamilies.join(",") || "provider_defined" }, status: "queued", executionMode: "queued_independent_api_request", assignedDepartment: "D2" });
   }
   for (const country of countries) {
     const relatedSports = [...new Set(candidates.filter((x: any) => x.country === country).map((x: any) => x.sport).filter(Boolean))];
@@ -417,7 +417,7 @@ export function buildWorkerNetwork(brief: any, scoutingReport = "", runId = "una
       departmentApiRequests: WIN_DEPARTMENTS.length,
       hierarchySpecialistAssignmentsAreIndependentApiSessions: false
     },
-    executionDisclosure: "Eight main department director passes are separate OpenAI Responses API requests. Sport, country, league, club, player, manager/coach and event nodes are persistent named agent identities activated on demand. Their entity-specific work is routed through the relevant department report; they are not always-on processes or falsely counted as separate model API sessions. Event specialist roles are assignments covered within department requests."
+    executionDisclosure: "Eight main department director passes are separate OpenAI Responses API requests. Sport, country, league, club, player, manager/coach and event nodes are persistent named agent identities. Each eligible node is also enqueued as its own independent API task, deduplicated by stable agent ID and freshness cooldown. A budget-gated scheduled worker executes at most one queued entity agent per learning cycle; queued work is not falsely reported as already run or always-on. Event specialist roles remain assignments covered within department requests."
   };
 }
 
