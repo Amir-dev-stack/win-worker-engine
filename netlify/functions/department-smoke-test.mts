@@ -131,9 +131,9 @@ export default async (req: Request) => {
       const sanitizeProviderText = (value: string) => value
         .replaceAll(apiKey, "[REDACTED API KEY]")
         .replace(/sk-[A-Za-z0-9_-]{8,}/g, "[REDACTED API KEY]")
-        .replace(/Bearer\\s+\\S+/gi, "Bearer [REDACTED]")
-        .replace(/(authorization["']?\\s*[:=]\\s*["']?)([^"',\\s}]+)/gi, "$1[REDACTED]")
-        .replace(/\\s+/g, " ")
+        .replace(/Bearer\s+\S+/gi, "Bearer [REDACTED]")
+        .replace(/(authorization["']?\s*[:=]\s*["']?)([^"',\s}]+)/gi, "$1[REDACTED]")
+        .replace(/\s+/g, " ")
         .slice(0, 320);
       const providerMessageRaw = typeof providerError.message === "string"
         ? providerError.message
