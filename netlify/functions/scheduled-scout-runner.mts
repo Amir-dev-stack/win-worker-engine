@@ -120,7 +120,6 @@ export default async (req: Request) => {
       updatedAt: completedAt, completedAt, learningReportVersion: 2, agentEvolution:agentEvolutionSummary,
       learningStages: stages,
       scoutSummary: { status: scout.status, report: scout.report, citations: scout.citations, error: scout.error || null },
-      agentEvolution:agentEvolutionSummary
     };
     await put("runs", run.id, completed);
 
