@@ -20,10 +20,11 @@ function readiness(proposal:any,pack:any){
  if(eventRows+consensusRows+observedRows<30)blockers.push("fewer_than_30_relevant_historical_rows");
  for(const requirement of proposal.requiredData){
   const r=requirement.toLowerCase();
-  if(/injur|lineup|roster/.test(r)&&playerRows===0)blockers.push("required_lineup_or_player_event_data_unavailable");
+  if(/injur/.test(r))blockers.push("injury_data_not_connected");
+  if(/player|lineup|roster|goalscorer|cards/.test(r)&&playerRows===0)blockers.push("required_player_or_lineup_event_data_unavailable");
   if(/odds|market|price|closing/.test(r)&&consensusRows+observedRows<30)blockers.push("required_market_price_data_insufficient");
   if(/result|fixture|score|event/.test(r)&&eventRows<30)blockers.push("required_event_result_data_insufficient");
-  if(/corner|shot|xg|possession|assist/.test(r))blockers.push("required_statistic_not_in_current_connected_sources:"+r.slice(0,80));
+  if(/corner|shot|xg|possession|assist|save|foul/.test(r))blockers.push("required_statistic_not_in_current_connected_sources:"+r.slice(0,80));
  }
  return {status:blockers.length?"blocked_missing_evidence_or_data":"ready_for_human_sandbox_approval",evaluationType:"data_readiness_only_not_performance_test",sport,eventRows,consensusRows,observedRows,playerEventRows:playerRows,availableRows:eventRows+consensusRows+observedRows,blockers:[...new Set(blockers)],evaluatedAt:new Date().toISOString(),humanCouponLabTouched:false,productionPromotion:"blocked_until_separate_chronological_oos_test_and_independent_review"};
 }
