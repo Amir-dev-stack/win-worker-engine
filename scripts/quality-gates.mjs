@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 const read = path => readFile(path, "utf8");
 const checks = [];
 const add = (name, ok, detail) => checks.push({ name, ok: Boolean(ok), detail });
-const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library] = await Promise.all([
+const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library, settlementBridge, settlementFn] = await Promise.all([
   read("netlify/lib/coverage.mts"), read("netlify/functions/coverage.mts"),
   read("netlify/functions/coverage-monitor.mts"), read("netlify/functions/human-coupon-settlements.mts"),
   read("netlify/lib/source-intelligence.mts"), read("netlify/functions/worker-runner.mts"),
@@ -12,7 +12,8 @@ const [coverage, coverageApi, monitor, settlement, source, worker, ai, pkg, buil
   read("netlify/functions/openfootball-sync.mts"), read("netlify/functions/research-status.mts"),
   read("netlify/lib/consensus-market-adapter.mts"), read("netlify/functions/consensus-market-sync.mts"),
   read("netlify/lib/sharpapi-sample-adapter.mts"), read("netlify/functions/sharpapi-sample-sync.mts"), read("netlify/lib/market-calibration.mts"), read("netlify/lib/worker-org.mts"), read("netlify/functions/scheduled-scout-runner.mts"),
-  read("netlify/lib/openfootball-worldcup-adapter.mts"), read("netlify/functions/openfootball-worldcup-sync.mts"), read("netlify/lib/library.mts")
+  read("netlify/lib/openfootball-worldcup-adapter.mts"), read("netlify/functions/openfootball-worldcup-sync.mts"), read("netlify/lib/library.mts"),
+  read("netlify/lib/observed-market-settlement.mts"), read("netlify/functions/observed-market-settlement.mts")
 ]);
 add("Coverage is calculated from persisted evidence", coverage.includes("library/research-evidence") && coverage.includes("not_observed") && coverage.includes("stale_or_undated"), "No missing coverage is fabricated.");
 add("Every registered sport is reported", coverage.includes("SPORT_REGISTRY.map") && coverage.includes("requiredDomains"), "Sport coverage is based on the current registry.");
@@ -45,6 +46,11 @@ add("World Cup sync is separately scheduled and no-AI", worldCupSync.includes("1
 add("Persistent agent profiles are available in the WIN library", library.includes("persistent-agent-profiles") && library.includes("agent-task-queue"), "Agents can reuse profiles and users can inspect their queued and completed tasks.");
 add("Historical baseline is evaluated per competition and season", modelLab.includes("competition_frequency_baseline_v1") && modelLab.includes("Each competition/season is evaluated separately"), "League and tournament scoring distributions are not pooled into one benchmark.");
 add("Player event evidence is available to agents", modelLab.includes("worldCupPlayerStats") && modelLab.includes("topScorers") && modelLab.includes("mostStarts"), "Goals, cards and lineup participation are preserved as sourced player evidence.");
+add("Observed real bookmaker prices settle only against exact public match evidence", settlementBridge.includes("eventTimeSemantics===\"scheduled_event_start\"") && settlementBridge.includes("ambiguous_match") && settlementBridge.includes("unsupported_market") && settlementBridge.includes("sourceUrl"), "Pre-match prices are joined to exact team/date matches; uncertain and unsupported markets are excluded.");
+add("Settled bookmaker observations feed the existing simulation engine", settlementBridge.includes("createSimulationRun") && settlementBridge.includes("executeSimulationRun") && settlementBridge.includes("oddsCapturedAt") && settlementBridge.includes("resultSource"), "The existing random-coupon simulator receives actual pre-event prices and separate settlement evidence.");
+add("Settlement bridge excludes prediction markets and does not use AI", settlementBridge.includes("bookmakerType!==\"prediction_market\"") && !settlementFn.includes("runWinAgent") && settlementFn.includes("17 7 * * *"), "The bridge is deterministic, daily and leaves prediction-market expiry records out.");
+add("Model Lab agents can review actual settled-price simulation", modelLab.includes("latestObservedMarketSettlement") && modelLab.includes("settledObservedMarketRows") && statusFn.includes("observedMarketSettlement"), "Simulation reports are included in the bounded agent evidence pack.");
+add("Model Lab data is visible in the private library", library.includes("category === \"market-data\"") && html.includes("value=\"market-data\"") && app.includes("Settled bookmaker prices"), "Users can inspect imported datasets, settlement records and reports.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
