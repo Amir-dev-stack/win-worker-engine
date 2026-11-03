@@ -136,6 +136,7 @@ export async function settleObservedWorldCupMarkets(){
   if(!simRun||simRun.status!=="completed"){
    if(!simRun){
     const created=await createSimulationRun({selections:picks,couponCount:5000,minLegs:2,maxLegs:Math.min(5,uniqueEvents),seed:sourceHash.slice(0,24)});
+    await put("library/model-lab/observed-market-settlement-runs",sourceHash,{id:sourceHash,status:"simulation_running",createdAt:new Date().toISOString(),sourceHash,settledSelections:picks.length,uniqueEvents,simulationRunId:created.id,unmatched});
     simRun=await executeSimulationRun(created.id);
    }else simRun=await executeSimulationRun(simRun.id);
   }
