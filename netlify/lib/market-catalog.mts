@@ -106,6 +106,7 @@ export type ObservedMarket = {
   impliedProbability?: number;
   bookmakerType?: "sportsbook" | "exchange" | "prediction_market" | "unknown";
   sourceSnapshotOnly?: boolean;
+  eventTimeSemantics?: "scheduled_event_start" | "market_expiry" | "unknown";
   observedAt: string;
   startsAt?: string;
   live: boolean;
