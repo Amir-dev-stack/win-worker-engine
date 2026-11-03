@@ -145,7 +145,8 @@ async function refreshSettlementQueue(){
 function renderSourceCandidates(candidates=[]){
  return candidates.slice(0,5).map(x=>{
   const url=safeUrl(x.sourceUrl);
-  return '<article class="mini-row"><div><b>'+escapeHtml(x.name)+'</b><small>'+escapeHtml(x.license||"Licence missing")+' · '+escapeHtml(x.licenseStatus||"unverified")+' · '+escapeHtml((x.sports||[]).join(", ")||"sport unclassified")+' · '+escapeHtml(x.reviewStatus||"review required")+'</small></div>'+(url?'<a href="'+escapeHtml(url)+'" target="_blank" rel="noopener">Source</a>':'')+'</article>';
+  const reviewButton=x.reviewStatus==="review_required"&&x.licenseStatus==="open_data_license_candidate"?'<button class="subtle" data-source-review="approve_for_adapter_review" data-candidate-id="'+escapeHtml(x.id)+'">Approve for adapter review</button>':"";
+  return '<article class="mini-row"><div><b>'+escapeHtml(x.name)+'</b><small>'+escapeHtml(x.license||"Licence missing")+' · '+escapeHtml(x.licenseStatus||"unverified")+' · '+escapeHtml((x.sports||[]).join(", ")||"sport unclassified")+' · '+escapeHtml(x.reviewStatus||"review required")+'</small></div>'+(url?'<a href="'+escapeHtml(url)+'" target="_blank" rel="noopener">Source</a>':'')+reviewButton+'</article>';
  }).join("");
 }
 
@@ -167,6 +168,12 @@ async function refreshResearch(){
    '<article class="mini-row"><div><b>Persistent entity agents</b><small>'+Number(agents.profiles||0)+' profiles · '+Number(agents.queued||0)+' queued · '+Number(agents.running||0)+' running · '+Number(agents.completed||0)+' completed · '+Number(agents.failed||0)+' failed</small></div></article>'
   ];
   $("#researchEngineStatus").innerHTML='<h4>Data providers</h4>'+providers+'<h4>Pipeline status</h4>'+sections.join("")+'<h4>Discovered public source candidates</h4>'+(candidateRows||'<div class="empty">No candidates discovered yet.</div>')+'<p class="detail-meta">Discovered sources remain review-only. Approving a source for adapter review does not connect or activate automatic ingestion. Human Coupon Lab remains isolated. AI entity agents execute one queued task per four-hour cycle only when the OpenAI key, model and explicit budget approval gates allow it.</p>';
+  $("#researchEngineStatus").querySelectorAll("[data-source-review]").forEach(btn=>btn.addEventListener("click",async()=>{
+   btn.disabled=true;
+   try{await api("/api/research-source-candidates",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({candidateId:btn.dataset.candidateId,decision:btn.dataset.sourceReview,reviewNote:"Approved for adapter design only; independently verify source terms and schema before activation."})});await refreshResearch();}
+   catch(e){btn.disabled=false;alert(e.message);}
+  }));
+
  }catch(e){$("#researchEngineStatus").innerHTML='<div class="empty">Research status unavailable: '+escapeHtml(e.message)+'</div>';}
 }
 
