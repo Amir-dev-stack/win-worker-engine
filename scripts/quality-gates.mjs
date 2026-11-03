@@ -43,6 +43,8 @@ add("Research status exposes agent execution", statusFn.includes("persistentAgen
 add("World Cup data importer preserves CC0 provenance and player events", worldCupAdapter.includes("openfootball-worldcup-json") && worldCupAdapter.includes("player-event-datasets") && worldCupAdapter.includes("resultBasis:\"regulation_90min\"") && worldCupAdapter.includes("rawChecksum"), "Tournament results, goals, lineups, substitutions and cards remain source-attributed.");
 add("World Cup sync is separately scheduled and no-AI", worldCupSync.includes("17 4 * * *") && !worldCupSync.includes("runWinAgent"), "Tournament ingestion is bounded and does not consume model budget.");
 add("Persistent agent profiles are available in the WIN library", library.includes("persistent-agent-profiles") && library.includes("agent-task-queue"), "Agents can reuse profiles and users can inspect their queued and completed tasks.");
+add("Historical baseline is evaluated per competition and season", modelLab.includes("competition_frequency_baseline_v1") && modelLab.includes("Each competition/season is evaluated separately"), "League and tournament scoring distributions are not pooled into one benchmark.");
+add("Player event evidence is available to agents", modelLab.includes("worldCupPlayerStats") && modelLab.includes("topScorers") && modelLab.includes("mostStarts"), "Goals, cards and lineup participation are preserved as sourced player evidence.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
