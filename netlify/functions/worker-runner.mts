@@ -309,38 +309,69 @@ export default async (req: Request) => {
         failures: missingLibraryReceipts
       };
     }
-    const masterValid = master.status === "completed" && Boolean(master.report?.trim()) &&
+    const masterExecutionValid = master.status === "completed" && Boolean(master.report?.trim()) &&
       missingLibraryReceipts.length === 0;
-    const riskAssessment = masterValid ? extractJsonBlock(master.report || "", "WIN_RISK_ASSESSMENT_JSON") : null;
+    const riskAssessment = masterExecutionValid
+      ? extractJsonBlock(master.report || "", "WIN_RISK_ASSESSMENT_JSON") : null;
+    const riskAssessmentValid = Boolean(
+      riskAssessment &&
+      Number.isFinite(riskAssessment.overallRiskPercent) &&
+      riskAssessment.overallRiskPercent >= 0 &&
+      riskAssessment.overallRiskPercent <= 100 &&
+      riskAssessment.riskScale === "heuristic_0_to_100_higher_is_riskier" &&
+      riskAssessment.isCalibratedLossProbability === false &&
+      Array.isArray(riskAssessment.components) &&
+      Array.isArray(riskAssessment.topRiskDrivers) &&
+      Array.isArray(riskAssessment.uncertainties) &&
+      Array.isArray(riskAssessment.couponRisks)
+    );
+    const freezeEligible = masterExecutionValid && riskAssessmentValid;
+
+    gatedWorkerNetwork.riskAssessmentGate = {
+      status: freezeEligible ? "passed" : "failed",
+      failures: freezeEligible ? [] : [
+        ...(!masterExecutionValid ? ["Required department/challenge reports, Global Master response or library review failed."] : []),
+        ...(!riskAssessmentValid ? ["Global Master risk-assessment JSON is missing or invalid."] : [])
+      ]
+    };
+
     const completed = {
       ...withDebate,
-      status: "completed",
+      status: freezeEligible ? "completed" : "failed",
       coupons,
-      master: masterValid ? master : {
+      master: masterExecutionValid ? master : {
         workerId: crypto.randomUUID(), role: "WIN Global Master — risk assessment unavailable",
         phase: "final", status: "failed",
-        report: "Risk percentage unavailable because the Global Master risk assessment or required library receipt was incomplete.",
+        report: "Risk assessment unavailable because required research, challenge or library-review checks did not complete.",
         citations: [], startedAt: new Date().toISOString(), completedAt: new Date().toISOString()
       },
-      riskAssessment: riskAssessment && typeof riskAssessment.overallRiskPercent === "number"
-        ? riskAssessment : null,
+      riskAssessment: riskAssessmentValid ? riskAssessment : null,
       decision: undefined,
       workerNetwork: gatedWorkerNetwork,
+      ...(!freezeEligible ? {
+        error: "No frozen forecast created: the complete research, challenge, library-review and Global Master risk-assessment gates did not all pass."
+      } : {}),
       updatedAt: new Date().toISOString(),
       completedAt: new Date().toISOString()
     };
     await put("runs", run.id, completed);
 
-    const predictionId = crypto.randomUUID();
-    const prediction = {
-      id: predictionId, runId: run.id, recordedAt: new Date().toISOString(),
-      frozen: true, brief, coupons: completed.coupons, riskAssessment: completed.riskAssessment,
-      workerResponseIds: [...reports, ...debate, master].map(x => x.responseId).filter(Boolean),
-      workerNetworkSummary: gatedWorkerNetwork.executionSummary,
-      libraryReviewGate: gatedWorkerNetwork.libraryReviewGate
-    };
-    await put("predictions", predictionId, prediction);
-    await put("library/frozen-predictions", predictionId, prediction);
+    // A frozen prediction is a completed evidence record, not a placeholder.
+    // Failed or incomplete investigations remain archived as runs only.
+    if (freezeEligible) {
+      const predictionId = crypto.randomUUID();
+      const prediction = {
+        id: predictionId, runId: run.id, recordedAt: new Date().toISOString(),
+        frozen: true, brief, coupons: completed.coupons, riskAssessment: completed.riskAssessment,
+        workerResponseIds: [...reports, ...debate, master].map(x => x.responseId).filter(Boolean),
+        workerNetworkSummary: gatedWorkerNetwork.executionSummary,
+        libraryReviewGate: gatedWorkerNetwork.libraryReviewGate,
+        riskAssessmentGate: gatedWorkerNetwork.riskAssessmentGate
+      };
+      await put("predictions", predictionId, prediction);
+      await put("library/frozen-predictions", predictionId, prediction);
+    }
+
     const humanCouponArchive = await archiveHumanCouponResearch(reports);
     const completedWithHumanResearch = { ...completed, humanCouponArchive };
     const libraryArchive = await archiveRunToLibrary({ ...completedWithHumanResearch, libraryArchive: undefined });
