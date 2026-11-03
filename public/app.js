@@ -79,6 +79,54 @@ async function openRun(id){
  try{renderRunDetail(await api("/api/runs/"+encodeURIComponent(id)))}
  catch(e){node.textContent=e.message}
 }
+function renderCouponBoardCard(item, mode) {
+ const title=escapeHtml(item.label||item.id||"WIN coupon");
+ const origin=escapeHtml(item.origin==="win"?"WIN-built":"Human / imported");
+ const state=escapeHtml(mode==="candidate"?(item.status||"BLOCKED"):(item.outcome||"pending").toUpperCase());
+ const date=item.settledAt||item.createdAt||item.archivedAt||item.updatedAt;
+ const odds=item.combinedOdds===null||item.combinedOdds===undefined?"Not verified":Number(item.combinedOdds).toFixed(2);
+ const selections=Array.isArray(item.legs)?item.legs:(Array.isArray(item.selections)?item.selections:[]);
+ const rows=selections.map((selection,index)=>{
+  const event=escapeHtml(selection.event||selection.match||"Event not specified");
+  const market=escapeHtml(selection.market||selection.selectionType||"Market not specified");
+  const pick=escapeHtml(selection.selection||selection.pick||selection.outcome||"Pick not specified");
+  const price=selection.odds===null||selection.odds===undefined?"—":Number(selection.odds).toFixed(2);
+  const result=escapeHtml(selection.result||selection.settlement||"—");
+  const url=safeUrl(selection.sourceUrl||selection.url||selection.reference||"");
+  const source=url?'<a href="'+escapeHtml(url)+'" target="_blank" rel="noopener noreferrer">Evidence ↗</a>':"Not supplied";
+  const observed=selection.observedAt?'<small>'+escapeHtml(selection.observedAt)+'</small>':"";
+  return '<tr><td>'+(index+1)+'</td><td>'+event+'</td><td>'+market+'<br><b>'+pick+'</b></td><td>'+price+'</td><td>'+result+'</td><td>'+source+observed+'</td></tr>';
+ }).join("");
+ const table=rows?'<div class="table-wrap"><table><thead><tr><th>#</th><th>Event</th><th>Market / pick</th><th>Odds</th><th>Result</th><th>Source</th></tr></thead><tbody>'+rows+'</tbody></table></div>':"";
+ const text=item.couponText?'<pre>'+escapeHtml(item.couponText)+'</pre>':"";
+ const blockers=Array.isArray(item.blockers)&&item.blockers.length?'<p class="report-error"><b>Blockers:</b> '+escapeHtml(item.blockers.join(" · "))+'</p>':"";
+ const note=item.executionDisclosure||item.notes||item.settlementReviewStatus||"";
+ const placement=item.executionStatus==="not_placed_by_WIN"||item.placementStatus==="not_placed_by_WIN"
+  ?'<p class="detail-meta">Research candidate only · not placed by WIN</p>':"";
+ const details=table||text||blockers?'<details><summary>View full coupon ('+selections.length+' selections)</summary>'+table+text+blockers+'</details>':'<p class="detail-meta">No structured selections were stored for this record.</p>';
+ return '<article class="coupon-board-card"><div class="report-title"><b>'+title+'</b><span class="decision">'+state+'</span></div><small>'+origin+' · '+escapeHtml(item.sport||"Sport unspecified")+' · '+escapeHtml(item.competition||"Competition unspecified")+(date?' · '+escapeHtml(new Date(date).toLocaleString()):"")+'</small><p>Combined odds: <b>'+odds+'</b> · '+selections.length+' selections</p>'+placement+(note?'<p class="detail-meta">'+escapeHtml(note)+'</p>':"")+details+'</article>';
+}
+async function refreshCouponBoards(){
+ const status=$("#couponBoardStatus");
+ if(!status)return;
+ try{
+  const [built,won,lost]=await Promise.all([
+   api("/api/library?category=win-candidates&limit=40"),
+   api("/api/library?category=winning&limit=40"),
+   api("/api/library?category=losing&limit=40")
+  ]);
+  const lists=[
+   {id:"#winBuiltList",count:"#winBuiltCount",items:built.items||[],mode:"candidate",empty:"No WIN-built candidates archived yet. Build a coupon from the Research Runs section."},
+   {id:"#wonCouponList",count:"#wonCouponCount",items:won.items||[],mode:"outcome",empty:"No coupons have a recorded won outcome yet."},
+   {id:"#lostCouponList",count:"#lostCouponCount",items:lost.items||[],mode:"outcome",empty:"No coupons have a recorded lost outcome yet."}
+  ];
+  for(const list of lists){
+   $(list.count).textContent=String(list.items.length);
+   $(list.id).innerHTML=list.items.length?list.items.map(item=>renderCouponBoardCard(item,list.mode)).join(""):'<div class="empty">'+list.empty+'</div>';
+  }
+  status.textContent="Loaded "+(built.count||0)+" WIN-built candidates · "+(won.count||0)+" won · "+(lost.count||0)+" lost. Outcomes appear here after evidence is submitted.";
+ }catch(error){status.textContent="Coupon boards could not be refreshed: "+error.message;}
+}
 async function refreshLibrary(){
  const category=$("#libraryCategory")?.value||"all";
  const query=$("#libraryQuery")?.value.trim()||"";
@@ -104,6 +152,7 @@ async function refreshLibrary(){
   $("#libraryStatus").textContent="Library unavailable: "+e.message;
   $("#libraryList").innerHTML='<div class="empty">Could not load the private WIN library.</div>';
  }
+ await refreshCouponBoards();
 }
 async function refreshSimulations(){
  const category=$("#simulationCategory")?.value||"runs";
@@ -546,7 +595,7 @@ $("#libraryList").addEventListener("click",async e=>{
  }catch(err){alert(err.message);button.disabled=false}
 });
 
-if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();refreshResearch();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
+if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();refreshResearch();refreshCouponBoards();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
 setInterval(()=>{if(token&&!document.hidden)refresh()},20000);
 
 $("#simulationForm").addEventListener("submit",async e=>{

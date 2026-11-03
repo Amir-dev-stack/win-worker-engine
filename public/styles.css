@@ -36,3 +36,25 @@ select{width:100%;background:#0b1321;border:1px solid #2b3b54;border-radius:8px;
 .budget-alert-row small{display:block;margin-top:4px}
 @media(max-width:900px){.budget-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.budget-grid{grid-template-columns:1fr 1fr}.budget-controls{align-items:flex-start}.budget-actions{width:100%}.budget-actions button{flex:1}}
+
+
+.coupon-board-status{font-size:11px;color:var(--muted);padding:10px 0}
+.coupon-board-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:8px 0 18px}
+.coupon-board{border:1px solid var(--line);border-radius:10px;background:#0b1321;padding:12px;min-width:0}
+.coupon-board-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.coupon-board-head b,.coupon-board-head small{display:block}
+.coupon-board-head b{font-size:13px;color:#e3edfc}
+.coupon-board-head small{font-size:10px;line-height:1.4;color:var(--muted);margin-top:4px}
+.coupon-board-card{border:1px solid #263850;border-radius:8px;padding:10px;margin:9px 0;min-width:0}
+.coupon-board-card .report-title b{font-size:11px}
+.coupon-board-card>small,.coupon-board-card .detail-meta{font-size:10px;color:var(--muted);line-height:1.45;display:block;margin:6px 0}
+.coupon-board-card p{font-size:11px;color:#cbd8ea;line-height:1.45;margin:7px 0}
+.coupon-board-card details{margin-top:9px;border-top:1px solid var(--line);padding-top:8px}
+.coupon-board-card summary{font-size:11px;color:#a9c7f8;cursor:pointer}
+.coupon-board-card .table-wrap{overflow-x:auto;margin-top:8px}
+.coupon-board-card table{min-width:540px;font-size:10px}
+.coupon-board-card th,.coupon-board-card td{padding:7px;text-align:left;vertical-align:top}
+.coupon-board-card pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:10px;line-height:1.45;color:#d4deef}
+.coupon-board-card a{color:#9fc4ff}
+@media(max-width:1100px){.coupon-board-grid{grid-template-columns:1fr 1fr}.coupon-board:first-child{grid-column:1/-1}}
+@media(max-width:700px){.coupon-board-grid{grid-template-columns:1fr}.coupon-board:first-child{grid-column:auto}}

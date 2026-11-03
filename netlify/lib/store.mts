@@ -27,3 +27,17 @@ export async function append(kind: string, id: string, value: unknown) {
 export async function remove(kind: string, id: string) {
   await store().delete(key(kind, id));
 }
+
+
+/** Atomic, single-key conditional helpers for review-operation claims. */
+export async function putIfNew(kind: string, id: string, value: unknown) {
+  return await store().setJSON(key(kind, id), value, { onlyIfNew: true });
+}
+export async function putIfMatch(kind: string, id: string, value: unknown, etag: string) {
+  return await store().setJSON(key(kind, id), value, { onlyIfMatch: etag });
+}
+export async function getWithMetadata<T>(kind: string, id: string): Promise<{ value: T; etag: string } | null> {
+  const result = await store().getWithMetadata(key(kind, id), { type: "json", consistency: "strong" });
+  if (!result) return null;
+  return { value: result.data as T, etag: result.etag };
+}

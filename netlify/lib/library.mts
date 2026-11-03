@@ -1,4 +1,4 @@
-import { get, list, put, remove } from "./store.mts";
+import { get, list, put, putIfNew, remove } from "./store.mts";
 
 export type LibraryOutcome = "pending" | "won" | "lost" | "void" | "partial" | "cancelled" | "unknown";
 export type EntityKind = "sport" | "country" | "league" | "club" | "player" | "manager" | "event" | "specialist";
@@ -120,12 +120,13 @@ export async function searchWinLibrary(options: {
   await ensureLegacyLibraryImport();
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 30));
   const category = clean(options.category || "all", 40).toLowerCase();
-  const [coupons, winning, losing, pending, lessons, lessonReviewCases, entities, profiles, observations, runs,
+  const [coupons, winning, losing, pending, winCouponCandidates, lessons, lessonReviewCases, entities, profiles, observations, runs,
     humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements, learningCycles, strategyCandidates, backtestRuns, persistentAgentProfiles, agentTasks, historicalMarketData, consensusMarketData, observedMarketData, settledObservedMarketData, playerEventData, marketCalibrationReports, marketSettlementRuns, sourceCandidates, sourceDiscoveryRuns, agentProposals, agentSandboxEvaluations] = await Promise.all([
     list<any>("library/coupons", 500),
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
     list<any>("library/pending-coupons", 500),
+    list<any>("library/win-coupon-candidates", 500),
     list<any>("library/lessons", 500),
     list<any>("library/lesson-review-cases", 300),
     list<any>("library/entity-profiles", 500),
@@ -169,6 +170,7 @@ export async function searchWinLibrary(options: {
   if (category === "winning") items = winning;
   else if (category === "losing") items = losing;
   else if (category === "pending") items = pending;
+  else if (category === "win-candidates") items = winCouponCandidates;
   else if (category === "coupons") items = coupons;
   else if (category === "lessons") items = lessons;
   else if (category === "lesson-reviews") items = lessonReviewCases;
@@ -188,7 +190,7 @@ export async function searchWinLibrary(options: {
   else if (category === "learning-cycles") items = learningCycles;
   else if (category === "strategies") items = strategyCandidates;
   else if (category === "backtests") items = backtestRuns;
-  else items = [...coupons, ...lessons, ...lessonReviewCases, ...entities, ...profiles, ...observations, ...runs,
+  else items = [...coupons, ...winCouponCandidates, ...lessons, ...lessonReviewCases, ...entities, ...profiles, ...observations, ...runs,
     ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns, ...persistentAgentProfiles, ...agentTasks, ...agentProposals, ...agentSandboxEvaluations, ...marketDataItems, ...sourceCandidates.map((x:any)=>({id:x.id,recordType:"research_source_candidate",name:x.name,sourceType:x.sourceType,sourceUrl:x.sourceUrl,license:x.license,licenseStatus:x.licenseStatus,sports:x.sports,dataDomains:x.dataDomains,downloads:x.downloads,stars:x.stars,reviewStatus:x.reviewStatus,automationAllowed:false,lastSeenAt:x.lastSeenAt})), ...sourceDiscoveryRuns];
 
   let filtered = relevant(items, clean(options.query, 1000));
@@ -198,7 +200,7 @@ export async function searchWinLibrary(options: {
   return {
     category, query: clean(options.query, 1000) || null, count: filtered.length,
     items: filtered.slice(0, limit), reviewedAt: new Date().toISOString(),
-    libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "coupons", "coupon-history",
+    libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "win-coupon-candidates", "coupons", "coupon-history",
       "human-tips", "lessons", "lesson-review-cases", "entity-profiles", "agent-profiles", "agent-observations",
       "agent-notes", "persistent-agent-profiles", "agent-task-queue", "agent-proposals", "agent-sandbox-evaluations", "market-data", "research-source-candidates", "research-source-discovery-runs", "sources", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases", "learning-cycles", "strategy-candidates", "backtest-runs"]
   };
@@ -612,6 +614,7 @@ export async function archiveRunToLibrary(run: any) {
     status: run.status, decision: run.decision || run.master?.report || null,
     brief: run.brief, workerNetwork: network,
     workers: run.workers || [], debate: run.debate || [], master: run.master || null,
+    coupons: safeArray(run.coupons, 100),
     createdAt: run.createdAt, completedAt: run.completedAt || null, savedAt
   });
 
@@ -855,6 +858,97 @@ export async function archiveRunToLibrary(run: any) {
     }
   }
 
+
+
+  // Save D6's structured candidates with stable IDs. Only fully qualified
+  // candidates enter the pending tracker; WIN does not place any bet.
+  let winCouponCandidatesSaved = 0;
+  let qualifiedWinCouponsTracked = 0;
+  for (const [index, candidate] of safeArray(run.coupons, 100).entries()) {
+    const candidateId = "win-candidate-" + slug(run.id + "-" + (candidate?.id || index));
+    const legs = safeArray(candidate?.legs, 100).map((leg: any) => ({
+      event: clean(leg?.event, 250) || "Unspecified event",
+      market: clean(leg?.market, 180) || "Unspecified market",
+      selection: clean(leg?.selection, 180) || "Unspecified selection",
+      odds: Number.isFinite(leg?.odds) && leg.odds > 1 ? leg.odds : null,
+      sourceUrl: clean(leg?.sourceUrl, 1500) || null,
+      observedAt: clean(leg?.observedAt, 100) || null,
+      settlementRule: clean(leg?.settlementRule, 500) || null,
+      blockers: safeArray(leg?.blockers, 20)
+    }));
+    const blockers = safeArray(candidate?.blockers, 200).map((item: any) => clean(item, 300)).filter(Boolean);
+    const fullyQualified = candidate?.status === "QUALIFIED" && legs.length > 0 && blockers.length === 0 &&
+      legs.every((leg: any) =>
+        leg.event !== "Unspecified event" && leg.market !== "Unspecified market" &&
+        leg.selection !== "Unspecified selection" && leg.odds !== null && Boolean(leg.sourceUrl) &&
+        Boolean(leg.observedAt) && Number.isFinite(Date.parse(leg.observedAt)) &&
+        Boolean(leg.settlementRule) && leg.blockers.length === 0
+      );
+    const candidateRecord = {
+      id: candidateId, recordType: "win_coupon_candidate", origin: "win",
+      runId: run.id, label: clean(candidate?.label, 250) || "WIN coupon candidate " + (index + 1),
+      status: fullyQualified ? "QUALIFIED" : "BLOCKED",
+      combinedOdds: fullyQualified && Number.isFinite(candidate?.combinedOdds) ? candidate.combinedOdds : null,
+      legs, blockers: fullyQualified ? [] : blockers.length ? blockers : ["Candidate did not pass all structured D6 qualification checks."],
+      riskFactors: safeArray(candidate?.riskFactors, 30),
+      correlationNotes: safeArray(candidate?.correlationNotes, 30),
+      placementStatus: "not_placed_by_WIN",
+      executionDisclosure: "This is a research candidate. WIN did not place a bet or verify a bookmaker ticket.",
+      createdAt: run.createdAt || savedAt, archivedAt: savedAt
+    };
+    await put("library/win-coupon-candidates", candidateId, candidateRecord);
+    winCouponCandidatesSaved++;
+
+    if (fullyQualified) {
+      const couponId = "win-coupon-" + slug(run.id + "-" + (candidate?.id || index));
+      const selections = legs.map((leg: any) => ({
+        event: leg.event, market: leg.market, pick: leg.selection,
+        odds: leg.odds, sourceUrl: leg.sourceUrl, observedAt: leg.observedAt,
+        settlementRule: leg.settlementRule, result: "pending"
+      }));
+      const couponText = [
+        candidateRecord.label,
+        ...selections.map((selection: any, legIndex: number) =>
+          (legIndex + 1) + ". " + selection.event + " — " + selection.market + ": " +
+          selection.pick + " @ " + Number(selection.odds).toFixed(2)
+        ),
+        "Combined odds: " + Number(candidateRecord.combinedOdds).toFixed(4),
+        "Placement: not placed by WIN"
+      ].join("\n");
+      const existingCoupon = await get<any>("library/coupons", couponId);
+      if (!existingCoupon) {
+        const trackedCoupon = {
+          id: couponId, recordType: "coupon", origin: "win",
+          label: candidateRecord.label, couponText, selections,
+          sport: clean(run.brief?.sport, 100) || null,
+          country: clean(run.brief?.country, 100) || null,
+          competition: clean(run.brief?.competition, 200) || null,
+          combinedOdds: candidateRecord.combinedOdds,
+          bookmaker: "Not placed — no bookmaker execution by WIN",
+          outcome: "pending", candidateStatus: "QUALIFIED",
+          winCandidateId: candidateId, runId: run.id,
+          executionStatus: "not_placed_by_WIN",
+          source: "WIN D6 structured coupon candidate",
+          sourceType: "win_constructed",
+          notes: "Research candidate only. It was not placed automatically. The user must confirm any real placement and provide settlement evidence before recording an outcome.",
+          createdAt: run.createdAt || savedAt, updatedAt: savedAt,
+          learningStatus: "awaiting_user_placement_and_settlement"
+        };
+        const write = await putIfNew("library/coupons", couponId, trackedCoupon);
+        if (write.modified) {
+          await putIfNew("library/coupon-history", couponId + ":created", {
+            id: couponId + ":created", couponId, action: "created",
+            outcome: "pending", at: trackedCoupon.createdAt, source: "win"
+          });
+        }
+      }
+      const currentCoupon = await get<any>("library/coupons", couponId);
+      if (currentCoupon?.outcome === "pending")
+        await put("library/pending-coupons", couponId, currentCoupon);
+      qualifiedWinCouponsTracked++;
+    }
+  }
+
   const learningReport = (run.workers || []).find((x: any) => x.departmentId === "D7");
   if (learningReport?.report) {
     await saveLearningNote({
@@ -887,21 +981,11 @@ export async function archiveRunToLibrary(run: any) {
       losingExamplesRead: run.brief?.libraryReview?.counts?.losingCouponsMatched ?? 0,
       createdAt: run.createdAt, savedAt
     });
-    if ((run.brief?.taskType === "build_latest_coupon" || run.brief?.taskType === "compare_coupons") &&
-      /^\s*FINAL DECISION:\s*BET\b/im.test(run.master?.report || "")) {
-      await saveCouponRecord({
-        id: "win-" + run.id, origin: "win",
-        label: "WIN proposed coupon — " + clean(run.brief?.event, 180),
-        couponText: clean(run.master?.report, MAX_TEXT),
-        sport: run.brief?.sport, country: run.brief?.country, competition: run.brief?.competition,
-        source: "WIN Global Master report; proposed only, not proof of placement",
-        notes: "Stored as pending until the user confirms placement and supplies a settlement source and evidence.",
-        outcome: "pending", runId: run.id
-      });
-    }
+    // Structured D6 candidates are tracked above; the full Master report remains in this research case.
   }
   return {
     savedAt, reportsArchived: reports.length, reportNotesSaved: reports.length,
-    entityProfilesUpdated, observationsSaved, researchEvidenceSaved
+    entityProfilesUpdated, observationsSaved, researchEvidenceSaved,
+    winCouponCandidatesSaved, qualifiedWinCouponsTracked
   };
 }
