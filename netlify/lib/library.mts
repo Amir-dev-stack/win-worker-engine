@@ -29,6 +29,24 @@ function isHttpsUrl(value: unknown): boolean {
 function evidenceHasHttpsUrl(entry: any): boolean {
   return isHttpsUrl(typeof entry === "string" ? entry : entry?.url || entry?.reference || entry?.sourceUrl || entry?.evidenceUrl);
 }
+
+/**
+ * Only a future reviewer flow with separately authenticated principals may promote a lesson.
+ * The current shared-token API deliberately cannot satisfy this predicate.
+ */
+function isIndependentlyValidatedLesson(lesson: any): boolean {
+  const review = lesson?.independentReview;
+  const submitterPrincipalId = clean(lesson?.submitterPrincipalId, 256);
+  const reviewerPrincipalId = clean(review?.reviewerPrincipalId, 256);
+  return lesson?.validationStatus === "validated"
+    && review?.status === "approved"
+    && review?.reviewerAuth === "distinct_authenticated_principal"
+    && Boolean(submitterPrincipalId)
+    && Boolean(reviewerPrincipalId)
+    && reviewerPrincipalId !== submitterPrincipalId
+    && Number.isFinite(Date.parse(review?.reviewedAt || ""))
+    && safeArray(review?.evidence, 30).some(evidenceHasHttpsUrl);
+}
 function searchText(value: unknown): string {
   try { return JSON.stringify(value).toLowerCase(); } catch { return ""; }
 }
@@ -102,13 +120,14 @@ export async function searchWinLibrary(options: {
   await ensureLegacyLibraryImport();
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 30));
   const category = clean(options.category || "all", 40).toLowerCase();
-  const [coupons, winning, losing, pending, lessons, entities, profiles, observations, runs,
+  const [coupons, winning, losing, pending, lessons, lessonReviewCases, entities, profiles, observations, runs,
     humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements, learningCycles, strategyCandidates, backtestRuns, persistentAgentProfiles, agentTasks, historicalMarketData, consensusMarketData, observedMarketData, settledObservedMarketData, playerEventData, marketCalibrationReports, marketSettlementRuns, sourceCandidates, sourceDiscoveryRuns, agentProposals, agentSandboxEvaluations] = await Promise.all([
     list<any>("library/coupons", 500),
     list<any>("library/winning-coupons", 500),
     list<any>("library/losing-coupons", 500),
     list<any>("library/pending-coupons", 500),
     list<any>("library/lessons", 500),
+    list<any>("library/lesson-review-cases", 300),
     list<any>("library/entity-profiles", 500),
     list<any>("library/agent-profiles", 500),
     list<any>("library/agent-observations", 500),
@@ -152,6 +171,7 @@ export async function searchWinLibrary(options: {
   else if (category === "pending") items = pending;
   else if (category === "coupons") items = coupons;
   else if (category === "lessons") items = lessons;
+  else if (category === "lesson-reviews") items = lessonReviewCases;
   else if (category === "entities") items = entities;
   else if (category === "agents") items = [...profiles, ...persistentAgentProfiles, ...agentTasks, ...agentProposals, ...agentSandboxEvaluations];
   else if (category === "market-data") items = marketDataItems;
@@ -168,7 +188,7 @@ export async function searchWinLibrary(options: {
   else if (category === "learning-cycles") items = learningCycles;
   else if (category === "strategies") items = strategyCandidates;
   else if (category === "backtests") items = backtestRuns;
-  else items = [...coupons, ...lessons, ...entities, ...profiles, ...observations, ...runs,
+  else items = [...coupons, ...lessons, ...lessonReviewCases, ...entities, ...profiles, ...observations, ...runs,
     ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns, ...persistentAgentProfiles, ...agentTasks, ...agentProposals, ...agentSandboxEvaluations, ...marketDataItems, ...sourceCandidates.map((x:any)=>({id:x.id,recordType:"research_source_candidate",name:x.name,sourceType:x.sourceType,sourceUrl:x.sourceUrl,license:x.license,licenseStatus:x.licenseStatus,sports:x.sports,dataDomains:x.dataDomains,downloads:x.downloads,stars:x.stars,reviewStatus:x.reviewStatus,automationAllowed:false,lastSeenAt:x.lastSeenAt})), ...sourceDiscoveryRuns];
 
   let filtered = relevant(items, clean(options.query, 1000));
@@ -179,7 +199,7 @@ export async function searchWinLibrary(options: {
     category, query: clean(options.query, 1000) || null, count: filtered.length,
     items: filtered.slice(0, limit), reviewedAt: new Date().toISOString(),
     libraryAreas: ["winning-coupons", "losing-coupons", "pending-coupons", "coupons", "coupon-history",
-      "human-tips", "lessons", "entity-profiles", "agent-profiles", "agent-observations",
+      "human-tips", "lessons", "lesson-review-cases", "entity-profiles", "agent-profiles", "agent-observations",
       "agent-notes", "persistent-agent-profiles", "agent-task-queue", "agent-proposals", "agent-sandbox-evaluations", "market-data", "research-source-candidates", "research-source-discovery-runs", "sources", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases", "learning-cycles", "strategy-candidates", "backtest-runs"]
   };
 }
@@ -220,8 +240,8 @@ export async function getMandatoryLearningPack(brief: any) {
   });
   const winners = newestFirst(relevant(winning, query), ["settledAt", "updatedAt", "createdAt"]).slice(0, 12);
   const losers = newestFirst(relevant(losing, query), ["settledAt", "updatedAt", "createdAt"]).slice(0, 12);
-  const validatedLessons = newestFirst(relevant(lessons.filter(x => x.validationStatus === "validated"), query), ["createdAt"]).slice(0, 12);
-  const candidateLessons = newestFirst(relevant(lessons.filter(x => x.validationStatus !== "validated"), query), ["createdAt"]).slice(0, 8);
+  const validatedLessons = newestFirst(relevant(lessons.filter(isIndependentlyValidatedLesson), query), ["createdAt"]).slice(0, 12);
+  const candidateLessons = newestFirst(relevant(lessons.filter(x => !isIndependentlyValidatedLesson(x)), query), ["createdAt"]).slice(0, 8);
   const entityProfiles = newestFirst(relevant(profiles, query), ["updatedAt", "createdAt"]).slice(0, 12);
   const relevantAgentProfiles = newestFirst(relevant([...agentProfiles, ...persistentAgentProfiles], query), ["updatedAt", "createdAt"]).slice(0, 20);
 
