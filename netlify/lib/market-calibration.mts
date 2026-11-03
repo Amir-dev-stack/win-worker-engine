@@ -37,7 +37,7 @@ function simulateConsensusCoupons(rows:Observation[],providerId:string){
   if(!valid.length)return null;
   const favouriteIndex=valid.indexOf(Math.max(...valid));
   let winner=s.moneylineWinner==="home"?0:s.moneylineWinner==="draw"?1:s.moneylineWinner==="away"?2:-1;
-  if(winner<0&&Number.isFinite(r.homeScore)&&Number.isFinite(r.awayScore))winner=r.homeScore>r.awayScore?0:r.homeScore===r.awayScore?1:2;
+  if(winner<0&&s.moneylineWinner!=="push"&&Number.isFinite(r.homeScore)&&Number.isFinite(r.awayScore))winner=r.homeScore>r.awayScore?0:r.homeScore===r.awayScore?1:2;
   if(valid.length===2&&winner===2)winner=1;
   if(winner<0)return null;
   return {eventId:r.id,eventStart:r.eventStart,p:valid[favouriteIndex],won:winner===favouriteIndex};
@@ -67,7 +67,7 @@ function evaluateDataset(dataset:any){
   const c=r.closing||{},s=r.settlements||{};
   const home=Number(c.homeWinProbability),draw=Number(c.drawProbability),away=Number(c.awayWinProbability);
   let y=s.moneylineWinner==="home"?0:s.moneylineWinner==="draw"?1:s.moneylineWinner==="away"?2:-1;
-  if(y<0&&Number.isFinite(r.homeScore)&&Number.isFinite(r.awayScore))y=r.homeScore>r.awayScore?0:r.homeScore===r.awayScore?1:2;
+  if(y<0&&s.moneylineWinner!=="push"&&Number.isFinite(r.homeScore)&&Number.isFinite(r.awayScore))y=r.homeScore>r.awayScore?0:r.homeScore===r.awayScore?1:2;
   const p=Number.isFinite(draw)&&draw>0?[home,draw,away]:[home,away];
   if(p.length===2&&y===2)y=1;
   return {date:r.eventStart,p,y};
