@@ -25,7 +25,7 @@ test("API-Football dossier preserves fixture identity and normalizes team/player
     injuriesPayload: { response: [] },
     endpointAudit: [{ endpoint: "/fixtures", status: "success" }],
     retrievedAt: "2026-11-04T19:00:00.000Z"
-  }, { allowPlayerRatings: true });
+  }, { allowPlayerRatings: true, allowResults: true });
   assert.equal(dossier.id, "api-football-12345");
   assert.equal(dossier.fixture.home.name, "Home FC");
   assert.equal(dossier.fixture.goals.away, 1);
@@ -49,6 +49,7 @@ test("player ratings are not exposed unless the separate player_ratings domain i
   assert.equal(dossier.playerStatistics[0].statistics[0].games.rating, null);
   assert.deepEqual(dossier.playerRatings, []);
   assert.equal(dossier.coverage.find(x => x.id === "player_ratings").status, "not_authorized_by_enabled_domain");
+  assert.equal(dossier.raw.players.response[0].players[0].statistics[0].games.rating, undefined);
 });
 
 });
@@ -65,6 +66,15 @@ test("missing fields remain null and coverage false is not converted into zero s
   assert.equal(dossier.coverage.find(x => x.id === "player_match_statistics").status, "not_in_competition_coverage");
   assert.equal(dossier.fixture.referee, "Referee A");
   assert.equal(dossier.fixture.home.name, "Home FC");
+});
+
+
+test("result scores are redacted unless the separate results domain is enabled", () => {
+  const dossier = buildApiFootballMatchDossier({ fixturePayload });
+  assert.equal(dossier.fixture.goals, null);
+  assert.equal(dossier.fixture.score, null);
+  assert.equal(dossier.raw.fixture.response[0].goals, undefined);
+  assert.equal(dossier.raw.fixture.response[0].score, undefined);
 });
 
 test("API-Football remains disabled until legal and credential approvals are configured", () => {
