@@ -42,3 +42,12 @@ The gate is an operational safeguard, not a legal opinion or independent proof o
 The current consensus-market adapter contains 12 Hugging Face datasets spanning American football, basketball, ice hockey, baseball, football and tennis. Each item now declares its own required registry data domains. Tests validate all 12 source IDs and their permissions. The dataset cards describe consensus probabilities/closing lines; most do **not** preserve each bookmaker's individual price identity. These records must remain classified as consensus benchmarks, not raw bookmaker offers.
 
 Current-season datasets are partial snapshots and can have small sample sizes. They must not be presented as completed season coverage, and any calibration or strategy assessment must preserve the source's exact season, capture window and field definitions.
+
+
+## nflverse NFL play-by-play validation boundary (updated 2026-11-04)
+
+The nflverse-pbp-data adapter accepts the season play-by-play CSV only after structural validation. CSV headers must be non-empty and unique; every data row must have the same number of cells as the header. The row audit rejects missing game IDs, impossible calendar dates, invalid or identical team abbreviations, malformed non-empty integer scores, and every row belonging to a game ID that has conflicting date/home/away identity. The import summary records parsed, accepted and rejected row counts, rejection reasons, game counts, conflicting game IDs and games that did not produce a final scored record. The raw source file SHA-256 and exact season release asset filename are retained with the import audit.
+
+**Kickoff precision:** the PBP file's game_date is date-level data. WIN now stores it as eventDate with eventTimePrecision: date_only and leaves eventStart null. It must not fabricate midnight UTC and then treat that as a verified kickoff. Until an approved schedule source with documented rights is joined to the PBP game_id, date-only NFL rows must not enter kickoff-cutoff-sensitive pre-match form or exact-time target matching. This is an intentional conservative coverage gap, not a missing-statistic zero.
+
+The validation audit is a schema/consistency filter, not an independent verification of nflverse scores or statistics. Source-reported outcomes remain sourceReportedNotIndependentlyVerified; no prediction accuracy, settlement learning, or profitability metric may be updated from this import alone.
