@@ -153,6 +153,10 @@ BEGIN
       RETURN QUERY SELECT FALSE, NULL::UUID, 'total_exposure_limit_exceeded', v_exposure, v_daily_loss, v_balance;
       RETURN;
     END IF;
+    IF v_exposure + p_exposure_delta > v_balance THEN
+      RETURN QUERY SELECT FALSE, NULL::UUID, 'available_balance_exceeded', v_exposure, v_daily_loss, v_balance;
+      RETURN;
+    END IF;
     IF v_daily_loss >= v_account.daily_loss_limit THEN
       RETURN QUERY SELECT FALSE, NULL::UUID, 'daily_loss_limit_reached', v_exposure, v_daily_loss, v_balance;
       RETURN;
@@ -163,8 +167,8 @@ BEGIN
       RETURN;
     END IF;
   ELSIF p_entry_type = 'realized_pnl' THEN
-    IF p_exposure_delta <> 0 THEN
-      RETURN QUERY SELECT FALSE, NULL::UUID, 'realized_pnl_cannot_change_exposure', v_exposure, v_daily_loss, v_balance;
+    IF p_exposure_delta <> 0 OR v_balance + p_amount < 0 THEN
+      RETURN QUERY SELECT FALSE, NULL::UUID, 'invalid_realized_pnl', v_exposure, v_daily_loss, v_balance;
       RETURN;
     END IF;
   ELSIF p_entry_type = 'deposit' THEN
@@ -178,8 +182,8 @@ BEGIN
       RETURN;
     END IF;
   ELSIF p_entry_type = 'adjustment' THEN
-    IF p_exposure_delta <> 0 THEN
-      RETURN QUERY SELECT FALSE, NULL::UUID, 'adjustment_cannot_change_exposure', v_exposure, v_daily_loss, v_balance;
+    IF p_exposure_delta <> 0 OR v_balance + p_amount < 0 THEN
+      RETURN QUERY SELECT FALSE, NULL::UUID, 'invalid_adjustment', v_exposure, v_daily_loss, v_balance;
       RETURN;
     END IF;
   ELSE
