@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {
   parseNflverseCsv,
   buildNflverseMatchRecords,
-  auditNflverseRows
+  auditNflverseRows,
+  parseNflverseScheduleCsv,
+  enrichNflverseRecordsWithSchedule
 } from "../netlify/lib/nflverse-pbp-adapter.mts";
 import {
   extractPlayerPerformances,
@@ -111,6 +113,37 @@ test("American-football coverage recognises source play types and leaves unavail
   assert.ok(coverage.eventTypes.find(event => event.eventType === "completion").status === "present");
 });
 
+
+test("NFL schedule joins exact game identity and converts Eastern kickoff to UTC", () => {
+  const schedule = parseNflverseScheduleCsv([
+    "game_id,gameday,gametime,away_team,home_team",
+    "2026_01_KC_BAL,2026-09-10,20:20,BAL,KC"
+  ].join("\n"));
+  const base = buildNflverseMatchRecords(parseNflverseCsv(csv), 2026, "https://source.example/pbp.csv")[0];
+  const joined = enrichNflverseRecordsWithSchedule([base], schedule);
+  assert.equal(joined.matched, 1);
+  assert.equal(joined.records[0].eventStart, "2026-09-11T00:20:00.000Z");
+  assert.deepEqual(joined.records[0].kickoffLocal, {
+    date: "2026-09-10", time: "20:20", timeZone: "America/New_York"
+  });
+});
+
+test("NFL schedule join leaves mismatched identity and conflicting schedule IDs date-only", () => {
+  const base = buildNflverseMatchRecords(parseNflverseCsv(csv), 2026, "https://source.example/pbp.csv")[0];
+  const mismatch = parseNflverseScheduleCsv([
+    "game_id,gameday,gametime,away_team,home_team",
+    "2026_01_KC_BAL,2026-09-11,20:20,BAL,KC"
+  ].join("\n"));
+  assert.equal(enrichNflverseRecordsWithSchedule([base], mismatch).matched, 0);
+  const conflicting = parseNflverseScheduleCsv([
+    "game_id,gameday,gametime,away_team,home_team",
+    "2026_01_KC_BAL,2026-09-10,20:20,BAL,KC",
+    "2026_01_KC_BAL,2026-09-10,20:21,BAL,KC"
+  ].join("\n"));
+  const result = enrichNflverseRecordsWithSchedule([base], conflicting);
+  assert.equal(result.matched, 0);
+  assert.deepEqual(result.conflictingGameIds, ["2026_01_KC_BAL"]);
+});
 
 test("NFL source-row audit rejects impossible dates, malformed scores and conflicting game identities", () => {
   const valid = {
