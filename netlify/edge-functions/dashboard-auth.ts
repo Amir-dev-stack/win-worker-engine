@@ -63,6 +63,30 @@ function readCookie(request: Request, name: string): string {
   return "";
 }
 
+function isSameOriginLoginRequest(request: Request, url: URL): boolean {
+  const origin = request.headers.get("origin");
+  if (origin === url.origin) return true;
+
+  // Chromium-based browsers send Fetch Metadata on same-origin form navigations.
+  // This remains reliable when the edge runtime's URL serialization differs from
+  // the browser-visible origin, while cross-site form submissions stay blocked.
+  const fetchSite = request.headers.get("sec-fetch-site");
+  const fetchMode = request.headers.get("sec-fetch-mode");
+  if (fetchSite === "same-origin" && fetchMode === "navigate") return true;
+
+  // Older browsers may omit Origin and Fetch Metadata; accept only a same-origin
+  // Referer in that case. The login page uses no-referrer, so this is a fallback.
+  const referer = request.headers.get("referer");
+  if (!origin && referer && fetchSite !== "cross-site") {
+    try {
+      return new URL(referer).origin === url.origin;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 function secureCookie(request: Request, value: string, maxAge: number): string {
   const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
   return COOKIE_NAME + "=" + value + "; Path=/; Max-Age=" + maxAge + "; HttpOnly; SameSite=Strict" + secure;
@@ -119,7 +143,7 @@ export default async (request: Request, context: { next: () => Promise<Response>
 
   if (url.pathname === "/__win_dashboard_login") {
     if (request.method !== "POST") return new Response("Method not allowed", { status: 405 });
-    if (request.headers.get("origin") !== url.origin) return new Response("Forbidden", { status: 403 });
+    if (!isSameOriginLoginRequest(request, url)) return new Response("Forbidden", { status: 403 });
     let supplied = "";
     try {
       const form = await request.formData();
