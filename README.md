@@ -292,3 +292,20 @@ The authenticated endpoints are:
 Automated harvesting is disabled by default. Public visibility does not automatically grant permission for bulk collection. API-based or scheduled collection is enabled only after the source's terms, robots policy, API access and rate limits are verified. WIN does not log into private groups, bypass paywalls/CAPTCHAs, reuse session cookies, or collect private messages. If a platform restricts automation, D5 can still analyse public search results and manually captured public posts without pretending that a full archive was obtained.
 
 Human-performance analysis must include the complete available record, losses, odds and timestamps. Follower counts, screenshots, selected wins and short streaks are not proof of skill. The system reports sample size, missing-history risk, ROI and market-relative performance only when the evidence supports them.
+
+ 
+## Match statistics and player-performance coverage
+
+WIN's statistic catalogue describes what a sport can measure; it does **not** claim that every connected source supplies every metric. Each event dossier reports the fields actually present, provider-by-provider, with missing metrics marked `not_provided`. A missing field is unknown, not zero. Complementary feeds are merged while retaining each source's own coverage and rating scale.
+
+The first deep American-football event adapter is `nflverse-pbp-data`. It imports the source's season play-by-play release, derives team box-score totals and per-player passing/rushing/receiving/defensive/special-teams lines, and preserves a play-by-play timeline with quarter, clock, down, yards-to-go, yards gained, event type, score state and source provenance. The source is CC BY 4.0 and requires nflverse attribution. WIN does not fabricate player ratings, confirmed lineups, injuries, snap counts or metrics absent from the source. See the provider registry for domain-level scope and licence controls.
+
+The football source registry separately records the user's requested reference destinations:
+- UEFA official match centres for competition records and selected team statistics.
+- FotMob match profiles for xG, shot maps, match event timelines and provider-defined player ratings where exposed.
+- ESPN match centres for event commentary and sport-specific box scores.
+- FootyStats for historical H2H and trend context.
+
+These four entries are **reference-only candidates**. They are not connected APIs and do not authorize scraping, bulk download or redistribution. API-SPORTS, StatsBomb Open Data and other specialist sources remain gated by account entitlements, data rights, coverage and methodology review. In particular, the current nflverse adapter covers American football, not association football; it does not solve missing football pass maps, xG, player ratings or UEFA match-level data.
+
+The manual **Import historical datasets** job now includes the NFL play-by-play import. It runs without OpenAI calls and writes into the existing model-lab event dataset collection so the same pre-match cutoff, exact-event matching, multi-source merge and coverage inspector can use it. Source sync status is surfaced in the research engine panel.
