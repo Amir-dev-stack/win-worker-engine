@@ -279,7 +279,7 @@ async function refreshResearch(){
  try{
   const d=await api("/api/research-status");
   const providers=(d.providers||[]).map(p=>'<article class="mini-row"><div><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.status||"unknown")+' · '+escapeHtml(p.accessMode||"")+' · licence '+escapeHtml(p.licenceReview||"unverified")+'</small></div></article>').join("");
-  const open=d.openfootball||{},nfl=d.nflverse||{},worldCup=d.openfootballWorldCup||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{},evolution=d.agentEvolution||{};
+  const open=d.openfootball||{},nfl=d.nflverse||{},worldCup=d.openfootballWorldCup||{},statsBomb=d.statsBomb||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{},evolution=d.agentEvolution||{};
   const couponSims=(cal.reports||[]).flatMap(r=>r.couponSimulation?.results||[]);
   const candidateRows=renderSourceCandidates(discovery.topCandidates||[]);
   const sections=[
@@ -287,6 +287,7 @@ async function refreshResearch(){
    '<article class="mini-row"><div><b>API-Football detailed match dossiers</b><small>'+escapeHtml(footballApi.status||"blocked")+' · '+Number(footballApi.totals?.matchesImported||0).toLocaleString()+' matches imported · '+Number(footballApi.totals?.availableSections||0)+' latest fixture sections available · '+(footballApi.blockers||[]).map(escapeHtml).join(", ")+'</small></div></article>',
    '<article class="mini-row"><div><b>OpenFootball historical results</b><small>'+escapeHtml(open.status||"not yet run")+' · '+Number(open.totals?.matchesImported||0).toLocaleString()+' matches imported · last check '+escapeHtml(open.lastCheck||"not yet")+'</small></div></article>',
    '<article class="mini-row"><div><b>World Cup history and player events</b><small>'+escapeHtml(worldCup.status||"not yet run")+' · '+Number(lab.worldCupMatchCount||0).toLocaleString()+' matches · '+Number(lab.playerEventRows||0).toLocaleString()+' player events · '+Number(lab.worldCupDatasetCount||0)+' tournament datasets</small></div></article>',
+   '<article class="mini-row"><div><b>StatsBomb open football events (manual research import)</b><small>'+escapeHtml(statsBomb.status||"not imported")+' · '+Number(statsBomb.matchesImported||0).toLocaleString()+' matches · '+Number(statsBomb.eventRows||0).toLocaleString()+' event records · automated import disabled · '+Number(statsBomb.datasetCount||0)+' competition/season datasets</small></div></article>',
    '<article class="mini-row"><div><b>Consensus market history</b><small>'+escapeHtml(cons.status||"not yet run")+' · '+Number(lab.consensusMarketRows||0).toLocaleString()+' rows · '+Number(lab.consensusSettledRows||0).toLocaleString()+' settled events</small></div></article>',
    '<article class="mini-row"><div><b>SharpAPI multi-source snapshots</b><small>'+escapeHtml(sharp.status||"not yet run")+' · '+Number(lab.observedMarketRows||0).toLocaleString()+' observed prices · '+Number(lab.observedMarketFamilies?.length||0)+' market families</small></div></article>',
    '<article class="mini-row"><div><b>Market calibration lab</b><small>'+escapeHtml(cal.status||"waiting for first report")+' · '+Number(cal.totalEvents||0).toLocaleString()+' events · '+Number(cal.reports?.length||0)+' dataset reports · consensus benchmark only · '+Number(couponSims.length||0)+' coupon simulation bands</small></div></article>',
@@ -457,12 +458,12 @@ async function refresh(){
 }
 $("#refreshBudget").addEventListener("click",refreshAIBudget);
 $("#refreshLearning").addEventListener("click",refreshLearning);
-async function runLearningDataJob(action,buttonId,label){
- const button=$(buttonId),status=$("#learningJobsStatus");
+async function runLearningDataJob(action,buttonId,label,extra={},statusId="#learningJobsStatus"){
+ const button=$(buttonId),status=$(statusId);
  button.disabled=true;
  status.textContent=label+" queued… This uses public sources and no paid AI.";
  try{
-  await api("/api/learning-data-jobs",{method:"POST",body:JSON.stringify({action})});
+  await api("/api/learning-data-jobs",{method:"POST",body:JSON.stringify({action,...extra})});
   status.textContent=label+" accepted. The background job is running; refresh to see imported candidates and datasets.";
   await refreshLearning();
   await refreshResearch();
@@ -472,6 +473,46 @@ async function runLearningDataJob(action,buttonId,label){
 }
 $("#runSourceDiscovery").addEventListener("click",()=>runLearningDataJob("discover_sources","#runSourceDiscovery","Worldwide public-source discovery"));
 $("#runHistoricalSync").addEventListener("click",()=>runLearningDataJob("sync_historical_data","#runHistoricalSync","Historical dataset import"));
+let statsBombCompetitionRows=[];
+function refreshStatsBombSeasonOptions(){
+ const competitionId=Number($("#statsBombCompetition").value);
+ const seasons=statsBombCompetitionRows.filter(item=>item.competitionId===competitionId);
+ $("#statsBombSeason").innerHTML=seasons.length
+  ?seasons.map(item=>'<option value="'+Number(item.seasonId)+'">'+escapeHtml(item.seasonName)+'</option>').join("")
+  :'<option value="">No seasons available</option>';
+}
+async function refreshStatsBombCatalog(){
+ const status=$("#statsBombStatus");
+ status.textContent="Loading StatsBomb's free public competition catalogue…";
+ try{
+  const data=await api("/api/statsbomb-open-data");
+  statsBombCompetitionRows=Array.isArray(data.catalog?.competitions)?data.catalog.competitions:[];
+  const unique=[...new Map(statsBombCompetitionRows.map(item=>[item.competitionId,item])).values()];
+  $("#statsBombCompetition").innerHTML=unique.length
+   ?unique.map(item=>'<option value="'+Number(item.competitionId)+'">'+escapeHtml((item.countryName?item.countryName+" · ":"")+item.competitionName)+'</option>').join("")
+   :'<option value="">No competitions listed</option>';
+  refreshStatsBombSeasonOptions();
+  const state=data.status||{};
+  status.textContent=Number(state.matchesImported||0)+" StatsBomb matches already imported · "+Number(state.eventRows||0)+" event records · manual import only · no API key or paid plan required.";
+ }catch(error){
+  status.textContent="StatsBomb catalogue unavailable: "+error.message;
+ }
+}
+$("#refreshStatsBombCatalog").addEventListener("click",refreshStatsBombCatalog);
+$("#statsBombCompetition").addEventListener("change",refreshStatsBombSeasonOptions);
+$("#runStatsBombImport").addEventListener("click",()=>{
+ const competitionId=Number($("#statsBombCompetition").value);
+ const seasonId=Number($("#statsBombSeason").value);
+ const maxMatches=Math.max(1,Math.min(15,Number($("#statsBombMaxMatches").value)||10));
+ if(!Number.isSafeInteger(competitionId)||competitionId<1||!Number.isSafeInteger(seasonId)||seasonId<1){
+  alert("Choose a StatsBomb competition and season first.");return;
+ }
+ const accepted=confirm("Import up to "+maxMatches+" recent matches from this StatsBomb competition and season? This dataset is for private, non-commercial football research only. Do not redistribute the raw data. If you publish or share derived analysis, credit StatsBomb and use the official StatsBomb logo.");
+ if(!accepted)return;
+ runLearningDataJob("sync_statsbomb_open_data","#runStatsBombImport","StatsBomb research sample",{
+  competitionId,seasonId,maxMatches,confirmResearchUse:"I_CONFIRM_PRIVATE_STATSBOMB_RESEARCH_USE"
+ },"#statsBombStatus");
+});
 async function runApiFootballAction(action,buttonId,label,extra={}){
  const button=$(buttonId),status=$("#apiFootballStatus");
  button.disabled=true;
@@ -806,7 +847,7 @@ $("#libraryList").addEventListener("click",async e=>{
  }catch(err){alert(err.message);button.disabled=false}
 });
 
-if(!token)dialog.showModal();else {refresh();refreshMemoryCapacity();refreshSources();refreshCoverage();refreshResearch();refreshCouponBoards();refreshLearning();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
+if(!token)dialog.showModal();else {refresh();refreshMemoryCapacity();refreshSources();refreshCoverage();refreshResearch();refreshStatsBombCatalog();refreshCouponBoards();refreshLearning();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
 setInterval(()=>{if(token&&!document.hidden)refresh()},20000);
 setInterval(()=>{if(token&&!document.hidden)refreshLearning()},60000);
 setInterval(()=>{if(token&&!document.hidden)refreshMemoryCapacity()},300000);
