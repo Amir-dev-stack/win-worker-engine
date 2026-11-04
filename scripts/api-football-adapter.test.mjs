@@ -24,6 +24,7 @@ test("API-Football dossier preserves fixture identity and normalizes team/player
     playersPayload: { response: [{ team: { id: 1, name: "Home FC" }, players: [{ player: { id: 10, name: "Player One" }, statistics: [{ games: { minutes: 90, position: "F", rating: "8.1" }, shots: { total: 4, on: 2 }, goals: { total: 1, assists: 0 }, passes: { total: 20, key: 2, accuracy: "85%" }, tackles: { total: 1, interceptions: 0 }, duels: { total: 6, won: 4 }, dribbles: { attempts: 3, success: 2 }, fouls: { committed: 1, drawn: 2 }, cards: { yellow: 0, red: 0 }, penalty: { scored: 0, missed: 0 } }] }] }] },
     injuriesPayload: { response: [] },
     endpointAudit: [{ endpoint: "/fixtures", status: "success" }],
+    enabledDomains: ["competition_coverage","match_events","lineups","team_match_statistics","half_time_team_statistics","player_match_statistics","player_ratings","results","injuries","predictions","pre_match_odds","competition_standings","head_to_head"],
     retrievedAt: "2026-11-04T19:00:00.000Z"
   }, { allowPlayerRatings: true, allowResults: true });
   assert.equal(dossier.id, "api-football-12345");
@@ -44,6 +45,7 @@ test("player ratings are not exposed unless the separate player_ratings domain i
   const dossier = buildApiFootballMatchDossier({
     fixturePayload,
     playersPayload: { response: [{ team: { id: 1, name: "Home FC" }, players: [{ player: { id: 10, name: "Player One" }, statistics: [{ games: { minutes: 90, rating: "8.1" }, shots: { total: 2 } }] }] }] },
+    enabledDomains: ["player_match_statistics"],
     retrievedAt: "2026-11-04T19:00:00.000Z"
   });
   assert.equal(dossier.playerStatistics[0].statistics[0].games.rating, null);
@@ -58,6 +60,7 @@ test("missing fields remain null and coverage false is not converted into zero s
   const dossier = buildApiFootballMatchDossier({
     fixturePayload,
     leaguePayload: { response: [{ league: { id: 2 }, seasons: [{ year: 2026, coverage: { fixtures: { events: false, lineups: false, statistics_fixtures: false, statistics_players: false }, standings: true, injuries: false, odds: false } }] }] },
+    enabledDomains: ["competition_coverage","team_match_statistics","player_match_statistics"],
     retrievedAt: "2026-11-04T19:00:00.000Z"
   });
   assert.deepEqual(dossier.teamStatistics, []);
