@@ -146,7 +146,6 @@ export async function testApiFootballConnection() {
     providerId: PROVIDER_ID,
     status: "connected",
     checkedAt: new Date().toISOString(),
-    account: response?.account ? { firstname: response.account.firstname, lastname: response.account.lastname, email: response.account.email } : null,
     subscription: response?.subscription || null,
     requests: response?.requests || result.data?.requests || null,
     quota: result.audit.quota,
@@ -214,13 +213,13 @@ function normaliseTeamStatistics(payload: any): any[] {
   }));
 }
 
-function normalisePlayerStatistics(payload: any): any[] {
+function normalisePlayerStatistics(payload: any, allowPlayerRatings = false): any[] {
   return apiRows(payload).flatMap(teamBlock =>
     asArray(teamBlock?.players).map((entry: any) => ({
       team: teamBlock?.team || null,
       player: entry?.player || null,
       statistics: asArray(entry?.statistics).map((stat: any) => ({
-        games: stat?.games || null,
+        games: stat?.games ? { ...stat.games, rating: allowPlayerRatings ? stat.games.rating ?? null : null } : null,
         offsides: stat?.offsides ?? null,
         shots: stat?.shots || null,
         goals: stat?.goals || null,
@@ -253,7 +252,7 @@ export function buildApiFootballMatchDossier(input: {
   awayTeamSeasonPayload?: any;
   endpointAudit?: any[];
   retrievedAt?: string;
-}) {
+}, options: { allowPlayerRatings?: boolean } = {}) {
   const retrievedAt = input.retrievedAt || new Date().toISOString();
   const fixture = fixtureRow(input.fixturePayload);
   if (!fixture?.fixture?.id) throw new Error("api_football_fixture_not_found");
@@ -266,7 +265,8 @@ export function buildApiFootballMatchDossier(input: {
   const events = fixtureEvents.length ? fixtureEvents : normaliseEvents(input.eventsPayload);
   const lineups = fixtureLineups.length ? normaliseLineups({ response: fixtureLineups }) : normaliseLineups(input.lineupsPayload);
   const teamStatistics = fixtureStats.length ? normaliseTeamStatistics({ response: fixtureStats }) : normaliseTeamStatistics(input.statisticsPayload);
-  const playerStatistics = normalisePlayerStatistics(input.playersPayload);
+  const allowPlayerRatings = options.allowPlayerRatings === true;
+  const playerStatistics = normalisePlayerStatistics(input.playersPayload, allowPlayerRatings);
   const injuries = apiRows(input.injuriesPayload);
   const predictions = apiRows(input.predictionsPayload);
   const odds = apiRows(input.oddsPayload);
@@ -286,10 +286,22 @@ export function buildApiFootballMatchDossier(input: {
     ...item,
     status: availabilityStatus(item.flag, item.requested, item.count)
   }));
-  const playerRatings = playerStatistics.flatMap(player => player.statistics.map(stat => ({
-    player: player.player, team: player.team, rating: stat?.games?.rating ?? null,
-    position: stat?.games?.position ?? null, minutes: stat?.games?.minutes ?? null
-  })));
+  const playerRatings = allowPlayerRatings ? playerStatistics.flatMap(player => player.statistics
+    .filter(stat => stat?.games?.rating !== null && stat?.games?.rating !== undefined && stat?.games?.rating !== "")
+    .map(stat => ({
+      player: player.player, team: player.team, rating: stat.games.rating,
+      position: stat?.games?.position ?? null, minutes: stat?.games?.minutes ?? null
+    }))) : [];
+  coverageRows.push({
+    id: "player_ratings",
+    flag: coverage?.fixtures?.statistics_players,
+    requested: !!input.playersPayload && allowPlayerRatings,
+    count: playerRatings.length,
+    status: coverage?.fixtures?.statistics_players === false ? "not_in_competition_coverage"
+      : !input.playersPayload ? "not_requested"
+      : !allowPlayerRatings ? "not_authorized_by_enabled_domain"
+      : playerRatings.length ? "available" : "not_provided_by_provider"
+  });
   const dossier = {
     id: "api-football-" + String(fixture.fixture.id),
     providerId: PROVIDER_ID,
@@ -444,7 +456,7 @@ export async function syncApiFootballFixtureDossier(
     halfStatisticsPayload, playersPayload, injuriesPayload, predictionsPayload, oddsPayload,
     standingsPayload, headToHeadPayload, homeTeamSeasonPayload, awayTeamSeasonPayload,
     endpointAudit, retrievedAt
-  });
+  }, { allowPlayerRatings: domainEnabled(readiness, "player_ratings") });
   const failedEndpoints = endpointAudit.filter(item => item.status !== "success");
   const availableSections = dossier.coverage.filter((item: any) => item.status === "available").length;
   const summary = {
