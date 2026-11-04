@@ -47,7 +47,7 @@ export const SPORT_STAT_CATALOG={
   group("team_context","Game context",["offensive_plays","total_yards","first_downs","third_down_attempts","third_down_conversions","fourth_down_attempts","fourth_down_conversions","red_zone_attempts","turnovers","sacks_allowed","penalties","penalty_yards"]),
   group("advanced","Advanced play metrics",["epa","success_rate","air_yards","yards_after_catch","win_probability_added"])
  ],[
-  group("appearance","Appearance and role",["minutes","starter","position"]),
+  group("appearance","Appearance and role",["minutes","starter","position","rating"]),
   group("passing","Quarterback",["pass_attempts","completions","passing_yards","passing_touchdowns","interceptions","sacks_taken","passer_rating"]),
   group("rushing","Rushing",["rush_attempts","rushing_yards","rushing_touchdowns","fumbles_lost"]),
   group("receiving","Receiving",["targets","receptions","receiving_yards","receiving_touchdowns"]),
@@ -264,7 +264,7 @@ export function flattenStatisticKeys(value,maxDepth=8){
 }
 export function collectEventTypeValues(value,maxDepth=8){
  const found=new Set();
- const visit=(node,depth)=>{if(depth>maxDepth||node===null||node===undefined)return;if(Array.isArray(node)){for(const x of node)visit(x,depth+1);return;}if(typeof node!=="object")return;for(const [key,child] of Object.entries(node)){if(["type","eventtype","event_type","kind","eventname","event_name"].includes(key.toLowerCase())&&typeof child==="string")found.add(normalizeKey(child));visit(child,depth+1);}};
+ const visit=(node,depth)=>{if(depth>maxDepth||node===null||node===undefined)return;if(Array.isArray(node)){for(const x of node)visit(x,depth+1);return;}if(typeof node!=="object")return;for(const [key,child] of Object.entries(node)){if(["type","eventtype","event_type","kind","eventname","event_name"].includes(key.toLowerCase())&&typeof child==="string")found.add(normalizeKey(child));if(["eventtypes","event_types"].includes(key.toLowerCase())&&Array.isArray(child))for(const value of child)if(typeof value==="string")found.add(normalizeKey(value));visit(child,depth+1);}};
  visit(value,0);return [...found];
 }
 export function inspectStatisticCoverage(sport,details={}){
