@@ -142,7 +142,7 @@ test("NFL match builder creates scores, team box scores, player lines and play e
   assert.equal(home.successful_plays, 1);
   assert.equal(home.success_opportunities, 2);
   assert.equal(home.success_rate, 0.5);
-  assert.equal(home.win_probability_added, 0.02);
+  assert.ok(Math.abs(home.win_probability_added - 0.02) < 1e-12);
   assert.equal(home.air_yards_total, 8);
   assert.equal(home.pass_attempts_with_air_yards, 1);
   assert.equal(home.air_yards_per_attempt, 8);
