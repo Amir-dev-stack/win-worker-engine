@@ -11,7 +11,10 @@ test("WIN Neon memory remains opt-in and preserves Blobs as the default", async 
   assert.match(store, /mode === "neon"/);
   assert.match(store, /if \(secondary\) await secondary\.setJSON/);
   assert.match(store, /if \(secondary\) await secondary\.delete/);
-  assert.match(store, /primaryValue !== null && primaryValue !== undefined/);
+  assert.match(store, /catch \(error\)/);
+  assert.match(store, /const current = result\?\.modified \? value : await primary\.get/);
+  assert.doesNotMatch(store, /if \(value !== null && value !== undefined\) return value/);
+  assert.doesNotMatch(store, /library\/model-lab\//);
 });
 
 test("Neon store uses parameterized SQL and conditional single-key writes", async () => {
@@ -68,6 +71,7 @@ test("daily Neon snapshots are versioned, checksummed and retained for 30 days",
   assert.match(backup, /schedule: "23 3 \* \* \*"/);
   assert.match(backup, /gzipSync/);
   assert.match(backup, /createCipheriv/);
+  assert.match(backup, /cipher\.final\(\)[\s\S]*cipher\.getAuthTag\(\)/);
   assert.match(backup, /WIN_MEMORY_BACKUP_KEY/);
   assert.match(backup, /sha256/);
   assert.match(backup, /retentionDays: 30/);
