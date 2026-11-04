@@ -19,11 +19,14 @@ Both stores are written on allowlisted structured-memory mutations. This is a re
 1. Create a Neon project in an EU region at https://console.neon.tech/.
 2. In the Neon SQL Editor, apply `database/neon/0001_win_memory_records.sql`.
 3. In Netlify site settings, create secret runtime variable `WIN_NEON_DATABASE_URL` using the Neon pooled connection string. Do not put it in Git, dashboard JavaScript, or chat.
-4. Initially leave `WIN_MEMORY_BACKEND=blobs`; confirm the table and secret exist.
-5. Set `WIN_MEMORY_BACKEND=mirror` on a deploy preview first. Verify normal library operations and inspect the Neon table for matching writes.
-6. With the preview in `mirror` mode, invoke authenticated `POST /api/memory-backfill` with JSON body `{ "confirm": "BACKFILL_STRUCTURED_WIN_MEMORY" }`. This runs as a Netlify background function, copies only the allowlisted structured-memory collections, and verifies per-record canonical hashes plus exact key inventories. If it fails, inspect `GET /api/memory-status` and retry after resolving the cause; it does not delete either copy.
-7. Confirm `backfill.status=completed` and `backfill.integrity=verified` through authenticated `GET /api/memory-status`. Test WIN reads/writes in preview while still in `mirror` mode.
-8. Only after preview validation and explicit owner approval, set `WIN_MEMORY_BACKEND=neon`. Blobs remains the secondary replica. Production remains unchanged until the owner explicitly configures it.
+4. Generate a separate random 32-byte key and configure it as secret runtime variable `WIN_MEMORY_BACKUP_KEY` (64 hexadecimal characters). Keep a secure offline copy of this key; encrypted backups cannot be restored without it.
+5. Initially leave `WIN_MEMORY_BACKEND=blobs`; confirm the table and both secrets exist.
+6. Set `WIN_MEMORY_BACKEND=mirror` on a deploy preview first. Verify normal library operations and inspect the Neon table for matching writes.
+7. With the preview in `mirror` mode, invoke authenticated `POST /api/memory-backfill` with JSON body `{ "confirm": "BACKFILL_STRUCTURED_WIN_MEMORY" }`. This runs as a Netlify background function, copies only the allowlisted structured-memory collections, and verifies per-record canonical hashes plus exact key inventories. If it fails, inspect `GET /api/memory-status` and retry after resolving the cause; it does not delete either copy.
+8. Confirm `backfill.status=completed` and `backfill.integrity=verified` through authenticated `GET /api/memory-status`. Test WIN reads/writes in preview while still in `mirror` mode.
+9. After Neon is active, the scheduled function creates an AES-256-GCM encrypted, gzip-compressed JSONL snapshot in Netlify Blobs daily at 03:23 UTC, retaining 30 days. It requires `WIN_MEMORY_BACKUP_KEY`; the same key must be preserved securely outside Netlify.
+10. A snapshot can be replayed into Neon only while Blobs remains primary using authenticated `POST /api/memory-restore` with `{ "confirm": "RESTORE_NEON_MEMORY_SNAPSHOT", "date": "YYYY-MM-DD" }`. Restore verifies the encrypted SHA-256, GCM authentication tag, decompressed SHA-256 and row count. It upserts snapshot records into Neon and never overwrites the Blobs primary.
+11. Only after preview validation and explicit owner approval, set `WIN_MEMORY_BACKEND=neon`. Blobs remains the secondary replica. Production remains unchanged until the owner explicitly configures it.
 
 Do not set the backend to `neon` just because the connection test works. A connected but incompletely backfilled database would make old records appear missing in collection queries.
 
@@ -41,12 +44,12 @@ This includes agent profiles, observations, research runs, frozen predictions, p
 
 ## Backups and recovery
 
-- Neon is an independent provider copy; Netlify Blobs remains a second copy during mirror/cutover.
-- Neon free-plan restore history and manual snapshots are useful operational safeguards, not a complete independent backup strategy.
-- Before production cutover, implement and test an encrypted, versioned export of all rows to a third storage location with a manifest (row count, byte count, SHA-256, export time and schema version).
-- Retain at least one copy outside both Neon and the Netlify site. Never commit backup payloads or credentials to Git.
-- Perform periodic restore drills into a disposable database and compare row counts and checksums.
-- Monitor Neon storage/compute quotas and Netlify Blobs storage/operations.
+- Neon is the structured-memory database; Netlify Blobs is the independent provider replica and versioned backup destination.
+- The scheduled backup writes AES-256-GCM encrypted, gzip-compressed JSONL snapshots to `library/memory-backups/`, with a manifest containing row/byte counts, SHA-256 hashes, collection counts, schema version and export time. Retention is 30 days.
+- `WIN_MEMORY_BACKUP_KEY` is a separate 32-byte hex secret. Keep an offline copy in a password manager or other secure secret store. Losing this key makes existing encrypted snapshots unrecoverable.
+- The restore endpoint only replays snapshots into Neon while Blobs is primary; it does not delete records or overwrite the Blobs copy. Restore is an explicit owner action, not automatic rollback.
+- This provides two-provider redundancy (Neon + Netlify). It is not a third-provider/offline backup. For protection against loss of both provider accounts, periodically copy encrypted snapshots and the key to a separate secure location.
+- Monitor Neon storage/compute quotas and Netlify Blobs storage/operations; backup runs fail rather than publish partial snapshots if safety limits are exceeded.
 
 ## Safety and operational boundaries
 
