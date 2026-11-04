@@ -192,12 +192,12 @@ add("NFL play-by-play adapter is source-attributed, sport-scoped and provenance-
   (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("parseNflverseCsv") &&
   (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("buildNflverseMatchRecords") &&
   (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("rawChecksum") &&
-  (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("rating formula") === false &&
   providers.includes('id:"nflverse-pbp-data"') &&
   providers.includes("historical_match_play_by_play") &&
   providers.includes("CC-BY-4.0") &&
   (await read("netlify/functions/learning-data-jobs.mts")).includes("nflverse_american_football_play_by_play") &&
-  (await read("netlify/functions/research-status.mts")).includes("getNflversePlayByPlaySyncStatus"),
+  (await read("netlify/functions/research-status.mts")).includes("getNflversePlayByPlaySyncStatus") &&
+  (await read("scripts/nflverse-pbp-adapter.test.mjs")).includes("player ratings are not invented"),
   "The licensed feed contributes American-football play timelines and derived player/team box-score counts; ratings and absent fields remain explicitly unavailable.");
 add("Football source references remain review-only until access and reuse terms are verified",
   providers.includes('id:"uefa-match-center"') &&
