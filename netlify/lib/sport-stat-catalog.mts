@@ -265,7 +265,7 @@ export function collectEventTypeValues(value,maxDepth=8){
  const visit=(node,depth)=>{if(depth>maxDepth||node===null||node===undefined)return;if(Array.isArray(node)){for(const x of node)visit(x,depth+1);return;}if(typeof node!=="object")return;for(const [key,child] of Object.entries(node)){if(["type","eventtype","event_type","kind","eventname","event_name"].includes(key.toLowerCase())&&typeof child==="string")found.add(normalizeKey(child));visit(child,depth+1);}};
  visit(value,0);return [...found];
 }
-function inspectStatisticCoverage(sport,details={}){
+export function inspectStatisticCoverage(sport,details={}){
  const config=getSportStatSpec(sport);
  const keys=flattenStatisticKeys(details);
  const inspect=(groups)=>groups.map(g=>{
