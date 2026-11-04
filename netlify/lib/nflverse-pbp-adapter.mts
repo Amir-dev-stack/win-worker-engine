@@ -621,16 +621,24 @@ export async function syncNflversePlayByPlayData(seasonInput?: number) {
   const records = scheduleJoin.records.map(record => ({ ...record, rawChecksum, scheduleChecksum }));
   if (!records.length) throw new Error("nflverse_pbp_no_completed_matches_found");
   let saved = 0;
+  let jsonPayloadBytesTotal = 0;
+  let largestJsonPayloadBytes = 0;
   for (const record of records) {
     const datasetId = "nflverse-pbp-" + season + "-" + String(record.eventId).replace(/[^a-zA-Z0-9_-]/g, "");
-    await put("library/model-lab/historical-event-datasets", datasetId, {
+    const datasetPayload = {
       id: datasetId, providerId: PROVIDER_ID, sport: "american_football", season: String(season),
       competition: "NFL", sourceUrl, sourceLicence: LICENSE, licenceReference: LICENSE_URL,
       attribution: ATTRIBUTION, retrievedAt, rawChecksum, totalRows: 1, scoredRows: 1,
       playCount: record.playCount, playerCount: record.playerCount,
       eventDate: record.eventDate, eventTimePrecision: record.eventTimePrecision,
       records: [record], origin: "provider_historical_data", lab: "model-lab"
-    });
+    };
+    // Measure the exact UTF-8 JSON payload before the Blob write. This is a
+    // payload-size diagnostic, not a claim about provider file size or billed storage.
+    const jsonPayloadBytes = Buffer.byteLength(JSON.stringify(datasetPayload), "utf8");
+    jsonPayloadBytesTotal += jsonPayloadBytes;
+    largestJsonPayloadBytes = Math.max(largestJsonPayloadBytes, jsonPayloadBytes);
+    await put("library/model-lab/historical-event-datasets", datasetId, datasetPayload);
     saved++;
   }
   const summary = {
@@ -647,6 +655,9 @@ export async function syncNflversePlayByPlayData(seasonInput?: number) {
     gamesSeen: qualityAudit.gamesSeen, gamesAccepted: qualityAudit.gamesAccepted,
     gamesRejected: qualityAudit.gamesRejected, conflictingGames: qualityAudit.conflictingGames,
     gamesNotConfirmedFinal: Math.max(0, qualityAudit.gamesAccepted - records.length),
+    jsonPayloadBytesTotal, largestJsonPayloadBytes,
+    averageJsonPayloadBytes: saved ? Math.round(jsonPayloadBytesTotal / saved) : 0,
+    jsonPayloadMeasurement: "UTF-8 bytes of JSON.stringify(datasetPayload) immediately before each Blob write",
     dateOnlyEvents: records.filter(record => record.eventTimePrecision === "date_only").length,
     scheduledKickoffEvents: scheduleJoin.matched, matchesImported: saved,
     scoredMatches: saved, playsImported: records.reduce((total, record) => total + Number(record.playCount || 0), 0),
