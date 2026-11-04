@@ -97,3 +97,25 @@ test("snapshot restore is authenticated, confirmed, checksum-verified and cannot
   assert.match(restore, /neon\.setJSON/);
   assert.doesNotMatch(restore, /blobs\.setJSON\(entry\.key/);
 });
+
+test("financial memory API is authenticated and never places bets", async () => {
+  const route = await read("../netlify/functions/financial-memory.mts");
+  assert.match(route, /requireAuth/);
+  assert.match(route, /create_account/);
+  assert.match(route, /record_entry/);
+  assert.match(route, /WIN_NEON_DATABASE_URL/);
+  assert.match(route, /WIN did not place any bet/);
+  assert.doesNotMatch(route, /placeBet|submitBet|bookmaker\.place/i);
+});
+
+test("encrypted backup and restore include financial accounts and append-only ledger", async () => {
+  const adapter = await read("../netlify/lib/neon-store.mts");
+  const backup = await read("../netlify/functions/neon-memory-backup.mts");
+  const restore = await read("../netlify/functions/memory-restore.mts");
+  assert.match(adapter, /exportFinancialData/);
+  assert.match(adapter, /restoreFinancialRecord/);
+  assert.match(backup, /__financial__\/account/);
+  assert.match(backup, /__financial__\/ledger/);
+  assert.match(restore, /restoreFinancialRecord\("account"/);
+  assert.match(restore, /restoreFinancialRecord\("ledger"/);
+});
