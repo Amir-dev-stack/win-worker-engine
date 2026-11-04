@@ -213,6 +213,31 @@ function normaliseTeamStatistics(payload: any): any[] {
   }));
 }
 
+function sanitizePlayerRatingsPayload(payload: any, allowPlayerRatings: boolean): any {
+  if (allowPlayerRatings || !payload) return payload ?? null;
+  const clone = structuredClone(payload);
+  for (const team of apiRows(clone)) {
+    for (const player of asArray(team?.players)) {
+      for (const stat of asArray(player?.statistics)) {
+        if (isObject(stat?.games)) delete stat.games.rating;
+      }
+    }
+  }
+  return clone;
+}
+
+function sanitizeFixtureResultsPayload(payload: any, allowResults: boolean): any {
+  if (allowResults || !payload) return payload ?? null;
+  const clone = structuredClone(payload);
+  for (const fixture of apiRows(clone)) {
+    if (isObject(fixture)) {
+      delete fixture.goals;
+      delete fixture.score;
+    }
+  }
+  return clone;
+}
+
 function normalisePlayerStatistics(payload: any, allowPlayerRatings = false): any[] {
   return apiRows(payload).flatMap(teamBlock =>
     asArray(teamBlock?.players).map((entry: any) => ({
@@ -252,7 +277,7 @@ export function buildApiFootballMatchDossier(input: {
   awayTeamSeasonPayload?: any;
   endpointAudit?: any[];
   retrievedAt?: string;
-}, options: { allowPlayerRatings?: boolean } = {}) {
+}, options: { allowPlayerRatings?: boolean; allowResults?: boolean } = {}) {
   const retrievedAt = input.retrievedAt || new Date().toISOString();
   const fixture = fixtureRow(input.fixturePayload);
   if (!fixture?.fixture?.id) throw new Error("api_football_fixture_not_found");
@@ -266,7 +291,10 @@ export function buildApiFootballMatchDossier(input: {
   const lineups = fixtureLineups.length ? normaliseLineups({ response: fixtureLineups }) : normaliseLineups(input.lineupsPayload);
   const teamStatistics = fixtureStats.length ? normaliseTeamStatistics({ response: fixtureStats }) : normaliseTeamStatistics(input.statisticsPayload);
   const allowPlayerRatings = options.allowPlayerRatings === true;
+  const allowResults = options.allowResults === true;
   const playerStatistics = normalisePlayerStatistics(input.playersPayload, allowPlayerRatings);
+  const rawPlayers = sanitizePlayerRatingsPayload(input.playersPayload, allowPlayerRatings);
+  const rawFixture = sanitizeFixtureResultsPayload(input.fixturePayload, allowResults);
   const injuries = apiRows(input.injuriesPayload);
   const predictions = apiRows(input.predictionsPayload);
   const odds = apiRows(input.oddsPayload);
@@ -325,8 +353,8 @@ export function buildApiFootballMatchDossier(input: {
       round: fixture.league?.round ?? null,
       home: fixture.teams?.home ?? null,
       away: fixture.teams?.away ?? null,
-      goals: fixture.goals ?? null,
-      score: fixture.score ?? null
+      goals: allowResults ? fixture.goals ?? null : null,
+      score: allowResults ? fixture.score ?? null : null
     },
     teamStatistics,
     halfTimeTeamStatistics: input.halfStatisticsPayload ? normaliseTeamStatistics(input.halfStatisticsPayload) : [],
@@ -345,13 +373,13 @@ export function buildApiFootballMatchDossier(input: {
     },
     coverage: coverageRows,
     raw: {
-      fixture: input.fixturePayload,
+      fixture: rawFixture,
       league: input.leaguePayload || null,
       events: input.eventsPayload || null,
       lineups: input.lineupsPayload || null,
       statistics: input.statisticsPayload || null,
       halfStatistics: input.halfStatisticsPayload || null,
-      players: input.playersPayload || null,
+      players: rawPlayers,
       injuries: input.injuriesPayload || null,
       predictions: input.predictionsPayload || null,
       odds: input.oddsPayload || null,
@@ -367,7 +395,7 @@ export function buildApiFootballMatchDossier(input: {
       termsReference: TERMS_URL,
       attribution: ATTRIBUTION,
       retrievedAt,
-      rawPayloadSha256: stableJsonHash(input),
+      rawPayloadSha256: stableJsonHash({ ...input, fixturePayload: rawFixture, playersPayload: rawPlayers }),
       sourceReportedNotIndependentlyVerified: true
     }
   };
@@ -456,7 +484,7 @@ export async function syncApiFootballFixtureDossier(
     halfStatisticsPayload, playersPayload, injuriesPayload, predictionsPayload, oddsPayload,
     standingsPayload, headToHeadPayload, homeTeamSeasonPayload, awayTeamSeasonPayload,
     endpointAudit, retrievedAt
-  }, { allowPlayerRatings: domainEnabled(readiness, "player_ratings") });
+  }, { allowPlayerRatings: domainEnabled(readiness, "player_ratings"), allowResults: domainEnabled(readiness, "results") });
   const failedEndpoints = endpointAudit.filter(item => item.status !== "success");
   const availableSections = dossier.coverage.filter((item: any) => item.status === "available").length;
   const summary = {
@@ -480,7 +508,7 @@ export async function syncApiFootballFixtureDossier(
     id: dossier.id,
     eventId: String(fixtureId),
     totalRows: 1,
-    scoredRows: fixture?.fixture?.status?.short === "FT" ? 1 : 0,
+    scoredRows: domainEnabled(readiness, "results") && fixture?.fixture?.status?.short === "FT" ? 1 : 0,
     retrievedAt,
     origin: "provider_historical_data",
     lab: "model-lab"
