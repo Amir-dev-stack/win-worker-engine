@@ -1,6 +1,7 @@
 import { requireAuth } from "../lib/auth.mts";
 import { getStore } from "@netlify/blobs";
 import { getMemoryBackendMode } from "../lib/store.mts";
+import { getRuntimeEnv } from "../lib/runtime-env.mts";
 
 const STORE_OPTIONS = { name: "win-engine", region: "eu-central-1", consistency: "strong" as const };
 
@@ -10,7 +11,7 @@ export default async (req: Request) => {
   if (req.method !== "GET") return new Response("Method not allowed", { status: 405 });
 
   const mode = getMemoryBackendMode();
-  const configured = Boolean(process.env.WIN_NEON_DATABASE_URL?.trim());
+  const configured = Boolean(getRuntimeEnv("WIN_NEON_DATABASE_URL")?.trim());
   let backfill: unknown = null;
   let backup: unknown = null;
   let restore: unknown = null;
