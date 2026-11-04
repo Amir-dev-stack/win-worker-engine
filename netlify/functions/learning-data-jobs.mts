@@ -10,8 +10,9 @@ import { runOpenFootballBaselineLab } from "../lib/model-lab.mts";
 import { settleObservedWorldCupMarkets } from "../lib/observed-market-settlement.mts";
 import { runMarketCalibrationLab } from "../lib/market-calibration.mts";
 import { syncNflversePlayByPlayData } from "../lib/nflverse-pbp-adapter.mts";
+import { syncStatsBombOpenDataResearch, STATSBOMB_RESEARCH_CONFIRMATION } from "../lib/statsbomb-open-data-adapter.mts";
 
-type JobAction = "discover_sources" | "sync_historical_data";
+type JobAction = "discover_sources" | "sync_historical_data" | "sync_statsbomb_open_data";
 const actions = new Set<JobAction>(["discover_sources", "sync_historical_data"]);
 
 export default async (req: Request) => {
@@ -24,6 +25,9 @@ export default async (req: Request) => {
   catch { return Response.json({ error: "Expected JSON body" }, { status: 400 }); }
   const action = String(body?.action || "") as JobAction;
   if (!actions.has(action)) return Response.json({ error: "Unsupported learning data job." }, { status: 400 });
+  if (action === "sync_statsbomb_open_data" && body?.confirmResearchUse !== STATSBOMB_RESEARCH_CONFIRMATION) {
+    return Response.json({ error: "StatsBomb import requires explicit confirmation for private non-commercial research use." }, { status: 400 });
+  }
 
   const now = new Date();
   const startedAt = now.toISOString();
@@ -45,13 +49,31 @@ export default async (req: Request) => {
     return Response.json({ accepted: false, status: "already_running", action }, { status: 409 });
   }
   const lockEtag = claim.etag;
-  const stateKey = action === "discover_sources" ? "public-source-discovery" : "manual-historical-data-sync";
+  const stateKey = action === "discover_sources" ? "public-source-discovery" : action === "sync_statsbomb_open_data" ? "statsbomb-open-data" : "manual-historical-data-sync";
   await put("scheduler-state", stateKey, { status: "running", startedAt, jobId, action, aiCalls: 0 });
 
   try {
     let result: any;
     if (action === "discover_sources") {
       result = await discoverPublicResearchSources();
+    } else if (action === "sync_statsbomb_open_data") {
+      const imported = await syncStatsBombOpenDataResearch({
+        competitionId: body?.competitionId,
+        seasonId: body?.seasonId,
+        maxMatches: body?.maxMatches,
+        confirmResearchUse: body?.confirmResearchUse
+      });
+      result = {
+        status: imported.status,
+        startedAt,
+        completedAt: new Date().toISOString(),
+        steps: [{ name: "statsbomb_open_data_manual_research_import", status: imported.status, result: imported }],
+        datasetsImported: 1,
+        eventRowsImported: imported.matchesImported,
+        aiCalls: 0,
+        humanCouponLabTouched: false,
+        note: "Owner-confirmed, bounded StatsBomb research import. It remains in the historical model lab only; no human coupons, predictions or live betting records were changed."
+      };
     } else {
       const steps: any[] = [];
       const execute = async (name: string, work: () => Promise<any>) => {
