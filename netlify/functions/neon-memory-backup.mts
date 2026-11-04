@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createCipheriv, createHash, randomBytes } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { getStore } from "@netlify/blobs";
 import { getMemoryBackendMode } from "../lib/store.mts";
@@ -37,6 +37,8 @@ const MAX_RAW_BYTES = 180 * 1024 * 1024;
 export default async () => {
   const mode = getMemoryBackendMode();
   if (mode === "blobs") return Response.json({ skipped: true, reason: "Neon memory is not enabled." });
+  const keyHex = process.env.WIN_MEMORY_BACKUP_KEY?.trim() || "";
+  if (!/^[0-9a-fA-F]{64}$/.test(keyHex)) throw new Error("WIN_MEMORY_BACKUP_KEY must be configured as a 32-byte hexadecimal secret before encrypted backups can run.");
 
   const blobs = getStore(STORE_OPTIONS);
   const lockKey = "library/meta/neon-backup-lock";
@@ -71,14 +73,19 @@ export default async () => {
     const content = Buffer.from(lines.length ? lines.join("\n") + "\n" : "", "utf8");
     const digest = createHash("sha256").update(content).digest("hex");
     const compressed = gzipSync(content);
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", Buffer.from(keyHex, "hex"), iv);
+    const encrypted = Buffer.concat([iv, cipher.getAuthTag(), cipher.update(compressed), cipher.final()]);
+    const encryptedDigest = createHash("sha256").update(encrypted).digest("hex");
     const date = new Date().toISOString().slice(0, 10);
     const snapshotKey = "library/memory-backups/" + date + ".jsonl.gz";
     const manifestKey = "library/memory-backups/" + date + ".manifest.json";
-    await blobs.set(snapshotKey, compressed);
+    await blobs.set(snapshotKey, encrypted);
     const manifest = {
       id: "neon-memory-backup-" + date,
       status: "completed",
-      format: "gzip-jsonl",
+      format: "aes-256-gcm+gzip-jsonl",
+      encryption: "AES-256-GCM",
       schemaVersion: 1,
       source: "neon_postgres",
       backendMode: mode,
@@ -86,7 +93,9 @@ export default async () => {
       rowCount: lines.length,
       rawBytes,
       compressedBytes: compressed.byteLength,
+      encryptedBytes: encrypted.byteLength,
       sha256: digest,
+      encryptedSha256: encryptedDigest,
       collections: collectionCounts,
       createdAt: new Date().toISOString(),
       retentionDays: 30
