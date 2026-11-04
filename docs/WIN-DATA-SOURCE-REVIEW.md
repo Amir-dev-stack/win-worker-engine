@@ -87,3 +87,12 @@ This is not a full PBP row ingestion or a full schedule CSV audit: the released-
 The NFL event normaliser now retains every non-empty source-native column value on each play as `sourceFields`, alongside the selected normalised event fields. Each match record also stores the source schema field names and count, and identifies the source grain as one row per play. This prevents WIN from silently discarding PBP columns that are not yet mapped into its standard metric catalogue. It does not imply every source field is a validated metric or that every field is available for every play; consumers must still inspect null/absence and source definitions.
 
 The current adapter still calculates only a subset of derived team/player box-score totals. Player ratings, confirmed full snap participation, injuries, lineup positions and provider metrics absent from the PBP release remain unavailable or require separate licensed/appropriate feeds. No live PBP season import has been run to measure actual record sizes or validate all current source columns end to end.
+
+
+### Read-only full-season NFL source audit runner (updated 2026-11-04)
+
+WIN now has an authenticated `POST /api/nflverse-audit` endpoint and an isolated GitHub Actions audit runner. Both invoke the read-only audit path, which downloads the selected season's processed PBP CSV and the current schedule CSV, validates the full row sets, joins by exact `game_id`, and measures the UTF-8 JSON payload shape used by the historical-event importer. The audit reports source byte counts, SHA-256 hashes, response ETag/Last-Modified values, PBP schema fields, accepted/rejected rows and reasons, schedule join coverage/conflicts, completed-match/play/player-line counts, and per-match payload-size distribution (average, median, p90, p95, maximum and largest records).
+
+The audit path does not call Blob storage, update scheduler state, create historical datasets, or call AI. The API endpoint requires dashboard authentication and explicit `action: "audit_read_only"` plus `confirmReadOnly: true`. The CI runner uses GitHub Actions on PR changes to the NFL adapter/audit files and can also be manually dispatched for a selected season. The audit is source-reported validation only; it is not independent verification of NFL results or statistics.
+
+The audit has been implemented but its first real upstream run is pending successful CI execution. No full-season PBP file has yet been processed by this audit runner, and no import was run.
