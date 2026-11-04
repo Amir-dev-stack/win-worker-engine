@@ -174,6 +174,22 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     notes:"Candidate only. The repository states CC BY 4.0 and publishes a monthly 1X2 CSV plus daily immutable JSON snapshots, a SHA-256 manifest and OpenTimestamps proofs. Before ingestion, verify that each prediction is present in a snapshot captured before its kick-off and that the snapshot hash matches the manifest; newest timestamp proofs may still be pending. Exclude void rows. Do not treat source-reported results or CLV as independent ground truth. Its documented CLV is raw-price versus raw-price, best-soft fields include exchanges, earlier best-soft history may contain look-ahead, and Betfair venue labelling was mixed through 2026-10-15. Dataset-specific data rights and methodology remain under review; no automatic download or ingestion."
   },
   {
+    id:"api-sports", name:"API-SPORTS (API-Football and other sport APIs)", website:"https://api-sports.io/",
+    sports:["football","basketball","american_football"],
+    dataDomains:["fixtures","results","competition_standings","team_match_statistics","player_match_statistics","player_ratings","play_by_play_events","lineups","injuries","team_season_statistics","player_season_statistics"],
+    accessMode:"licensed_api", historicalSupport:"possible", authentication:"api_key",
+    licenceReview:"required", automationAllowed:false,
+    notes:"Deep-statistics commercial API candidate. Official docs describe football fixture team stats, halftime splits, events, lineups, player match statistics and provider-defined ratings; Basketball player game stats; and American-football play-by-play and position-group player statistics. Actual coverage, historical depth, rating definitions, quotas, price and reuse rights must be verified for each sport/competition/season and account before any adapter is enabled."
+  },
+  {
+    id:"statsbomb-open-data", name:"StatsBomb Open Data", website:"https://github.com/hudl/open-data",
+    sports:["football"],
+    dataDomains:["selected_competitions_historical_matches","match_events","lineups","selected_match_360_data"],
+    accessMode:"research_candidate", historicalSupport:"documented", authentication:"none",
+    licenceReview:"required", automationAllowed:false,
+    notes:"Publicly shared event and lineup JSON for selected competitions/seasons, plus 360 data for selected matches. Attribution/brand requirements apply; coverage is selective, updates are not guaranteed live, and commercial player/season IQ metrics are not the same as the open event files. Terms and reuse rights must be reviewed before automated ingestion."
+  },
+  {
     id:"sportmonks", name:"Sportmonks", website:"https://www.sportmonks.com/",
     sports:["football","cricket"], dataDomains:["fixtures","results","teams","players","lineups","statistics","odds"],
     accessMode:"licensed_api", historicalSupport:"possible", authentication:"api_key",

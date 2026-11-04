@@ -260,18 +260,23 @@ export function flattenStatisticKeys(value,maxDepth=8){
  };
  visit(value,0);return [...found];
 }
-export function inspectStatisticCoverage(sport,details={}){
+export function collectEventTypeValues(value,maxDepth=8){
+ const found=new Set();
+ const visit=(node,depth)=>{if(depth>maxDepth||node===null||node===undefined)return;if(Array.isArray(node)){for(const x of node)visit(x,depth+1);return;}if(typeof node!=="object")return;for(const [key,child] of Object.entries(node)){if(["type","eventtype","event_type","kind","eventname","event_name"].includes(key.toLowerCase())&&typeof child==="string")found.add(normalizeKey(child));visit(child,depth+1);}};
+ visit(value,0);return [...found];
+}
+function inspectStatisticCoverage(sport,details={}){
  const config=getSportStatSpec(sport);
  const keys=flattenStatisticKeys(details);
  const inspect=(groups)=>groups.map(g=>{
   const metrics=g.metrics.map(value=>typeof value==="string"?metric(value,value.replace(/_/g," "),[value]):value);
   const available=metrics.flatMap(m=>m.aliases.filter(alias=>keys.includes(normalizeKey(alias))).map(()=>m.id));
   const present=[...new Set(available)];
-  return {id:g.id,label:g.label,status:present.length?"partial_or_available":"not_provided",availableMetrics:present,missingMetrics:metrics.filter(m=>!present.includes(m.id)).map(m=>m.id),availableMetricCount:present.length,expectedMetricCount:metrics.length};
+  return {id:g.id,label:g.label,status:present.length===0?"not_provided":present.length===metrics.length?"present":"partial",availableMetrics:present,missingMetrics:metrics.filter(m=>!present.includes(m.id)).map(m=>m.id),availableMetricCount:present.length,expectedMetricCount:metrics.length};
  });
  const team=inspect(config.team||[]),player=inspect(config.player||[]);
- const eventKeys=flattenStatisticKeys(details);
- const eventCoverage=(config.events||[]).map(name=>({eventType:name,status:eventKeys.includes(normalizeKey(name))?"present":"not_detected"}));
+ const eventValues=collectEventTypeValues(details);
+ const eventCoverage=(config.events||[]).map(name=>({eventType:name,status:eventValues.some(value=>value===normalizeKey(name)||value.includes(normalizeKey(name)))?"present":"not_provided"}));
  const summarize=groups=>({availableGroups:groups.filter(x=>x.availableMetricCount>0).length,totalGroups:groups.length,expectedMetrics:groups.reduce((n,x)=>n+x.expectedMetricCount,0),availableMetrics:groups.reduce((n,x)=>n+x.availableMetricCount,0)});
  const t=summarize(team),p=summarize(player);
  return {sportId:config.sportId,sportLabel:config.label,team,player,eventTypes:eventCoverage,
