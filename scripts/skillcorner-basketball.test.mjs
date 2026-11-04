@@ -31,7 +31,7 @@ test("SkillCorner CSV preserves player-team-season identity and numeric aggregat
   assert.equal(row.retrievedAt, "2026-11-05T09:00:00.000Z");
 });
 
-test("SkillCorner traded-player total rows are explicitly labelled and remain separate", () => {
+test("SkillCorner traded-player season total rows are explicitly labelled and remain separate", () => {
   const parsed = parseSkillCornerCsv(csv, "shots");
   const rows = parsed.records.filter(row => row.playerId === "446");
   assert.equal(rows.length, 2);
