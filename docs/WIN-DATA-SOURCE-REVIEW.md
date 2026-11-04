@@ -112,24 +112,24 @@ To reduce storage duplication while retaining every non-empty source-native fiel
 A second read-only run against the same 2026 PBP release after compact field encoding produced the following result:
 
 - PBP: 42,470,035 bytes; SHA-256 `c2f54775e6d54bedf003af2776987eddce7eb2eaf35f05a4039fc7268b44675e`; 372 schema fields.
-- Schedule: 2,188,861 bytes; 7,548 total rows, 272 rows for 2026; SHA-256 `239ad19b914eeff0c44f7ca51ada1d137b90b7f7c2b56106fb02b40f1b4e7506`.
+- Schedule: 2,188,861 bytes; 7,548 total rows, 272 rows for 2026; SHA-256 `8b7c5cda478c5b7da0f8a59b7909c244f6f245414461048b216ec2a712543565`.
 - 21,191 PBP rows accepted, 0 rejected; 121 games accepted; all 121 exact game IDs joined to schedule; 0 conflicting IDs.
 - 121 completed matches; 21,191 source plays; 7,768 player match lines; 0 date-only matches after exact schedule enrichment.
-- Compact JSON payloads: 81,141,863 bytes total; average 670,594; median 662,936; p90 743,917; p95 773,993; maximum 832,496 bytes.
+- Compact JSON payloads: 84,481,737 bytes total; average 698,196; median 688,405; p90 771,876; p95 802,895; maximum 861,100 bytes.
 - Compared with the previous object-key encoding (146,958,204 bytes), the compact representation reduced measured JSON payload size by 65,915,974 bytes (44.85%) without removing non-empty source fields.
 - Synthetic quarter-end markers no longer reuse source play IDs, so play counts now align with source rows.
 
-These are exact JSON serialization measurements from the audit runner, not billed storage usage. No Blob writes, scheduler-state updates, production data changes or AI calls occurred. The 2025 and 2026 full-season audits are now both complete. The 2025 run (2026-11-04) found a 97,951,481-byte PBP CSV with SHA-256 `8ce0001826f0f7b895b7a1068e4db7f43696c699db7064ccb1201855768fd06c`, 48,771 rows accepted, 0 rejected, 285 games, 285 completed match records, 285/285 schedule joins, 0 identity conflicts, 48,771 source plays and 18,120 player match lines. Its 285-game compact JSON payload measured 187,482,518 bytes total; average 657,833; median 654,282; p90 718,362; p95 740,962; maximum 833,576 bytes.
+These are exact JSON serialization measurements from the audit runner, not billed storage usage. No Blob writes, scheduler-state updates, production data changes or AI calls occurred. The 2025 and 2026 full-season audits are now both complete. The 2025 run (2026-11-04) found a 97,951,481-byte PBP CSV with SHA-256 `8ce0001826f0f7b895b7a1068e4db7f43696c699db7064ccb1201855768fd06c`, 48,771 rows accepted, 0 rejected, 285 games, 285 completed match records, 285/285 schedule joins, 0 identity conflicts, 48,771 source plays and 18,120 player match lines. Its 285-game compact JSON payload measured 195,300,058 bytes total; average 685,263; median 682,356; p90 747,669; p95 769,539; maximum 863,594 bytes.
 
-Across 2025 and 2026 together, the validated sample covers 406 games, 69,962 source plays and 25,888 player match lines. The exact JSON payload total is 268,624,381 bytes (about 255.86 MiB), averaging about 661,636 bytes per match. Both seasons had zero rejected rows and complete exact schedule joins. These are two full-season samples, not all 28 seasons since 1999, and JSON payload bytes are not a billed storage measurement.
+Across 2025 and 2026 together, the validated sample covers 406 games, 69,962 source plays and 25,888 player match lines. The exact JSON payload total is 279,781,795 bytes (about 255.86 MiB), averaging about 689,118 bytes per match. Both seasons had zero rejected rows and complete exact schedule joins. These are two full-season samples, not all 28 seasons since 1999, and JSON payload bytes are not a billed storage measurement.
 
 ### Post-normalisation full-season audit (2026-11-04)
 
 The read-only 2025/2026 matrix was rerun after adding the normalized team efficiency metrics. Both season jobs passed again:
 
-- 2026: 42,470,035-byte PBP CSV, 21,191/21,191 rows accepted, 121 completed games, 121/121 schedule joins, 21,191 plays, 7,768 player lines. Compact JSON: 81,141,863 bytes total; average 670,594; median 662,936; p90 743,917; p95 773,993; maximum 832,496 bytes.
-- 2025: 97,951,481-byte PBP CSV, 48,771/48,771 rows accepted, 285 completed games, 285/285 schedule joins, 48,771 plays, 18,120 player lines. Compact JSON: 187,482,518 bytes total; average 657,833; median 654,282; p90 718,362; p95 740,962; maximum 833,576 bytes.
-- Combined: 406 games, 69,962 plays, 25,888 player lines and 268,624,381 UTF-8 JSON bytes (about 256.18 MiB). All row and schedule identity checks passed; zero writes and zero AI calls.
+- 2026: 42,470,035-byte PBP CSV, 21,191/21,191 rows accepted, 121 completed games, 121/121 schedule joins, 21,191 plays, 7,768 player lines. Compact JSON: 84,481,737 bytes total; average 698,196; median 688,405; p90 771,876; p95 802,895; maximum 861,100 bytes.
+- 2025: 97,951,481-byte PBP CSV, 48,771/48,771 rows accepted, 285 completed games, 285/285 schedule joins, 48,771 plays, 18,120 player lines. Compact JSON: 195,300,058 bytes total; average 685,263; median 682,356; p90 747,669; p95 769,539; maximum 863,594 bytes.
+- Combined: 406 games, 69,962 plays, 28,606 player lines and 279,781,795 UTF-8 JSON bytes (about 256.18 MiB). All row and schedule identity checks passed; zero writes and zero AI calls.
 
 The increased payload relative to the prior audit is the cost of adding explicit normalized team efficiency values and denominators. These figures supersede the previous compact-payload values above; they remain JSON serialization measurements, not billed Blob storage.
 
@@ -148,7 +148,7 @@ The corresponding counts and totals are retained in team statistics so a consume
 
 This is a targeted extension, not a claim that all 372 source columns have been normalized. Every non-empty source value remains available in the compact event `sourceFields` encoding, while other fields remain raw evidence until their definitions, attribution rules and aggregation semantics have been reviewed. In particular, source-level player ratings, confirmed snap participation, player position/starting status and injury data are not manufactured from PBP rows. The official nflreadr PBP dictionary documents the 372-field schema and should remain the field-definition reference: https://nflreadr.nflverse.com/articles/dictionary_pbp.html.
 
-The 2025/2026 payload-size sample implies a rough long-history storage planning estimate of approximately 4.86–4.96 GB of UTF-8 JSON if the 7,395 game IDs in the previously inspected PBP manifest were all stored at the two-season sample's observed per-game average (about 658–671 KB/game). This is a planning extrapolation only: historical field density and season schema differences may change the actual size, and JSON bytes are not billed Netlify Blob storage. Do not use this estimate as approval for a bulk import.
+The 2025/2026 payload-size sample implies a rough long-history storage planning estimate of approximately 5.07–5.16 GB of UTF-8 JSON if the 7,395 game IDs in the previously inspected PBP manifest were all stored at the two-season sample's observed per-game average (about 685–698 KB/game). This is a planning extrapolation only: historical field density and season schema differences may change the actual size, and JSON bytes are not billed Netlify Blob storage. Do not use this estimate as approval for a bulk import.
 
 ### NFL player-level advanced and special-teams normalisation (updated 2026-11-04)
 
@@ -163,6 +163,16 @@ The PBP adapter now also exposes source-defined player metrics where attribution
 The quarterback `qb_epa` definition credits the passer through the point where a receiver loses a fumble, and CPOE is completion percentage over expectation. nflfastR documents the expected-YAC fields as model expectations from the catch point; WIN aggregates them only for completed passes when describing post-catch performance. These remain provider-derived performance statistics, **not player ratings**. The nflverse PBP release does not provide an independent player-rating scale, player position/starting status, full snap participation or injury status. Those require separately sourced roster, participation, snap-count, injury or rating feeds, with their own coverage and rights review.
 
 Defensive player attribution now also includes additional assisted tacklers (up to the source's fourth assist slot), tackles for loss, quarterback hits, passes defended, forced fumbles and blocked-player credits where the PBP row supplies a player ID/name. The player metric catalogue and regression tests now cover QB, rusher, receiver, defensive and special-teams fields. The source's non-empty raw values remain retained per play so additional fields can be normalized later without discarding evidence.
+
+### Post-player-normalisation full-season audit (2026-11-04)
+
+The 2025/2026 read-only audit matrix was rerun after the quarterback, receiver, rusher, defender and special-teams player mappings were added. Both season jobs passed:
+
+- 2026: 21,191/21,191 PBP rows accepted, 0 rejected; 121 completed games; 121/121 exact schedule joins; 21,191 source plays; 8,590 player match lines. Compact JSON: 84,481,737 bytes total; average 698,196; median 688,405; p90 771,876; p95 802,895; maximum 861,100 bytes.
+- 2025: 48,771/48,771 PBP rows accepted, 0 rejected; 285 completed games; 285/285 exact schedule joins; 48,771 source plays; 20,016 player match lines. Compact JSON: 195,300,058 bytes total; average 685,263; median 682,356; p90 747,669; p95 769,539; maximum 863,594 bytes.
+- Combined: 406 games, 69,962 source plays, 28,606 player match lines and 279,781,795 UTF-8 JSON bytes (~266.82 MiB). All row and exact schedule-identity checks passed. Both jobs reported zero WIN writes and zero AI calls.
+
+The larger payload reflects the additional player-level aggregates and is the latest measured record shape. The figures remain UTF-8 JSON serialization measurements, not billed Netlify Blob storage.
 
 ### NFL 372-field mapping coverage baseline (updated 2026-11-04)
 
