@@ -350,6 +350,7 @@ function eventTypes(row: Record<string, string>) {
 
 function buildPlayTimeline(rows: Record<string, string>[]) {
   const timeline: any[] = [];
+  const sourceFieldIndexes = new Map(Object.keys(rows[0] || {}).map((key, index) => [key, index]));
   let previousQuarter = 0;
   for (const row of rows) {
     const quarter = number(row.qtr);
@@ -377,13 +378,18 @@ function buildPlayTimeline(rows: Record<string, string>[]) {
       rusher: text(row.rusher_player_name) || null,
       receiver: text(row.receiver_player_name) || null,
       // Keep every non-empty provider-native field, including metrics not yet
-      // normalised by WIN, so the original play evidence is not discarded.
-      sourceFields: Object.fromEntries(Object.entries(row).filter(([, value]) => text(value) !== ""))
+      // normalised by WIN. The match-level schema maps numeric indexes to field
+      // names; flat index/value pairs avoid repeating long column names per play.
+      sourceFields: Object.entries(row).reduce((pairs: any[], [key, value]) => {
+        const index = sourceFieldIndexes.get(key);
+        if (index !== undefined && text(value) !== "") pairs.push(index, value);
+        return pairs;
+      }, [])
     });
     if (flag(row.quarter_end)) {
       timeline.push({
         type: "quarter_end", eventTypes: ["quarter_end"], quarter,
-        clock: text(row.time) || null, playId: number(row.play_id),
+        clock: text(row.time) || null, playId: null,
         description: "End of quarter " + String(quarter)
       });
     }
@@ -577,6 +583,7 @@ export function buildNflverseMatchRecords(
       week: game.week, event: homeName + " vs " + awayName,
       homeTeam: homeName, awayTeam: awayName,
       sourceDataGrain: "one_row_per_play",
+      sourceFieldEncoding: "schema_index_value_pairs_v1",
       sourceSchemaFields: Object.keys(game.rows[0] || {}),
       sourceSchemaFieldCount: Object.keys(game.rows[0] || {}).length,
       eventStart: null, eventDate: game.date, eventTimePrecision: "date_only",
