@@ -9,6 +9,7 @@ import { syncSharpApiSampleMarkets } from "../lib/sharpapi-sample-adapter.mts";
 import { runOpenFootballBaselineLab } from "../lib/model-lab.mts";
 import { settleObservedWorldCupMarkets } from "../lib/observed-market-settlement.mts";
 import { runMarketCalibrationLab } from "../lib/market-calibration.mts";
+import { syncNflversePlayByPlayData } from "../lib/nflverse-pbp-adapter.mts";
 
 type JobAction = "discover_sources" | "sync_historical_data";
 const actions = new Set<JobAction>(["discover_sources", "sync_historical_data"]);
@@ -62,6 +63,7 @@ export default async (req: Request) => {
         }
       };
       await execute("openfootball_historical_results", syncOpenFootballHistoricalData);
+      await execute("nflverse_american_football_play_by_play", () => syncNflversePlayByPlayData());
       await execute("openfootball_world_cup_and_player_events", syncOpenFootballWorldCupData);
       await execute("consensus_market_history", syncConsensusMarketDatasets);
       await execute("sharpapi_observed_market_snapshots", syncSharpApiSampleMarkets);
@@ -79,7 +81,7 @@ export default async (req: Request) => {
         datasetsImported: steps.reduce((n, x) => n + Number(x.result?.datasetsImported || x.result?.filesFetched || 0), 0),
         eventRowsImported: steps.reduce((n, x) => n + Number(x.result?.matchesImported || x.result?.rowsImported || 0), 0),
         aiCalls: 0, humanCouponLabTouched: false,
-        note: "Only existing source-specific adapters ran. Historical observed-price settlement is limited to eligible pre-match football snapshots that match exact OpenFootball World Cup fixtures and implemented market rules. Market calibration is a consensus benchmark with a chronological 70/30 holdout, not a WIN edge or ROI claim. No discovered source was automatically connected, and no human coupon records were read or changed."
+        note: "Only approved, source-specific adapters ran. Historical observed-price settlement is limited to eligible pre-match football snapshots that match exact OpenFootball World Cup fixtures and implemented market rules. Market calibration is a consensus benchmark with a chronological 70/30 holdout, not a WIN edge or ROI claim. The nflverse adapter imports licensed NFL play-by-play only; it does not add association-football coverage. No discovered candidate source was automatically connected, and no human coupon records were read or changed."
       };
     }
 
