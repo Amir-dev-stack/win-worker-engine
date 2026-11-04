@@ -33,8 +33,7 @@ export async function getModelLabResearchPack(targetBrief:any={}){
   list<any>("library/model-lab/settled-observed-markets",100),
   list<any>("library/model-lab/observed-market-settlement-runs",20),
   list<any>("library/research-source-candidates",1000),
-  list<any>("library/research-source-discovery-runs",20),
-  list<any>("library/model-lab/observed-market-snapshots",100)
+  list<any>("library/research-source-discovery-runs",20)
  ]);
  const latestCalibration=calibrations.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]||null;
  const latestSettlement=settlementRuns.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]||null;

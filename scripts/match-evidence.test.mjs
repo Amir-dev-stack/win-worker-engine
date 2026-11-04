@@ -43,7 +43,7 @@ test("exact historical target match appears only in post-match report, never pre
 
 test("price snapshots captured after kickoff are excluded from pre-match market evidence",()=>{
  const pack=buildMatchEvidencePack(target,{historicalDatasets:[{id:"ucl",providerId:"feed-a",records:rows}],observedSnapshots:[{providerId:"book-feed",records:[
-  {homeTeam:"Manchester City",awayTeam:"RB Leipzig",startsAt:"2026-11-05T20:00:00Z",observedAt:"2026-11-05T18:00:00Z",oddsDecimal:1.7,canonicalMarketId:"moneyline"},
+  {homeTeam:"Manchester City",awayTeam:"RB Leipzig",startsAt:"2026-11-05T20:00:00Z",observedAt:"2026-11-04T10:00:00Z",oddsDecimal:1.7,canonicalMarketId:"moneyline"},
   {homeTeam:"Manchester City",awayTeam:"RB Leipzig",startsAt:"2026-11-05T20:00:00Z",observedAt:"2026-11-05T21:00:00Z",oddsDecimal:1.5,canonicalMarketId:"moneyline"}
  ]}],nowMs});
  assert.equal(pack.preMatchMarkets.marketRows,1);

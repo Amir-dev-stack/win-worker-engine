@@ -110,7 +110,7 @@ function aggregateTeamGames(games){
   };
 }
 function summarizeTeam(name,allRows,competition,cutoff){
-  const games=allRows.filter(row=>row.eventMs<cutoff)
+  const games=allRows.filter(row=>row.eventMs<cutoff&&row.score)
     .map(row=>teamPerspective(row,name)).filter(Boolean)
     .sort((a,b)=>time(b.date)-time(a.date));
   const latestSeason=games.find(x=>x.season)?.season||null;
@@ -153,7 +153,9 @@ function observedTargetMarkets(datasets,teams,kickoffMs,nowMs){
   return found.slice(0,100);
 }
 function matchPostReport(record,nowMs){
-  if(!record||record.eventMs>nowMs||!record.score)return {status:"not_available"};
+  if(!record)return {status:"not_available"};
+  if(record.eventMs>nowMs)return {status:"not_started"};
+  if(!record.score)return {status:"awaiting_source_result"};
   const details=record.details||{};
   const actualStatsKeys=["playerEvents","playerStats","matchStats","matchStatistics","statistics","stats","events","matchEvents","goals","cards","lineups","lineup","substitutions"].filter(k=>details[k]!==undefined);
   return {
@@ -182,7 +184,7 @@ export function buildMatchEvidencePack(brief,inputs={}){
   const records=normalizeRows(collections).filter(r=>sport==="unknown"||r.sport==="unknown"||norm(r.sport)===norm(sport)||(sport==="football"&&r.sport==="soccer"));
   const home=teams?summarizeTeam(teams.home,records,competition,cutoff):null;
   const away=teams?summarizeTeam(teams.away,records,competition,cutoff):null;
-  const h2h=teams?records.filter(r=>r.eventMs<cutoff&&
+  const h2h=teams?records.filter(r=>r.eventMs<cutoff&&r.score&&
     ((same(r.sides.one,teams.home)&&same(r.sides.two,teams.away))||(same(r.sides.one,teams.away)&&same(r.sides.two,teams.home))))
     .sort((a,b)=>b.eventMs-a.eventMs).slice(0,10).map(r=>({
       date:r.eventStart,competition:r.competition,season:r.season,team1:r.sides.one,team2:r.sides.two,
