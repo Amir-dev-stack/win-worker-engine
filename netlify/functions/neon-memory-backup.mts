@@ -42,8 +42,16 @@ export default async () => {
 
   const blobs = getStore(STORE_OPTIONS);
   const lockKey = "library/meta/neon-backup-lock";
-  const lock = await blobs.setJSON(lockKey, { startedAt: new Date().toISOString() }, { onlyIfNew: true });
-  if (!lock?.modified) return Response.json({ skipped: true, reason: "A backup is already running." });
+  const now = new Date();
+  const lockValue = { startedAt: now.toISOString() };
+  const existingLock = await blobs.getWithMetadata(lockKey, { type: "json", consistency: "strong" });
+  if (existingLock?.data?.startedAt && now.getTime() - Date.parse(existingLock.data.startedAt) < 30 * 60_000) {
+    return Response.json({ skipped: true, reason: "A backup is already running." });
+  }
+  const lock = existingLock?.etag
+    ? await blobs.setJSON(lockKey, lockValue, { onlyIfMatch: existingLock.etag })
+    : await blobs.setJSON(lockKey, lockValue, { onlyIfNew: true });
+  if (!lock?.modified) return Response.json({ skipped: true, reason: "Could not acquire the backup lock." });
 
   try {
     const neon = getNeonStore();
