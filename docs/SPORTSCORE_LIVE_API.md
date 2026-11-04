@@ -38,6 +38,10 @@ Therefore WIN:
 - Preserves missing scores and kickoff times as unavailable; it never converts them to zero or invents a UTC timestamp.
 - Makes no AI calls and does not require an API key or paid account.
 
+## ChatGPT / MCP access
+
+WIN also exposes a read-only `get_sportscore_live_matches` MCP tool under the existing `win:read` authorization scope. It accepts one sport and returns the same 60-second cached normalized match list with the source attribution and reliability warning. Calling the tool is on-demand; there is no AI scheduler or background polling for SportScore.
+
 ## How to use it
 
 1. Open WIN's Learning / public result and historical data sources panel.
