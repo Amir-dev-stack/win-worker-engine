@@ -129,15 +129,15 @@ test("NFL source-row audit rejects impossible dates, malformed scores and confli
 
 test("NFL CSV parser fails closed on duplicate headers and mismatched column counts", () => {
   assert.throws(
-    () => parseNflverseCsv("game_id,game_date,home_team,away_team,home_team\\n1,2026-09-10,KC,BAL,KC"),
+    () => parseNflverseCsv("game_id,game_date,home_team,away_team,home_team\n1,2026-09-10,KC,BAL,KC"),
     /nflverse_csv_schema_duplicate_header/
   );
   assert.throws(
-    () => parseNflverseCsv("game_id,game_date,home_team,away_team\\n1,2026-09-10,KC"),
+    () => parseNflverseCsv("game_id,game_date,home_team,away_team\n1,2026-09-10,KC"),
     /nflverse_csv_column_count_mismatch_at_row_2/
   );
   assert.throws(
-    () => parseNflverseCsv("game_id,game_date,home_team,away_team\\n1,2026-09-10,KC,BAL,EXTRA"),
+    () => parseNflverseCsv("game_id,game_date,home_team,away_team\n1,2026-09-10,KC,BAL,EXTRA"),
     /nflverse_csv_column_count_mismatch_at_row_2/
   );
 });
