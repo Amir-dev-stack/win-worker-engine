@@ -13,7 +13,7 @@ import { syncNflversePlayByPlayData } from "../lib/nflverse-pbp-adapter.mts";
 import { syncStatsBombOpenDataResearch, STATSBOMB_RESEARCH_CONFIRMATION } from "../lib/statsbomb-open-data-adapter.mts";
 
 type JobAction = "discover_sources" | "sync_historical_data" | "sync_statsbomb_open_data";
-const actions = new Set<JobAction>(["discover_sources", "sync_historical_data"]);
+const actions = new Set<JobAction>(["discover_sources", "sync_historical_data", "sync_statsbomb_open_data"]);
 
 export default async (req: Request) => {
   const denied = requireAuth(req);
