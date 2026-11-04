@@ -406,7 +406,7 @@ async function refreshLearning(){
 }
 async function refresh(){
  try{
-  const health=await fetch("/api/health").then(r=>r.json());
+  const health=await api("/api/health");
   $("#apiStatus").textContent=health.status==="online"?"API online":"API unavailable";
   const [runs,tips,preds]=await Promise.all([api("/api/runs"),api("/api/tips"),api("/api/predictions")]);
   $("#runCount").textContent=runs.length;$("#tipCount").textContent=tips.length;$("#predictionCount").textContent=preds.length;
