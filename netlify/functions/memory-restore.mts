@@ -4,6 +4,7 @@ import { getStore } from "@netlify/blobs";
 import { requireAuth } from "../lib/auth.mts";
 import { getMemoryBackendMode } from "../lib/store.mts";
 import { getNeonStore } from "../lib/neon-store.mts";
+import { getRuntimeEnv } from "../lib/runtime-env.mts";
 
 const PREFIXES = [
   "library/agent-profiles/",
@@ -45,7 +46,7 @@ export default async (req: Request) => {
     return Response.json({ error: "Provide a valid backup date and explicit restore confirmation." }, { status: 400 });
   }
 
-  const keyHex = process.env.WIN_MEMORY_BACKUP_KEY?.trim() || "";
+  const keyHex = getRuntimeEnv("WIN_MEMORY_BACKUP_KEY")?.trim() || "";
   if (!/^[0-9a-fA-F]{64}$/.test(keyHex)) {
     return Response.json({ error: "WIN_MEMORY_BACKUP_KEY is not configured correctly." }, { status: 503 });
   }
