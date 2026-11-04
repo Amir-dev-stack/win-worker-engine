@@ -45,6 +45,80 @@ const addNumber = (target: Record<string, number>, key: string, value: unknown) 
 };
 const hasValue = (row: Record<string, string>, key: string) => text(row[key]) !== "";
 
+function validCalendarDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(value + "T00:00:00.000Z");
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function validScoreCell(value: unknown) {
+  const raw = text(value);
+  return raw === "" || /^\d+$/.test(raw);
+}
+
+/**
+ * Validate source rows before creating match records. Date-only source dates are
+ * retained as dates; they are not promoted to verified kickoff timestamps.
+ */
+export function auditNflverseRows(rows: Record<string, string>[]) {
+  const rejectedByReason: Record<string, number> = {};
+  const gamesSeen = new Set<string>();
+  const candidates: Array<{ row: Record<string, string>; gameId: string }> = [];
+  const identitiesByGame = new Map<string, Set<string>>();
+  let rowsRejected = 0;
+
+  const reject = (reason: string) => {
+    rowsRejected++;
+    rejectedByReason[reason] = (rejectedByReason[reason] || 0) + 1;
+  };
+
+  rows.forEach(row => {
+    const gameId = text(row.game_id);
+    if (gameId) gamesSeen.add(gameId);
+    const date = text(row.game_date);
+    const home = text(row.home_team).toUpperCase();
+    const away = text(row.away_team).toUpperCase();
+    if (!gameId) { reject("game_id_missing"); return; }
+    if (!validCalendarDate(date)) { reject("game_date_invalid"); return; }
+    if (!/^[A-Z]{2,3}$/.test(home)) { reject("home_team_invalid"); return; }
+    if (!/^[A-Z]{2,3}$/.test(away)) { reject("away_team_invalid"); return; }
+    if (home === away) { reject("teams_not_distinct"); return; }
+    if (!validScoreCell(row.home_score)) { reject("home_score_invalid"); return; }
+    if (!validScoreCell(row.away_score)) { reject("away_score_invalid"); return; }
+
+    const identity = [date, home, away].join("|");
+    const identities = identitiesByGame.get(gameId) || new Set<string>();
+    identities.add(identity);
+    identitiesByGame.set(gameId, identities);
+    candidates.push({ row, gameId });
+  });
+
+  const conflictingGames = new Set(
+    [...identitiesByGame.entries()].filter(([, identities]) => identities.size > 1).map(([gameId]) => gameId)
+  );
+  const acceptedRows: Record<string, string>[] = [];
+  for (const candidate of candidates) {
+    if (conflictingGames.has(candidate.gameId)) {
+      reject("game_identity_conflict");
+      continue;
+    }
+    acceptedRows.push(candidate.row);
+  }
+
+  const acceptedGames = new Set(acceptedRows.map(row => text(row.game_id)));
+  return {
+    acceptedRows,
+    rowsSeen: rows.length,
+    rowsAccepted: acceptedRows.length,
+    rowsRejected,
+    rejectedByReason,
+    gamesSeen: gamesSeen.size,
+    gamesAccepted: acceptedGames.size,
+    gamesRejected: Math.max(0, gamesSeen.size - acceptedGames.size),
+    conflictingGames: [...conflictingGames].sort()
+  };
+}
+
 export function parseNflverseCsv(raw: string): Record<string, string>[] {
   if (typeof raw !== "string" || raw.length === 0) throw new Error("nflverse_csv_empty");
   if (raw.length > MAX_CSV_CHARACTERS) throw new Error("nflverse_csv_exceeds_size_guard");
@@ -77,10 +151,18 @@ export function parseNflverseCsv(raw: string): Record<string, string>[] {
   }
   if (records.length < 2) throw new Error("nflverse_csv_has_no_data_rows");
   const headers = records[0].map((value, index) => (index === 0 ? value.replace(/^\uFEFF/, "") : value).trim());
+  if (headers.some(header => !header)) throw new Error("nflverse_csv_schema_empty_header");
+  if (new Set(headers).size !== headers.length) throw new Error("nflverse_csv_schema_duplicate_header");
   const required = ["game_id", "game_date", "home_team", "away_team"];
   const missing = required.filter(key => !headers.includes(key));
   if (missing.length) throw new Error("nflverse_csv_schema_missing_" + missing.join("_"));
-  return records.slice(1).map(cells => Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ""])));
+  const dataRows = records.slice(1);
+  for (let index = 0; index < dataRows.length; index++) {
+    if (dataRows[index].length !== headers.length) {
+      throw new Error("nflverse_csv_column_count_mismatch_at_row_" + String(index + 2));
+    }
+  }
+  return dataRows.map(cells => Object.fromEntries(headers.map((header, index) => [header, cells[index]])));
 }
 
 function newTeamStats() {
@@ -200,13 +282,13 @@ export function buildNflverseMatchRecords(
   sourceUrl: string,
   retrievedAt = new Date().toISOString()
 ) {
+  const audited = auditNflverseRows(rows);
   const games = new Map<string, any>();
-  for (const row of rows) {
+  for (const row of audited.acceptedRows) {
     const gameId = text(row.game_id);
     const date = text(row.game_date);
     const home = text(row.home_team);
     const away = text(row.away_team);
-    if (!gameId || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !home || !away) continue;
     let game = games.get(gameId);
     if (!game) {
       game = {
@@ -377,7 +459,8 @@ export function buildNflverseMatchRecords(
       id: recordId, eventId: game.id, sport: "american_football", season: String(season),
       competition: "NFL", gameType: game.gameType || game.seasonType || null,
       week: game.week, event: homeName + " vs " + awayName,
-      homeTeam: homeName, awayTeam: awayName, eventStart: game.date + "T00:00:00.000Z",
+      homeTeam: homeName, awayTeam: awayName,
+      eventStart: null, eventDate: game.date, eventTimePrecision: "date_only",
       fullTimeScore: [game.homeScore, game.awayScore], status: "completed",
       teamStats, playerStats, events: eventTimeline, eventTimeline,
       playerCount: playerStats.length, playCount: eventTimeline.filter(item => item.playId !== null).length,
@@ -405,7 +488,9 @@ export async function syncNflversePlayByPlayData(seasonInput?: number) {
   const rawChecksum = createHash("sha256").update(raw).digest("hex");
   const retrievedAt = new Date().toISOString();
   const rows = parseNflverseCsv(raw);
-  const records = buildNflverseMatchRecords(rows, season, sourceUrl, retrievedAt);
+  const qualityAudit = auditNflverseRows(rows);
+  const records = buildNflverseMatchRecords(qualityAudit.acceptedRows, season, sourceUrl, retrievedAt)
+    .map(record => ({ ...record, rawChecksum }));
   if (!records.length) throw new Error("nflverse_pbp_no_completed_matches_found");
   let saved = 0;
   for (const record of records) {
@@ -415,6 +500,7 @@ export async function syncNflversePlayByPlayData(seasonInput?: number) {
       competition: "NFL", sourceUrl, sourceLicence: LICENSE, licenceReference: LICENSE_URL,
       attribution: ATTRIBUTION, retrievedAt, rawChecksum, totalRows: 1, scoredRows: 1,
       playCount: record.playCount, playerCount: record.playerCount,
+      eventDate: record.eventDate, eventTimePrecision: record.eventTimePrecision,
       records: [record], origin: "provider_historical_data", lab: "model-lab"
     });
     saved++;
@@ -424,7 +510,13 @@ export async function syncNflversePlayByPlayData(seasonInput?: number) {
     providerId: PROVIDER_ID, sport: "american_football", season: String(season),
     status: "completed", startedAt, completedAt: new Date().toISOString(),
     sourceUrl, sourceLicence: LICENSE, licenceReference: LICENSE_URL, attribution: ATTRIBUTION,
-    rawChecksum, csvRows: rows.length, matchesImported: saved,
+    rawChecksum, sourceReleaseAsset: "play_by_play_" + season + ".csv",
+    csvRows: rows.length, rowsSeen: qualityAudit.rowsSeen, rowsAccepted: qualityAudit.rowsAccepted,
+    rowsRejected: qualityAudit.rowsRejected, rejectedByReason: qualityAudit.rejectedByReason,
+    gamesSeen: qualityAudit.gamesSeen, gamesAccepted: qualityAudit.gamesAccepted,
+    gamesRejected: qualityAudit.gamesRejected, conflictingGames: qualityAudit.conflictingGames,
+    gamesWithoutFinalScore: Math.max(0, qualityAudit.gamesAccepted - records.length),
+    dateOnlyEvents: records.length, matchesImported: saved,
     scoredMatches: saved, playsImported: records.reduce((total, record) => total + Number(record.playCount || 0), 0),
     playerLinesImported: records.reduce((total, record) => total + Number(record.playerCount || 0), 0),
     aiCalls: 0, sourceReportedNotIndependentlyVerified: true,
