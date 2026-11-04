@@ -9,11 +9,29 @@ import {
   inspectStatisticCoverage
 } from "../netlify/lib/sport-stat-catalog.mts";
 
+const headers = "game_id,game_date,home_team,away_team,home_score,away_score,season_type,week,play_id,qtr,time,posteam,defteam,kicking_team,play_type,kickoff_attempt,pass_attempt,complete_pass,passing_yards,passer_player_id,passer_player_name,receiver_player_id,receiver_player_name,rush_attempt,rushing_yards,rusher_player_id,rusher_player_name,first_down,yards_gained,rush_touchdown,touchdown,desc".split(",");
+const csvCell = value => '"' + String(value ?? "").replaceAll('"', '""') + '"';
+const csvRow = values => headers.map(key => csvCell(values[key])).join(",");
 const csv = [
-  "game_id,game_date,home_team,away_team,home_score,away_score,season_type,week,play_id,qtr,time,posteam,defteam,kicking_team,play_type,kickoff_attempt,pass_attempt,complete_pass,passing_yards,passer_player_id,passer_player_name,receiver_player_id,receiver_player_name,rush_attempt,rushing_yards,rusher_player_id,rusher_player_name,first_down,yards_gained,rush_touchdown,touchdown,desc",
-  '2026_01_KC_BAL,2026-09-10,KC,BAL,0,0,REG,1,1,1,15:00,,,KC,kickoff,1,,,,,,,,,,,,,,,"Kickoff, opening play"',
-  '2026_01_KC_BAL,2026-09-10,KC,BAL,0,0,REG,1,2,1,14:20,KC,BAL,,pass,,1,1,10,00-001,P. Quarterback,00-002,R. Receiver,,,,,0,10,,,"Pass complete, 10 yards"',
-  '2026_01_KC_BAL,2026-09-10,KC,BAL,7,0,REG,1,3,1,13:40,KC,BAL,,run,,, ,,,,,,1,5,00-003,R. Runner,1,5,1,1,"Five-yard rushing touchdown"'
+  headers.join(","),
+  csvRow({
+    game_id:"2026_01_KC_BAL",game_date:"2026-09-10",home_team:"KC",away_team:"BAL",home_score:0,away_score:0,
+    season_type:"REG",week:1,play_id:1,qtr:1,time:"15:00",kicking_team:"KC",play_type:"kickoff",kickoff_attempt:1,
+    desc:"Kickoff, opening play"
+  }),
+  csvRow({
+    game_id:"2026_01_KC_BAL",game_date:"2026-09-10",home_team:"KC",away_team:"BAL",home_score:0,away_score:0,
+    season_type:"REG",week:1,play_id:2,qtr:1,time:"14:20",posteam:"KC",defteam:"BAL",play_type:"pass",
+    pass_attempt:1,complete_pass:1,passing_yards:10,passer_player_id:"00-001",passer_player_name:"P. Quarterback",
+    receiver_player_id:"00-002",receiver_player_name:"R. Receiver",first_down:0,yards_gained:10,
+    desc:"Pass complete, 10 yards"
+  }),
+  csvRow({
+    game_id:"2026_01_KC_BAL",game_date:"2026-09-10",home_team:"KC",away_team:"BAL",home_score:7,away_score:0,
+    season_type:"REG",week:1,play_id:3,qtr:1,time:"13:40",posteam:"KC",defteam:"BAL",play_type:"run",
+    rush_attempt:1,rushing_yards:5,rusher_player_id:"00-003",rusher_player_name:"R. Runner",
+    first_down:1,yards_gained:5,rush_touchdown:1,touchdown:1,desc:"Five-yard rushing touchdown"
+  })
 ].join("\n");
 
 test("nflverse CSV parser preserves commas in quoted descriptions and maps headers", () => {
