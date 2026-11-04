@@ -51,3 +51,10 @@ The nflverse-pbp-data adapter accepts the season play-by-play CSV only after str
 **Kickoff precision:** the PBP file's game_date is date-level data. WIN now stores it as eventDate with eventTimePrecision: date_only and leaves eventStart null. It must not fabricate midnight UTC and then treat that as a verified kickoff. Until an approved schedule source with documented rights is joined to the PBP game_id, date-only NFL rows must not enter kickoff-cutoff-sensitive pre-match form or exact-time target matching. This is an intentional conservative coverage gap, not a missing-statistic zero.
 
 The validation audit is a schema/consistency filter, not an independent verification of nflverse scores or statistics. Source-reported outcomes remain sourceReportedNotIndependentlyVerified; no prediction accuracy, settlement learning, or profitability metric may be updated from this import alone.
+
+
+## nflverse schedule join (updated 2026-11-04)
+
+The nflverse schedule release is documented as CC BY 4.0 (subject to dataset-specific exceptions). Its schedule dictionary defines game_id as the primary cross-dataset identifier, gameday as the game date, and gametime as 24-hour Eastern Time. WIN now parses the schedule CSV separately and joins by exact game_id, then verifies date and canonical home/away team identities before enriching PBP records. Eastern kickoff is converted to UTC using the IANA America/New_York zone; the original local date/time/zone and schedule checksum are retained. Missing, invalid, mismatched or conflicting schedule rows leave the PBP record date-only. The schedule is not a source of final scores or PBP events, and no row is treated as independently verified merely because it appears in the schedule.
+
+Release documentation: https://nflreadr.nflverse.com/articles/dictionary_schedules.html. Dataset license overview: https://github.com/nflverse.
