@@ -1,6 +1,6 @@
 // WIN keeps Netlify Blobs as the default durable store. Set WIN_MEMORY_BACKEND=mirror
-// to dual-write Blobs + Neon during validation, then "neon" to make PostgreSQL
-// primary while retaining Blobs as a replica. Never switch before backfill/verification.
+// to dual-write curated memory to Neon during validation, then "neon" only after
+// a complete backfill and reconciliation. Large raw match/event datasets stay in Blobs.
 type StoreAdapter = {
   setJSON(key: string, value: unknown, options?: any): Promise<any>;
   get(key: string, options?: any): Promise<any>;
@@ -44,26 +44,66 @@ async function neonStore(): Promise<StoreAdapter> {
   return getNeonStore() as unknown as StoreAdapter;
 }
 
-async function stores(): Promise<{ primary: StoreAdapter; secondary: StoreAdapter | null }> {
+const MIRRORED_MEMORY_PREFIXES = [
+  "library/agent-profiles/",
+  "library/persistent-agent-profiles/",
+  "library/agent-observations/",
+  "library/agent-notes/",
+  "library/agent-task-queue/",
+  "library/agent-proposals/",
+  "library/agent-sandbox-evaluations/",
+  "library/entity-profiles/",
+  "library/lessons/",
+  "library/lesson-review-cases/",
+  "library/settlement-learning/",
+  "library/settlement-learning-cases/",
+  "library/settled-results/",
+  "library/frozen-predictions/",
+  "library/research-runs/",
+  "library/coupons/",
+  "library/winning-coupons/",
+  "library/losing-coupons/",
+  "library/pending-coupons/",
+  "library/coupon-history/",
+  "library/coupon-research-cases/",
+  "library/win-coupon-candidates/",
+  "library/learning-cycles/",
+  "library/meta/"
+];
+
+function isStructuredMemoryKey(recordKey: string) {
+  return MIRRORED_MEMORY_PREFIXES.some(prefix => recordKey.startsWith(prefix));
+}
+
+async function stores(recordKey?: string): Promise<{ primary: StoreAdapter; secondary: StoreAdapter | null }> {
   if (isolatedTestStore) return { primary: isolatedTestStore, secondary: null };
   const mode = memoryMode();
-  if (mode === "blobs") return { primary: await blobsStore(), secondary: null };
-  if (mode === "mirror") return { primary: await blobsStore(), secondary: await neonStore() };
+  const mirrorable = recordKey ? isStructuredMemoryKey(recordKey) : false;
+
+  // Raw event datasets, source payloads and other non-memory collections remain
+  // exclusively in Blobs even after the structured-memory cutover.
+  if (mode === "blobs" || (mode === "neon" && !mirrorable)) {
+    return { primary: await blobsStore(), secondary: null };
+  }
+  if (mode === "mirror") {
+    return { primary: await blobsStore(), secondary: mirrorable ? await neonStore() : null };
+  }
   return { primary: await neonStore(), secondary: await blobsStore() };
 }
 
 const key = (kind: string, id: string) => kind + "/" + id;
 
 export async function put(kind: string, id: string, value: unknown) {
-  const { primary, secondary } = await stores();
-  await primary.setJSON(key(kind, id), value);
-  if (secondary) await secondary.setJSON(key(kind, id), value);
+  const recordKey = key(kind, id);
+  const { primary, secondary } = await stores(recordKey);
+  await primary.setJSON(recordKey, value);
+  if (secondary) await secondary.setJSON(recordKey, value);
   return value;
 }
 
 export async function get<T>(kind: string, id: string): Promise<T | null> {
-  const { primary, secondary } = await stores();
   const recordKey = key(kind, id);
+  const { primary, secondary } = await stores(recordKey);
   const value = await primary.get(recordKey, { type: "json" }) as T | null;
   if (value !== null && value !== undefined) return value;
   return secondary ? await secondary.get(recordKey, { type: "json" }) as T | null : null;
@@ -109,23 +149,26 @@ export async function append(kind: string, id: string, value: unknown) {
 }
 
 export async function remove(kind: string, id: string) {
-  const { primary, secondary } = await stores();
-  await primary.delete(key(kind, id));
-  if (secondary) await secondary.delete(key(kind, id));
+  const recordKey = key(kind, id);
+  const { primary, secondary } = await stores(recordKey);
+  await primary.delete(recordKey);
+  if (secondary) await secondary.delete(recordKey);
 }
 
 /** Atomic, single-key conditional helpers for review-operation claims. */
 export async function putIfNew(kind: string, id: string, value: unknown) {
-  const { primary, secondary } = await stores();
-  const result = await primary.setJSON(key(kind, id), value, { onlyIfNew: true });
-  if (result?.modified && secondary) await secondary.setJSON(key(kind, id), value);
+  const recordKey = key(kind, id);
+  const { primary, secondary } = await stores(recordKey);
+  const result = await primary.setJSON(recordKey, value, { onlyIfNew: true });
+  if (result?.modified && secondary) await secondary.setJSON(recordKey, value);
   return result;
 }
 
 export async function putIfMatch(kind: string, id: string, value: unknown, etag: string) {
-  const { primary, secondary } = await stores();
-  const result = await primary.setJSON(key(kind, id), value, { onlyIfMatch: etag });
-  if (result?.modified && secondary) await secondary.setJSON(key(kind, id), value);
+  const recordKey = key(kind, id);
+  const { primary, secondary } = await stores(recordKey);
+  const result = await primary.setJSON(recordKey, value, { onlyIfMatch: etag });
+  if (result?.modified && secondary) await secondary.setJSON(recordKey, value);
   return result;
 }
 
