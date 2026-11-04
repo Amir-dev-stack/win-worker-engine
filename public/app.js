@@ -346,7 +346,7 @@ async function refreshLearning(){
   const data=await api("/api/learning-observatory");
   const l=data.learning||{},p=data.postMatch||{},r=data.reviewer||{},s=data.openSources||{};
   $("#postMatchStatus").textContent=learningLabel(p.status);
-  $("#postMatchUpdated").textContent=(p.lastCheck?"Checked "+new Date(p.lastCheck).toLocaleString():"No scheduled check recorded")+" · "+Number(p.queuedCoupons||0)+" WIN coupons queued · "+Number(p.awaitingIndependentReview||0)+" awaiting review · Google "+(p.googleSearchMode==="google_programmable_search_api"?"Google Search API":"Google News RSS")+" · "+Number(p.googleLeadsFound||0)+" leads";
+  $("#postMatchUpdated").textContent=(p.lastCheck?"Checked "+new Date(p.lastCheck).toLocaleString():"No scheduled check recorded")+" · "+Number(p.queuedCoupons||0)+" WIN research coupons queued · "+Number(p.awaitingIndependentReview||0)+" awaiting review · Google "+(p.googleSearchMode==="google_programmable_search_api"?"Google Search API":"Google News RSS")+" · "+Number(p.googleLeadsFound||0)+" leads";
   $("#learningAiStatus").textContent=learningLabel(data.liveResearch?.status);
   $("#learningReviewerStatus").textContent=learningLabel(r.status);
   $("#learningReviewerNote").textContent=Number(r.pendingCases||0)+" review cases pending · "+Number(r.completedOperations||0)+" completed review operations";
@@ -358,6 +358,10 @@ async function refreshLearning(){
   $("#learningCandidateLessons").textContent=Number(l.candidateLessons||0).toLocaleString();
   $("#learningPendingReviews").textContent=Number(r.pendingCases||0).toLocaleString();
   $("#learningWinRate").textContent=l.verifiedCouponWinRate===null?"Not measurable":Number(l.verifiedCouponWinRate).toFixed(1)+"%";
+  const reviewedOutcomes=Number(l.verifiedCouponOutcomes||0),milestoneTarget=30;
+  $("#learningMilestone").textContent=reviewedOutcomes>=milestoneTarget
+   ?"Milestone 1 complete: "+reviewedOutcomes+" independently reviewed WIN research coupons. Continue collecting evidence; this milestone alone does not establish predictive superiority."
+   :"Milestone 1 · First 30 independently reviewed WIN research coupons: "+reviewedOutcomes+" / "+milestoneTarget+" · "+(milestoneTarget-reviewedOutcomes)+" remaining. No forced bets or relaxed approval gates.";
   let trend="Trend: "+learningLabel(l.performanceTrend)+".";
   if(l.recent30Day?.count>=10&&l.prior30Day?.count>=10)trend+=" Previous 30 days "+l.prior30Day.winRate+"% ("+l.prior30Day.count+"); latest 30 days "+l.recent30Day.winRate+"% ("+l.recent30Day.count+").";
   else trend+=" At least 10 reviewed outcomes in each of the two 30-day periods are needed before comparing.";
@@ -384,7 +388,7 @@ async function refreshLearning(){
    ["Settled market observations",d.settledObservedMarketDatasets,d.settledObservedMarketRows+" selections"],
    ["Calibration reports",d.calibrationReports,"chronological benchmark reports"],
    ["Open-licence candidates",s.openLicenseCandidates,"metadata only; review still required"],
-   ["WIN coupons waiting for result check",p.queuedCoupons,"qualified pending WIN coupons"],
+   ["Eligible WIN research coupons",p.queuedCoupons,"pending forecasts awaiting public outcome checks"],
    ["Blocked WIN candidates",p.blockedCandidates,"not tracked until all approval gates pass"],
    ["WIN post-match checks",p.totalCoupons,(p.awaitingIndependentReview||0)+" awaiting review"]
   ];
