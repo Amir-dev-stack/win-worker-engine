@@ -49,7 +49,7 @@ test("persistent-memory runbook prohibits premature cutover and destructive migr
   assert.match(docs, /WIN_MEMORY_BACKEND=neon/);
   assert.match(docs, /complete backfill and reconciliation/);
   assert.match(docs, /No existing Blobs records are deleted/);
-  assert.match(docs, /encrypted, versioned export/);
+  assert.match(docs, /AES-256-GCM encrypted/);
 });
 
 test("backfill is authenticated, owner-confirmed, Blobs-first and digest-verified", async () => {
@@ -67,6 +67,8 @@ test("daily Neon snapshots are versioned, checksummed and retained for 30 days",
   const backup = await read("../netlify/functions/neon-memory-backup.mts");
   assert.match(backup, /schedule: "23 3 \* \* \*"/);
   assert.match(backup, /gzipSync/);
+  assert.match(backup, /createCipheriv/);
+  assert.match(backup, /WIN_MEMORY_BACKUP_KEY/);
   assert.match(backup, /sha256/);
   assert.match(backup, /retentionDays: 30/);
   assert.match(backup, /MAX_RAW_BYTES/);
@@ -78,6 +80,8 @@ test("snapshot restore is authenticated, confirmed, checksum-verified and cannot
   assert.match(restore, /RESTORE_NEON_MEMORY_SNAPSHOT/);
   assert.match(restore, /getMemoryBackendMode\(\) !== "mirror"/);
   assert.match(restore, /gunzipSync/);
+  assert.match(restore, /createDecipheriv/);
+  assert.match(restore, /WIN_MEMORY_BACKUP_KEY/);
   assert.match(restore, /Snapshot SHA-256 verification failed/);
   assert.match(restore, /neon\.setJSON/);
   assert.doesNotMatch(restore, /blobs\.setJSON\(entry\.key/);
