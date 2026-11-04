@@ -85,3 +85,13 @@ select{width:100%;background:#0b1321;border:1px solid #2b3b54;border-radius:8px;
 .observatory-entry a{font-size:10px;color:#9fc4ff;margin-right:8px}
 @media(max-width:1000px){.observatory-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.observatory-departments{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.observatory-two{grid-template-columns:1fr}.observatory-metric-grid,.observatory-dataset-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.leg-review-list{display:grid;gap:8px;margin:10px 0}
+.leg-review-card{border:1px solid var(--line);border-radius:8px;padding:10px;background:#0b1321}
+.leg-review-card>b,.leg-review-card>small{display:block}
+.leg-review-card>b{font-size:11px;color:#e8f0ff}
+.leg-review-card>small{font-size:10px;color:var(--muted);margin:4px 0;line-height:1.5}
+.leg-review-card label{display:block;font-size:10px;color:#bbc9dd;margin-top:8px}
+.leg-review-card select,.leg-review-card input{margin-top:4px;padding:8px;font-size:11px}
+.search-leads{font-size:10px;color:var(--muted);line-height:1.45}
+.search-leads a{color:#9fc4ff}

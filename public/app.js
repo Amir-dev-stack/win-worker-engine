@@ -205,12 +205,24 @@ function renderReviewerCase(item){
  if(isCoupon){if(Array.isArray(item.sourceUrls))evidence.push(...item.sourceUrls);if(item.evidenceUrl)evidence.push(item.evidenceUrl);}
  const evidenceHtml=[...new Set(evidence)].map(url=>'<a href="'+escapeHtml(safeUrl(url))+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(url)+'</a>').join("<br>");
  const summary=isCoupon
-  ?'<p><b>Claimed result:</b> '+escapeHtml(item.claimedOutcome)+' · <b>Origin:</b> '+(isWin?"WIN research forecast (not placed)":"human coupon")+' · <b>Sport:</b> '+escapeHtml(item.coupon?.sport||"unknown")+' · <b>Competition:</b> '+escapeHtml(item.coupon?.competition||"unknown")+'</p><pre>'+escapeHtml((item.coupon?.couponText||"").slice(0,3500))+'</pre>'+((item.legs||[]).length?'<pre>'+escapeHtml(JSON.stringify(item.legs,null,2).slice(0,5000))+'</pre>':"")
-  :'<p><b>Lesson:</b> '+escapeHtml(item.lesson?.title||item.lesson?.id||"")+' · '+escapeHtml(item.lesson?.sport||"")+' '+escapeHtml(item.lesson?.competition||"")+'</p><p>'+escapeHtml(item.lesson?.note||"")+'</p>';
+  ?'<p><b>Current result:</b> '+escapeHtml(item.claimedOutcome||"not fully resolved")+' · <b>Origin:</b> '+(isWin?"WIN research forecast (not placed)":"human coupon")+' · <b>Sport:</b> '+escapeHtml(item.coupon?.sport||"unknown")+' · <b>Competition:</b> '+escapeHtml(item.coupon?.competition||"unknown")+'</p><pre>'+escapeHtml((item.coupon?.couponText||"").slice(0,3500))+'</pre>'
+  :'<p><b>Lesson:</b> '+escapeHtml(item.lesson?.title||item.lesson?.id||"")+' · '+escapeHtml(item.lesson?.sport||"")+' '+escapeHtml(item.lesson?.competition||"")+'</p><p>'+escapeHtml(item.lesson?.note||"")+'</p>'+
+   ((item.lesson?.matchResult)?'<p><b>Reviewed result:</b> '+escapeHtml(item.lesson.matchResult.homeTeam||"")+' '+escapeHtml(item.lesson.matchResult.homeScore??"")+"-"+escapeHtml(item.lesson.matchResult.awayScore??"")+' '+escapeHtml(item.lesson.matchResult.awayTeam||"")+'</p>':"")+
+   ((item.lesson?.preMatchReports||[]).length?'<h5>Archived pre-match reports</h5>'+item.lesson.preMatchReports.map(r=>'<details><summary>'+escapeHtml(r.departmentId+" · "+(r.role||"Department"))+' ('+escapeHtml(r.status||"unknown")+')</summary><pre>'+escapeHtml(r.report||"")+'</pre>'+citationHtml(r.citations||[])+'</details>').join(""):'<p class="observatory-note">No archived D1/D2/D3/D4/D6/D8 reports were available for this run.</p>')+
+   ((item.lesson?.diagnosticChecklist||[]).length?'<h5>Post-match change checklist</h5><ul>'+item.lesson.diagnosticChecklist.map(x=>'<li>'+escapeHtml(x)+'</li>').join("")+'</ul>':"");
+ const leadHtml=isWin?(item.legs||[]).map((leg,i)=>{
+  const status=["won","lost","void"].includes(String(leg.status))?String(leg.status):"unresolved";
+  const known=["won","lost","void"].includes(String(leg.status));
+  const leads=(leg.searchLeads||[]).map(x=>{
+   const url=safeUrl(x.url);return url?'<a href="'+escapeHtml(url)+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(x.title||x.sourceName||"Google search lead")+'</a>':"";
+  }).filter(Boolean).join(" · ");
+  const score=leg.homeScore!==undefined&&leg.awayScore!==undefined?" · score "+leg.homeScore+"-"+leg.awayScore:"";
+  return '<div class="leg-review-card" data-leg-index="'+(i+1)+'"><b>Leg '+(i+1)+': '+escapeHtml(leg.event||"Event")+'</b><small>'+escapeHtml(leg.market||"")+' · '+escapeHtml(leg.pick||"")+' · automatic: '+escapeHtml(status)+escapeHtml(score)+'</small>'+(leg.reason?'<p>'+escapeHtml(leg.reason)+'</p>':"")+(leg.sourceUrl?'<small>Structured result: <a target="_blank" rel="noopener noreferrer" href="'+escapeHtml(safeUrl(leg.sourceUrl))+'">open result source ↗</a></small>':"")+(leads?'<p class="search-leads"><b>Google discovery leads (not proof):</b> '+leads+'</p>':"")+'<label>Reviewer result<select data-leg-result data-leg-index="'+(i+1)+'"><option value=""'+(known?"":" selected")+'>Choose result</option>'+(known?'<option value="keep" selected>Confirm automatic '+escapeHtml(status)+'</option>':"")+'<option value="won">Won</option><option value="lost">Lost</option><option value="void">Void</option></select></label><label>Independent HTTPS source for a manual result (required when changing/adding a result)<input type="url" data-leg-evidence data-leg-index="'+(i+1)+'" placeholder="https://official-source.example/…"></label></div>';
+ }).join(""):'';
  const checks=isCoupon
   ?'<label class="check-row"><input type="checkbox" data-check="eventIdentityConfirmed"> Event identity confirmed</label><label class="check-row"><input type="checkbox" data-check="marketRulesConfirmed"> Market settlement rules confirmed</label><label class="check-row"><input type="checkbox" data-check="everySelectionReviewed"> Every coupon selection reviewed</label><label class="check-row"><input type="checkbox" data-check="evidenceIndependent"> Evidence independent of original result source</label>'
   :'<label class="check-row"><input type="checkbox" data-check="claimSupported"> Lesson claim is supported</label><label class="check-row"><input type="checkbox" data-check="independentEvidenceConfirmed"> Claim independently corroborated</label>';
- return '<article class="mini-row review-case" data-case-type="'+escapeHtml(item.caseType)+'" data-case-id="'+escapeHtml(item.id)+'"><div><div class="report-title"><b>'+escapeHtml(title)+'</b><span class="decision wait">PENDING REVIEW</span></div><small>'+escapeHtml(item.id)+' · '+escapeHtml(new Date(item.submittedAt).toLocaleString())+'</small>'+summary+'<p><b>Submitted sources:</b><br>'+evidenceHtml+'</p></div><div class="review-form"><label>Reviewer name<input data-reviewer-name required minlength="2" placeholder="Your name"></label><label>Additional independent HTTPS source URL<textarea data-reviewer-evidence rows="2" placeholder="https://independent-official-source.example/…" required></textarea></label>'+checks+'<label>Review notes<textarea data-reviewer-notes rows="3" minlength="40" placeholder="Explain what you checked and why the evidence supports or contradicts the claim." required></textarea></label><div class="form-foot"><button type="button" class="subtle" data-review-decision="reject">Reject</button><button type="button" data-review-decision="approve">Approve</button></div></div></article>';
+ return '<article class="mini-row review-case" data-case-type="'+escapeHtml(item.caseType)+'" data-case-id="'+escapeHtml(item.id)+'"><div><div class="report-title"><b>'+escapeHtml(title)+'</b><span class="decision wait">PENDING REVIEW</span></div><small>'+escapeHtml(item.id)+' · '+escapeHtml(new Date(item.submittedAt).toLocaleString())+'</small>'+summary+(leadHtml?'<div class="leg-review-list">'+leadHtml+'</div>':"")+'<p><b>Submitted structured sources:</b><br>'+evidenceHtml+'</p>'+(isWin?'<p class="observatory-note">Google links are search leads only. They cannot establish the final score or betting-market settlement.</p>':"")+'</div><div class="review-form"><label>Reviewer name<input data-reviewer-name required minlength="2" placeholder="Your name"></label><label>Additional independent HTTPS corroboration URL<textarea data-reviewer-evidence rows="2" placeholder="https://independent-official-source.example/…" required></textarea></label>'+checks+'<label>Review notes<textarea data-reviewer-notes rows="3" minlength="40" placeholder="Explain the event, market and result checks, including any manual leg decisions." required></textarea></label><div class="form-foot"><button type="button" class="subtle" data-review-decision="reject">Reject</button><button type="button" data-review-decision="approve">Approve</button></div></div></article>';
 }
 async function refreshReviewerQueue(){
  if(!reviewerToken){$("#reviewerQueueStatus").textContent="Connect using the separate reviewer credential.";return;}
@@ -334,7 +346,7 @@ async function refreshLearning(){
   const data=await api("/api/learning-observatory");
   const l=data.learning||{},p=data.postMatch||{},r=data.reviewer||{},s=data.openSources||{};
   $("#postMatchStatus").textContent=learningLabel(p.status);
-  $("#postMatchUpdated").textContent=(p.lastCheck?"Checked "+new Date(p.lastCheck).toLocaleString():"No scheduled check recorded")+" · "+Number(p.awaitingIndependentReview||0)+" awaiting review";
+  $("#postMatchUpdated").textContent=(p.lastCheck?"Checked "+new Date(p.lastCheck).toLocaleString():"No scheduled check recorded")+" · "+Number(p.awaitingIndependentReview||0)+" awaiting review · Google "+(p.googleSearchMode==="google_programmable_search_api"?"Google Search API":"Google News RSS")+" · "+Number(p.googleLeadsFound||0)+" leads";
   $("#learningAiStatus").textContent=learningLabel(data.liveResearch?.status);
   $("#learningReviewerStatus").textContent=learningLabel(r.status);
   $("#learningReviewerNote").textContent=Number(r.pendingCases||0)+" review cases pending · "+Number(r.completedOperations||0)+" completed review operations";
@@ -407,6 +419,22 @@ async function refresh(){
 }
 $("#refreshBudget").addEventListener("click",refreshAIBudget);
 $("#refreshLearning").addEventListener("click",refreshLearning);
+$("#runPostMatchCheck").addEventListener("click",async()=>{
+ const button=$("#runPostMatchCheck");
+ button.disabled=true;
+ $("#postMatchUpdated").textContent="Searching public result sources and Google discovery leads…";
+ try{
+  const data=await api("/api/post-match-check",{method:"POST",body:JSON.stringify({action:"run_post_match_check"})});
+  const summary=data.summary||data;
+  $("#postMatchUpdated").textContent=data.status==="queued"
+   ?"Post-match check queued. Refresh this monitor to see completed results."
+   :"Checked "+Number(summary.couponsChecked||0)+" coupons · "+Number(summary.resolved||0)+" outcome-ready · "+Number(summary.queuedForReview||0)+" awaiting review · "+Number(summary.unresolved||0)+" unresolved · "+Number(summary.googleSearchQueriesUsed||0)+" Google searches";
+  await refreshLearning();await refreshReviewerQueue();
+ }catch(error){
+  $("#postMatchUpdated").textContent="Result check failed: "+error.message;
+ }finally{button.disabled=false;}
+});
+
 $("#ownerUnlockBudget").addEventListener("click",async()=>{
  const confirmation=prompt("OWNER ONLY. To explicitly unlock WIN AI spending, type exactly: I AUTHORIZE WIN SPENDING UNLOCK");
  if(confirmation===null)return;
@@ -581,13 +609,29 @@ $("#reviewerQueue").addEventListener("click",async e=>{
  const reviewerNotes=card.querySelector("[data-reviewer-notes]").value.trim();
  const evidenceUrls=card.querySelector("[data-reviewer-evidence]").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
  const checks={};card.querySelectorAll("[data-check]").forEach(input=>checks[input.dataset.check]=input.checked);
+ const manualLegResults=[];
+ if(caseType==="win_coupon"&&decision==="approve"){
+  let missingResolution=false,missingManualEvidence=false;
+  card.querySelectorAll("[data-leg-result]").forEach(select=>{
+   const value=select.value,index=Number(select.dataset.legIndex);
+   if(!value){missingResolution=true;return;}
+   if(value==="keep")return;
+   const evidenceUrl=card.querySelector('[data-leg-evidence][data-leg-index="'+index+'"]').value.trim();
+   if(!evidenceUrl){missingManualEvidence=true;return;}
+   manualLegResults.push({index,status:value,evidenceUrl});
+  });
+  if(missingResolution){alert("Choose a result for every unresolved leg. Keep automatic results only when they are supported by the structured source.");return;}
+  if(missingManualEvidence){alert("Every manually changed or resolved leg needs its own independent HTTPS source URL.");return;}
+ }
  if(reviewerName.length<2||reviewerNotes.length<40){alert("Enter your name and at least 40 characters of review notes.");return;}
  if(decision==="approve"&&(!evidenceUrls.length||Object.values(checks).some(value=>value!==true))){alert("Approval requires new corroborating evidence and every applicable review check.");return;}
  button.disabled=true;
  try{
-  const result=await reviewerApi("/api/independent-review",{method:"POST",body:JSON.stringify({action:"review_case",caseType,caseId,decision,reviewerName,reviewerNotes,evidenceUrls,checks})});
+  const result=await reviewerApi("/api/independent-review",{method:"POST",body:JSON.stringify({
+   action:"review_case",caseType,caseId,decision,reviewerName,reviewerNotes,evidenceUrls,checks,manualLegResults
+  })});
   $("#reviewerQueueStatus").textContent=decision.toUpperCase()+" saved for "+caseId+". Outcome applied: "+(result.outcomeApplied?"yes":"no")+".";
-  await refreshReviewerQueue();await refreshLibrary();await refreshSettlementQueue();
+  await refreshReviewerQueue();await refreshLibrary();await refreshSettlementQueue();await refreshLearning();
  }catch(error){alert(error.message);button.disabled=false;}
 });
 $("#settlementEvidenceForm").addEventListener("submit",async e=>{

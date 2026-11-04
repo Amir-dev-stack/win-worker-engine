@@ -893,6 +893,8 @@ export async function archiveRunToLibrary(run: any) {
         leg.event !== "Unspecified event" && leg.market !== "Unspecified market" &&
         leg.selection !== "Unspecified selection" && leg.odds !== null && Boolean(leg.sourceUrl) &&
         Boolean(leg.observedAt) && Number.isFinite(Date.parse(leg.observedAt)) &&
+        Boolean(leg.eventStart) && Number.isFinite(Date.parse(leg.eventStart)) &&
+        /(?:Z|[+-]\d{2}:\d{2})$/i.test(leg.eventStart) &&
         Boolean(leg.settlementRule) && leg.blockers.length === 0
       );
     const candidateRecord = {

@@ -112,16 +112,30 @@ function collectCouponCandidates(reports: any[]) {
   const coupons = Array.isArray(parsed?.coupons) ? parsed.coupons : [];
   return coupons.map((coupon: any) => {
     const legs = Array.isArray(coupon?.legs) ? coupon.legs : [];
-    const legChecks = legs.map((leg: any) => ({
-      event: typeof leg?.event === "string" ? leg.event : "Unspecified event",
-      market: typeof leg?.market === "string" ? leg.market : "Unspecified market",
-      selection: typeof leg?.selection === "string" ? leg.selection : "Unspecified selection",
-      odds: typeof leg?.odds === "number" && Number.isFinite(leg.odds) && leg.odds > 1 ? leg.odds : null,
-      sourceUrl: typeof leg?.sourceUrl === "string" && (leg.sourceUrl.startsWith("https://") || leg.sourceUrl.startsWith("http://")) ? leg.sourceUrl : null,
-      observedAt: typeof leg?.observedAt === "string" ? leg.observedAt : null,
-      settlementRule: typeof leg?.settlementRule === "string" ? leg.settlementRule : null,
-      blockers: Array.isArray(leg?.blockers) ? leg.blockers : []
-    }));
+    const legChecks = legs.map((leg: any) => {
+      const suppliedStart = typeof leg?.startTime === "string" ? leg.startTime.trim()
+        : typeof leg?.eventStart === "string" ? leg.eventStart.trim()
+        : typeof leg?.kickoff === "string" ? leg.kickoff.trim() : "";
+      const exactKickoff = suppliedStart && Number.isFinite(Date.parse(suppliedStart)) &&
+        /(?:Z|[+-]\d{2}:\d{2})$/i.test(suppliedStart) ? suppliedStart : null;
+      return {
+        event: typeof leg?.event === "string" ? leg.event : "Unspecified event",
+        market: typeof leg?.market === "string" ? leg.market : "Unspecified market",
+        selection: typeof leg?.selection === "string" ? leg.selection : "Unspecified selection",
+        odds: typeof leg?.odds === "number" && Number.isFinite(leg.odds) && leg.odds > 1 ? leg.odds : null,
+        sourceUrl: typeof leg?.sourceUrl === "string" && (leg.sourceUrl.startsWith("https://") || leg.sourceUrl.startsWith("http://")) ? leg.sourceUrl : null,
+        observedAt: typeof leg?.observedAt === "string" ? leg.observedAt : null,
+        startTime: exactKickoff,
+        eventStart: exactKickoff,
+        eventId: typeof leg?.eventId === "string" ? leg.eventId.trim().slice(0, 180) : null,
+        homeTeam: typeof leg?.homeTeam === "string" ? leg.homeTeam.trim().slice(0, 160) : null,
+        awayTeam: typeof leg?.awayTeam === "string" ? leg.awayTeam.trim().slice(0, 160) : null,
+        leagueShortcut: typeof leg?.leagueShortcut === "string" ? leg.leagueShortcut.trim().slice(0, 40) : null,
+        leagueSeason: Number.isInteger(leg?.leagueSeason) ? leg.leagueSeason : null,
+        settlementRule: typeof leg?.settlementRule === "string" ? leg.settlementRule : null,
+        blockers: Array.isArray(leg?.blockers) ? leg.blockers : []
+      };
+    });
     const missing = legChecks.flatMap((leg: any, i: number) => {
       const absent = [];
       if (!leg.event || leg.event === "Unspecified event") absent.push("event identity");
@@ -129,8 +143,9 @@ function collectCouponCandidates(reports: any[]) {
       if (!leg.selection || leg.selection === "Unspecified selection") absent.push("selection");
       if (leg.odds === null) absent.push("verified decimal odds");
       if (!leg.sourceUrl) absent.push("source URL");
-      if (!leg.observedAt) absent.push("price observation timestamp");
+      if (!leg.observedAt || !Number.isFinite(Date.parse(leg.observedAt))) absent.push("valid price observation timestamp");
       if (!leg.settlementRule) absent.push("settlement rule");
+      if (!leg.startTime) absent.push("exact kickoff timestamp with timezone");
       if (leg.blockers.length) absent.push(...leg.blockers);
       return absent.map((item: string) => "Leg " + (i + 1) + ": " + item);
     });
@@ -149,7 +164,6 @@ function collectCouponCandidates(reports: any[]) {
     };
   });
 }
-
 function hasLibraryReviewReceipt(report: string, expectedLibraryReview: any): boolean {
   const open = "<WIN_LIBRARY_REVIEW_JSON>";
   const close = "</WIN_LIBRARY_REVIEW_JSON>";

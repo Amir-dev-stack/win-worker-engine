@@ -1,8 +1,12 @@
+import { createHash } from "node:crypto";
 import { get, list, put } from "./store.mts";
 
 const API = "https://api.openligadb.de";
 const SOURCE_ROOT = "https://api.openligadb.de";
 const BATCH_LIMIT = 30;
+const SEARCH_LIMIT_PER_RUN = 30;
+const RESULT_TEAM_LOOKUP_LIMIT_PER_RUN = 30;
+const SEARCH_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const LOOKBACK_WEEKS = 14;
 
@@ -23,7 +27,7 @@ function sameTeam(a:string,b:string){
  return Boolean(x&&y&&(x===y||(x.length>=7&&y.length>=7&&(x.includes(y)||y.includes(x)))));
 }
 function eventTime(leg:any):number{
- const explicit=dateMs(leg.eventStart||leg.kickoff||leg.matchDateTimeUTC);
+ const explicit=dateMs(leg.startTime||leg.eventStart||leg.kickoff||leg.matchDateTimeUTC);
  if(explicit)return explicit;
  const inText=String(leg.event||"").match(/\b20\d{2}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2})?/);
  return inText?dateMs(inText[0]):0;
@@ -77,6 +81,81 @@ function evaluateLeg(leg:any,score:{home:number;away:number}):{status:string;rea
  }
  return {status:"unsupported_market",reason:"This market is not yet supported by the deterministic result adapter."};
 }
+function xmlText(value:string){
+ return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,"$1")
+  .replace(/<[^>]+>/g," ")
+  .replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">")
+  .replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'")
+  .replace(/&#(\d+);/g,(_m,n)=>String.fromCodePoint(Number(n)))
+  .replace(/&#x([0-9a-f]+);/gi,(_m,n)=>String.fromCodePoint(parseInt(n,16)))
+  .replace(/\s+/g," ").trim();
+}
+function rssValue(item:string,tag:string){
+ const match=item.match(new RegExp("<"+tag+"(?:\\s[^>]*)?>([\\s\\S]*?)</"+tag+">","i"));
+ return match?xmlText(match[1]):"";
+}
+function googleMode(){
+ return Netlify.env.get("GOOGLE_CSE_API_KEY")?.trim()&&Netlify.env.get("GOOGLE_CSE_ID")?.trim()
+  ?"google_programmable_search_api":"google_news_rss_public_fallback";
+}
+function resultSearchQuery(leg:any){
+ const participants=parseParticipants(clean(leg.event,250),leg);
+ const when=eventTime(leg);
+ const date=when?new Date(when).toISOString().slice(0,10):"";
+ const teams=participants?'"'+participants.home+'" "'+participants.away+'"':clean(leg.event,250);
+ return [teams,date,"match result final score"].filter(Boolean).join(" ");
+}
+async function searchGoogleResultLeads(leg:any,budget:{remaining:number}){
+ const query=resultSearchQuery(leg);
+ if(!query||budget.remaining<=0)return {mode:googleMode(),query,leads:[],checkedAt:null,searchStatus:"skipped",skipped:"per_run_search_limit"};
+ const cacheKey=createHash("sha256").update(query.toLowerCase()).digest("hex").slice(0,32);
+ const cached=await get<any>("library/post-match-search-cache",cacheKey);
+ if(cached&&Date.now()-dateMs(cached.checkedAt)<SEARCH_CACHE_TTL_MS)
+  return {...cached,cacheHit:true};
+ budget.remaining--;
+ const checkedAt=new Date().toISOString(),mode=googleMode();
+ try{
+  let leads:any[]=[];
+  if(mode==="google_programmable_search_api"){
+   const key=Netlify.env.get("GOOGLE_CSE_API_KEY")?.trim()||"";
+   const cx=Netlify.env.get("GOOGLE_CSE_ID")?.trim()||"";
+   const url="https://customsearch.googleapis.com/customsearch/v1?key="+encodeURIComponent(key)+
+    "&cx="+encodeURIComponent(cx)+"&q="+encodeURIComponent(query)+"&num=5";
+   const response=await fetch(url,{headers:{"user-agent":"WIN-PostMatch-Learning/1.0","accept":"application/json"},signal:AbortSignal.timeout(10000),cache:"no-store"});
+   if(!response.ok)throw new Error("google_cse_http_"+response.status);
+   const payload:any=await response.json();
+   leads=(Array.isArray(payload.items)?payload.items:[]).slice(0,5).flatMap((item:any)=>{
+    const url=clean(item.link,1500);
+    if(!/^https:\/\//i.test(url))return [];
+    return [{title:clean(item.title,240),url,snippet:clean(item.snippet,600),publishedAt:null,
+      sourceName:clean(item.displayLink,160),leadOnly:true,settlementEvidence:false}];
+   });
+  }else{
+   const url="https://news.google.com/rss/search?q="+encodeURIComponent(query)+"&hl=en-US&gl=US&ceid=US:en";
+   const response=await fetch(url,{headers:{"user-agent":"WIN-PostMatch-Learning/1.0","accept":"application/rss+xml, application/xml, text/xml"},signal:AbortSignal.timeout(10000),cache:"no-store"});
+   if(!response.ok)throw new Error("google_news_rss_http_"+response.status);
+   const xml=await response.text();
+   leads=[...xml.matchAll(/<item>([\\s\\S]*?)<\\/item>/gi)].slice(0,5).flatMap((match:any)=>{
+    const item=String(match[1]||"");
+    const url=rssValue(item,"link");
+    if(!/^https:\/\//i.test(url))return [];
+    return [{title:rssValue(item,"title"),url,snippet:rssValue(item,"description").slice(0,600),
+      publishedAt:rssValue(item,"pubDate")||null,sourceName:rssValue(item,"source")||null,
+      leadOnly:true,settlementEvidence:false}];
+   });
+  }
+  const result={query,mode,leads,checkedAt,cacheHit:false,searchStatus:"completed",
+   limitation:"Google results are discovery leads only. They do not establish event identity, score or market settlement."};
+  await put("library/post-match-search-cache",cacheKey,result);
+  return result;
+ }catch(error){
+  const result={query,mode,leads:[],checkedAt,cacheHit:false,searchStatus:"failed",
+   error:String(error).replace(/key=[^&\\s]+/gi,"key=[REDACTED]").slice(0,240),
+   limitation:"No Google result lead was retrieved. A search failure is not evidence that the event did not occur."};
+  await put("library/post-match-search-cache",cacheKey,result);
+  return result;
+ }
+}
 async function fetchTeamMatches(team:string){
  const url=API+"/getmatchesbyteam/"+encodeURIComponent(team)+"/"+LOOKBACK_WEEKS+"/0";
  const response=await fetch(url,{headers:{"user-agent":"WIN-PostMatch-Learning/1.0","accept":"application/json"},signal:AbortSignal.timeout(10000),cache:"no-store"});
@@ -84,10 +163,12 @@ async function fetchTeamMatches(team:string){
  const payload=await response.json();
  return {url,matches:Array.isArray(payload)?payload:[]};
 }
-async function cachedMatches(team:string){
+async function cachedMatches(team:string,budget:{remaining:number}){
  const key=normalized(team).replace(/\s+/g,"-").slice(0,80);
  const cached=await get<any>("library/post-match-source-cache",key);
  if(cached&&Date.now()-dateMs(cached.fetchedAt)<CACHE_TTL_MS)return cached;
+ if(budget.remaining<=0)throw new Error("openligadb_per_run_query_limit_reached");
+ budget.remaining--;
  const fetched=await fetchTeamMatches(team);
  const record={id:key,providerId:"openligadb",queryTeam:team,sourceUrl:fetched.url,fetchedAt:new Date().toISOString(),matches:fetched.matches};
  await put("library/post-match-source-cache",key,record);
@@ -183,27 +264,44 @@ function aggregateOutcome(legs:any[]){
 async function saveLossLesson(coupon:any,leg:any,index:number){
  const id="post-match-diagnostic-"+coupon.id+"-"+index;
  if(await get<any>("library/lessons",id))return id;
+ const sourceRun=coupon.runId?await get<any>("runs",coupon.runId):null;
+ const preMatchReports=(sourceRun?.workers||[]).filter((report:any)=>
+  ["D1","D2","D3","D4","D6","D8"].includes(report.departmentId)
+ ).map((report:any)=>({
+  departmentId:report.departmentId,role:clean(report.role,180),status:report.status,
+  report:clean(report.report,5000),citations:(Array.isArray(report.citations)?report.citations:[]).slice(0,20)
+ }));
  const lesson={
   id,recordType:"post_match_diagnostic_candidate",title:"Post-match review: "+clean(leg.event,200),
   sport:coupon.sport||"football",competition:coupon.competition||null,outcome:"lost",
   couponId:coupon.id,runId:coupon.runId||null,market:leg.market,pick:leg.pick||leg.selection,
   predictionOdds:leg.odds,actualScore:String(leg.homeScore)+"-"+String(leg.awayScore),
-  observation:"A completed match score was found in a public source and this selection is recorded as a loss candidate. The match identity and market settlement still require independent review; the cause of the miss is not established by the score alone.",
-  note:"Review questions (hypotheses, not conclusions): Was the pre-match team/player availability correct? Was recent form representative? Did the chosen market and line fit the evidence? Was price movement or lineup news missed? Was this leg correlated with other coupon legs?",
+  matchResult:{homeTeam:leg.homeTeam,awayTeam:leg.awayTeam,homeScore:leg.homeScore,awayScore:leg.awayScore,
+   eventStart:leg.matchDateTimeUTC||null,sourceProvider:leg.sourceProvider||null,sourceUrl:leg.sourceUrl||null},
+  preMatchReports,
+  searchLeads:Array.isArray(leg.searchLeads)?leg.searchLeads:[],
+  observation:"A completed match score was found in a public source and this selection is recorded as a loss candidate. The stored pre-match department reports are attached for comparison. The cause of the miss is not established by the score alone.",
+  note:preMatchReports.length
+   ?"Compare the stored D1/D2/D3/D4/D6/D8 pre-match reports with the confirmed result and any independent match facts. Record only concrete discrepancies: an incorrect availability assumption, stale form sample, tactical mismatch, market/period interpretation, probability or price error, or correlated exposure. These are investigation prompts, not findings."
+   :"No archived pre-match department reports were available for this run. Do not infer why the selection lost; collect independent event facts before proposing any change.",
+  diagnosticChecklist:[
+   "Compare the actual fixture, kickoff, participants and event status with D1 scouting.",
+   "Check whether D2 used correct lineups, injuries, suspensions, recent form and matchup facts.",
+   "Compare D3's exact market, period, line and settlement rule with the actual selection.",
+   "Check D4's sample size, probability assumptions, price and uncertainty.",
+   "Check D6's correlation, common-cause risks and alternative construction.",
+   "Check D8's evidence integrity and unverified assumptions.",
+   "State a specific proposed change only when pre-match and independent post-match sources support it."
+  ],
   validationStatus:"candidate_for_validation",evidence:[{type:"final_score",url:leg.sourceUrl,retrievedAt:leg.sourceRetrievedAt}],
   createdAt:new Date().toISOString(),submitterCredentialId:"owner-internal-token"
  };
  await put("library/lessons",id,lesson);
- const caseId="post-match-lesson-review-"+coupon.id+"-"+index;
- await put("library/lesson-review-cases",caseId,{
-  id:caseId,lessonId:id,reviewStatus:"pending_independent_review",evidence:lesson.evidence,
-  submittedAt:lesson.createdAt,submittedBy:"post_match_followup",submitterCredentialId:"owner-internal-token",
-  independentReviewerRequired:true,outcomeApplied:false,
-  guardrails:["Only the final result is established. Causal explanations remain hypotheses until independently corroborated."]
- });
+ // A diagnostic candidate is not sent for causal review until the coupon outcome itself
+ // has passed separate review. The outcome reviewer will create the second-stage case.
  return id;
 }
-async function processCoupon(coupon:any,historicalDatasets:any[]){
+async function processCoupon(coupon:any,historicalDatasets:any[],searchBudget:{remaining:number},resultBudget:{remaining:number}){
  const followupId="post-match-"+coupon.id;
  const current=await get<any>("library/post-match-followups",followupId);
  if(current?.status==="review_submitted"||current?.status==="independently_reviewed"||current?.status==="review_rejected")return {status:current.status,legs:current.legs||[]};
@@ -211,14 +309,28 @@ async function processCoupon(coupon:any,historicalDatasets:any[]){
  const legs=[];
  for(let i=0;i<selections.length;i++){
   const leg=selections[i],existing=current?.legs?.[i];
-  if(existing&&["won","lost","void","unsupported_market"].includes(existing.status)){legs.push(existing);continue;}
+  if(existing&&["won","lost","void","unsupported_market"].includes(existing.status)){
+   const cachedSearch=existing.searchCheckedAt&&Date.now()-dateMs(existing.searchCheckedAt)<SEARCH_CACHE_TTL_MS
+    ?{query:existing.searchQuery||null,mode:existing.searchMode||googleMode(),leads:existing.searchLeads||[],checkedAt:existing.searchCheckedAt,searchStatus:existing.searchStatus||"cached"}
+    :await searchGoogleResultLeads(leg,searchBudget);
+   legs.push({...existing,searchQuery:cachedSearch.query,searchMode:cachedSearch.mode,
+    searchLeads:cachedSearch.leads||[],searchCheckedAt:cachedSearch.checkedAt,searchStatus:cachedSearch.searchStatus||"cached"});
+   continue;
+  }
   const sport=normalized(coupon.sport||"");
   try{
    const participants=parseParticipants(clean(leg.event,250),leg);
-   if(!participants){legs.push({index:i+1,event:leg.event,market:leg.market,pick:leg.pick||leg.selection,status:"unresolved",reason:"Could not parse the home/away teams.",checkedAt:new Date().toISOString()});continue;}
+   if(!participants){
+    const search=await searchGoogleResultLeads(leg,searchBudget);
+    legs.push({index:i+1,event:leg.event,market:leg.market,pick:leg.pick||leg.selection,
+     status:"unresolved",reason:"Could not parse separate home/away teams; Google results remain discovery leads only.",
+     searchQuery:search.query,searchMode:search.mode,searchLeads:search.leads||[],
+     searchCheckedAt:search.checkedAt,searchStatus:search.searchStatus||"not_run",checkedAt:new Date().toISOString()});
+    continue;
+   }
    let settled:any;
    if(sport==="football"||sport.includes("soccer")){
-    const source=await cachedMatches(participants.home);
+    const source=await cachedMatches(participants.home,resultBudget);
     settled=matchForLeg(source.matches,{...leg,homeTeam:participants.home,awayTeam:participants.away});
     if(settled.status==="unresolved"||settled.status==="awaiting_result"||settled.status==="source_error"||settled.status==="unsupported_market"){
      const historical=historicalDatasetResult(historicalDatasets,leg,coupon.sport||"football");
@@ -227,43 +339,58 @@ async function processCoupon(coupon:any,historicalDatasets:any[]){
    }else{
     settled=historicalDatasetResult(historicalDatasets,leg,coupon.sport||"");
    }
-   legs.push({index:i+1,event:leg.event,market:leg.market,pick:leg.pick||leg.selection,odds:leg.odds,...settled,checkedAt:new Date().toISOString()});
+   const search=await searchGoogleResultLeads(leg,searchBudget);
+   legs.push({index:i+1,event:leg.event,market:leg.market,pick:leg.pick||leg.selection,odds:leg.odds,
+    startTime:leg.startTime||leg.eventStart||null,eventId:leg.eventId||null,
+    homeTeam:participants.home,awayTeam:participants.away,
+    ...settled,searchQuery:search.query,searchMode:search.mode,searchLeads:search.leads||[],
+    searchCheckedAt:search.checkedAt,searchStatus:search.searchStatus||"not_run",checkedAt:new Date().toISOString()});
   }catch(error){
-   legs.push({index:i+1,event:leg.event,market:leg.market,pick:leg.pick||leg.selection,status:"source_error",reason:String(error).slice(0,240),checkedAt:new Date().toISOString()});
+   const search=await searchGoogleResultLeads(leg,searchBudget);
+   legs.push({index:i+1,event:leg.event,market:leg.market,pick:leg.pick||leg.selection,
+    status:"source_error",reason:String(error).slice(0,240),searchQuery:search.query,
+    searchMode:search.mode,searchLeads:search.leads||[],searchCheckedAt:search.checkedAt,
+    searchStatus:search.searchStatus||"not_run",checkedAt:new Date().toISOString()});
   }
  }
  const outcome=aggregateOutcome(legs);
  const lost=legs.filter(x=>x.status==="lost");
  const lessonIds=[];
  for(const [idx,leg] of lost.entries())lessonIds.push(await saveLossLesson(coupon,leg,leg.index||idx+1));
- const status=outcome==="pending"?"partial_results":outcome==="won"||outcome==="lost"||outcome==="void"||outcome==="partial"?"awaiting_independent_review":"partial_results";
- const sources=[...new Set(legs.map(x=>x.sourceUrl).filter(Boolean))];
+ const status=["won","lost","void","partial"].includes(outcome)?"awaiting_independent_review":"partial_results";
+ const sources=[...new Set(legs.map((x:any)=>x.sourceUrl)
+  .filter((x:any)=>typeof x==="string"&&/^https:\/\//i.test(x)))];
+ const searchLeads=legs.flatMap((x:any)=>Array.isArray(x.searchLeads)?x.searchLeads.map((lead:any)=>({
+  legIndex:x.index,event:x.event,market:x.market,pick:x.pick,...lead
+ })):[]).slice(0,150);
  const record={
   id:followupId,couponId:coupon.id,runId:coupon.runId||null,origin:"win",
-  status,outcome,legs,lessonCandidateIds:lessonIds,sourceUrls:sources,
+  status,outcome,legs,lessonCandidateIds:lessonIds,sourceUrls:sources,searchLeads,
   reviewedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),
   placementStatus:coupon.executionStatus||"not_placed_by_WIN",
   caveat:"WIN research-coupon results are hypothetical forecasts unless the user separately confirms a real placed ticket. Automated result matching is limited to supported source coverage and market rules."
  };
  await put("library/post-match-followups",followupId,record);
- if(["won","lost","void","partial"].includes(outcome)){
-  const reviewCaseId="win-coupon-review-"+coupon.id;
-  if(!(await get<any>("library/win-post-match-review-cases",reviewCaseId))){
-   await put("library/win-post-match-review-cases",reviewCaseId,{
-    id:reviewCaseId,caseType:"win_coupon",couponId:coupon.id,claimedOutcome:outcome,
-    sourceUrls:sources,legs,lessonCandidateIds:lessonIds,
-    reviewStatus:"pending_independent_review",submitterCredentialId:"owner-internal-token",
-    submittedAt:new Date().toISOString(),outcomeApplied:false,
-    guardrails:["WIN-generated coupon outcomes are not final until a separate reviewer corroborates every match and settlement rule.","A different evidence host is required."]
-   });
-  }
-  record.status="review_submitted";
-  await put("library/post-match-followups",followupId,record);
- }
- return {status:record.status,outcome,legs:legs.length,lostLegs:lost.length,lessonCandidates:lessonIds.length};
+ const reviewCaseId="win-coupon-review-"+coupon.id;
+ const priorReviewCase=await get<any>("library/win-post-match-review-cases",reviewCaseId);
+ const reviewCase={
+  ...(priorReviewCase||{}),id:reviewCaseId,caseType:"win_coupon",couponId:coupon.id,
+  claimedOutcome:outcome,sourceUrls:sources,legs,lessonCandidateIds:lessonIds,
+  reviewStatus:"pending_independent_review",submitterCredentialId:"owner-internal-token",
+  submittedAt:priorReviewCase?.submittedAt||new Date().toISOString(),outcomeApplied:false,
+  searchMode:googleMode(),
+  guardrails:["Google results are discovery leads, not score evidence.","Automated scores are provisional until a separate reviewer corroborates event identity, market rules and every leg.","Unsupported or ambiguous markets must be resolved from independent settlement evidence, never guessed."]
+ };
+ await put("library/win-post-match-review-cases",reviewCaseId,reviewCase);
+ record.status="review_submitted";
+ await put("library/post-match-followups",followupId,record);
+ return {status:record.status,outcome,legs:legs.length,lostLegs:lost.length,
+  lessonCandidates:lessonIds.length,googleLeadsFound:searchLeads.length};
 }
 export async function runPostMatchFollowups(){
  const startedAt=new Date().toISOString();
+ const searchBudget={remaining:SEARCH_LIMIT_PER_RUN};
+ const resultBudget={remaining:RESULT_TEAM_LOOKUP_LIMIT_PER_RUN};
  const [allCoupons,historicalDatasets]=await Promise.all([
   list<any>("library/coupons",1000),
   list<any>("library/model-lab/market-consensus-datasets",100)
@@ -273,17 +400,26 @@ export async function runPostMatchFollowups(){
  ).sort((a,b)=>dateMs(a.createdAt)-dateMs(b.createdAt)).slice(0,BATCH_LIMIT);
  const summaries:any[]=[];
  for(const coupon of coupons){
-  try{summaries.push({couponId:coupon.id,...await processCoupon(coupon,historicalDatasets)});
-  catch(error){summaries.push({couponId:coupon.id,status:"failed",error:String(error).slice(0,240)});}
+  try{summaries.push({couponId:coupon.id,...await processCoupon(coupon,historicalDatasets,searchBudget,resultBudget)});
+  }catch(error){summaries.push({couponId:coupon.id,status:"failed",error:String(error).slice(0,240)});}
  }
  const runs=await list<any>("library/post-match-runs",30);
  const summary={
   id:"post-match-run-"+startedAt.slice(0,19).replace(/[^0-9]/g,""),
   startedAt,completedAt:new Date().toISOString(),status:summaries.some(x=>x.status==="failed")?"partial":"completed",
-  couponsChecked:summaries.length,resolved:summaries.filter(x=>x.status==="review_submitted").length,
-  unresolved:summaries.filter(x=>x.status==="partial_results").length,
+  couponsChecked:summaries.length,
+  resolved:summaries.filter(x=>["won","lost","void","partial"].includes(x.outcome)).length,
+  queuedForReview:summaries.filter(x=>x.status==="review_submitted").length,
+  unresolved:summaries.filter(x=>x.outcome==="pending"||x.status==="partial_results").length,
   failed:summaries.filter(x=>x.status==="failed").length,results:summaries,
-  provider:"OpenLigaDB + imported open historical datasets",apiCallsMade:"bounded by unique home-team cache",
+  googleLeadsFound:summaries.reduce((n:number,x:any)=>n+Number(x.googleLeadsFound||0),0),
+  provider:"OpenLigaDB + imported open historical datasets",
+  googleSearchMode:googleMode(),googleQueriesRemaining:searchBudget.remaining,
+  googleSearchQueriesUsed:SEARCH_LIMIT_PER_RUN-searchBudget.remaining,
+  openLigaDbQueriesRemaining:resultBudget.remaining,
+  openLigaDbQueriesUsed:RESULT_TEAM_LOOKUP_LIMIT_PER_RUN-resultBudget.remaining,
+  googleSearchConfigured:googleMode()==="google_programmable_search_api",
+  apiCallsMade:"bounded by cached team-result lookups and a maximum of "+SEARCH_LIMIT_PER_RUN+" Google discovery queries",
   aiCalls:0,automaticBetting:false
  };
  await put("library/post-match-runs",summary.id,summary);
@@ -302,15 +438,18 @@ export async function getPostMatchFollowupStatus(){
   totalCoupons:followups.length,
   awaitingIndependentReview:followups.filter(x=>x.status==="review_submitted").length,
   reviewRejected:followups.filter(x=>x.status==="review_rejected").length,
-  partialOrUnresolved:followups.filter(x=>x.status==="partial_results").length,
+  partialOrUnresolved:followups.filter(x=>x.status==="partial_results"||x.outcome==="pending").length,
   wins:followups.filter(x=>x.status==="independently_reviewed"&&x.outcome==="won").length,
   losses:followups.filter(x=>x.status==="independently_reviewed"&&x.outcome==="lost").length,
   recent:followups.sort((a,b)=>dateMs(b.updatedAt)-dateMs(a.updatedAt)).slice(0,20).map(x=>({
    id:x.id,couponId:x.couponId,status:x.status,outcome:x.outcome,
    legCount:(x.legs||[]).length,lostLegs:(x.legs||[]).filter((l:any)=>l.status==="lost").length,
-   updatedAt:x.updatedAt,legs:x.legs,lessonCandidateIds:x.lessonCandidateIds
+   updatedAt:x.updatedAt,legs:x.legs,searchLeads:x.searchLeads||[],lessonCandidateIds:x.lessonCandidateIds,
+   placementStatus:x.placementStatus||"not_placed_by_WIN"
   })),
   limitations:["OpenLigaDB powers live public football result checks; imported historical market datasets extend exact-match checks to some other sports.","Only explicit completed scores, exact team/date matches and supported settlement fields are evaluated.","Period-specific markets, missing kickoff data and ambiguous or unsupported events stay unresolved.","Cause analysis is a hypothesis list, never a score-only causal claim."],
+  googleSearchMode:googleMode(),googleSearchConfigured:googleMode()==="google_programmable_search_api",
+  googleLeadsFound:followups.reduce((n:number,x:any)=>n+Number(x.searchLeads?.length||0),0),
   aiCalls:0
  };
 }

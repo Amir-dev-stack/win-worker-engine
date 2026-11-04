@@ -79,7 +79,11 @@ async function pendingQueue() {
       lesson: {
         id: lesson.id, title: lesson.title || lesson.label || lesson.event || lesson.recordType || lesson.id,
         note: lesson.note || lesson.observation || lesson.summary || lesson.hypothesis || "",
-        sport: lesson.sport || null, competition: lesson.competition || null
+        sport: lesson.sport || null, competition: lesson.competition || null,
+        matchResult: lesson.matchResult || null,
+        preMatchReports: Array.isArray(lesson.preMatchReports) ? lesson.preMatchReports : [],
+        diagnosticChecklist: Array.isArray(lesson.diagnosticChecklist) ? lesson.diagnosticChecklist : [],
+        searchLeads: Array.isArray(lesson.searchLeads) ? lesson.searchLeads : []
       }
     } : null;
   }));
@@ -113,6 +117,7 @@ async function pendingQueue() {
     return coupon ? {
       id: item.id, caseType: "win_coupon", submittedAt: item.submittedAt,
       claimedOutcome: item.claimedOutcome, sourceUrls: item.sourceUrls || [],
+      searchLeads: item.searchLeads || [],
       legs: item.legs || [], lessonCandidateIds: item.lessonCandidateIds || [],
       recoveryRequired, recoveryLeaseExpiresAt: recoveryRequired ? operation.leaseExpiresAt : null,
       coupon: {
@@ -140,8 +145,8 @@ const REVIEW_CHECK_KEYS = [
 
 function reviewFingerprint(input: {
   caseType: string; caseId: string; decision: string; reviewerName: string;
-  notes: string; evidenceUrls: string[]; checks: Record<string, boolean>;
-  reviewerCredentialId: string;
+  notes: string; evidenceUrls: string[]; manualLegResults: any[];
+  checks: Record<string, boolean>; reviewerCredentialId: string;
 }): string {
   const canonical = {
     caseType: input.caseType,
@@ -150,6 +155,7 @@ function reviewFingerprint(input: {
     reviewerName: input.reviewerName,
     notes: input.notes,
     evidenceUrls: [...input.evidenceUrls].sort(),
+    manualLegResults: input.manualLegResults.slice().sort((a:any,b:any)=>a.index-b.index),
     checks: Object.fromEntries(REVIEW_CHECK_KEYS.map(key => [key, input.checks[key] === true])),
     reviewerCredentialId: input.reviewerCredentialId
   };
@@ -213,13 +219,30 @@ async function completeReviewOperation(operationId: string, operation: any, etag
   throw new Error("Review artifacts were saved, but the completion marker needs the same review submission retried after the operation lease expires.");
 }
 
+function deriveCouponOutcome(legs:any[]){
+ const results=legs.map((leg:any)=>String(leg.status||"").toLowerCase());
+ if(!results.length||results.some((status:string)=>!["won","lost","void"].includes(status)))return null;
+ if(results.includes("lost"))return "lost";
+ if(results.every((status:string)=>status==="void"))return "void";
+ if(results.every((status:string)=>status==="won"))return "won";
+ return "partial";
+}
 async function reviewCase(body: any, reviewer: { credentialId: string }) {
   const caseType = clean(body?.caseType, 30);
   const caseId = clean(body?.caseId, 180);
   const decision = clean(body?.decision, 20).toLowerCase();
   const reviewerName = clean(body?.reviewerName, 120);
   const notes = clean(body?.reviewerNotes, 3000);
-  const evidenceUrls = uniqueHttpsUrls(body?.evidenceUrls);
+  const submittedReviewerEvidence = uniqueHttpsUrls(body?.evidenceUrls);
+  const manualLegResults = Array.isArray(body?.manualLegResults)
+    ? body.manualLegResults.slice(0,100).map((item:any)=>({
+      index:Number(item?.index),status:clean(item?.status,20).toLowerCase(),
+      evidenceUrl:clean(item?.evidenceUrl,1500),notes:clean(item?.notes,1000)
+    })) : [];
+  if(manualLegResults.some((item:any)=>!Number.isInteger(item.index)||item.index<1||
+    !["won","lost","void"].includes(item.status)||!httpsUrl(item.evidenceUrl)))
+    return {status:400,body:{error:"Every manually resolved leg needs a valid 1-based index, won/lost/void result and an independent HTTPS evidence URL."}};
+  const evidenceUrls = uniqueHttpsUrls([...submittedReviewerEvidence,...manualLegResults.map((x:any)=>x.evidenceUrl)]);
   const checks = body?.checks && typeof body.checks === "object" && !Array.isArray(body.checks) ? body.checks : {};
   if (!caseId || !["approve", "reject"].includes(decision) || reviewerName.length < 2 || notes.length < 40)
     return { status: 400, body: { error: "caseId, approve/reject decision, reviewer name and at least 40 characters of reviewer notes are required." } };
@@ -228,7 +251,7 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
 
   const operationId = reviewOperationId(caseType, caseId);
   const fingerprint = reviewFingerprint({
-    caseType, caseId, decision, reviewerName, notes, evidenceUrls,
+    caseType, caseId, decision, reviewerName, notes, evidenceUrls, manualLegResults,
     checks: Object.fromEntries(REVIEW_CHECK_KEYS.map(key => [key, checks[key] === true])),
     reviewerCredentialId: reviewer.credentialId
   });
@@ -257,9 +280,45 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
 
   let lesson: any = null;
   let coupon: any = null;
-  const claimedOutcome = clean(record.claimedOutcome, 30).toLowerCase();
+  let claimedOutcome = clean(record.claimedOutcome, 30).toLowerCase();
+  let reviewedLegs:any[] = [];
   const settlementLearningId = caseType === "human_coupon" ? "human-settlement-" + clean(record.couponId, 180)
     : caseType === "win_coupon" ? "win-settlement-" + clean(record.couponId, 180) : "";
+
+  if(decision==="approve"&&caseType==="win_coupon"){
+    const sourceLegs=Array.isArray(record.legs)?record.legs:[];
+    const manualByIndex=new Map<number,any>();
+    for(const item of manualLegResults){
+      if(item.index>sourceLegs.length||manualByIndex.has(item.index))
+        return {status:400,body:{error:"Manual leg resolutions must use unique indexes that exist in the coupon."}};
+      manualByIndex.set(item.index,item);
+    }
+    for(const [index,manual] of manualByIndex.entries()){
+      const leg=sourceLegs[index-1];
+      const oldUrls=[
+        leg?.sourceUrl,
+        ...(Array.isArray(leg?.searchLeads)?leg.searchLeads.map((x:any)=>x.url):[])
+      ].filter((value:any)=>typeof value==="string"&&Boolean(httpsUrl(value)));
+      if(!hasNewEvidenceDomain([manual.evidenceUrl],oldUrls))
+        return {status:400,body:{error:"Manual result for leg "+index+" needs an HTTPS source from a different host than its original result/search leads."}};
+    }
+    reviewedLegs=sourceLegs.map((leg:any,index:number)=>{
+      const manual=manualByIndex.get(index+1);
+      if(!manual)return {...leg};
+      return {
+        ...leg,status:manual.status,reason:"Leg outcome manually resolved by an independent reviewer against the supplied source.",
+        resolutionMode:"reviewer_manual_resolution",reviewerEvidenceUrl:manual.evidenceUrl,
+        reviewerResolutionNotes:manual.notes||null,checkedAt:new Date().toISOString()
+      };
+    });
+    if(reviewedLegs.length!==sourceLegs.length||!reviewedLegs.length)
+      return {status:400,body:{error:"Coupon review requires the full stored list of selections."}};
+    if(reviewedLegs.some((leg:any)=>!["won","lost","void"].includes(String(leg.status))))
+      return {status:400,body:{error:"Every coupon leg must have a verified automatic result or a manual reviewer resolution before approval."}};
+    claimedOutcome=deriveCouponOutcome(reviewedLegs)||"";
+    if(!HUMAN_OUTCOMES.has(claimedOutcome))
+      return {status:400,body:{error:"The full coupon outcome could not be derived from every reviewed leg."}};
+  }
 
   if (decision === "approve") {
     if (!evidenceUrls.length)
@@ -278,7 +337,7 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
       if (checks.eventIdentityConfirmed !== true || checks.marketRulesConfirmed !== true ||
           checks.everySelectionReviewed !== true || checks.evidenceIndependent !== true)
         return { status: 400, body: { error: "Coupon approval requires confirming event identity, market rules, every selection and independent evidence." } };
-      if (!HUMAN_OUTCOMES.has(claimedOutcome))
+      if (caseType === "human_coupon" && !HUMAN_OUTCOMES.has(claimedOutcome))
         return { status: 400, body: { error: "The claimed settlement outcome is unsupported." } };
       coupon = await get<any>("library/coupons", record.couponId);
       const expectedOrigin = caseType === "human_coupon" ? "human" : "win";
@@ -289,7 +348,10 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
         return { status: 409, body: { error: "Coupon is missing, has the wrong origin, or was settled by a different operation." } };
       const submittedUrls = caseType === "human_coupon"
         ? [record.sourceCouponUrl, record.evidenceUrl]
-        : (Array.isArray(record.sourceUrls) ? record.sourceUrls : []);
+        : [
+          ...(Array.isArray(record.sourceUrls) ? record.sourceUrls : []),
+          ...(Array.isArray(record.searchLeads) ? record.searchLeads.map((x:any)=>x.url) : [])
+        ];
       if (!hasNewEvidenceDomain(evidenceUrls, submittedUrls.filter((value: any) =>
         typeof value === "string" && Boolean(httpsUrl(value))
       )))
@@ -361,8 +423,11 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
   const submittedEvidence = caseType === "human_coupon"
     ? [{ type: "submitted_settlement_evidence", url: record.evidenceUrl }]
     : (Array.isArray(record.sourceUrls) ? record.sourceUrls : []).map((url: string) => ({ type: "automated_match_result", url }));
+  const manualEvidence = reviewedLegs.filter((leg:any)=>leg.resolutionMode==="reviewer_manual_resolution")
+    .map((leg:any)=>({type:"reviewer_manual_leg_settlement",index:leg.index,url:leg.reviewerEvidenceUrl}));
   const allEvidence = [
     ...submittedEvidence,
+    ...manualEvidence,
     ...evidenceUrls.map(url => ({ type: "reviewer_corroboration", url }))
   ];
   const independentReview = reviewMetadata(reviewer, reviewerName, notes, reviewedAt, evidenceUrls, checks);
@@ -371,7 +436,12 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
     couponId: coupon.id, outcome: claimedOutcome,
     sport: coupon.sport || null, country: coupon.country || null,
     competition: coupon.competition || null, combinedOdds: coupon.combinedOdds ?? null,
-    selections: Array.isArray(coupon.selections) ? coupon.selections.slice(0, 100) : [],
+    selections: Array.isArray(coupon.selections) ? coupon.selections.map((selection:any,index:number)=>({
+      ...selection,result:caseType==="win_coupon"?reviewedLegs[index]?.status:selection.result,
+      resultSource:caseType==="win_coupon"?(reviewedLegs[index]?.reviewerEvidenceUrl||reviewedLegs[index]?.sourceUrl||null):selection.resultSource
+    })).slice(0, 100) : [],
+    legs:caseType==="win_coupon"?reviewedLegs:undefined,
+    searchLeads:caseType==="win_coupon"?(record.searchLeads||[]):undefined,
     settlementSource: record.evidenceUrl || (Array.isArray(record.sourceUrls) ? record.sourceUrls[0] || null : null), evidence: allEvidence,
     validationStatus: caseType === "human_coupon" ? "validated" : "outcome_verified_cause_unvalidated",
     submitterCredentialId, independentReview,
@@ -382,12 +452,84 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
   };
   const updatedCoupon = {
     ...coupon, outcome: claimedOutcome, settledAt: coupon.settledAt || reviewedAt,
+    selections:caseType==="win_coupon"&&Array.isArray(coupon.selections)?coupon.selections.map((selection:any,index:number)=>({
+      ...selection,result:reviewedLegs[index]?.status||selection.result,
+      resultSource:reviewedLegs[index]?.reviewerEvidenceUrl||reviewedLegs[index]?.sourceUrl||null,
+      resultEvidence:reviewedLegs[index]?.reviewerEvidenceUrl?[{url:reviewedLegs[index].reviewerEvidenceUrl}]:selection.resultEvidence
+    })):coupon.selections,
     updatedAt: reviewedAt, settlementSource: record.evidenceUrl || (Array.isArray(record.sourceUrls) ? record.sourceUrls[0] || null : null),
     settlementEvidence: allEvidence,
     settlementReviewStatus: "approved_by_separate_reviewer_credential",
     independentSettlementReview: independentReview,
     learningStatus: "recorded", settlementLearningId, reviewOperationId: operationId
   };
+  const validatedLessonCandidates:string[]=[];
+  if(caseType==="win_coupon"){
+    const sourceRun=coupon.runId?await get<any>("runs",coupon.runId):null;
+    const preMatchReports=(sourceRun?.workers||[]).filter((report:any)=>
+      ["D1","D2","D3","D4","D6","D8"].includes(report.departmentId)
+    ).map((report:any)=>({
+      departmentId:report.departmentId,role:clean(report.role,180),status:report.status,
+      report:clean(report.report,5000),citations:(Array.isArray(report.citations)?report.citations:[]).slice(0,20)
+    }));
+    for(const [legIndex,leg] of reviewedLegs.entries()){
+      if(leg.status!=="lost")continue;
+      const index=Number(leg.index)||legIndex+1;
+      const lessonId="post-match-diagnostic-"+coupon.id+"-"+index;
+      let lesson=await get<any>("library/lessons",lessonId);
+      if(!lesson){
+        lesson={
+          id:lessonId,recordType:"post_match_diagnostic_candidate",
+          title:"Post-match review: "+clean(leg.event,200),
+          sport:coupon.sport||"football",competition:coupon.competition||null,outcome:"lost",
+          couponId:coupon.id,runId:coupon.runId||null,market:leg.market,pick:leg.pick||leg.selection,
+          predictionOdds:leg.odds,actualScore:Number.isFinite(leg.homeScore)&&Number.isFinite(leg.awayScore)
+            ?String(leg.homeScore)+"-"+String(leg.awayScore):null,
+          matchResult:{homeTeam:leg.homeTeam,awayTeam:leg.awayTeam,homeScore:leg.homeScore??null,
+            awayScore:leg.awayScore??null,eventStart:leg.matchDateTimeUTC||leg.startTime||null,
+            sourceProvider:leg.sourceProvider||"reviewer_supplied",sourceUrl:leg.reviewerEvidenceUrl||leg.sourceUrl||null},
+          preMatchReports,
+          searchLeads:Array.isArray(leg.searchLeads)?leg.searchLeads:[],
+          observation:"The separate coupon reviewer recorded this selection as a loss after checking the supplied result source. This validates the selection outcome, not the cause of the miss.",
+          note:preMatchReports.length
+            ?"Compare the stored D1/D2/D3/D4/D6/D8 pre-match reports with the reviewed result and independent match facts. Identify only specific contradictions or missed evidence; do not infer causation from the score."
+            :"No archived pre-match department reports were available. No causal explanation is established.",
+          diagnosticChecklist:[
+            "Check D1 fixture identity, kickoff and event status.",
+            "Compare D2's form, availability, tactics and matchup assumptions with dated post-match facts.",
+            "Check D3's market, period, line and settlement interpretation.",
+            "Check D4's probabilities, price, sample size and uncertainty.",
+            "Check D6's correlation and common-cause exposure.",
+            "Check D8's evidence integrity and assumptions.",
+            "Propose a change only where independent evidence supports it."
+          ],
+          validationStatus:"candidate_for_validation",
+          evidence:[
+            ...(leg.sourceUrl?[{type:"automated_match_result",url:leg.sourceUrl}]:[]),
+            ...(leg.reviewerEvidenceUrl?[{type:"reviewer_manual_result",url:leg.reviewerEvidenceUrl}]:[])
+          ],
+          createdAt:reviewedAt,submitterCredentialId:reviewer.credentialId,
+          outcomeReviewerCredentialId:reviewer.credentialId
+        };
+        await put("library/lessons",lessonId,lesson);
+      }else{
+        lesson={...lesson,submitterCredentialId:reviewer.credentialId,
+          outcomeReviewerCredentialId:reviewer.credentialId};
+        await put("library/lessons",lessonId,lesson);
+      }
+      const lessonCaseId="post-match-lesson-review-"+coupon.id+"-"+index;
+      const oldCase=await get<any>("library/lesson-review-cases",lessonCaseId);
+      await put("library/lesson-review-cases",lessonCaseId,{
+        ...(oldCase||{}),id:lessonCaseId,lessonId,reviewStatus:"pending_independent_review",
+        evidence:lesson.evidence||[],submittedAt:oldCase?.submittedAt||reviewedAt,
+        submittedBy:"post_match_outcome_review",
+        submitterCredentialId:reviewer.credentialId,
+        independentReviewerRequired:true,outcomeApplied:false,
+        guardrails:["This is a candidate diagnosis, not a validated causal lesson. A different reviewer credential must independently compare pre-match reports with dated match evidence."]
+      });
+      validatedLessonCandidates.push(lessonId);
+    }
+  }
   await put("library/coupons", coupon.id, updatedCoupon);
   await remove("library/pending-coupons", coupon.id);
   await remove("library/winning-coupons", coupon.id);
@@ -405,7 +547,9 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
   if (caseType === "win_coupon") await put("library/win-settlement-learning", settlementLearningId, learning);
   await put("library/settlement-learning", settlementLearningId, learning);
   const approved = {
-    ...record, reviewStatus: "approved", reviewerCredentialId: reviewer.credentialId,
+    ...record, ...(caseType==="win_coupon"?{legs:reviewedLegs,claimedOutcome,
+      searchLeads:record.searchLeads||[],lessonCandidateIds:validatedLessonCandidates}:{}),
+    reviewStatus: "approved", reviewerCredentialId: reviewer.credentialId,
     reviewerName, reviewerNameIsSelfReported: true, reviewerNotes: notes,
     reviewerEvidenceUrls: evidenceUrls, reviewedAt, outcomeApplied: true,
     appliedCouponOutcome: claimedOutcome, settlementLearningId, reviewOperationId: operationId
@@ -414,7 +558,7 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
   if (caseType === "win_coupon") {
     await put("library/post-match-followups", "post-match-" + coupon.id, {
       ...(await get<any>("library/post-match-followups", "post-match-" + coupon.id) || {}),
-      status: "independently_reviewed", outcome: claimedOutcome,
+      status: "independently_reviewed", outcome: claimedOutcome, legs:reviewedLegs,
       independentReview, reviewedAt, settlementLearningId, updatedAt: reviewedAt
     });
   }
