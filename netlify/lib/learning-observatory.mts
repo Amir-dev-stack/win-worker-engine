@@ -27,8 +27,8 @@ export async function getLearningObservatory(){
  const [budget,smoke,reviewerConfig,reviewOps,lessonCases,humanCases,winCases,lessons,coupons,
   postMatch,sourceDiscovery,eventData,consensusData,observedData,playerData,settledMarketData,calibration,cycles,agentTasks]=await Promise.all([
   getAIbudgetStatus(),list<any>("library/department-smoke-tests",100),
-  get<any>("library/reviewer-config","active"),list<any>("library/review-operations",100),
-  list<any>("library/lesson-review-cases",100),list<any>("library/human-settlement-cases",100),
+  get<any>("library/reviewer-config","active"),list<any>("library/review-operations",200),
+  list<any>("library/lesson-review-cases",100),list<any>("library/human-settlement-cases",250),
   list<any>("library/win-post-match-review-cases",100),list<any>("library/lessons",100),
   list<any>("library/coupons",150),getPostMatchFollowupStatus(),
   getPublicResearchSourceDiscoveryStatus(),list<any>("library/model-lab/historical-event-datasets",200),
