@@ -51,7 +51,7 @@ export const SPORT_STAT_CATALOG={
   group("passing","Quarterback",["pass_attempts","completions","passing_yards","passing_touchdowns","interceptions","sacks_taken","passer_rating","qb_epa_per_play","cpoe_average","air_yards_per_attempt","win_probability_added"]),
   group("rushing","Rushing",["rush_attempts","rushing_yards","rushing_touchdowns","fumbles_lost","epa_per_rush"]),
   group("receiving","Receiving",["targets","receptions","receiving_yards","receiving_touchdowns","yards_after_catch_per_reception","expected_yac_epa_per_completion","expected_yac_yards_per_completion","expected_yac_success_rate","expected_yac_first_down_rate"]),
-  group("defense","Defense",["solo_tackles","assisted_tackles","sacks","half_sacks","interceptions","fumble_recoveries","passes_defended"]),
+  group("defense","Defense",["solo_tackles","assisted_tackles","sacks","half_sacks","interceptions","fumble_recoveries","tackles_for_loss","qb_hits","passes_defended","forced_fumbles","blocks"]),
   group("special_teams","Special teams",["field_goal_attempts","field_goals_made","extra_point_attempts","extra_points_made","kickoffs","punts","punt_yards","kickoff_returns","punt_returns"])
  ],["kickoff","kickoff_return","punt","punt_return","snap","pass_attempt","completion","incompletion","rush","tackle","sack","interception","fumble","touchdown","field_goal","extra_point","penalty","timeout","safety","quarter_start","quarter_end"]),
  ice_hockey:spec("Ice hockey",[
