@@ -21,4 +21,4 @@ export default async () => {
   return Response.json({ ok: true, overallStatus: history.overallStatus, alertChanged: history.alertChanged });
 };
 
-export const config = { schedule: "40 3 * * *", background: true };
+export const config = { schedule: "40 3 * * *" };
