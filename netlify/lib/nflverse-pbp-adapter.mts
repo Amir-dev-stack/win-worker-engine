@@ -581,7 +581,7 @@ export function buildNflverseMatchRecords(
       sourceSchemaFieldCount: Object.keys(game.rows[0] || {}).length,
       eventStart: null, eventDate: game.date, eventTimePrecision: "date_only",
       fullTimeScore: [game.homeScore, game.awayScore], status: "completed",
-      teamStats, playerStats, events: eventTimeline, eventTimeline,
+      teamStats, playerStats, events: eventTimeline,
       playerCount: playerStats.length, playCount: eventTimeline.filter(item => item.playId !== null).length,
       sourceProvider: PROVIDER_ID, sourceUrl, retrievedAt, sourceLicence: LICENSE,
       licenceReference: LICENSE_URL, attribution: ATTRIBUTION,
