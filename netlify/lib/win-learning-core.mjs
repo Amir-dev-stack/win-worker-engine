@@ -34,7 +34,11 @@ export function evaluateFullTimeLeg(leg, score) {
     if (!saysYes && !saysNo) return { status: "unsupported_market", reason: "BTTS pick could not be parsed safely." };
     return { status: (yes === saysYes) ? "won" : "lost", reason: "Settled from the verified full-time score." };
   }
-  const fullMatchGoalTotal = !/\b(player|team|individual)\b/.test(market) && (\n    /\b(total goals?|goals? total|goal total|goal line|liczba goli|gole|goli)\b/.test(market) ||\n    /\b(over|under)\b.*\b(goals?|gole|goli)\b/.test(market)\n  );\n  if (fullMatchGoalTotal) {
+  const fullMatchGoalTotal = !/\b(player|team|individual)\b/.test(market) && (
+    /\b(total goals?|goals? total|goal total|goal line|liczba goli|gole|goli)\b/.test(market) ||
+    /\b(over|under)\b.*\b(goals?|gole|goli)\b/.test(market)
+  );
+  if (fullMatchGoalTotal) {
     const line = parseLine(rawPick + " " + clean(leg?.market, 180));
     if (line === null) return { status: "unsupported_market", reason: "Goal-total line could not be extracted." };
     const under = /under|ponizej|less than|poniżej/.test(pick) || /under|ponizej|less than/.test(market);
