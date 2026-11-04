@@ -34,6 +34,12 @@ test("Neon schema preserves generic WIN records and indexes collection reads", a
   }
   assert.match(schema, /PRIMARY KEY/);
   assert.match(schema, /win_memory_records_kind_updated_idx/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS win_financial_accounts/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS win_financial_ledger/);
+  assert.match(schema, /CREATE OR REPLACE FUNCTION win_record_financial_entry/);
+  assert.match(schema, /FOR UPDATE/);
+  assert.match(schema, /daily_loss_limit_reached/);
+  assert.match(schema, /available_balance_exceeded/);
 });
 
 test("memory status endpoint is authenticated and does not expose database credentials", async () => {
@@ -71,6 +77,7 @@ test("daily Neon snapshots are versioned, checksummed and retained for 30 days",
   assert.match(backup, /schedule: "23 3 \* \* \*"/);
   assert.match(backup, /gzipSync/);
   assert.match(backup, /createCipheriv/);
+  assert.match(backup, /background: true/);
   assert.match(backup, /cipher\.final\(\)[\s\S]*cipher\.getAuthTag\(\)/);
   assert.match(backup, /WIN_MEMORY_BACKUP_KEY/);
   assert.match(backup, /sha256/);
