@@ -188,6 +188,25 @@ add("Consensus calibration evaluates binary moneyline datasets without inventing
   (await read("scripts/market-calibration.test.mjs")).includes("tennis player-one probabilities"),
   "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
 
+add("NFL play-by-play adapter is source-attributed, sport-scoped and provenance-preserving",
+  (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("parseNflverseCsv") &&
+  (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("buildNflverseMatchRecords") &&
+  (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("rawChecksum") &&
+  (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("rating formula") === false &&
+  providers.includes('id:"nflverse-pbp-data"') &&
+  providers.includes("historical_match_play_by_play") &&
+  providers.includes("CC-BY-4.0") &&
+  (await read("netlify/functions/learning-data-jobs.mts")).includes("nflverse_american_football_play_by_play") &&
+  (await read("netlify/functions/research-status.mts")).includes("getNflversePlayByPlaySyncStatus"),
+  "The licensed feed contributes American-football play timelines and derived player/team box-score counts; ratings and absent fields remain explicitly unavailable.");
+add("Football source references remain review-only until access and reuse terms are verified",
+  providers.includes('id:"uefa-match-center"') &&
+  providers.includes('id:"fotmob-match-profiles"') &&
+  providers.includes('id:"espn-match-center"') &&
+  providers.includes('id:"footystats-h2h"') &&
+  providers.includes("automationAllowed:false"),
+  "UEFA, FotMob, ESPN and FootyStats are registered as discovery references, not scraped or treated as connected data feeds.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
