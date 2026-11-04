@@ -13,7 +13,7 @@ import {
   inspectStatisticCoverage
 } from "../netlify/lib/sport-stat-catalog.mts";
 
-const headers = "game_id,game_date,home_team,away_team,home_score,away_score,season_type,week,play_id,quarter_end,play_type_nfl,qtr,time,posteam,defteam,kicking_team,play_type,kickoff_attempt,pass_attempt,complete_pass,passing_yards,passer_player_id,passer_player_name,receiver_player_id,receiver_player_name,rush_attempt,rushing_yards,rusher_player_id,rusher_player_name,first_down,yards_gained,rush_touchdown,touchdown,desc".split(",");
+const headers = "game_id,game_date,home_team,away_team,home_score,away_score,season_type,week,play_id,quarter_end,play_type_nfl,qtr,time,posteam,defteam,kicking_team,play_type,kickoff_attempt,pass_attempt,complete_pass,passing_yards,passer_player_id,passer_player_name,receiver_player_id,receiver_player_name,rush_attempt,rushing_yards,rusher_player_id,rusher_player_name,first_down,yards_gained,epa,success,wpa,air_yards,yards_after_catch,rush_touchdown,touchdown,desc".split(",");
 const csvCell = value => '"' + String(value ?? "").replaceAll('"', '""') + '"';
 const csvRow = values => headers.map(key => csvCell(values[key])).join(",");
 function sourceFieldValue(match, event, fieldName) {
@@ -35,14 +35,14 @@ const csv = [
   csvRow({
     game_id:"2026_01_KC_BAL",game_date:"2026-09-10",home_team:"KC",away_team:"BAL",home_score:0,away_score:0,
     season_type:"REG",week:1,play_id:2,qtr:1,time:"14:20",posteam:"KC",defteam:"BAL",play_type:"pass",
-    pass_attempt:1,complete_pass:1,passing_yards:10,passer_player_id:"00-001",passer_player_name:"P. Quarterback",
+    pass_attempt:1,complete_pass:1,passing_yards:10,epa:1.2,success:1,wpa:0.03,air_yards:8,yards_after_catch:4,passer_player_id:"00-001",passer_player_name:"P. Quarterback",
     receiver_player_id:"00-002",receiver_player_name:"R. Receiver",first_down:0,yards_gained:10,
     desc:"Pass complete, 10 yards"
   }),
   csvRow({
     game_id:"2026_01_KC_BAL",game_date:"2026-09-10",home_team:"KC",away_team:"BAL",home_score:7,away_score:0,
     season_type:"REG",week:1,play_id:3,qtr:1,time:"13:40",posteam:"KC",defteam:"BAL",play_type:"run",
-    rush_attempt:1,rushing_yards:5,rusher_player_id:"00-003",rusher_player_name:"R. Runner",
+    rush_attempt:1,rushing_yards:5,epa:-0.2,success:0,wpa:-0.01,rusher_player_id:"00-003",rusher_player_name:"R. Runner",
     first_down:1,yards_gained:5,rush_touchdown:1,touchdown:1,quarter_end:1,desc:"Five-yard rushing touchdown"
   }),
   csvRow({
@@ -136,6 +136,19 @@ test("NFL match builder creates scores, team box scores, player lines and play e
   assert.equal(home.rush_attempts, 1);
   assert.equal(home.rushing_yards, 5);
   assert.equal(home.total_yards, 15);
+  assert.equal(home.epa_total, 1);
+  assert.equal(home.epa_play_count, 2);
+  assert.equal(home.epa_per_play, 0.5);
+  assert.equal(home.successful_plays, 1);
+  assert.equal(home.success_opportunities, 2);
+  assert.equal(home.success_rate, 0.5);
+  assert.equal(home.win_probability_added, 0.02);
+  assert.equal(home.air_yards_total, 8);
+  assert.equal(home.pass_attempts_with_air_yards, 1);
+  assert.equal(home.air_yards_per_attempt, 8);
+  assert.equal(home.yards_after_catch_total, 4);
+  assert.equal(home.completions_with_yac, 1);
+  assert.equal(home.yards_after_catch_per_completion, 4);
 
   const performances = extractPlayerPerformances(match, "nflverse-pbp-data");
   assert.equal(performances.players.length, 3);
