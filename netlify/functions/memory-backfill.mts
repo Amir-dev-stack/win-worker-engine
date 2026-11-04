@@ -77,6 +77,7 @@ export default async (req: Request) => {
       const collection = { scanned: 0, copied: 0, verified: 0, sourceDigest: "", targetDigest: "" };
       const sourceHashes: string[] = [];
       const targetHashes: string[] = [];
+      const sourceKeys: string[] = [];
       for await (const page of blobs.list({ prefix, paginate: true })) {
         const entries = await Promise.all(page.blobs.map(async (item: any) => ({
           key: item.key, value: await blobs.get(item.key, { type: "json" })
@@ -91,6 +92,7 @@ export default async (req: Request) => {
             const targetHash = createHash("sha256").update(canonical(stored)).digest("hex");
             sourceHashes.push(entry.key + ":" + sourceHash);
             targetHashes.push(entry.key + ":" + targetHash);
+            sourceKeys.push(entry.key);
             collection.scanned++;
             collection.copied++;
             if (sourceHash !== targetHash) throw new Error("Record verification failed for " + entry.key);
@@ -103,10 +105,19 @@ export default async (req: Request) => {
         status.collections[prefix] = { ...collection };
         await blobs.setJSON(statusKey, status);
       }
+      const targetKeys: string[] = [];
+      for await (const page of neon.list({ prefix, paginate: true })) {
+        for (const item of page.blobs) targetKeys.push(item.key);
+      }
+      sourceKeys.sort(); targetKeys.sort();
+      if (sourceKeys.length !== targetKeys.length || sourceKeys.some((key, index) => key !== targetKeys[index])) {
+        throw new Error("Source/target key inventory mismatch for " + prefix);
+      }
       sourceHashes.sort(); targetHashes.sort();
       collection.sourceDigest = createHash("sha256").update(sourceHashes.join("\n")).digest("hex");
       collection.targetDigest = createHash("sha256").update(targetHashes.join("\n")).digest("hex");
       if (collection.sourceDigest !== collection.targetDigest) throw new Error("Collection digest mismatch for " + prefix);
+      if (collection.scanned !== targetKeys.length || collection.verified !== targetKeys.length) throw new Error("Collection row-count mismatch for " + prefix);
       status.collections[prefix] = { ...collection };
       await blobs.setJSON(statusKey, status);
     }
