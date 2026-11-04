@@ -1,3 +1,5 @@
+import { getRuntimeEnv } from "./runtime-env.mts";
+
 // WIN keeps Netlify Blobs as the default durable store. Set WIN_MEMORY_BACKEND=mirror
 // to dual-write curated memory to Neon during validation, then "neon" only after
 // a complete backfill and reconciliation. Large raw match/event datasets stay in Blobs.
@@ -27,7 +29,7 @@ export function installIsolatedTestStore(adapter: StoreAdapter) {
 }
 
 const memoryMode = () => {
-  const mode = process.env.WIN_MEMORY_BACKEND?.trim().toLowerCase() || "blobs";
+  const mode = getRuntimeEnv("WIN_MEMORY_BACKEND")?.trim().toLowerCase() || "blobs";
   if (!["blobs", "mirror", "neon"].includes(mode)) {
     throw new Error("WIN_MEMORY_BACKEND must be blobs, mirror, or neon.");
   }
