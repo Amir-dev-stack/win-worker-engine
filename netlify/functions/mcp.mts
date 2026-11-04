@@ -35,6 +35,7 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
     historical_event_datasets: "library/model-lab/historical-event-datasets",
     consensus_market_datasets: "library/model-lab/market-consensus-datasets",
     player_event_datasets: "library/model-lab/player-event-datasets",
+    player_season_aggregate_datasets: "library/model-lab/player-season-aggregate-datasets",
     department_smoke_tests: "library/department-smoke-tests",
     review_operations: "library/review-operations",
     lesson_review_cases: "library/lesson-review-cases",
@@ -61,7 +62,7 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
     title: "List WIN audit records",
     description: "List recent records from a strict allowlist of WIN historical data, calibration, settlement, reviewer and learning collections, plus read-only research-run metadata. Cannot start research, mutate records, approve coupons or place bets.",
     inputSchema: {
-      category: z.enum(["calibration_reports","settled_market_datasets","observed_market_snapshots","historical_event_datasets","consensus_market_datasets","player_event_datasets","department_smoke_tests","review_operations","lesson_review_cases","win_post_match_cases","win_coupon_candidates","research_runs","research_jobs","learning_cycles","lessons"]),
+      category: z.enum(["calibration_reports","settled_market_datasets","observed_market_snapshots","historical_event_datasets","consensus_market_datasets","player_event_datasets","player_season_aggregate_datasets","department_smoke_tests","review_operations","lesson_review_cases","win_post_match_cases","win_coupon_candidates","research_runs","research_jobs","learning_cycles","lessons"]),
       limit: z.number().int().min(1).max(100).optional()
     },
     securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]
