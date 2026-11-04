@@ -42,16 +42,18 @@ export const SPORT_STAT_CATALOG={
   group("passing","Passing",["pass_attempts","completions","passing_yards","passing_touchdowns","interceptions","sacks","passer_rating"]),
   group("rushing","Rushing",["rush_attempts","rushing_yards","rushing_touchdowns","yards_per_carry"]),
   group("receiving","Receiving",["targets","receptions","receiving_yards","receiving_touchdowns","yards_after_catch"]),
-  group("defense","Defense",["total_tackles","solo_tackles","assisted_tackles","sacks","tackles_for_loss","forced_fumbles","fumble_recoveries","passes_defended"]),
+  group("defense","Defense",["total_tackles","solo_tackles","assisted_tackles","sacks","tackles_for_loss","forced_fumbles","fumble_recoveries","passes_defended","interceptions"]),
   group("special_teams","Special teams",["kickoffs","kickoff_yards","touchbacks","punts","punt_yards","field_goals","extra_points","kick_returns","punt_returns"]),
-  group("team_context","Game context",["first_downs","third_down_conversions","fourth_down_conversions","red_zone_attempts","turnovers","time_of_possession","penalties","penalty_yards"])
+  group("team_context","Game context",["offensive_plays","total_yards","first_downs","third_down_attempts","third_down_conversions","fourth_down_attempts","fourth_down_conversions","red_zone_attempts","turnovers","sacks_allowed","penalties","penalty_yards"]),
+  group("advanced","Advanced play metrics",["epa","success_rate","air_yards","yards_after_catch","win_probability_added"])
  ],[
-  group("passing","Quarterback",["pass_attempts","completions","passing_yards","passing_touchdowns","interceptions","sacks","passer_rating"]),
-  group("rushing","Rushing",["rush_attempts","rushing_yards","rushing_touchdowns"]),
+  group("appearance","Appearance and role",["minutes","starter","position"]),
+  group("passing","Quarterback",["pass_attempts","completions","passing_yards","passing_touchdowns","interceptions","sacks_taken","passer_rating"]),
+  group("rushing","Rushing",["rush_attempts","rushing_yards","rushing_touchdowns","fumbles_lost"]),
   group("receiving","Receiving",["targets","receptions","receiving_yards","receiving_touchdowns"]),
-  group("defense","Defense",["total_tackles","sacks","interceptions","forced_fumbles","passes_defended"]),
-  group("special_teams","Special teams",["kickoffs","punts","field_goals","extra_points","kick_returns","punt_returns"])
- ],["kickoff","kickoff_return","punt","punt_return","snap","pass_attempt","completion","incompletion","rush","tackle","sack","interception","fumble","touchdown","field_goal","extra_point","penalty","timeout","quarter_start","quarter_end"]),
+  group("defense","Defense",["solo_tackles","assisted_tackles","sacks","half_sacks","interceptions","fumble_recoveries","passes_defended"]),
+  group("special_teams","Special teams",["field_goal_attempts","field_goals_made","extra_point_attempts","extra_points_made","kickoff_returns","punt_returns"])
+ ],["kickoff","kickoff_return","punt","punt_return","snap","pass_attempt","completion","incompletion","rush","tackle","sack","interception","fumble","touchdown","field_goal","extra_point","penalty","timeout","safety","quarter_start","quarter_end"]),
  ice_hockey:spec("Ice hockey",[
   group("scoring","Scoring",["goals","assists","points","plus_minus"]),
   group("shooting","Shots",["shots_on_goal","shots","missed_shots","blocked_shots","shooting_pct"]),
