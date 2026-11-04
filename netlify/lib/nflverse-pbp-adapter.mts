@@ -254,7 +254,7 @@ export function buildNflverseMatchRecords(
       }
       if (rushAttempt) {
         increment(offStats, "rush_attempts");
-        addNumber(offStats, "rushing_yards", row.rushing_yards ?? row.yards_gained);
+        addNumber(offStats, "rushing_yards", number(row.rushing_yards) !== null ? row.rushing_yards : row.yards_gained);
         if (flag(row.rush_touchdown)) increment(offStats, "rushing_touchdowns");
       }
       if (flag(row.fumble_lost)) { increment(offStats, "fumbles_lost"); increment(offStats, "turnovers"); }
@@ -264,7 +264,7 @@ export function buildNflverseMatchRecords(
     if (defStats) {
       if (flag(row.sack)) increment(defStats, "defensive_sacks");
       if (flag(row.interception)) increment(defStats, "defensive_interceptions");
-      if (flag(row.fumble_recovery_1_player_id) || flag(row.fumble_recovery_2_player_id)) increment(defStats, "defensive_fumble_recoveries");
+      if (hasValue(row, "fumble_recovery_1_player_id") || hasValue(row, "fumble_recovery_2_player_id")) increment(defStats, "defensive_fumble_recoveries");
     }
     if (flag(row.penalty)) {
       const penalizedTeam = text(row.penalty_team) || offense;
@@ -302,7 +302,7 @@ export function buildNflverseMatchRecords(
     const rusher = playerLine(game.playerStats, row.rusher_player_id, row.rusher_player_name, offense);
     if (rusher && rushAttempt) {
       increment(rusher._statLine.rushing, "rush_attempts");
-      addNumber(rusher._statLine.rushing, "rushing_yards", row.rushing_yards ?? row.yards_gained);
+      addNumber(rusher._statLine.rushing, "rushing_yards", number(row.rushing_yards) !== null ? row.rushing_yards : row.yards_gained);
       if (flag(row.rush_touchdown)) increment(rusher._statLine.rushing, "rushing_touchdowns");
       if (flag(row.fumble_lost)) increment(rusher._statLine.rushing, "fumbles_lost");
     }
