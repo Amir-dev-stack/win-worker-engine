@@ -342,6 +342,7 @@ export function buildApiFootballMatchDossier(input: {
     count: playerRatings.length,
     status: coverage?.fixtures?.statistics_players === false ? "not_in_competition_coverage"
       : !enabledDomains.includes("player_ratings") ? "not_authorized_by_enabled_domain"
+      : (input.endpointAudit || []).some((audit: any) => audit.domain === "player_match_statistics" && audit.status !== "success") ? "source_error"
       : !input.playersPayload ? "not_requested"
       : playerRatings.length ? "available" : "not_provided_by_provider"
   });
