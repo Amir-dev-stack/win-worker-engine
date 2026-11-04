@@ -96,3 +96,12 @@ WIN now has an authenticated `POST /api/nflverse-audit` endpoint and an isolated
 The audit path does not call Blob storage, update scheduler state, create historical datasets, or call AI. The API endpoint requires dashboard authentication and explicit `action: "audit_read_only"` plus `confirmReadOnly: true`. The CI runner uses GitHub Actions on PR changes to the NFL adapter/audit files and can also be manually dispatched for a selected season. The audit is source-reported validation only; it is not independent verification of NFL results or statistics.
 
 The audit has been implemented but its first real upstream run is pending successful CI execution. No full-season PBP file has yet been processed by this audit runner, and no import was run.
+
+
+### NFL raw-field compact encoding and play-count integrity (updated 2026-11-04)
+
+The read-only 2026 source audit measured the current per-game JSON object shape at 146,958,204 UTF-8 bytes across 121 completed games (average 1,214,531 bytes; median 1,202,131; p90 1,345,508; p95 1,405,025; maximum 1,513,130). This is the pre-optimization measurement, not billed storage. The raw PBP CSV was 42,470,035 bytes and the current schedule CSV was 2,188,861 bytes. All 21,191 PBP rows passed the current row checks, all 121 game IDs joined to schedule rows, and no identity conflicts were found. The audit used current 2026 releases retrieved 2026-11-04; its SHA-256 values and ETags are printed in the GitHub Actions audit log.
+
+The measurement exposed a timeline counting bug: synthetic quarter-end timeline markers reused their source play ID and were included in `playCount`. Synthetic quarter-end markers now have `playId: null`, so only source play IDs contribute to play counts.
+
+To reduce storage duplication while retaining every non-empty source-native field, each event's `sourceFields` is now encoded as a flat sequence of alternating schema-index/value entries. The match-level `sourceSchemaFields` array maps each numeric index back to its exact original CSV column name, and `sourceFieldEncoding` identifies the version as `schema_index_value_pairs_v1`. Consumers must decode these pairs against the match-level schema; values are not discarded. A fresh full 2026 audit is required to measure the optimized payload size before any import decision.
