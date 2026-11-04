@@ -160,6 +160,36 @@ export function getNeonStore() {
         ${input.amount}, ${input.exposureDelta}, ${input.referenceId || null},
         ${JSON.stringify(input.metadata || {})}::jsonb)`);
       return rows[0] ?? null;
+    },
+
+    async exportFinancialData() {
+      const accounts = rowsOf<any>(await sql()`SELECT account_id, currency, opening_balance,
+        max_total_exposure, max_single_exposure, daily_loss_limit, is_active, created_at, updated_at
+        FROM win_financial_accounts ORDER BY account_id`);
+      const ledger = rowsOf<any>(await sql()`SELECT entry_id, account_id, idempotency_key, entry_type,
+        amount, exposure_delta, reference_id, metadata, created_at
+        FROM win_financial_ledger ORDER BY account_id, created_at, entry_id`);
+      return { accounts, ledger };
+    },
+
+    async restoreFinancialRecord(kind: "account" | "ledger", value: any) {
+      if (kind === "account") {
+        await sql()`INSERT INTO win_financial_accounts
+          (account_id, currency, opening_balance, max_total_exposure, max_single_exposure,
+           daily_loss_limit, is_active, created_at, updated_at)
+          VALUES (${value.account_id}, ${value.currency}, ${value.opening_balance},
+            ${value.max_total_exposure}, ${value.max_single_exposure}, ${value.daily_loss_limit},
+            ${value.is_active}, ${value.created_at}, ${value.updated_at})
+          ON CONFLICT (account_id) DO NOTHING`;
+        return;
+      }
+      await sql()`INSERT INTO win_financial_ledger
+        (entry_id, account_id, idempotency_key, entry_type, amount, exposure_delta,
+         reference_id, metadata, created_at)
+        VALUES (${value.entry_id}, ${value.account_id}, ${value.idempotency_key}, ${value.entry_type},
+          ${value.amount}, ${value.exposure_delta}, ${value.reference_id},
+          ${JSON.stringify(value.metadata || {})}::jsonb, ${value.created_at})
+        ON CONFLICT DO NOTHING`;
     }
   };
 }
