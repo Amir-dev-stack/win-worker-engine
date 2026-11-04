@@ -1,13 +1,14 @@
 import { requireAuth } from "../lib/auth.mts";
 import { getMemoryBackendMode } from "../lib/store.mts";
 import { getNeonStore } from "../lib/neon-store.mts";
+import { getRuntimeEnv } from "../lib/runtime-env.mts";
 
 const ENTRY_TYPES = new Set(["deposit", "withdrawal", "exposure_open", "exposure_close", "realized_pnl", "adjustment"]);
 const finite = (value: unknown) => typeof value === "number" && Number.isFinite(value);
 const text = (value: unknown, max = 180) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
 function ready() {
-  return getMemoryBackendMode() !== "blobs" && Boolean(process.env.WIN_NEON_DATABASE_URL?.trim());
+  return getMemoryBackendMode() !== "blobs" && Boolean(getRuntimeEnv("WIN_NEON_DATABASE_URL")?.trim());
 }
 
 export default async (req: Request) => {
