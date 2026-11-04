@@ -4,7 +4,10 @@ import { get, list } from "../lib/store.mts";
 
 export default async (req: Request) => {
   const denied = requireAuth(req);
-  if (denied) return denied;
+  if (denied) {
+    denied.headers.set("cache-control", "no-store");
+    return denied;
+  }
 
   const budget = await getAIbudgetStatus();
   const [schedulerState, cycles, runs] = await Promise.all([
