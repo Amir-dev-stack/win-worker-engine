@@ -77,7 +77,7 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
     title: "Get one WIN audit record",
     description: "Read one exact record by ID from the same allowlisted audit collections, including read-only research-run metadata. Strictly read-only; no arbitrary store paths are accepted.",
     inputSchema: {
-      category: z.enum(["calibration_reports","settled_market_datasets","observed_market_snapshots","historical_event_datasets","consensus_market_datasets","player_event_datasets","department_smoke_tests","review_operations","lesson_review_cases","win_post_match_cases","win_coupon_candidates","research_runs","research_jobs","learning_cycles","lessons"]),
+      category: z.enum(["calibration_reports","settled_market_datasets","observed_market_snapshots","historical_event_datasets","consensus_market_datasets","player_event_datasets","player_season_aggregate_datasets","department_smoke_tests","review_operations","lesson_review_cases","win_post_match_cases","win_coupon_candidates","research_runs","research_jobs","learning_cycles","lessons"]),
       recordId: z.string().min(1).max(300)
     },
     securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]
