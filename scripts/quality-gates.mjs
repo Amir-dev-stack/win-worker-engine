@@ -159,6 +159,12 @@ add("SkillCorner ACB basketball aggregates remain manual, player-season scoped a
   (await read("netlify/functions/learning-data-jobs.mts")).includes("syncSkillCornerBasketballAggregates") &&
   (await read("netlify/functions/research-status.mts")).includes("getSkillCornerBasketballStatus") &&
   (await read("netlify/lib/model-lab.mts")).includes("topShootersByAttempts") &&
+  (await read("netlify/lib/library.mts")).includes('library/model-lab/player-season-aggregate-datasets') &&
+  (await read("netlify/lib/library.mts")).includes('model_lab_player_season_aggregate_dataset') &&
+  (await read("netlify/functions/mcp.mts")).includes('player_season_aggregate_datasets: "library/model-lab/player-season-aggregate-datasets"') &&
+  (await read("netlify/functions/mcp.mts")).includes('"player_season_aggregate_datasets"') &&
+  (await read("public/app.js")).includes('runLearningDataJob("sync_skillcorner_basketball"') &&
+  (await read("netlify/functions/learning-data-jobs.mts")).includes('action === "sync_skillcorner_basketball"') &&
   (await read("scripts/skillcorner-basketball.test.mjs")).includes("season total rows are explicitly labelled") &&
   (await read("scripts/skillcorner-adapter-policy.test.mjs")).includes("requires exact owner confirmation") &&
   (await read("docs/SKILLCORNER_BASKETBALL.md")).includes("293 of the 327 ACB games") &&
