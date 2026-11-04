@@ -36,6 +36,7 @@ const required = [
   "netlify/functions/independent-review.mts",
   "netlify/lib/data-provider-registry.mts",
   "netlify/lib/openfootball-adapter.mts",
+  "netlify/lib/nflverse-pbp-adapter.mts",
   "netlify/lib/model-lab.mts",
   "netlify/lib/agent-evolution.mts",
   "netlify/functions/openfootball-sync.mts",
