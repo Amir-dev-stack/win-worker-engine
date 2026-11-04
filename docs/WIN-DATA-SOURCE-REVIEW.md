@@ -71,3 +71,12 @@ The schedule pipeline is reported by nflreadr to update every five minutes durin
 DST policy: convert Eastern wall-clock times only when they map to exactly one UTC instant. Nonexistent spring-forward times and ambiguous fall-back times remain date-only for WIN's kickoff purposes rather than selecting an arbitrary UTC interpretation.
 
 Validation boundary: public documentation, release-workflow source and current indexed schedule rows support the schema, asset naming and key choice. The full live schedule CSV has not yet been downloaded and row-count/checksum audited by WIN, and no PBP/schedule bulk import has been run.
+
+
+### Read-only upstream identifier spot-check (2026-11-04)
+
+WIN inspected the current `nflverse/nflverse-pbp-internal/released_games.csv` manifest through the GitHub repository connector without importing or persisting it. It contained 7,395 game IDs, all unique, including 121 IDs for the 2026 season. The manifest includes `2026_08_CAR_GB`.
+
+The upstream `nflverse/nfldata` schedule-data commit `9764ee0c94f8b98dae35419b6b3f18eb9cf2658a` shows the matching schedule row: `2026_08_CAR_GB`, gameday `2026-10-29`, gametime `20:15` Eastern, away `CAR`, home `GB`. This is a real-source, read-only key/date/team/time spot-check and supports the chosen exact `game_id` join.
+
+This is not a full PBP row ingestion or a full schedule CSV audit: the released-games file is a game-ID manifest, not play-level records, and the schedule evidence above is a source commit diff row. No PBP or schedule bulk file was imported, and no WIN storage was written.
