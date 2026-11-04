@@ -47,7 +47,7 @@ export function evaluateFullTimeLeg(leg, score) {
     const status = total === line ? "void" : (over ? total > line : total < line) ? "won" : "lost";
     return { status, reason: "Settled from the verified full-time score and stated goal line." };
   }
-  if (/1x2|match winner|moneyline|full time result|wynik meczu|zwyciezca meczu|zwycięzca meczu/.test(market)) {
+  const fullTimeResultMarket = /1x2|match winner|moneyline|full time result|wynik meczu|zwyciezca meczu|zwycięzca meczu/.test(market)\n    && !/handicap|asian|double chance|podwojna szansa|draw no bet|zaklad bez remisu|spread|\\bdnb\\b/.test(market);\n  if (fullTimeResultMarket) {
     const selectedHome = /\b(1|home| gospodarze|team 1)\b/.test(" " + pick) || sameTeam(pick, leg?.homeTeam || "");
     const selectedAway = /\b(2|away|goście|goscie|team 2)\b/.test(" " + pick) || sameTeam(pick, leg?.awayTeam || "");
     const selectedDraw = /\b(x|draw|remis)\b/.test(" " + pick);
