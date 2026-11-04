@@ -45,6 +45,7 @@ The allowlist may contain only registered domains:
 
 - `fixtures`
 - `results`
+- `competition_coverage`
 - `competition_standings`
 - `team_match_statistics`
 - `half_time_team_statistics`
@@ -59,7 +60,7 @@ The allowlist may contain only registered domains:
 - `predictions`
 - `head_to_head`
 
-Player ratings are separately gated from ordinary player statistics. Even if the player-stats endpoint returns a rating field, WIN suppresses it unless `player_ratings` is explicitly enabled.
+Player ratings are separately gated from ordinary player statistics. To import them, enable both `player_match_statistics` and `player_ratings`. Even if the player-stats endpoint returns a rating field, WIN suppresses it from both normalized and raw stored player payloads unless `player_ratings` is explicitly enabled. Match scores are also omitted from normalized and raw fixture payloads unless the separate `results` domain is enabled.
 
 ## Dossier contents
 
