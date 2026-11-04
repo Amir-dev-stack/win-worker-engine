@@ -13,9 +13,18 @@ import {
   inspectStatisticCoverage
 } from "../netlify/lib/sport-stat-catalog.mts";
 
-const headers = "game_id,game_date,home_team,away_team,home_score,away_score,season_type,week,play_id,play_type_nfl,qtr,time,posteam,defteam,kicking_team,play_type,kickoff_attempt,pass_attempt,complete_pass,passing_yards,passer_player_id,passer_player_name,receiver_player_id,receiver_player_name,rush_attempt,rushing_yards,rusher_player_id,rusher_player_name,first_down,yards_gained,rush_touchdown,touchdown,desc".split(",");
+const headers = "game_id,game_date,home_team,away_team,home_score,away_score,season_type,week,play_id,quarter_end,play_type_nfl,qtr,time,posteam,defteam,kicking_team,play_type,kickoff_attempt,pass_attempt,complete_pass,passing_yards,passer_player_id,passer_player_name,receiver_player_id,receiver_player_name,rush_attempt,rushing_yards,rusher_player_id,rusher_player_name,first_down,yards_gained,rush_touchdown,touchdown,desc".split(",");
 const csvCell = value => '"' + String(value ?? "").replaceAll('"', '""') + '"';
 const csvRow = values => headers.map(key => csvCell(values[key])).join(",");
+function sourceFieldValue(match, event, fieldName) {
+  const fieldIndex = match.sourceSchemaFields.indexOf(fieldName);
+  if (fieldIndex < 0 || !Array.isArray(event.sourceFields)) return undefined;
+  for (let i = 0; i < event.sourceFields.length; i += 2) {
+    if (event.sourceFields[i] === fieldIndex) return event.sourceFields[i + 1];
+  }
+  return undefined;
+}
+
 const csv = [
   headers.join(","),
   csvRow({
@@ -34,7 +43,7 @@ const csv = [
     game_id:"2026_01_KC_BAL",game_date:"2026-09-10",home_team:"KC",away_team:"BAL",home_score:7,away_score:0,
     season_type:"REG",week:1,play_id:3,qtr:1,time:"13:40",posteam:"KC",defteam:"BAL",play_type:"run",
     rush_attempt:1,rushing_yards:5,rusher_player_id:"00-003",rusher_player_name:"R. Runner",
-    first_down:1,yards_gained:5,rush_touchdown:1,touchdown:1,desc:"Five-yard rushing touchdown"
+    first_down:1,yards_gained:5,rush_touchdown:1,touchdown:1,quarter_end:1,desc:"Five-yard rushing touchdown"
   }),
   csvRow({
     game_id:"2026_01_KC_BAL",game_date:"2026-09-10",home_team:"KC",away_team:"BAL",home_score:7,away_score:0,
@@ -108,13 +117,17 @@ test("NFL match builder creates scores, team box scores, player lines and play e
   assert.ok(match.events.some(event => event.eventTypes.includes("touchdown")));
   assert.ok(match.events.some(event => event.eventTypes.includes("game_end")));
   assert.equal(match.sourceDataGrain, "one_row_per_play");
+  assert.equal(match.sourceFieldEncoding, "schema_index_value_pairs_v1");
   assert.equal(Object.hasOwn(match, "eventTimeline"), false, "play timeline must not be duplicated under a second serialized key");
   assert.equal(match.sourceSchemaFieldCount, headers.length);
   assert.ok(match.sourceSchemaFields.includes("play_type_nfl"));
   const passEvent = match.events.find(event => event.eventTypes.includes("completion"));
-  assert.equal(passEvent.sourceFields.pass_attempt, "1");
-  assert.equal(passEvent.sourceFields.complete_pass, "1");
-  assert.equal(passEvent.sourceFields.receiver_player_name, "R. Receiver");
+  assert.equal(sourceFieldValue(match, passEvent, "pass_attempt"), "1");
+  assert.equal(sourceFieldValue(match, passEvent, "complete_pass"), "1");
+  assert.equal(sourceFieldValue(match, passEvent, "receiver_player_name"), "R. Receiver");
+  const quarterEndEvent = match.events.find(event => event.type === "quarter_end");
+  assert.equal(quarterEndEvent.playId, null, "synthetic quarter-end markers must not count as source plays");
+  assert.equal(match.playCount, 3, "play count must count source play IDs, not synthetic timeline markers");
 
   const home = match.teamStats.find(team => team.side === "home");
   assert.equal(home.pass_attempts, 1);
