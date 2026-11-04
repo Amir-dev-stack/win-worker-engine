@@ -31,9 +31,9 @@ export async function getLearningObservatory(){
   list<any>("library/lesson-review-cases",20),list<any>("library/human-settlement-cases",20),
   list<any>("library/win-post-match-review-cases",20),list<any>("library/lessons",20),
   list<any>("library/coupons",20),getPostMatchFollowupStatus(),
-  getPublicResearchSourceDiscoveryStatus(),list<any>("library/model-lab/historical-event-datasets",40),
-  list<any>("library/model-lab/market-consensus-datasets",40),list<any>("library/model-lab/observed-market-snapshots",40),
-  list<any>("library/model-lab/player-event-datasets",40),list<any>("library/model-lab/settled-observed-markets",40),
+  getPublicResearchSourceDiscoveryStatus(),list<any>("library/model-lab/historical-event-datasets",20),
+  list<any>("library/model-lab/market-consensus-datasets",20),list<any>("library/model-lab/observed-market-snapshots",20),
+  list<any>("library/model-lab/player-event-datasets",20),list<any>("library/model-lab/settled-observed-markets",20),
   list<any>("library/model-lab/market-calibration-reports",20),list<any>("library/learning-cycles",20),
   list<any>("library/agent-task-queue",20)
  ]);
