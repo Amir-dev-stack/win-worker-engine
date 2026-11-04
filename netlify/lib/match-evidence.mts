@@ -39,10 +39,10 @@ function normalizeRows(collections){
         const sides=rowSides(row),score=rowScore(row);
         const rawEventStart=row.eventStart||row.kickoffUtc||row.startTimeUtc;
         const eventStartText=clean(rawEventStart,60);
-        const dateOnly=row.eventStartPrecision==="date_only"||/^\\d{4}-\\d{2}-\\d{2}$/.test(eventStartText);
+        const dateOnly=row.eventStartPrecision==="date_only"||/^\d{4}-\d{2}-\d{2}$/.test(eventStartText);
         // Unknown local-time rows are placed at the end of their calendar day so
         // they cannot leak into a same-day pre-match forecast.
-        const eventMs=dateOnly&&/^\\d{4}-\\d{2}-\\d{2}$/.test(eventStartText)
+        const eventMs=dateOnly&&/^\d{4}-\d{2}-\d{2}$/.test(eventStartText)
           ?Date.parse(eventStartText+"T23:59:59.999Z")
           :time(rawEventStart);
         if(!sides.one||!sides.two||!eventMs)continue;
