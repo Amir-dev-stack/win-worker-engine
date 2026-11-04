@@ -276,6 +276,7 @@ export function buildApiFootballMatchDossier(input: {
   homeTeamSeasonPayload?: any;
   awayTeamSeasonPayload?: any;
   endpointAudit?: any[];
+  enabledDomains?: string[];
   retrievedAt?: string;
 }, options: { allowPlayerRatings?: boolean; allowResults?: boolean } = {}) {
   const retrievedAt = input.retrievedAt || new Date().toISOString();
@@ -300,20 +301,32 @@ export function buildApiFootballMatchDossier(input: {
   const odds = apiRows(input.oddsPayload);
   const standings = apiRows(input.standingsPayload);
   const headToHead = apiRows(input.headToHeadPayload);
+  const enabledDomains = Array.isArray(input.enabledDomains) ? input.enabledDomains : [];
   const coverageRows = [
-    { id: "fixture_events", flag: coverage?.fixtures?.events, requested: !!input.eventsPayload || fixtureEvents.length > 0, count: events.length },
-    { id: "lineups", flag: coverage?.fixtures?.lineups, requested: !!input.lineupsPayload || fixtureLineups.length > 0, count: lineups.length },
-    { id: "team_match_statistics", flag: coverage?.fixtures?.statistics_fixtures, requested: !!input.statisticsPayload || fixtureStats.length > 0, count: teamStatistics.length },
-    { id: "player_match_statistics", flag: coverage?.fixtures?.statistics_players, requested: !!input.playersPayload, count: playerStatistics.length },
-    { id: "injuries", flag: coverage?.injuries, requested: !!input.injuriesPayload, count: injuries.length },
-    { id: "predictions", flag: coverage?.predictions, requested: !!input.predictionsPayload, count: predictions.length },
-    { id: "pre_match_odds", flag: coverage?.odds, requested: !!input.oddsPayload, count: odds.length },
-    { id: "standings", flag: coverage?.standings, requested: !!input.standingsPayload, count: standings.length },
-    { id: "head_to_head", flag: null, requested: !!input.headToHeadPayload, count: headToHead.length }
-  ].map((item: any) => ({
-    ...item,
-    status: availabilityStatus(item.flag, item.requested, item.count)
-  }));
+    { id: "competition_season_coverage", domain: "competition_coverage", flag: coverageInfo.season ? true : null, requested: !!input.leaguePayload, count: coverageInfo.season ? 1 : 0 },
+    { id: "fixture_events", domain: "match_events", flag: coverage?.fixtures?.events, requested: !!input.eventsPayload || fixtureEvents.length > 0, count: events.length },
+    { id: "lineups", domain: "lineups", flag: coverage?.fixtures?.lineups, requested: !!input.lineupsPayload || fixtureLineups.length > 0, count: lineups.length },
+    { id: "team_match_statistics", domain: "team_match_statistics", flag: coverage?.fixtures?.statistics_fixtures, requested: !!input.statisticsPayload || fixtureStats.length > 0, count: teamStatistics.length },
+    { id: "half_time_team_statistics", domain: "half_time_team_statistics", flag: coverage?.fixtures?.statistics_fixtures, requested: !!input.halfStatisticsPayload, count: input.halfStatisticsPayload ? normaliseTeamStatistics(input.halfStatisticsPayload).length : 0 },
+    { id: "player_match_statistics", domain: "player_match_statistics", flag: coverage?.fixtures?.statistics_players, requested: !!input.playersPayload, count: playerStatistics.length },
+    { id: "result_score", domain: "results", flag: null, requested: allowResults, count: allowResults && fixture.goals ? 1 : 0 },
+    { id: "injuries", domain: "injuries", flag: coverage?.injuries, requested: !!input.injuriesPayload, count: injuries.length },
+    { id: "predictions", domain: "predictions", flag: coverage?.predictions, requested: !!input.predictionsPayload, count: predictions.length },
+    { id: "pre_match_odds", domain: "pre_match_odds", flag: coverage?.odds, requested: !!input.oddsPayload, count: odds.length },
+    { id: "standings", domain: "competition_standings", flag: coverage?.standings, requested: !!input.standingsPayload, count: standings.length },
+    { id: "head_to_head", domain: "head_to_head", flag: null, requested: !!input.headToHeadPayload, count: headToHead.length },
+    { id: "home_team_season_statistics", domain: "team_season_statistics", flag: null, requested: !!input.homeTeamSeasonPayload, count: input.homeTeamSeasonPayload ? 1 : 0 },
+    { id: "away_team_season_statistics", domain: "team_season_statistics", flag: null, requested: !!input.awayTeamSeasonPayload, count: input.awayTeamSeasonPayload ? 1 : 0 }
+  ].map((item: any) => {
+    const sourceError = (input.endpointAudit || []).some((audit: any) => audit.domain === item.domain && audit.status !== "success");
+    const domainAllowed = enabledDomains.includes(item.domain);
+    return {
+      ...item,
+      status: item.flag === false ? "not_in_competition_coverage"
+        : !domainAllowed ? "not_authorized_by_enabled_domain"
+        : availabilityStatus(item.flag, item.requested, item.count, sourceError)
+    };
+  });
   const playerRatings = allowPlayerRatings ? playerStatistics.flatMap(player => player.statistics
     .filter(stat => stat?.games?.rating !== null && stat?.games?.rating !== undefined && stat?.games?.rating !== "")
     .map(stat => ({
@@ -322,12 +335,13 @@ export function buildApiFootballMatchDossier(input: {
     }))) : [];
   coverageRows.push({
     id: "player_ratings",
+    domain: "player_ratings",
     flag: coverage?.fixtures?.statistics_players,
     requested: !!input.playersPayload && allowPlayerRatings,
     count: playerRatings.length,
     status: coverage?.fixtures?.statistics_players === false ? "not_in_competition_coverage"
+      : !enabledDomains.includes("player_ratings") ? "not_authorized_by_enabled_domain"
       : !input.playersPayload ? "not_requested"
-      : !allowPlayerRatings ? "not_authorized_by_enabled_domain"
       : playerRatings.length ? "available" : "not_provided_by_provider"
   });
   const dossier = {
@@ -414,12 +428,12 @@ async function fetchOptional(
   if (!condition || !domainEnabled(readiness, domain)) return null;
   try {
     const result = await apiRequest(endpoint, params, apiKey);
-    audit.push(result.audit);
+    audit.push({ ...result.audit, domain });
     return result.data;
   } catch (error) {
     const errorAudit = (error as any)?.audit;
-    if (errorAudit) audit.push(errorAudit);
-    else audit.push({ endpoint: "/" + endpoint, status: "error", error: String(error).slice(0, 240) });
+    if (errorAudit) audit.push({ ...errorAudit, domain });
+    else audit.push({ endpoint: "/" + endpoint, domain, status: "error", error: String(error).slice(0, 240) });
     return null;
   }
 }
@@ -435,15 +449,15 @@ export async function syncApiFootballFixtureDossier(
   const startedAt = new Date().toISOString();
   const endpointAudit: any[] = [];
   const fixtureResult = await apiRequest("fixtures", { id: fixtureId, timezone: "Europe/Warsaw" }, apiKey);
-  endpointAudit.push(fixtureResult.audit);
+  endpointAudit.push({ ...fixtureResult.audit, domain: "fixtures" });
   const fixture = fixtureRow(fixtureResult.data);
   if (!fixture) throw new Error("api_football_fixture_not_found:" + fixtureId);
   const leagueId = Number(fixture?.league?.id || 0);
   const season = Number(fixture?.league?.season || 0);
   const homeTeamId = Number(fixture?.teams?.home?.id || 0);
   const awayTeamId = Number(fixture?.teams?.away?.id || 0);
-  const leaguePayload = leagueId && season && domainEnabled(readiness, "competition_standings")
-    ? await fetchOptional("leagues", { id: leagueId, season }, "competition_standings", readiness, apiKey, endpointAudit)
+  const leaguePayload = leagueId && season
+    ? await fetchOptional("leagues", { id: leagueId, season }, "competition_coverage", readiness, apiKey, endpointAudit)
     : null;
   const cov = getCoverage(leaguePayload, season).coverage || {};
   const embeddedEvents = asArray(fixture.events).length > 0;
@@ -483,7 +497,7 @@ export async function syncApiFootballFixtureDossier(
     fixturePayload: fixtureResult.data, leaguePayload, eventsPayload, lineupsPayload, statisticsPayload,
     halfStatisticsPayload, playersPayload, injuriesPayload, predictionsPayload, oddsPayload,
     standingsPayload, headToHeadPayload, homeTeamSeasonPayload, awayTeamSeasonPayload,
-    endpointAudit, retrievedAt
+    endpointAudit, enabledDomains: readiness.enabledDomains, retrievedAt
   }, { allowPlayerRatings: domainEnabled(readiness, "player_ratings"), allowResults: domainEnabled(readiness, "results") });
   const failedEndpoints = endpointAudit.filter(item => item.status !== "success");
   const availableSections = dossier.coverage.filter((item: any) => item.status === "available").length;
