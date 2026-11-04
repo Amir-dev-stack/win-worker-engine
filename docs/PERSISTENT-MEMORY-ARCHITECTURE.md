@@ -21,8 +21,9 @@ Both stores are written on allowlisted structured-memory mutations. This is a re
 3. In Netlify site settings, create secret runtime variable `WIN_NEON_DATABASE_URL` using the Neon pooled connection string. Do not put it in Git, dashboard JavaScript, or chat.
 4. Initially leave `WIN_MEMORY_BACKEND=blobs`; confirm the table and secret exist.
 5. Set `WIN_MEMORY_BACKEND=mirror` on a deploy preview first. Verify normal library operations and inspect the Neon table for matching writes.
-6. Keep production on Blobs until a separately implemented, resumable full-history backfill has copied every existing Blobs key and a key/count/hash reconciliation passes.
-7. Only after that reconciliation, set `WIN_MEMORY_BACKEND=neon`. Blobs remains the secondary replica.
+6. With the preview in `mirror` mode, invoke authenticated `POST /api/memory-backfill` with JSON body `{ "confirm": "BACKFILL_STRUCTURED_WIN_MEMORY" }`. This runs as a Netlify background function, copies only the allowlisted structured-memory collections, and verifies per-record canonical hashes plus exact key inventories. If it fails, inspect `GET /api/memory-status` and retry after resolving the cause; it does not delete either copy.
+7. Confirm `backfill.status=completed` and `backfill.integrity=verified` through authenticated `GET /api/memory-status`. Test WIN reads/writes in preview while still in `mirror` mode.
+8. Only after preview validation and explicit owner approval, set `WIN_MEMORY_BACKEND=neon`. Blobs remains the secondary replica. Production remains unchanged until the owner explicitly configures it.
 
 Do not set the backend to `neon` just because the connection test works. A connected but incompletely backfilled database would make old records appear missing in collection queries.
 
