@@ -12,7 +12,8 @@ on:
 
 concurrency:
   group: nflverse-readonly-audit-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Let a read-only source download finish once started; newer PR pushes may queue a replacement run.
+  cancel-in-progress: false
 
 permissions:
   contents: read
