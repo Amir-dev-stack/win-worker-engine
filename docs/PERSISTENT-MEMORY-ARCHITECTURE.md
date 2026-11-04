@@ -42,6 +42,8 @@ The current store API uses a generic record table to preserve every existing WIN
 
 This includes agent profiles, observations, research runs, frozen predictions, player/team entity dossiers, coupons, settlements, learning candidates and review records. Raw match timelines, play-by-play rows and provider payload archives are excluded. It does not mark unverified user submissions or candidate lessons as trusted.
 
+The migration also defines `win_financial_accounts` and an append-only `win_financial_ledger`, plus the transactional `win_record_financial_entry` function. It serializes updates per account, enforces idempotency, total/single exposure, available balance and daily-loss gates, and prevents withdrawals or adjustments from creating a negative balance. No account, starting balance, currency or limit is created automatically. The application API and dashboard integration for these financial tables remain a separate activation step; WIN does not place bets.
+
 ## Backups and recovery
 
 - Neon is the structured-memory database; Netlify Blobs is the independent provider replica and versioned backup destination.
@@ -56,5 +58,5 @@ This includes agent profiles, observations, research runs, frozen predictions, p
 - No existing Blobs records are deleted by this integration.
 - No database is provisioned automatically; the owner must create the Neon project and configure the secret.
 - No production backend switch, bulk migration, production data mutation, or paid service activation is performed by this code change.
-- No financial account/bankroll schema is introduced here. Financial limits must be added later as an append-only ledger with database-side atomic enforcement, not generic last-write-wins JSON records.
+- The financial ledger schema is present, but no account or bankroll values are seeded and no betting execution path is connected to it yet. It must be wired through an authenticated owner API before it is used operationally.
 - Database connection strings are server-side secrets only.
