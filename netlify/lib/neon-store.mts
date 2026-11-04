@@ -7,14 +7,14 @@ type NeonRow = { record_key: string; payload: unknown; etag: string };
 type StoreOptions = { onlyIfNew?: boolean; onlyIfMatch?: string };
 
 function connectionString(): string {
-  const value = process.env.WIN_NEON_DATABASE_URL?.trim();
+  const value = getRuntimeEnv("WIN_NEON_DATABASE_URL")?.trim() || "";
   if (!value) throw new Error("WIN_NEON_DATABASE_URL is required when WIN_MEMORY_BACKEND is mirror or neon.");
   if (!/^postgres(?:ql)?:\/\//i.test(value)) throw new Error("WIN_NEON_DATABASE_URL must be a PostgreSQL connection string.");
   return value;
 }
 
 function splitKey(key: string): { kind: string; id: string } {
-  const separator = key.indexOf("/");
+  const separator = key.lastIndexOf("/");
   if (separator < 1 || separator === key.length - 1) throw new Error("WIN memory keys must use kind/id format.");
   return { kind: key.slice(0, separator), id: key.slice(separator + 1) };
 }
