@@ -57,7 +57,9 @@ export default async (req: Request) => {
   if (!manifest || manifest.status !== "completed" || manifest.snapshotKey !== snapshotKey) {
     return Response.json({ error: "A completed matching snapshot manifest was not found." }, { status: 404 });
   }
-  if (!Number.isInteger(manifest.rowCount) || manifest.rowCount < 0 || manifest.rowCount > 100_000 ||
+  if (manifest.encryption !== "AES-256-GCM" || manifest.format !== "aes-256-gcm+gzip-jsonl" ||
+      !Number.isInteger(manifest.encryptedBytes) || manifest.encryptedBytes < 28 || manifest.encryptedBytes > 180 * 1024 * 1024 ||
+      !Number.isInteger(manifest.rowCount) || manifest.rowCount < 0 || manifest.rowCount > 100_000 ||
       !Number.isInteger(manifest.rawBytes) || manifest.rawBytes > 180 * 1024 * 1024) {
     return Response.json({ error: "Snapshot exceeds restore safety limits." }, { status: 413 });
   }
