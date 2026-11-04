@@ -43,6 +43,17 @@ test("exact historical target match appears only in post-match report, never pre
  assert.equal(pack.postMatch.sourceReportedNotIndependentlyVerified,true);
 });
 
+test("date-only match records cannot leak same-day results into pre-match evidence",()=>{
+ const dateOnlyRows=[
+  {id:"same-day",sport:"football",competition:"Premier League",season:"2026-27",eventStart:"2026-11-05",eventStartPrecision:"date_only",homeTeam:"Manchester City",awayTeam:"Other FC",fullTimeScore:[7,0],origin:"provider_historical_data",sourceProvider:"statsbomb-open-data"},
+  {id:"previous-day",sport:"football",competition:"Premier League",season:"2026-27",eventStart:"2026-11-04",eventStartPrecision:"date_only",homeTeam:"Other FC",awayTeam:"RB Leipzig",fullTimeScore:[0,2],origin:"provider_historical_data",sourceProvider:"statsbomb-open-data"}
+ ];
+ const pack=buildMatchEvidencePack({sport:"football",competition:"Premier League",event:"Manchester City vs RB Leipzig",startTime:"2026-11-05T18:00:00Z"},{historicalDatasets:[{id:"statsbomb-date-only",providerId:"statsbomb-open-data",sport:"football",records:dateOnlyRows}],nowMs:Date.parse("2026-11-05T12:00:00Z")});
+ assert.equal(pack.teamProfiles.home.last5.length,0);
+ assert.equal(pack.teamProfiles.away.last5.length,1);
+ assert.equal(pack.teamProfiles.away.last5[0].date,"2026-11-04");
+});
+
 test("price snapshots captured after kickoff are excluded from pre-match market evidence",()=>{
  const pack=buildMatchEvidencePack(target,{historicalDatasets:[{id:"ucl",providerId:"feed-a",records:rows}],observedSnapshots:[{providerId:"book-feed",records:[
   {homeTeam:"Manchester City",awayTeam:"RB Leipzig",startsAt:"2026-11-05T20:00:00Z",observedAt:"2026-11-04T10:00:00Z",oddsDecimal:1.7,canonicalMarketId:"moneyline"},
