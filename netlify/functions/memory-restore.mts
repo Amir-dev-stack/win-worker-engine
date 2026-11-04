@@ -52,7 +52,7 @@ export default async (req: Request) => {
   }
   const blobs = getStore(STORE_OPTIONS);
   const date = body.date;
-  const snapshotKey = "library/memory-backups/" + date + ".jsonl.gz";
+  const snapshotKey = "library/memory-backups/" + date + ".jsonl.gz.enc";
   const manifestKey = "library/memory-backups/" + date + ".manifest.json";
   const manifest: any = await blobs.get(manifestKey, { type: "json" });
   if (!manifest || manifest.status !== "completed" || manifest.snapshotKey !== snapshotKey) {
