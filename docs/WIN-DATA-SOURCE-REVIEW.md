@@ -80,3 +80,10 @@ WIN inspected the current `nflverse/nflverse-pbp-internal/released_games.csv` ma
 The upstream `nflverse/nfldata` schedule-data commit `9764ee0c94f8b98dae35419b6b3f18eb9cf2658a` shows the matching schedule row: `2026_08_CAR_GB`, gameday `2026-10-29`, gametime `20:15` Eastern, away `CAR`, home `GB`. This is a real-source, read-only key/date/team/time spot-check and supports the chosen exact `game_id` join.
 
 This is not a full PBP row ingestion or a full schedule CSV audit: the released-games file is a game-ID manifest, not play-level records, and the schedule evidence above is a source commit diff row. No PBP or schedule bulk file was imported, and no WIN storage was written.
+
+
+### PBP source-native field retention (updated 2026-11-04)
+
+The NFL event normaliser now retains every non-empty source-native column value on each play as `sourceFields`, alongside the selected normalised event fields. Each match record also stores the source schema field names and count, and identifies the source grain as one row per play. This prevents WIN from silently discarding PBP columns that are not yet mapped into its standard metric catalogue. It does not imply every source field is a validated metric or that every field is available for every play; consumers must still inspect null/absence and source definitions.
+
+The current adapter still calculates only a subset of derived team/player box-score totals. Player ratings, confirmed full snap participation, injuries, lineup positions and provider metrics absent from the PBP release remain unavailable or require separate licensed/appropriate feeds. No live PBP season import has been run to measure actual record sizes or validate all current source columns end to end.
