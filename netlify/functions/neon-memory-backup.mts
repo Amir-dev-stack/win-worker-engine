@@ -3,6 +3,7 @@ import { gzipSync } from "node:zlib";
 import { getStore } from "@netlify/blobs";
 import { getMemoryBackendMode } from "../lib/store.mts";
 import { getNeonStore } from "../lib/neon-store.mts";
+import { getRuntimeEnv } from "../lib/runtime-env.mts";
 
 const PREFIXES = [
   "library/agent-profiles/",
@@ -36,7 +37,7 @@ const MAX_RAW_BYTES = 180 * 1024 * 1024;
 export default async () => {
   const mode = getMemoryBackendMode();
   if (mode === "blobs") return Response.json({ skipped: true, reason: "Neon memory is not enabled." });
-  const keyHex = process.env.WIN_MEMORY_BACKUP_KEY?.trim() || "";
+  const keyHex = getRuntimeEnv("WIN_MEMORY_BACKUP_KEY")?.trim() || "";
   if (!/^[0-9a-fA-F]{64}$/.test(keyHex)) throw new Error("WIN_MEMORY_BACKUP_KEY must be configured as a 32-byte hexadecimal secret before encrypted backups can run.");
 
   const blobs = getStore(STORE_OPTIONS);
@@ -116,4 +117,4 @@ export default async () => {
   }
 };
 
-export const config = { schedule: "23 3 * * *" };
+export const config = { schedule: "23 3 * * *", background: true };
