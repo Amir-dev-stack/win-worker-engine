@@ -176,7 +176,7 @@ function matchPostReport(record,nowMs,sport){
     playerPerformance:{...playerPerformance,highestRatedPlayers:playerPerformance.bestRated,lowestRatedPlayers:playerPerformance.lowestRated},
     eventTimeline,eventTimelineCount:Array.isArray(eventTimeline)?eventTimeline.length:null,
     unavailableStatisticSections:[...statCoverage.team,...statCoverage.player].filter(x=>x.status==="not_provided").map(x=>x.label),
-    unavailableEventTypes:statCoverage.eventTypes.filter(x=>x.status==="not_detected").map(x=>x.eventType),
+    unavailableEventTypes:statCoverage.eventTypes.filter(x=>x.status==="not_provided").map(x=>x.eventType),
     source:{providerId:record.providerId,urls:record.sourceRefs,retrievedAt:record.retrievedAt,licence:record.sourceLicence,rawChecksum:record.rawChecksum},
     sourceReportedNotIndependentlyVerified:true
   };
