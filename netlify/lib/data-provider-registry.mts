@@ -250,10 +250,15 @@ export function getProviderCandidates(sportId?: string) {
 }
 
 export function providerMayRunAutomatically(provider: ProviderRecord, connection?: ProviderConnection) {
+  const enabledDomains = Array.isArray(connection?.enabledDomains) ? connection.enabledDomains : [];
+  const verifiedAt = Date.parse(connection?.verifiedAt || "");
   return provider.automationAllowed &&
     provider.licenceReview === "approved" &&
     provider.accessMode !== "research_candidate" &&
+    connection?.providerId === provider.id &&
     connection?.status === "connected" &&
-    Boolean(connection.verifiedAt) &&
-    Boolean(connection.termsReference);
+    Number.isFinite(verifiedAt) &&
+    enabledDomains.length > 0 &&
+    enabledDomains.every(domain => provider.dataDomains.includes(domain)) &&
+    /^https:\/\//i.test(connection?.termsReference || "");
 }

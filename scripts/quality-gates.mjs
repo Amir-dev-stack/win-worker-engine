@@ -1,4 +1,10 @@
 import { readFile } from "node:fs/promises";
+add("All consensus source IDs and per-provider data domains are registry-validated",
+  (await read("netlify/lib/consensus-market-adapter.mts")).includes("export const CONSENSUS_SOURCES") &&
+  (await read("scripts/public-data-source-policy.test.mjs")).includes("all 12 consensus datasets") &&
+  (await read("netlify/lib/data-provider-registry.mts")).includes("enabledDomains.every"),
+  "The 12 consensus dataset mappings are tested against the actual registry; connected API providers must be bound to their own HTTPS terms and permitted data domains.");
+
 
 const read = path => readFile(path, "utf8");
 const checks = [];

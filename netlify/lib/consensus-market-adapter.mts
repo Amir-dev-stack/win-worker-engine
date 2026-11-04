@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { get, put, list } from "./store.mts";
 import { assertProviderImportAllowed } from "./data-provider-registry.mts";
 
-const SOURCES = [
+export const CONSENSUS_SOURCES = [
  {id:"hf-minmaxxxer-nfl-2026",requiredDomains:["historical_consensus_market_lines","results"],repo:"minmaxxxer/nfl-odds-2026",sport:"american_football"},
  {id:"hf-minmaxxxer-nfl-2025",requiredDomains:["historical_consensus_moneyline","spread","totals","settled_results"],repo:"minmaxxxer/nfl-closing-lines-ats-2025",sport:"american_football"},
  {id:"hf-minmaxxxer-nba-2025-26",requiredDomains:["historical_consensus_market_lines","results"],repo:"minmaxxxer/nba-closing-lines-ats-2025-26",sport:"basketball"},
@@ -32,7 +32,7 @@ function parseCsv(text:string):string[][] {
 }
 const number=(v:unknown)=>{if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null;};
 
-async function syncOne(source:typeof SOURCES[number]){
+async function syncOne(source:typeof CONSENSUS_SOURCES[number]){
  assertProviderImportAllowed(source.id,source.requiredDomains);
  const treeRes=await fetch("https://huggingface.co/api/datasets/"+source.repo+"/tree/main?recursive=true&expand=false",{headers:{"user-agent":"WIN-ResearchEngine/1.0"}});
  if(!treeRes.ok)throw Error("huggingface_tree_http_"+treeRes.status);
@@ -122,11 +122,11 @@ async function syncOne(source:typeof SOURCES[number]){
 
 export async function syncConsensusMarketDatasets(){
  const startedAt=new Date().toISOString(),results:any[]=[],failures:any[]=[];
- for(let i=0;i<SOURCES.length;i+=3){
-  const batch=await Promise.all(SOURCES.slice(i,i+3).map(async source=>{try{return {ok:true,value:await syncOne(source)};}catch(e){return {ok:false,providerId:source.id,error:String(e).slice(0,400)};}}));
+ for(let i=0;i<CONSENSUS_SOURCES.length;i+=3){
+  const batch=await Promise.all(CONSENSUS_SOURCES.slice(i,i+3).map(async source=>{try{return {ok:true,value:await syncOne(source)};}catch(e){return {ok:false,providerId:source.id,error:String(e).slice(0,400)};}}));
   for(const item of batch){if(item.ok)results.push(item.value);else failures.push(item);}
  }
- const summary={id:"consensus-market-sync-"+startedAt.slice(0,10),startedAt,completedAt:new Date().toISOString(),status:results.length===SOURCES.length?"completed":results.length?"partial":"failed",datasetsImported:results.length,rowsImported:results.reduce((n,x)=>n+x.rows,0),settledRows:results.reduce((n,x)=>n+x.settledRows,0),results,failures,origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false};
+ const summary={id:"consensus-market-sync-"+startedAt.slice(0,10),startedAt,completedAt:new Date().toISOString(),status:results.length===CONSENSUS_SOURCES.length?"completed":results.length?"partial":"failed",datasetsImported:results.length,rowsImported:results.reduce((n,x)=>n+x.rows,0),settledRows:results.reduce((n,x)=>n+x.settledRows,0),results,failures,origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false};
  await put("library/model-lab/provider-sync-runs",summary.id,summary);
  await put("scheduler-state","consensus-market-daily-sync",{lastCheck:summary.completedAt,status:summary.status,datasetsImported:summary.datasetsImported,rowsImported:summary.rowsImported,settledRows:summary.settledRows,failures:failures.length});
  return summary;

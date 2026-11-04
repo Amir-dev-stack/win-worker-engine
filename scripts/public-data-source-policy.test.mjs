@@ -7,6 +7,7 @@ import {
   providerMayRunAutomatically,
   assertProviderImportAllowed
 } from "../netlify/lib/data-provider-registry.mts";
+import { CONSENSUS_SOURCES } from "../netlify/lib/consensus-market-adapter.mts";
 
 test("TipsAudit is discoverable but cannot enter automated data ingestion", () => {
   const candidate = DATA_PROVIDER_REGISTRY.find(x => x.id === "tipsaudit-track-record-public");
@@ -101,6 +102,39 @@ test("each adapter checks registry policy before its first upstream operation", 
   const sharpGate = sharp.indexOf('assertProviderImportAllowed("sharpapi-sample-data"');
   const sharpFetch = sharp.indexOf("const url=BASE+file.path,res=await fetch(", sharpStart);
   assert.ok(sharpGate > sharpStart && sharpGate < sharpFetch);
+});
+
+test("all 12 consensus datasets have unique, registry-approved sport and market mappings", () => {
+  assert.equal(CONSENSUS_SOURCES.length, 12);
+  const ids = new Set();
+  const repositories = new Set();
+  for (const source of CONSENSUS_SOURCES) {
+    assert.equal(ids.has(source.id), false, source.id + " duplicate provider ID");
+    assert.equal(repositories.has(source.repo), false, source.repo + " duplicate repository");
+    ids.add(source.id);
+    repositories.add(source.repo);
+    assert.ok(source.requiredDomains.length > 0, source.id + " needs explicit required data domains");
+    assertProviderImportAllowed(source.id, [...source.requiredDomains]);
+    assert.match(source.repo, /^[a-z0-9-]+\/[a-z0-9-]+$/);
+  }
+});
+
+test("credentialed provider connections are bound to the correct provider, terms and data domains", () => {
+  const provider = DATA_PROVIDER_REGISTRY.find(x => x.id === "openfootball");
+  assert.ok(provider);
+  const valid = {
+    providerId: provider.id,
+    status: "connected",
+    verifiedAt: "2026-11-04T00:00:00.000Z",
+    enabledDomains: ["fixtures", "results"],
+    termsReference: provider.licenceReference
+  };
+  assert.equal(providerMayRunAutomatically(provider, valid), true);
+  assert.equal(providerMayRunAutomatically(provider, { ...valid, providerId: "sharpapi-sample-data" }), false);
+  assert.equal(providerMayRunAutomatically(provider, { ...valid, verifiedAt: "not-a-date" }), false);
+  assert.equal(providerMayRunAutomatically(provider, { ...valid, enabledDomains: [] }), false);
+  assert.equal(providerMayRunAutomatically(provider, { ...valid, enabledDomains: ["live_odds"] }), false);
+  assert.equal(providerMayRunAutomatically(provider, { ...valid, termsReference: "http://example.com/terms" }), false);
 });
 
 test("only explicitly approved HTTPS providers pass the credentialed automation policy", () => {
