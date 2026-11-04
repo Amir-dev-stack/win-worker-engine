@@ -3,6 +3,7 @@ let token=sessionStorage.getItem("win-token")||"";
 let reviewerToken=sessionStorage.getItem("win-reviewer-token")||"";
 let selectedRunId=null;
 let knownBudgetAlertIds=new Set();
+let knownMemoryAlertState="";
 const dialog=$("#tokenDialog");
 function headers(){return {"content-type":"application/json","authorization":"Bearer "+token}}
 async function api(path,options={}){const r=await fetch(path,{...options,headers:{...headers(),...(options.headers||{})}});if(r.status===401){if(!dialog.open)dialog.showModal();throw new Error("Connect using your WIN internal token.");}const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||"Request failed ("+r.status+")");return data}
@@ -24,6 +25,12 @@ async function refreshMemoryCapacity(){
   $("#memoryBlobsCount").textContent=blobs.objectCount===undefined?"—":(blobs.objectCountTruncated?blobs.objectCount+"+":blobs.objectCount);
   $("#memoryBlobsNote").textContent="Object count only · byte usage checked in Netlify";
   $("#memoryCapacityChecked").textContent="Checked "+new Date(data.checkedAt).toLocaleString();
+  if(data.overallStatus!==knownMemoryAlertState){
+   if(["warning","critical"].includes(data.overallStatus)&&"Notification" in window&&Notification.permission==="granted"){
+    try{new Notification("WIN memory capacity "+data.overallStatus,{body:(data.actions||[]).join(" "),tag:"win-memory-capacity"});}catch{}
+   }
+   knownMemoryAlertState=data.overallStatus||"";
+  }
   status.className="budget-alert "+(data.overallStatus==="critical"?"danger":data.overallStatus==="warning"?"warning":"empty");
   status.textContent=(data.actions||[]).join(" ");
  }catch(error){status.className="budget-alert empty";status.textContent="Capacity check unavailable: "+error.message;}
