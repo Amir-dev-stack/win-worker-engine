@@ -51,7 +51,7 @@ add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("scripts/win-learning-e2e.test.mjs")).includes("Unexpected network request"),
   "The production save, result-check and reviewer services are exercised against a flagged in-memory store with network calls stubbed.");
 add("WIN storage pagination and conditional-write semantics have isolated in-memory tests",
-  (await read("scripts/win-store.test.mjs")).includes("WIN_STORE_TEST_MODE=1") &&
+  (await read("scripts/win-store.test.mjs")).includes('process.env.WIN_STORE_TEST_MODE = "1"') &&
   (await read("scripts/win-store.test.mjs")).includes("putIfNew") &&
   (await read("scripts/win-store.test.mjs")).includes("putIfMatch") &&
   (await read("scripts/win-store.test.mjs")).includes("pagesRequested") &&
