@@ -218,7 +218,7 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     accessMode:"licensed_api", historicalSupport:"possible", authentication:"api_key",
     licenceReview:"required", automationAllowed:false,
     notes:"Commercial candidate; archive access and sport-specific coverage must be verified against plan and contract."
-  }
+  },
 
   {
     id:"nflverse-pbp-data", name:"nflverse NFL play-by-play and player statistics", website:"https://github.com/nflverse/nflverse-data",
