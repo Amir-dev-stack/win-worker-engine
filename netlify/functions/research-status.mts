@@ -1,6 +1,7 @@
 import { requireAuth } from "../lib/auth.mts";
 import { DATA_PROVIDER_REGISTRY } from "../lib/data-provider-registry.mts";
 import { getOpenFootballSyncStatus } from "../lib/openfootball-adapter.mts";
+import { getNflversePlayByPlaySyncStatus } from "../lib/nflverse-pbp-adapter.mts";
 import { getOpenFootballWorldCupSyncStatus } from "../lib/openfootball-worldcup-adapter.mts";
 import { getConsensusMarketSyncStatus } from "../lib/consensus-market-adapter.mts";
 import { getSharpApiSampleStatus } from "../lib/sharpapi-sample-adapter.mts";
@@ -12,8 +13,8 @@ import { list } from "../lib/store.mts";
 export default async (req: Request) => {
  const denied=requireAuth(req);if(denied)return denied;
  if(req.method!=="GET")return new Response("Method not allowed",{status:405});
- const [openfootball,openfootballWorldCup,consensus,sharpapi,calibration,observedMarketSettlement,sourceDiscovery,agentEvolution,experiments,datasets,consensusDatasets,observedMarketDatasets,playerEventDatasets,settledObservedMarketDatasets,agentTasks,agentProfiles]=await Promise.all([
-  getOpenFootballSyncStatus(),getOpenFootballWorldCupSyncStatus(),getConsensusMarketSyncStatus(),getSharpApiSampleStatus(),getMarketCalibrationStatus(),getObservedMarketSettlementStatus(),getPublicResearchSourceDiscoveryStatus(),getAgentEvolutionStatus(),
+ const [openfootball,nflverse,openfootballWorldCup,consensus,sharpapi,calibration,observedMarketSettlement,sourceDiscovery,agentEvolution,experiments,datasets,consensusDatasets,observedMarketDatasets,playerEventDatasets,settledObservedMarketDatasets,agentTasks,agentProfiles]=await Promise.all([
+  getOpenFootballSyncStatus(),getNflversePlayByPlaySyncStatus(),getOpenFootballWorldCupSyncStatus(),getConsensusMarketSyncStatus(),getSharpApiSampleStatus(),getMarketCalibrationStatus(),getObservedMarketSettlementStatus(),getPublicResearchSourceDiscoveryStatus(),getAgentEvolutionStatus(),
   list<any>("library/model-lab/experiments",30),
   list<any>("library/model-lab/historical-event-datasets",50),
   list<any>("library/model-lab/market-consensus-datasets",100),
@@ -26,9 +27,9 @@ export default async (req: Request) => {
  return Response.json({
   providers:DATA_PROVIDER_REGISTRY.map(p=>({
    id:p.id,name:p.name,accessMode:p.accessMode,licenceReview:p.licenceReview,automationAllowed:p.automationAllowed,
-   status:p.id==="openfootball"?openfootball.status:p.id==="openfootball-worldcup-json"?openfootballWorldCup.status:p.id.startsWith("hf-minmaxxxer-")?(consensus.sourceStatuses?.[p.id]||"not_yet_run"):p.id==="sharpapi-sample-data"?sharpapi.status:"not_connected"
+   status:p.id==="nflverse-pbp-data"?nflverse.status:p.id==="openfootball"?openfootball.status:p.id==="openfootball-worldcup-json"?openfootballWorldCup.status:p.id.startsWith("hf-minmaxxxer-")?(consensus.sourceStatuses?.[p.id]||"not_yet_run"):p.id==="sharpapi-sample-data"?sharpapi.status:"not_connected"
   })),
-  openfootball,openfootballWorldCup,consensus,sharpapi,calibration,observedMarketSettlement,sourceDiscovery,
+  openfootball,nflverse,openfootballWorldCup,consensus,sharpapi,calibration,observedMarketSettlement,sourceDiscovery,
   persistentAgents:{profiles:agentProfiles.length,queued:agentTasks.filter(x=>x.status==="queued").length,running:agentTasks.filter(x=>x.status==="running").length,completed:agentTasks.filter(x=>x.status==="completed").length,failed:agentTasks.filter(x=>x.status==="failed").length,recentTasks:agentTasks.sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0,10).map(x=>({id:x.id,agentId:x.agentId,name:x.name,tier:x.tier,status:x.status,attempts:x.attempts,createdAt:x.createdAt,updatedAt:x.updatedAt}))},
   sampling:{mode:"bounded_recent_sample",note:"Research status aggregates are computed from bounded recent samples; use the audit record list for full recent collection inspection."},
   modelLab:{
