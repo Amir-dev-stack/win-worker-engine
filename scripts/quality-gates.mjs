@@ -146,6 +146,25 @@ add("WIN structured coupon candidates require full run approval and preserve rej
 add("Dashboard shows WIN-built, won and lost coupon boards", html.includes('id="winBuiltList"') && html.includes('id="wonCouponList"') && html.includes('id="lostCouponList"') && app.includes("refreshCouponBoards") && app.includes("renderCouponBoardCard") && app.includes("View full coupon"), "The dashboard displays structured built candidates and separate won/lost records with their full selections and evidence.");
 add("WIN coupons preserve validated kickoff and participant identity for future result checks", library.includes("leg?.startTime || leg?.eventStart") && library.includes("eventStart: leg.eventStart") && library.includes("eventId: leg.eventId") && library.includes("homeTeam: leg.homeTeam") && library.includes("awayTeam: leg.awayTeam") && worker.includes("startTime: exactKickoff") && worker.includes("eventStart: exactKickoff"), "Post-match lookup has an explicit event date and two sides; it never substitutes an odds-capture timestamp for a kickoff.");
 add("Multi-sport historical settlement lookup is exact and source-linked", postMatch.includes("historicalDatasetResult") && postMatch.includes("row.status!==\"completed\"") && postMatch.includes("Multiple historical rows match this event") && postMatch.includes("sourceLicence:dataset.sourceLicence"), "Imported historical market datasets can resolve exact completed events where an applicable settlement field exists; ambiguous rows remain unresolved.");
+add("SkillCorner ACB basketball aggregates remain manual, player-season scoped and source-attributed",
+  providers.includes('id:"skillcorner-open-basketball-acb-2025-26"') &&
+  providers.includes('accessMode:"manual_authorized_import"') &&
+  providers.includes('licenceReview:"documented_open_terms"') &&
+  providers.includes('automationAllowed:false') &&
+  (await read("netlify/lib/skillcorner-basketball-adapter.mts")).includes("I_CONFIRM_SKILLCORNER_ACB_2025_26_RESEARCH") &&
+  (await read("netlify/lib/skillcorner-basketball-adapter.mts")).includes("MAX_TOTAL_BYTES = 3 * 1024 * 1024") &&
+  (await read("netlify/lib/skillcorner-basketball-adapter.mts")).includes('player-season-aggregate-datasets') &&
+  (await read("netlify/lib/skillcorner-basketball-adapter.mts")).includes("rawTrackingDataImported: false") &&
+  (await read("netlify/lib/skillcorner-basketball-normalize.mjs")).includes("isSeasonTotalRow") &&
+  (await read("netlify/functions/learning-data-jobs.mts")).includes("syncSkillCornerBasketballAggregates") &&
+  (await read("netlify/functions/research-status.mts")).includes("getSkillCornerBasketballStatus") &&
+  (await read("netlify/lib/model-lab.mts")).includes("topShootersByAttempts") &&
+  (await read("scripts/skillcorner-basketball.test.mjs")).includes("season total rows are explicitly labelled") &&
+  (await read("scripts/skillcorner-adapter-policy.test.mjs")).includes("requires exact owner confirmation") &&
+  (await read("docs/SKILLCORNER_BASKETBALL.md")).includes("293 of the 327 ACB games") &&
+  html.includes("Import SkillCorner ACB 2025/26 player aggregates") &&
+  html.includes("SkillCorner Open Data"),
+  "The import downloads only the three bounded ACB 2025/26 CSV aggregates after explicit confirmation, stores them separately from match-level results, preserves per-team versus season-total rows and excludes the large tracking archives.");
 add("SportScore free live API is on-demand, attributed, cached and never treated as settlement truth",
   providers.includes('id:"sportscore-live"') &&
   providers.includes('accessMode:"open_api"') &&
