@@ -392,7 +392,7 @@ export async function runPostMatchFollowups(){
  const searchBudget={remaining:SEARCH_LIMIT_PER_RUN};
  const resultBudget={remaining:RESULT_TEAM_LOOKUP_LIMIT_PER_RUN};
  const [allCoupons,historicalDatasets]=await Promise.all([
-  list<any>("library/coupons",50),
+  list<any>("library/coupons",25),
   list<any>("library/model-lab/market-consensus-datasets",100)
  ]);
  const coupons=allCoupons.filter(x=>
@@ -430,9 +430,9 @@ export async function getPostMatchFollowupStatus(){
  const [state,runs,followups,coupons,candidates]=await Promise.all([
   get<any>("scheduler-state","post-match-followup"),
   list<any>("library/post-match-runs",30),
-  list<any>("library/post-match-followups",50),
+  list<any>("library/post-match-followups",25),
   list<any>("library/coupons",50),
-  list<any>("library/win-coupon-candidates",50)
+  list<any>("library/win-coupon-candidates",25)
  ]);
  const latest=runs.sort((a,b)=>dateMs(b.startedAt)-dateMs(a.startedAt))[0]||null;
  const winCoupons=coupons.filter(x=>x.origin==="win");
