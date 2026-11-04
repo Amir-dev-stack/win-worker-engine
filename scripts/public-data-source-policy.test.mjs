@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   DATA_PROVIDER_REGISTRY,
   getProviderCandidates,
-  providerMayRunAutomatically
+  providerMayRunAutomatically,
+  assertProviderImportAllowed
 } from "../netlify/lib/data-provider-registry.mts";
 
 test("TipsAudit is discoverable but cannot enter automated data ingestion", () => {
@@ -32,9 +34,76 @@ test("TipsAudit is discoverable but cannot enter automated data ingestion", () =
     false,
     "a research candidate cannot run even if a connection record is present"
   );
+  assert.throws(
+    () => assertProviderImportAllowed(candidate.id, ["historical_pre_match_predictions"]),
+    /automation_disabled/,
+    "the actual import gate must reject research-only candidates"
+  );
 });
 
-test("only explicitly approved, HTTPS providers can pass the automation policy", () => {
+test("every active public provider has an HTTPS licence reference and attribution", () => {
+  for (const provider of DATA_PROVIDER_REGISTRY.filter(x => x.automationAllowed)) {
+    assert.equal(provider.licenceReview, "approved", provider.id);
+    assert.match(provider.licenceReference || "", /^https:\/\//, provider.id + " licence reference");
+    assert.ok(provider.attribution?.trim(), provider.id + " attribution");
+    assertProviderImportAllowed(provider.id, [provider.dataDomains[0]]);
+  }
+});
+
+test("runtime import gate rejects unknown, disabled, wrong-mode and out-of-domain sources", () => {
+  assert.throws(() => assertProviderImportAllowed("provider-does-not-exist"), /provider_not_registered/);
+  assert.throws(() => assertProviderImportAllowed("sportmonks", ["fixtures"]), /automation_disabled/);
+  assert.throws(() => assertProviderImportAllowed("tipsaudit-track-record-public"), /automation_disabled/);
+  assert.throws(() => assertProviderImportAllowed("openfootball", ["live_odds"]), /data_domain_not_approved/);
+  assert.throws(() => assertProviderImportAllowed("openfootball", ["fixtures", "results", "live_odds"]), /data_domain_not_approved/);
+  assert.equal(assertProviderImportAllowed("openfootball-football-json", ["fixtures", "results"]).id, "openfootball");
+});
+
+test("registry changes immediately block a source before its adapter can fetch", () => {
+  const provider = DATA_PROVIDER_REGISTRY.find(x => x.id === "hf-minmaxxxer-epl-2025-26");
+  assert.ok(provider);
+  const original = provider.automationAllowed;
+  try {
+    provider.automationAllowed = false;
+    assert.throws(
+      () => assertProviderImportAllowed(provider.id, ["historical_consensus_market_lines", "results"]),
+      /automation_disabled/
+    );
+  } finally {
+    provider.automationAllowed = original;
+  }
+});
+
+test("each adapter checks registry policy before its first upstream operation", async () => {
+  const [football, worldCup, consensus, sharp] = await Promise.all([
+    readFile(new URL("../netlify/lib/openfootball-adapter.mts", import.meta.url), "utf8"),
+    readFile(new URL("../netlify/lib/openfootball-worldcup-adapter.mts", import.meta.url), "utf8"),
+    readFile(new URL("../netlify/lib/consensus-market-adapter.mts", import.meta.url), "utf8"),
+    readFile(new URL("../netlify/lib/sharpapi-sample-adapter.mts", import.meta.url), "utf8")
+  ]);
+
+  const footballGate = football.indexOf('assertProviderImportAllowed("openfootball-football-json"');
+  const footballStart = football.indexOf("export async function syncOpenFootballHistoricalData()");
+  const footballFetch = football.indexOf("const root = await getJson(API)");
+  assert.ok(footballGate > footballStart && footballGate < footballFetch);
+
+  const worldCupStart = worldCup.indexOf("export async function syncOpenFootballWorldCupData()");
+  const worldCupGate = worldCup.indexOf('assertProviderImportAllowed("openfootball-worldcup-json"');
+  const worldCupFetch = worldCup.indexOf("for(let i=0;i<PATHS.length;i+=4)");
+  assert.ok(worldCupGate > worldCupStart && worldCupGate < worldCupFetch);
+
+  const consensusStart = consensus.indexOf("async function syncOne(source:");
+  const consensusGate = consensus.indexOf("assertProviderImportAllowed(source.id,source.requiredDomains)");
+  const consensusFetch = consensus.indexOf("const treeRes=await fetch(", consensusStart);
+  assert.ok(consensusGate > consensusStart && consensusGate < consensusFetch);
+
+  const sharpStart = sharp.indexOf("async function syncOne(file:");
+  const sharpGate = sharp.indexOf('assertProviderImportAllowed("sharpapi-sample-data"');
+  const sharpFetch = sharp.indexOf("const url=BASE+file.path,res=await fetch(", sharpStart);
+  assert.ok(sharpGate > sharpStart && sharpGate < sharpFetch);
+});
+
+test("only explicitly approved HTTPS providers pass the credentialed automation policy", () => {
   const ids = new Set();
   for (const provider of DATA_PROVIDER_REGISTRY) {
     assert.equal(ids.has(provider.id), false, "provider IDs must be unique");
@@ -48,7 +117,7 @@ test("only explicitly approved, HTTPS providers can pass the automation policy",
         status: "connected",
         verifiedAt: "2026-11-04T00:00:00.000Z",
         enabledDomains: provider.dataDomains,
-        termsReference: "https://example.com/provider-terms"
+        termsReference: provider.licenceReference
       };
       assert.equal(providerMayRunAutomatically(provider, connection), true, provider.id);
     }

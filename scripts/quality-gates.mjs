@@ -161,6 +161,15 @@ add("TipsAudit historical predictions are catalogued as research-only pending sn
   (await read("scripts/public-data-source-policy.test.mjs")).includes("providerMayRunAutomatically") &&
   (await read("scripts/public-data-source-policy.test.mjs")).includes("snapshot hash matches"),
   "The source is discoverable, but immutable pre-kickoff snapshot, manifest, timestamp-proof, data-rights and methodology checks must pass before ingestion.");
+add("Every automatic public dataset adapter enforces the central provider registry before network access",
+  (await read("netlify/lib/data-provider-registry.mts")).includes("assertProviderImportAllowed") &&
+  (await read("netlify/lib/openfootball-adapter.mts")).includes('assertProviderImportAllowed("openfootball-football-json", ["fixtures", "results"])') &&
+  (await read("netlify/lib/openfootball-worldcup-adapter.mts")).includes('assertProviderImportAllowed("openfootball-worldcup-json",["fixtures","results","player_events"])') &&
+  (await read("netlify/lib/consensus-market-adapter.mts")).includes("assertProviderImportAllowed(source.id,source.requiredDomains)") &&
+  (await read("netlify/lib/sharpapi-sample-adapter.mts")).includes('assertProviderImportAllowed("sharpapi-sample-data",["observed_bookmaker_odds","multi_source_price_snapshots"])') &&
+  (await read("scripts/public-data-source-policy.test.mjs")).includes("registry changes immediately block a source before its adapter can fetch") &&
+  (await read("scripts/public-data-source-policy.test.mjs")).includes("each adapter checks registry policy before its first upstream operation"),
+  "Every import path requires an approved registry record, permitted access mode, HTTPS licence reference, attribution and every requested data domain before its first upstream fetch.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
