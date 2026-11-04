@@ -401,6 +401,7 @@ async function refreshLearning(){
  }catch(error){
   $("#learningUpdated").textContent="Monitor unavailable: "+error.message;
   $("#postMatchStatus").textContent="STATUS UNAVAILABLE";
+  $("#learningDepartments").innerHTML='<div class="empty">Department test history unavailable: '+escapeHtml(error.message)+' · Check authentication and the /api/learning-observatory response, then refresh.</div>';
  }
 }
 async function refresh(){
