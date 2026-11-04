@@ -1,6 +1,6 @@
 const arr = value => Array.isArray(value) ? value : [];
 const text = (value, max = 180) => typeof value === "string" ? value.trim().slice(0, max) : "";
-const number = value => Number.isFinite(Number(value)) ? Number(value) : null;
+const number = value => value === null || value === undefined || value === "" ? null : (Number.isFinite(Number(value)) ? Number(value) : null);
 
 function eventType(event) {
   return text(event?.type?.name, 80).toLowerCase();
@@ -76,8 +76,8 @@ export function normalizeStatsBombMatch(match, eventsInput, lineupsInput, source
     const player = event?.player || null;
     const record = getPlayer(player, team, event?.position);
     if (team?.name) {
-      const total = teamTotals.get(team.name) || { team: team.name, shots: 0, goals: 0, passes: 0, pressures: 0, fouls: 0 };
-      if (type === "shot") total.shots++;
+      const total = teamTotals.get(team.name) || { team: team.name, shots: 0, goals: 0, passes: 0, pressures: 0, fouls: 0, expectedGoals: 0 };
+      if (type === "shot") { total.shots++; if (text(event?.shot?.outcome?.name).toLowerCase() === "goal") total.goals++; const teamXg = number(event?.shot?.statsbomb_xg); if (teamXg !== null) total.expectedGoals += teamXg; }
       if (type === "pass") total.passes++;
       if (type === "pressure") total.pressures++;
       if (type === "foul committed") total.fouls++;
@@ -125,9 +125,7 @@ export function normalizeStatsBombMatch(match, eventsInput, lineupsInput, source
   const validScore = homeScore !== null && awayScore !== null && Number.isInteger(homeScore) &&
     Number.isInteger(awayScore) && homeScore >= 0 && awayScore >= 0;
   const score = validScore ? [homeScore, awayScore] : null;
-  for (const total of teamTotals.values()) {
-    total.goals = null;
-  }
+  for (const total of teamTotals.values()) total.expectedGoals = Number(total.expectedGoals.toFixed(5));
 
   const sourceUrl = text(source?.sourceUrl, 1200) || "https://github.com/hudl/open-data";
   return {
@@ -149,7 +147,7 @@ export function normalizeStatsBombMatch(match, eventsInput, lineupsInput, source
     eventTimeNote: "StatsBomb supplies a local kick-off clock without a timezone in this record. It is preserved as source text and is not converted to UTC.",
     fullTimeScore: score,
     scoreSourceSemantics: "StatsBomb match record score; bookmaker-specific settlement rules are not inferred.",
-    status: text(match?.match_status, 80) || (score ? "completed" : "unknown"),
+    status: score ? "completed" : (text(match?.match_status, 80) || "unknown"),
     matchWeek: number(match?.match_week),
     competitionStage: text(match?.competition_stage?.name, 120) || null,
     venue: text(match?.stadium?.name, 180) || null,
