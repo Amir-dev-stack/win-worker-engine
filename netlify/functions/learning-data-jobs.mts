@@ -1,0 +1,103 @@
+import type { Config } from "@netlify/functions";
+import { requireAuth } from "../lib/auth.mts";
+import { getWithMetadata, put, putIfMatch, putIfNew } from "../lib/store.mts";
+import { discoverPublicResearchSources } from "../lib/public-source-discovery.mts";
+import { syncOpenFootballHistoricalData } from "../lib/openfootball-adapter.mts";
+import { syncOpenFootballWorldCupData } from "../lib/openfootball-worldcup-adapter.mts";
+import { syncConsensusMarketDatasets } from "../lib/consensus-market-adapter.mts";
+import { syncSharpApiSampleMarkets } from "../lib/sharpapi-sample-adapter.mts";
+import { runOpenFootballBaselineLab } from "../lib/model-lab.mts";
+
+type JobAction = "discover_sources" | "sync_historical_data";
+const actions = new Set<JobAction>(["discover_sources", "sync_historical_data"]);
+
+export default async (req: Request) => {
+  const denied = requireAuth(req);
+  if (denied) return denied;
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+
+  let body: any;
+  try { body = await req.json(); }
+  catch { return Response.json({ error: "Expected JSON body" }, { status: 400 }); }
+  const action = String(body?.action || "") as JobAction;
+  if (!actions.has(action)) return Response.json({ error: "Unsupported learning data job." }, { status: 400 });
+
+  const now = new Date();
+  const startedAt = now.toISOString();
+  const jobId = "learning-data-" + action + "-" + startedAt.replace(/[^0-9]/g, "");
+  const lockKey = action;
+  const prior = await getWithMetadata<any>("library/learning-data-job-locks", lockKey);
+  if (prior?.value?.status === "running" && Date.parse(prior.value.leaseExpiresAt || "") > now.getTime()) {
+    return Response.json({ accepted: false, status: "already_running", action }, { status: 409 });
+  }
+  const lock = {
+    id: lockKey, jobId, action, status: "running", startedAt,
+    leaseExpiresAt: new Date(now.getTime() + 17 * 60 * 1000).toISOString(),
+    aiCalls: 0
+  };
+  const claim = prior
+    ? await putIfMatch("library/learning-data-job-locks", lockKey, lock, prior.etag)
+    : await putIfNew("library/learning-data-job-locks", lockKey, lock);
+  if (!claim.modified || !claim.etag) {
+    return Response.json({ accepted: false, status: "already_running", action }, { status: 409 });
+  }
+  const lockEtag = claim.etag;
+  const stateKey = action === "discover_sources" ? "public-source-discovery" : "manual-historical-data-sync";
+  await put("scheduler-state", stateKey, { status: "running", startedAt, jobId, action, aiCalls: 0 });
+
+  try {
+    let result: any;
+    if (action === "discover_sources") {
+      result = await discoverPublicResearchSources();
+    } else {
+      const steps: any[] = [];
+      const execute = async (name: string, work: () => Promise<any>) => {
+        try {
+          const value = await work();
+          steps.push({ name, status: value?.status || (value?.failures?.length ? "partial" : "completed"), result: value });
+        } catch (error) {
+          steps.push({ name, status: "failed", error: String(error).slice(0, 400) });
+        }
+      };
+      await execute("openfootball_historical_results", syncOpenFootballHistoricalData);
+      await execute("openfootball_world_cup_and_player_events", syncOpenFootballWorldCupData);
+      await execute("consensus_market_history", syncConsensusMarketDatasets);
+      await execute("sharpapi_observed_market_snapshots", syncSharpApiSampleMarkets);
+      await execute("chronological_openfootball_baseline", runOpenFootballBaselineLab);
+      const failed = steps.filter(x => x.status === "failed").length;
+      const partial = steps.filter(x => x.status === "partial").length;
+      result = {
+        status: failed ? (steps.some(x => x.status === "completed" || x.status === "partial") ? "partial" : "failed") : partial ? "partial" : "completed",
+        startedAt, completedAt: new Date().toISOString(), steps,
+        datasetsImported: steps.reduce((n, x) => n + Number(x.result?.datasetsImported || x.result?.filesFetched || 0), 0),
+        eventRowsImported: steps.reduce((n, x) => n + Number(x.result?.matchesImported || x.result?.rowsImported || 0), 0),
+        aiCalls: 0, humanCouponLabTouched: false,
+        note: "Only existing source-specific adapters ran. No discovered source was automatically connected, and no human coupon records were read or changed."
+      };
+    }
+
+    const completedAt = new Date().toISOString();
+    const record = { id: jobId, action, startedAt, completedAt, status: result?.status || "completed", result, aiCalls: 0 };
+    await put("library/research-jobs", jobId, record);
+    await put("scheduler-state", stateKey, {
+      status: record.status, startedAt, lastCheck: completedAt, jobId, action,
+      aiCalls: 0, summary: action === "discover_sources"
+        ? { candidatesSeen: result?.candidatesSeen || 0, newCandidates: result?.newCandidates || 0, failures: result?.failures?.length || 0 }
+        : { steps: result?.steps?.map((x: any) => ({ name: x.name, status: x.status })) || [] }
+    });
+    await putIfMatch("library/learning-data-job-locks", lockKey, {
+      ...lock, status: record.status, completedAt, leaseExpiresAt: null
+    }, lockEtag);
+  } catch (error) {
+    const completedAt = new Date().toISOString();
+    const message = String(error).slice(0, 500);
+    await put("library/research-jobs", jobId, { id: jobId, action, startedAt, completedAt, status: "failed", error: message, aiCalls: 0 });
+    await put("scheduler-state", stateKey, { status: "failed", startedAt, lastCheck: completedAt, jobId, action, error: message, aiCalls: 0 });
+    await putIfMatch("library/learning-data-job-locks", lockKey, {
+      ...lock, status: "failed", completedAt, leaseExpiresAt: null, error: message
+    }, lockEtag);
+  }
+  return Response.json({ accepted: true, status: "queued", action, jobId, aiCalls: 0 });
+};
+
+export const config: Config = { path: "/api/learning-data-jobs", background: true };
