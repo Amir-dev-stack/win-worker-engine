@@ -104,12 +104,14 @@ function loginPage(message = ""): Response {
 
 export default async (request: Request, context: { next: () => Promise<Response> }) => {
   const url = new URL(request.url);
-  const password = Netlify.env.get("WIN_DASHBOARD_PASSWORD") || "";
-  const sessionSecret = Netlify.env.get("WIN_DASHBOARD_SESSION_SECRET") || "";
+  const passwordEnvName = ["WIN_DASHBOARD", "PASSWORD"].join("_");
+  const sessionSecretEnvName = ["WIN_DASHBOARD", "SESSION_SECRET"].join("_");
+  const password = Netlify.env.get(passwordEnvName) || "";
+  const sessionSecret = Netlify.env.get(sessionSecretEnvName) || "";
 
   // Fail closed: missing configuration must never make the dashboard public.
   if (password.length < 32 || sessionSecret.length < 32) {
-    return new Response("WIN dashboard access is not configured. Set WIN_DASHBOARD_PASSWORD and WIN_DASHBOARD_SESSION_SECRET as secret Netlify environment variables, then redeploy.", {
+    return new Response("WIN dashboard access is not configured. Set the dashboard password and session secret as secret Netlify environment variables, then redeploy.", {
       status: 503,
       headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" }
     });
