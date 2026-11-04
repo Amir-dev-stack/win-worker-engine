@@ -60,6 +60,7 @@ test("reports missing standings and coverage instead of fabricating a league tab
 
 
 import { getSportStatSpec, inspectStatisticCoverage, extractPlayerPerformances } from "../netlify/lib/sport-stat-catalog.mts";
+import { SPORT_REGISTRY } from "../netlify/lib/sport-registry.mts";
 
 test("football catalogue tracks passing, attacking, restarts, defending and player ratings",()=>{
  const spec=getSportStatSpec("football");
@@ -116,4 +117,15 @@ test("same match from multiple sources retains complementary team and player sta
  assert.equal(playerProvider.lowestRated[0].name,"Low Rated");
  assert.deepEqual(pack.postMatch.statisticCoverageBySource.map(x=>x.providerId).sort(),["player-feed","team-feed"]);
  assert.equal(pack.postMatch.detailConflicts.includes("fullTimeScore"),false);
+});
+
+
+test("every registered sport has its own team/participant statistics and a provider-rating availability field",()=>{
+ for(const sport of SPORT_REGISTRY){
+  const spec=getSportStatSpec(sport.id);
+  assert.ok(spec.team.length>0,sport.id+" must have event/team metrics");
+  assert.ok(spec.player.length>0,sport.id+" must have player/athlete metrics");
+  assert.ok(spec.player.some(group=>group.id==="rating"),sport.id+" must explicitly track provider rating availability");
+  assert.notEqual(spec.label,"Sport-specific coverage not catalogued",sport.id+" must have a sport-specific catalogue");
+ }
 });
