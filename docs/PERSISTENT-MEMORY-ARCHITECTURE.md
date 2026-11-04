@@ -60,3 +60,11 @@ The migration also defines `win_financial_accounts` and an append-only `win_fina
 - No production backend switch, bulk migration, production data mutation, or paid service activation is performed by this code change.
 - The financial ledger schema is present, but no account or bankroll values are seeded and no betting execution path is connected to it yet. It must be wired through an authenticated owner API before it is used operationally.
 - Database connection strings are server-side secrets only.
+
+## Capacity monitoring
+
+- Authenticated `GET /api/memory-capacity` reports the live Neon database size, the 20 largest user tables, remaining bytes against the configured monitoring threshold, and 75%/90% warning levels.
+- `WIN_NEON_STORAGE_LIMIT_BYTES` optionally sets the threshold denominator. If absent, the monitor uses a clearly labelled 1 GiB planning baseline; this is not an authoritative statement of the account's current Neon plan quota. Set it to the actual plan/project limit after checking the Neon console.
+- A daily scheduled monitor runs at 03:40 UTC and stores the latest snapshot at `library/meta/memory-capacity-latest`, including day-over-day growth and whether the alert state changed. It never deletes, archives, or overwrites user memory.
+- Netlify Blobs object count is sampled (up to 10,000 objects) but byte usage is not exposed by the Blobs list API. Its exact storage usage must be checked in Netlify usage/billing. The monitor explicitly reports this limitation rather than inventing a byte count.
+- The dashboard can call the authenticated capacity endpoint using the existing WIN internal token. The daily monitor records alerts; it does not send email, SMS or push notifications. A desktop notification requires an additional delivery/permission workflow and is not claimed by this monitor.
