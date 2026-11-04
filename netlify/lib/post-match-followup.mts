@@ -427,14 +427,20 @@ export async function runPostMatchFollowups(){
  return summary;
 }
 export async function getPostMatchFollowupStatus(){
- const [state,runs,followups]=await Promise.all([
+ const [state,runs,followups,coupons,candidates]=await Promise.all([
   get<any>("scheduler-state","post-match-followup"),
   list<any>("library/post-match-runs",30),
-  list<any>("library/post-match-followups",1000)
+  list<any>("library/post-match-followups",1000),
+  list<any>("library/coupons",1000),
+  list<any>("library/win-coupon-candidates",1000)
  ]);
  const latest=runs.sort((a,b)=>dateMs(b.startedAt)-dateMs(a.startedAt))[0]||null;
+ const winCoupons=coupons.filter(x=>x.origin==="win");
+ const eligibleCoupons=winCoupons.filter(x=>x.outcome==="pending"&&Array.isArray(x.selections)&&x.selections.length>0);
+ const blockedCandidates=candidates.filter(x=>x.status==="BLOCKED");
  return {
   lastCheck:state?.lastCheck||null,status:state?.status||"not_yet_run",latestRun:latest,
+  trackedWinCoupons:winCoupons.length,queuedCoupons:eligibleCoupons.length,blockedCandidates:blockedCandidates.length,
   totalCoupons:followups.length,
   awaitingIndependentReview:followups.filter(x=>x.status==="review_submitted").length,
   reviewRejected:followups.filter(x=>x.status==="review_rejected").length,
