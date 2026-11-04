@@ -129,6 +129,7 @@ export async function searchWinLibrary(options: {
       { key: "observedMarketData", path: "library/model-lab/observed-market-snapshots", cap: 100 },
       { key: "settledObservedMarketData", path: "library/model-lab/settled-observed-markets", cap: 100 },
       { key: "playerEventData", path: "library/model-lab/player-event-datasets", cap: 1000 },
+      { key: "playerSeasonAggregateData", path: "library/model-lab/player-season-aggregate-datasets", cap: 50 },
       { key: "marketCalibrationReports", path: "library/model-lab/market-calibration-reports", cap: 20 },
       { key: "marketSettlementRuns", path: "library/model-lab/observed-market-settlement-runs", cap: 20 }
     ],
@@ -166,7 +167,7 @@ export async function searchWinLibrary(options: {
   const backtestRuns = rows("backtestRuns"), persistentAgentProfiles = rows("persistentAgentProfiles");
   const agentTasks = rows("agentTasks"), historicalMarketData = rows("historicalMarketData");
   const consensusMarketData = rows("consensusMarketData"), observedMarketData = rows("observedMarketData");
-  const settledObservedMarketData = rows("settledObservedMarketData"), playerEventData = rows("playerEventData");
+  const settledObservedMarketData = rows("settledObservedMarketData"), playerEventData = rows("playerEventData"), playerSeasonAggregateData = rows("playerSeasonAggregateData");
   const marketCalibrationReports = rows("marketCalibrationReports"), marketSettlementRuns = rows("marketSettlementRuns");
   const sourceCandidates = rows("sourceCandidates"), sourceDiscoveryRuns = rows("sourceDiscoveryRuns");
   const agentProposals = rows("agentProposals"), agentSandboxEvaluations = rows("agentSandboxEvaluations");
@@ -177,6 +178,7 @@ export async function searchWinLibrary(options: {
     ...observedMarketData.map((d:any)=>({id:d.id,recordType:"model_lab_observed_market_snapshot",providerId:d.providerId,sport:d.sport,sourceUrl:d.sourceUrl,sourceLicence:d.sourceLicence,retrievedAt:d.retrievedAt,recordCount:d.recordCount,rejectedRows:d.rejectedRows,origin:d.origin,lab:d.lab})),
     ...settledObservedMarketData.map((d:any)=>({id:d.id,recordType:"model_lab_settled_observed_market_dataset",providerId:d.providerId,sourceLicence:d.sourceLicence,resultLicence:d.resultLicence,retrievedAt:d.retrievedAt,settledSelectionCount:d.settledSelectionCount,uniqueEvents:d.uniqueEvents,sourceHash:d.sourceHash,origin:d.origin,lab:d.lab})),
     ...playerEventData.map((d:any)=>({id:d.id,recordType:"model_lab_player_event_dataset",providerId:d.providerId,competition:d.competition,season:d.season,sourceUrl:d.sourceUrl,sourceLicence:d.sourceLicence,totalRows:d.totalRows,origin:d.origin,lab:d.lab})),
+    ...playerSeasonAggregateData.map((d:any)=>({id:d.id,recordType:"model_lab_player_season_aggregate_dataset",providerId:d.providerId,sport:d.sport,competition:d.competition,season:d.season,aggregateType:d.aggregateType,sourceUrl:d.sourceUrl,sourceLicence:d.sourceLicence,retrievedAt:d.retrievedAt,totalRows:d.totalRows,uniquePlayers:d.uniquePlayers,uniqueTeams:d.uniqueTeams,grain:d.grain,includesSeasonTotalRows:d.includesSeasonTotalRows,rawTrackingDataImported:d.rawTrackingDataImported,origin:d.origin,lab:"model-lab"})),
     ...marketCalibrationReports.map((d:any)=>({id:d.id,recordType:"model_lab_market_calibration_report",status:d.status,createdAt:d.createdAt,totalEvents:d.totalEvents,sourceDatasetCount:d.sourceDatasetCount,origin:d.origin,lab:d.lab})),
     ...marketSettlementRuns.map((d:any)=>({id:d.id,recordType:"model_lab_market_settlement_run",status:d.status,createdAt:d.createdAt,settledSelections:d.settledSelections,uniqueEvents:d.uniqueEvents,simulationRunId:d.simulationRunId,simulation:d.simulation,caveats:d.caveats,sourceHash:d.sourceHash,origin:"provider_historical_data",lab:"model-lab"}))
   ];
