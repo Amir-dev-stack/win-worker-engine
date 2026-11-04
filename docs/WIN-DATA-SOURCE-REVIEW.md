@@ -105,3 +105,18 @@ The read-only 2026 source audit measured the current per-game JSON object shape 
 The measurement exposed a timeline counting bug: synthetic quarter-end timeline markers reused their source play ID and were included in `playCount`. Synthetic quarter-end markers now have `playId: null`, so only source play IDs contribute to play counts.
 
 To reduce storage duplication while retaining every non-empty source-native field, each event's `sourceFields` is now encoded as a flat sequence of alternating schema-index/value entries. The match-level `sourceSchemaFields` array maps each numeric index back to its exact original CSV column name, and `sourceFieldEncoding` identifies the version as `schema_index_value_pairs_v1`. Consumers must decode these pairs against the match-level schema; values are not discarded. A fresh full 2026 audit is required to measure the optimized payload size before any import decision.
+
+
+### Post-optimization full 2026 audit (2026-11-04)
+
+A second read-only run against the same 2026 PBP release after compact field encoding produced the following result:
+
+- PBP: 42,470,035 bytes; SHA-256 `c2f54775e6d54bedf003af2776987eddce7eb2eaf35f05a4039fc7268b44675e`; 372 schema fields.
+- Schedule: 2,188,861 bytes; 7,548 total rows, 272 rows for 2026; SHA-256 `239ad19b914eeff0c44f7ca51ada1d137b90b7f7c2b56106fb02b40f1b4e7506`.
+- 21,191 PBP rows accepted, 0 rejected; 121 games accepted; all 121 exact game IDs joined to schedule; 0 conflicting IDs.
+- 121 completed matches; 21,191 source plays; 7,768 player match lines; 0 date-only matches after exact schedule enrichment.
+- Compact JSON payloads: 81,042,230 bytes total; average 669,770; median 662,094; p90 743,072; p95 773,177; maximum 831,658 bytes.
+- Compared with the previous object-key encoding (146,958,204 bytes), the compact representation reduced measured JSON payload size by 65,915,974 bytes (44.85%) without removing non-empty source fields.
+- Synthetic quarter-end markers no longer reuse source play IDs, so play counts now align with source rows.
+
+These are exact JSON serialization measurements from the audit runner, not billed storage usage. No Blob writes, scheduler-state updates, production data changes or AI calls occurred. The 2026 data audit is complete; a comparable 2025 full-season audit remains the next storage-coverage check.
