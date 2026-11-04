@@ -65,7 +65,7 @@ export async function collectMemoryCapacity() {
   let blobCountTruncated = false;
   for await (const page of blobs.list({ prefix: "library/", paginate: true })) {
     blobCount += page.blobs.length;
-    if (blobCount >= 100000) {
+    if (blobCount >= 10000) {
       blobCountTruncated = true;
       break;
     }
