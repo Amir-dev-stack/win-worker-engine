@@ -163,3 +163,15 @@ The PBP adapter now also exposes source-defined player metrics where attribution
 The quarterback `qb_epa` definition credits the passer through the point where a receiver loses a fumble, and CPOE is completion percentage over expectation. nflfastR documents the expected-YAC fields as model expectations from the catch point; WIN aggregates them only for completed passes when describing post-catch performance. These remain provider-derived performance statistics, **not player ratings**. The nflverse PBP release does not provide an independent player-rating scale, player position/starting status, full snap participation or injury status. Those require separately sourced roster, participation, snap-count, injury or rating feeds, with their own coverage and rights review.
 
 Defensive player attribution now also includes additional assisted tacklers (up to the source's fourth assist slot), tackles for loss, quarterback hits, passes defended, forced fumbles and blocked-player credits where the PBP row supplies a player ID/name. The player metric catalogue and regression tests now cover QB, rusher, receiver, defensive and special-teams fields. The source's non-empty raw values remain retained per play so additional fields can be normalized later without discarding evidence.
+
+### NFL 372-field mapping coverage baseline (updated 2026-11-04)
+
+A static comparison of the current adapter's explicit field references against the 372-column 2026 PBP schema found 125 source fields referenced by the adapter. The other 247 columns are still retained losslessly when non-empty in the compact per-play source-field encoding, but are not directly interpreted by the current adapter. The 125 includes identity, game context and player-ID/name fields as well as metric inputs; it is **not** a count of 125 normalized statistics.
+
+Priority raw-only groups for the next mapping pass include:
+- Situation and formation: shotgun/no-huddle, goal-to-go, clock/half/game seconds, field-side and yardline context, drive IDs and drive start/end state.
+- Advanced model outputs: expected points and scoring probabilities, air/yards-after-catch EPA/WPA splits, cumulative home/away EPA/WPA, expected pass rate and pass rate over expectation.
+- Special teams: blocked punts, punt/kickoff placement and touchback/fair-catch outcomes, lateral returns/recoveries and more granular kicker/punter outcomes.
+- Defense and player participation: additional tackle/assist and forced-fumble variants, player IDs/credits not yet normalized, player positions and on-field participation.
+
+The source dictionary and nflfastR documentation define these columns, but WIN will only promote a field to a canonical metric after validating its unit, event eligibility, player/team attribution, aggregation and denominator. Raw retention protects the evidence while this mapping is incomplete.
