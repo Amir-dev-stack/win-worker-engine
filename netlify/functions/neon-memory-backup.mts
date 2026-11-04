@@ -78,6 +78,23 @@ export default async () => {
       collectionCounts[prefix] = count;
     }
 
+    const financial = await neon.exportFinancialData();
+    for (const account of financial.accounts) {
+      const line = JSON.stringify({ key: "__financial__/account/" + account.account_id, value: account });
+      rawBytes += Buffer.byteLength(line) + 1;
+      if (rawBytes > MAX_RAW_BYTES) throw new Error("Backup exceeded the configured 180 MiB safety limit; no partial backup was published.");
+      lines.push(line);
+    }
+    for (const entry of financial.ledger) {
+      const line = JSON.stringify({ key: "__financial__/ledger/" + entry.entry_id, value: entry });
+      rawBytes += Buffer.byteLength(line) + 1;
+      if (rawBytes > MAX_RAW_BYTES) throw new Error("Backup exceeded the configured 180 MiB safety limit; no partial backup was published.");
+      lines.push(line);
+    }
+    collectionCounts["__financial__/accounts"] = financial.accounts.length;
+    collectionCounts["__financial__/ledger"] = financial.ledger.length;
+    if (lines.length > MAX_ROWS) throw new Error("Backup exceeded the configured row safety limit; no partial backup was published.");
+
     const content = Buffer.from(lines.length ? lines.join("\n") + "\n" : "", "utf8");
     const digest = createHash("sha256").update(content).digest("hex");
     const compressed = gzipSync(content);
