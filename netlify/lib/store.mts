@@ -14,10 +14,17 @@ export async function get<T>(kind: string, id: string): Promise<T | null> {
 }
 export async function list<T>(kind: string, limit = 100): Promise<T[]> {
   const result = await store().list({ prefix: kind + "/" });
+  const selected = result.blobs.slice(0, Math.max(0, limit)).reverse();
   const rows: T[] = [];
-  for (const item of result.blobs.slice(0, limit).reverse()) {
-    const value = await store().get(item.key, { type: "json" }) as T | null;
-    if (value !== null) rows.push(value);
+  // Bounded parallel reads replace the former one-by-one Blob fetch loop.
+  // A modest batch keeps the audit/dashboard responsive without flooding Blobs.
+  const batchSize = 16;
+  for (let offset = 0; offset < selected.length; offset += batchSize) {
+    const batch = selected.slice(offset, offset + batchSize);
+    const values = await Promise.all(batch.map(item =>
+      store().get(item.key, { type: "json" }) as Promise<T | null>
+    ));
+    for (const value of values) if (value !== null) rows.push(value);
   }
   return rows;
 }
