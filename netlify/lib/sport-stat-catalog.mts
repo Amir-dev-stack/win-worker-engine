@@ -45,7 +45,7 @@ export const SPORT_STAT_CATALOG={
   group("defense","Defense",["total_tackles","solo_tackles","assisted_tackles","sacks","tackles_for_loss","forced_fumbles","fumble_recoveries","passes_defended","interceptions"]),
   group("special_teams","Special teams",["kickoffs","kickoff_yards","touchbacks","punts","punt_yards","field_goals","extra_points","kick_returns","punt_returns"]),
   group("team_context","Game context",["offensive_plays","total_yards","first_downs","third_down_attempts","third_down_conversions","fourth_down_attempts","fourth_down_conversions","red_zone_attempts","turnovers","sacks_allowed","penalties","penalty_yards"]),
-  group("advanced","Advanced play metrics",["epa","success_rate","air_yards","yards_after_catch","win_probability_added"])
+  group("advanced","Advanced play metrics",[metric("epa_total","Total EPA",["epa_total"]),metric("epa_per_play","EPA per play",["epa_per_play"]),metric("success_rate","Success rate",["success_rate"]),metric("air_yards_per_attempt","Air yards per pass attempt",["air_yards_per_attempt"]),metric("yards_after_catch_per_completion","Yards after catch per completion",["yards_after_catch_per_completion"]),metric("win_probability_added","Win probability added",["win_probability_added"])])
  ],[
   group("appearance","Appearance and role",["minutes","starter","position"]),
   group("passing","Quarterback",["pass_attempts","completions","passing_yards","passing_touchdowns","interceptions","sacks_taken","passer_rating"]),
