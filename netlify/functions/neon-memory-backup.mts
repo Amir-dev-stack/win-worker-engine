@@ -87,7 +87,7 @@ export default async () => {
     const encrypted = Buffer.concat([iv, cipher.getAuthTag(), ciphertext]);
     const encryptedDigest = createHash("sha256").update(encrypted).digest("hex");
     const date = new Date().toISOString().slice(0, 10);
-    const snapshotKey = "library/memory-backups/" + date + ".jsonl.gz";
+    const snapshotKey = "library/memory-backups/" + date + ".jsonl.gz.enc";
     const manifestKey = "library/memory-backups/" + date + ".manifest.json";
     await blobs.set(snapshotKey, encrypted);
     const manifest = {
