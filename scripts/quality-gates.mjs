@@ -177,6 +177,14 @@ add("All consensus source IDs and per-provider data domains are registry-validat
   (await read("netlify/lib/data-provider-registry.mts")).includes("enabledDomains.every"),
   "The 12 consensus dataset mappings are tested against the actual registry; connected API providers must be bound to their own HTTPS terms and permitted data domains.");
 
+add("Consensus calibration evaluates binary moneyline datasets without inventing a draw class",
+  (await read("netlify/lib/market-calibration.mts")).includes("export function evaluateMarketDataset") &&
+  (await read("netlify/lib/market-calibration.mts")).includes("two_way_moneyline") &&
+  (await read("netlify/lib/market-calibration.mts")).includes("sport_aware_two_way_and_1x2_v3") &&
+  (await read("scripts/market-calibration.test.mjs")).includes("NBA-style two-way moneyline") &&
+  (await read("scripts/market-calibration.test.mjs")).includes("tennis player-one probabilities"),
+  "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
