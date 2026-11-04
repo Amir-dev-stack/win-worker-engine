@@ -286,7 +286,10 @@ function newTeamStats() {
     defensive_sacks: 0, defensive_interceptions: 0, defensive_fumble_recoveries: 0,
     solo_tackles: 0, assisted_tackles: 0,
     kickoffs: 0, punts: 0, field_goal_attempts: 0, field_goals_made: 0,
-    extra_point_attempts: 0, extra_points_made: 0
+    extra_point_attempts: 0, extra_points_made: 0,
+    epa_total: 0, epa_play_count: 0, successful_plays: 0, success_opportunities: 0,
+    win_probability_added: 0, air_yards_total: 0, pass_attempts_with_air_yards: 0,
+    yards_after_catch_total: 0, completions_with_yac: 0
   };
 }
 
@@ -436,6 +439,25 @@ export function buildNflverseMatchRecords(
 
     const offStats = game.teamStats[offense];
     if (offStats) {
+      // nflverse defines EPA/WPA at play grain. Preserve totals and denominators;
+      // derived rates are computed only from rows where the source value exists.
+      if (number(row.epa) !== null) {
+        addNumber(offStats, "epa_total", row.epa);
+        increment(offStats, "epa_play_count");
+      }
+      if (number(row.success) !== null) {
+        increment(offStats, "success_opportunities");
+        if (flag(row.success)) increment(offStats, "successful_plays");
+      }
+      if (number(row.wpa) !== null) addNumber(offStats, "win_probability_added", row.wpa);
+      if (passAttempt && number(row.air_yards) !== null) {
+        addNumber(offStats, "air_yards_total", row.air_yards);
+        increment(offStats, "pass_attempts_with_air_yards");
+      }
+      if (complete && number(row.yards_after_catch) !== null) {
+        addNumber(offStats, "yards_after_catch_total", row.yards_after_catch);
+        increment(offStats, "completions_with_yac");
+      }
       if (!["no_play", "timeout"].includes(playType)) increment(offStats, "offensive_plays");
       if (yards !== null && !["no_play", "timeout", "kickoff", "punt"].includes(playType)) addNumber(offStats, "total_yards", yards);
       if (flag(row.first_down)) increment(offStats, "first_downs");
@@ -567,11 +589,18 @@ export function buildNflverseMatchRecords(
     const recordId = "nflverse-" + game.id;
     const homeName = teamName(game.home);
     const awayName = teamName(game.away);
-    const teamStats = [game.home, game.away].map(abbr => ({
-      team: teamName(abbr),
-      side: abbr === game.home ? "home" : "away",
-      ...game.teamStats[abbr]
-    }));
+    const teamStats = [game.home, game.away].map(abbr => {
+      const raw = game.teamStats[abbr];
+      return {
+        team: teamName(abbr),
+        side: abbr === game.home ? "home" : "away",
+        ...raw,
+        epa_per_play: raw.epa_play_count ? raw.epa_total / raw.epa_play_count : null,
+        success_rate: raw.success_opportunities ? raw.successful_plays / raw.success_opportunities : null,
+        air_yards_per_attempt: raw.pass_attempts_with_air_yards ? raw.air_yards_total / raw.pass_attempts_with_air_yards : null,
+        yards_after_catch_per_completion: raw.completions_with_yac ? raw.yards_after_catch_total / raw.completions_with_yac : null
+      };
+    });
     const playerStats = [...game.playerStats.values()].map(line => {
       const { _statLine, ...publicLine } = line;
       return publicLine;
