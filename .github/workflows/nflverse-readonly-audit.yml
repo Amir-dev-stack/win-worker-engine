@@ -15,6 +15,10 @@ on:
         required: false
         type: string
 
+concurrency:
+  group: nflverse-readonly-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
