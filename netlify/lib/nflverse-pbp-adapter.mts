@@ -169,18 +169,30 @@ function easternKickoffToUtc(date: string, time: string): string | null {
   if (!validCalendarDate(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return null;
   const [year, month, day] = date.split("-").map(Number);
   const [hour, minute] = time.split(":").map(Number);
-  const utcGuess = Date.UTC(year, month - 1, day, hour, minute);
+  const localAsUtc = Date.UTC(year, month - 1, day, hour, minute);
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
   });
-  const parts = Object.fromEntries(formatter.formatToParts(new Date(utcGuess)).map(part => [part.type, part.value]));
-  const representedAsUtc = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-    Number(parts.hour), Number(parts.minute), Number(parts.second));
-  const offset = representedAsUtc - utcGuess;
-  return new Date(utcGuess - offset).toISOString();
+  const localParts = (instant: number) =>
+    Object.fromEntries(formatter.formatToParts(new Date(instant)).map(part => [part.type, part.value]));
+  const candidates = new Set<number>();
+  // A local wall-clock time can map to zero instants (spring gap), one (normal),
+  // or two (fall fold). Sample both sides of any nearby DST transition.
+  for (let hours = -36; hours <= 36; hours += 6) {
+    const sample = localAsUtc + hours * 60 * 60 * 1000;
+    const parts = localParts(sample);
+    const representedAsUtc = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+      Number(parts.hour), Number(parts.minute), Number(parts.second));
+    const offset = representedAsUtc - sample;
+    const candidate = localAsUtc - offset;
+    const check = localParts(candidate);
+    if (Number(check.year) === year && Number(check.month) === month && Number(check.day) === day &&
+        Number(check.hour) === hour && Number(check.minute) === minute) candidates.add(candidate);
+  }
+  if (candidates.size !== 1) return null;
+  return new Date([...candidates][0]).toISOString();
 }
-
 export function parseNflverseScheduleCsv(raw: string): Record<string, string>[] {
   const [headers, ...dataRows] = parseCsvRecords(raw);
   const required = ["game_id", "gameday", "gametime", "away_team", "home_team"];
