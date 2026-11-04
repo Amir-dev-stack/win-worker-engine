@@ -85,7 +85,7 @@ export async function syncOpenFootballWorldCupData(){
 }
 export async function getOpenFootballWorldCupSyncStatus(){
  const state=await get<any>("scheduler-state","openfootball-worldcup-daily-sync");
- const datasets=await list<any>("library/model-lab/historical-event-datasets",1000);
+ const datasets=await list<any>("library/model-lab/historical-event-datasets",50);
  const tournament=datasets.filter(d=>d.providerId==="openfootball-worldcup-json");
- return {status:state?.status||"not_yet_run",lastCheck:state?.lastCheck||null,totals:state||null,datasetCount:tournament.length,matchCount:tournament.reduce((n,d)=>n+Number(d.totalRows||0),0),scoredMatches:tournament.reduce((n,d)=>n+Number(d.scoredRows||0),0),playerEventCount:tournament.reduce((n,d)=>n+Number(d.playerEventRows||0),0)};
+ return {sampled:true,status:state?.status||"not_yet_run",lastCheck:state?.lastCheck||null,totals:state||null,datasetCount:tournament.length,matchCount:tournament.reduce((n,d)=>n+Number(d.totalRows||0),0),scoredMatches:tournament.reduce((n,d)=>n+Number(d.scoredRows||0),0),playerEventCount:tournament.reduce((n,d)=>n+Number(d.playerEventRows||0),0)};
 }
