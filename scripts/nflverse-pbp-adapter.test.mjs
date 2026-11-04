@@ -72,6 +72,13 @@ test("NFL match builder creates scores, team box scores, player lines and play e
   assert.ok(match.events.some(event => event.eventTypes.includes("completion")));
   assert.ok(match.events.some(event => event.eventTypes.includes("touchdown")));
   assert.ok(match.events.some(event => event.eventTypes.includes("game_end")));
+  assert.equal(match.sourceDataGrain, "one_row_per_play");
+  assert.equal(match.sourceSchemaFieldCount, headers.length);
+  assert.ok(match.sourceSchemaFields.includes("play_type_nfl"));
+  const passEvent = match.events.find(event => event.eventTypes.includes("completion"));
+  assert.equal(passEvent.sourceFields.pass_attempt, "1");
+  assert.equal(passEvent.sourceFields.complete_pass, "1");
+  assert.equal(passEvent.sourceFields.receiver_player_name, "R. Receiver");
 
   const home = match.teamStats.find(team => team.side === "home");
   assert.equal(home.pass_attempts, 1);
