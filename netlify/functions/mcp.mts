@@ -381,7 +381,7 @@ export default async (req: Request) => {
       headers: {
         "content-type": "application/json",
         "cache-control": "no-store",
-        "www-authenticate": 'Bearer resource_metadata="' + resourceMetadata + '", scope="win:read win:research"'
+        "www-authenticate": 'Bearer resource_metadata="' + resourceMetadata + '", scope="win:audit win:read win:research"'
       }
     });
   }
