@@ -590,6 +590,119 @@ export function buildNflverseMatchRecords(
   });
 }
 
+export function measureNflverseDatasetPayloads(
+  records: any[],
+  metadata: {
+    season: number; sourceUrl: string; retrievedAt: string;
+    rawChecksum: string; scheduleChecksum: string;
+  }
+) {
+  const sizes = records.map(record => {
+    const datasetId = "nflverse-pbp-" + metadata.season + "-" + String(record.eventId).replace(/[^a-zA-Z0-9_-]/g, "");
+    const payload = {
+      id: datasetId, providerId: PROVIDER_ID, sport: "american_football", season: String(metadata.season),
+      competition: "NFL", sourceUrl: metadata.sourceUrl, sourceLicence: LICENSE, licenceReference: LICENSE_URL,
+      attribution: ATTRIBUTION, retrievedAt: metadata.retrievedAt, rawChecksum: metadata.rawChecksum,
+      totalRows: 1, scoredRows: 1, playCount: record.playCount, playerCount: record.playerCount,
+      eventDate: record.eventDate, eventTimePrecision: record.eventTimePrecision,
+      records: [record], origin: "provider_historical_data", lab: "model-lab"
+    };
+    return {
+      eventId: String(record.eventId),
+      playCount: Number(record.playCount || 0),
+      playerCount: Number(record.playerCount || 0),
+      jsonPayloadBytes: Buffer.byteLength(JSON.stringify(payload), "utf8")
+    };
+  }).sort((a, b) => a.jsonPayloadBytes - b.jsonPayloadBytes);
+  const total = sizes.reduce((sum, item) => sum + item.jsonPayloadBytes, 0);
+  const percentile = (p: number) => sizes.length
+    ? sizes[Math.min(sizes.length - 1, Math.ceil(p * sizes.length) - 1)].jsonPayloadBytes : 0;
+  return {
+    recordCount: sizes.length,
+    jsonPayloadBytesTotal: total,
+    averageJsonPayloadBytes: sizes.length ? Math.round(total / sizes.length) : 0,
+    medianJsonPayloadBytes: percentile(0.5),
+    p90JsonPayloadBytes: percentile(0.9),
+    p95JsonPayloadBytes: percentile(0.95),
+    largestJsonPayloadBytes: sizes.length ? sizes[sizes.length - 1].jsonPayloadBytes : 0,
+    largestRecords: sizes.slice(-5).reverse()
+  };
+}
+
+/**
+ * Read-only source audit. Downloads the selected season PBP CSV and current
+ * schedule CSV, validates identities, and measures the exact JSON payload
+ * shape used by the importer. It performs no Blob writes or state mutations.
+ */
+export async function auditNflversePlayByPlayReadOnly(seasonInput?: number) {
+  const currentYear = new Date().getUTCFullYear();
+  const defaultSeason = new Date().getUTCMonth() >= 6 ? currentYear : currentYear - 1;
+  const season = Number.isInteger(seasonInput) && Number(seasonInput) >= 1999 && Number(seasonInput) <= currentYear
+    ? Number(seasonInput) : defaultSeason;
+  const sourceUrl = RELEASE_BASE + "/play_by_play_" + season + ".csv";
+  const scheduleUrl = "https://github.com/nflverse/nflverse-data/releases/download/schedules/games.csv";
+  const startedAt = new Date().toISOString();
+  const response = await fetch(sourceUrl, {
+    headers: { "user-agent": USER_AGENT, accept: "text/csv" },
+    signal: AbortSignal.timeout(120000)
+  });
+  if (!response.ok) throw new Error("nflverse_pbp_http_" + response.status);
+  const raw = await response.text();
+  if (raw.length > MAX_CSV_CHARACTERS) throw new Error("nflverse_pbp_exceeds_size_guard");
+  const rawChecksum = createHash("sha256").update(raw).digest("hex");
+  const retrievedAt = new Date().toISOString();
+  const rows = parseNflverseCsv(raw);
+  const qualityAudit = auditNflverseRows(rows);
+
+  const scheduleResponse = await fetch(scheduleUrl, {
+    headers: { "user-agent": USER_AGENT, accept: "text/csv" },
+    signal: AbortSignal.timeout(60000)
+  });
+  if (!scheduleResponse.ok) throw new Error("nflverse_schedule_http_" + scheduleResponse.status);
+  const scheduleRaw = await scheduleResponse.text();
+  const scheduleChecksum = createHash("sha256").update(scheduleRaw).digest("hex");
+  const scheduleRows = parseNflverseScheduleCsv(scheduleRaw);
+  const baseRecords = buildNflverseMatchRecords(qualityAudit.acceptedRows, season, sourceUrl, retrievedAt);
+  const scheduleJoin = enrichNflverseRecordsWithSchedule(baseRecords, scheduleRows);
+  const records = scheduleJoin.records.map(record => ({ ...record, rawChecksum, scheduleChecksum }));
+  const payloadMetrics = measureNflverseDatasetPayloads(records, {
+    season, sourceUrl, retrievedAt, rawChecksum, scheduleChecksum
+  });
+  const headers = Object.keys(rows[0] || {});
+  const seasonScheduleRows = scheduleRows.filter(row => Number(row.season) === season);
+  return {
+    status: "audit_only",
+    writesPerformed: 0,
+    aiCalls: 0,
+    season,
+    startedAt,
+    completedAt: new Date().toISOString(),
+    source: {
+      url: sourceUrl, bytes: Buffer.byteLength(raw, "utf8"), sha256: rawChecksum,
+      etag: response.headers.get("etag"), lastModified: response.headers.get("last-modified"),
+      retrievedAt, schemaFieldCount: headers.length, schemaFields: headers
+    },
+    scheduleSource: {
+      url: scheduleUrl, bytes: Buffer.byteLength(scheduleRaw, "utf8"), sha256: scheduleChecksum,
+      etag: scheduleResponse.headers.get("etag"), lastModified: scheduleResponse.headers.get("last-modified"),
+      totalRows: scheduleRows.length, seasonRows: seasonScheduleRows.length
+    },
+    rowAudit: qualityAudit,
+    scheduleJoin: {
+      matched: scheduleJoin.matched, unmatched: scheduleJoin.unmatched,
+      conflictingGameIds: scheduleJoin.conflictingGameIds
+    },
+    completedMatches: records.length,
+    dateOnlyMatches: records.filter(record => record.eventTimePrecision === "date_only").length,
+    scheduledKickoffMatches: scheduleJoin.matched,
+    playCountTotal: records.reduce((sum, record) => sum + Number(record.playCount || 0), 0),
+    playerLinesTotal: records.reduce((sum, record) => sum + Number(record.playerCount || 0), 0),
+    payloadMetrics,
+    sourceReportedNotIndependentlyVerified: true,
+    note: "Read-only validation only. No WIN storage writes, scheduler updates, production data changes, or AI calls were performed. Payload sizes are UTF-8 JSON bytes matching the historical-event dataset object shape, not billed Blob storage."
+  };
+}
+
 export async function syncNflversePlayByPlayData(seasonInput?: number) {
   assertProviderImportAllowed(PROVIDER_ID, [
     "historical_match_play_by_play", "team_match_statistics", "player_match_statistics", "player_events", "results"
