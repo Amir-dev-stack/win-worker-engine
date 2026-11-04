@@ -1,3 +1,4 @@
+import { getSportStatSpec, inspectStatisticCoverage, extractPlayerPerformances } from "./sport-stat-catalog.mts";
 const norm=(value)=>String(value??"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 const time=(value)=>{const n=Date.parse(typeof value==="string"?value:"");return Number.isFinite(n)?n:0;};
 const clean=(value,max=180)=>typeof value==="string"?value.trim().slice(0,max):"";
@@ -24,8 +25,8 @@ function rowSides(row){
   return {one:clean(row?.homeTeam||row?.participant1||row?.team1||row?.teamOne),two:clean(row?.awayTeam||row?.participant2||row?.team2||row?.teamTwo)};
 }
 function rowDetails(row){
-  const keys=["fullTimeScore","halfTimeScore","extraTimeScore","penaltyShootoutScore","resultBasis","attendance","venue","round","group","referee","referees","playerEvents","playerStats","matchStats","matchStatistics","statistics","stats","events","matchEvents","goals","cards","lineups","lineup","substitutions","scoreBreakdown","sets","periodScores","innings","sourceRecordId"];
-  const out={};
+  const keys=["fullTimeScore","halfTimeScore","extraTimeScore","penaltyShootoutScore","resultBasis","attendance","venue","round","group","referee","referees","playerEvents","playerStats","playerStatistics","player_stats","player_performances","teamStats","teamStatistics","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","boxScore","boxscore","goals","cards","lineups","lineup","substitutions","scoreBreakdown","sets","periodScores","innings","sourceRecordId"];
+  const out=row?.details&&typeof row.details==="object"?{...row.details}:{};
   for(const key of keys)if(row?.[key]!==undefined&&row?.[key]!==null)out[key]=row[key];
   return out;
 }
@@ -86,7 +87,10 @@ function teamPerspective(record,team){
     firstHalfGoals:half?half[ownIndex]:null,
     secondHalfGoals:half&&score?own-half[ownIndex]:null,
     sourceProviders:record.sourceProviders,sourceUrls:record.sourceRefs,sourceRetrievedAt:record.retrievedAt,
-    sourceLicence:record.sourceLicence,scoreConflict:record.scoreConflict||false
+    sourceLicence:record.sourceLicence,scoreConflict:record.scoreConflict||false,
+    matchStatistics:record.details,
+    statisticCoverage:inspectStatisticCoverage(record.sport,record.details),
+    playerPerformances:extractPlayerPerformances(record.details,record.providerId).players
   };
 }
 function aggregateTeamGames(games){
@@ -121,7 +125,8 @@ function summarizeTeam(name,allRows,competition,cutoff){
     team:name,season:latestSeason,
     seasonStats:aggregateTeamGames(seasonGames),
     homeStats:aggregateTeamGames(home),awayStats:aggregateTeamGames(away),
-    last5:games.slice(0,5),last10:games.slice(0,10),
+    last5:games.slice(0,5),
+    last10:games.slice(0,10).map(({matchStatistics,playerPerformances,statisticCoverage,...summary})=>({...summary,hasMatchStatistics:Object.keys(matchStatistics||{}).length>0,playersWithStats:(playerPerformances||[]).length,statisticCoverage:statisticCoverage?.summary||null})),
     availableCompletedMatches:games.length,
     newestAvailableMatch:games[0]?.date||null,
     oldestAvailableMatch:games.at(-1)?.date||null,
@@ -152,19 +157,26 @@ function observedTargetMarkets(datasets,teams,kickoffMs,nowMs){
   }
   return found.slice(0,100);
 }
-function matchPostReport(record,nowMs){
+function matchPostReport(record,nowMs,sport){
   if(!record)return {status:"not_available"};
   if(record.eventMs>nowMs)return {status:"not_started"};
   if(!record.score)return {status:"awaiting_source_result"};
   const details=record.details||{};
-  const actualStatsKeys=["playerEvents","playerStats","matchStats","matchStatistics","statistics","stats","events","matchEvents","goals","cards","lineups","lineup","substitutions"].filter(k=>details[k]!==undefined);
+  const actualStatsKeys=["playerEvents","playerStats","playerStatistics","teamStats","teamStatistics","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","goals","cards","lineups","lineup","substitutions"].filter(k=>details[k]!==undefined);
+  const statCoverage=inspectStatisticCoverage(sport,details);
+  const playerPerformance=extractPlayerPerformances(details,record.providerId);
+  const eventTimeline=details.events||details.matchEvents||details.timeline||details.playByPlay||details.plays||details.playerEvents||null;
   return {
     status:"source_reported_completed_match",
     event:{eventStart:record.eventStart,competition:record.competition,season:record.season,participants:record.sides},
     finalScore:{side1:record.score[0],side2:record.score[1]},
     details,
     availableStatisticSections:actualStatsKeys,
-    unavailableStatisticSections:["Possession","shots","shots on target","corners","fouls","offsides","saves","expected goals","passing","duels","pressing","tracking/GPS","official lineups where not present"].filter(k=>!actualStatsKeys.some(x=>x.toLowerCase().includes(k.replace(/[^a-z]/gi,"").toLowerCase()))),
+    statisticCoverage:statCoverage,
+    playerPerformance:{...playerPerformance,highestRatedPlayers:playerPerformance.bestRated,lowestRatedPlayers:playerPerformance.lowestRated},
+    eventTimeline,eventTimelineCount:Array.isArray(eventTimeline)?eventTimeline.length:null,
+    unavailableStatisticSections:[...statCoverage.team,...statCoverage.player].filter(x=>x.status==="not_provided").map(x=>x.label),
+    unavailableEventTypes:statCoverage.eventTypes.filter(x=>x.status==="not_detected").map(x=>x.eventType),
     source:{providerId:record.providerId,urls:record.sourceRefs,retrievedAt:record.retrievedAt,licence:record.sourceLicence,rawChecksum:record.rawChecksum},
     sourceReportedNotIndependentlyVerified:true
   };
@@ -203,7 +215,7 @@ export function buildMatchEvidencePack(brief,inputs={}){
   const playerEvidence=[...playerStats.values()].map(p=>({...p,matchLog:p.matchLog.sort((a,b)=>time(b.eventStart)-time(a.eventStart)).slice(0,10)})).slice(0,60);
   const allFreshRows=records.filter(r=>r.eventMs<=nowMs);
   const latestAvailable=Math.max(0,...allFreshRows.map(r=>r.eventMs));
-  const postMatch=exactTarget?matchPostReport(exactTarget,nowMs):{status:kickoffMs&&kickoffMs<=nowMs?(targetRecords.length>1?"ambiguous_exact_event":"exact_event_not_found"):"not_started_or_kickoff_unknown"};
+  const postMatch=exactTarget?matchPostReport(exactTarget,nowMs,sport):{status:kickoffMs&&kickoffMs<=nowMs?(targetRecords.length>1?"ambiguous_exact_event":"exact_event_not_found"):"not_started_or_kickoff_unknown"};
   const gaps=[];
   if(!teams)gaps.push("Two distinct named participants could not be resolved from this research brief.");
   if(!kickoffMs)gaps.push("Exact kickoff timestamp is missing; historical cut-off falls back to research snapshot time.");
@@ -212,7 +224,9 @@ export function buildMatchEvidencePack(brief,inputs={}){
   if(away&&away.last5.length<5)gaps.push(teams.away+" has fewer than five matching imported completed games.");
   gaps.push("Current competition standings/table are not included in the connected match-row datasets.");
   gaps.push("Current injuries, suspensions, confirmed lineups and training/availability reports are not provided by these imported match datasets.");
-  gaps.push("Live in-game event timelines and full technical statistics are included only when the provider actually supplies them in the matched record.");
+  gaps.push("Full team/player box scores and event timelines are included only when the provider supplies them; the sport-specific catalogue identifies missing groups and fields.");
+  if(!exactTarget||!Object.keys(exactTarget.details||{}).length)gaps.push("No detailed final match box score/event timeline was found for the exact target fixture.");
+  if(exactTarget&&exactTarget.details&&!extractPlayerPerformances(exactTarget.details,exactTarget.providerId).players.length)gaps.push("No structured per-player match statistics were supplied for the target fixture.");
   return {
     schemaVersion:"match_evidence_v1",generatedAt:new Date(nowMs).toISOString(),
     event:{sport,competition:competition||null,participants:teams,kickoff: kickoffMs?new Date(kickoffMs).toISOString():null},
@@ -220,6 +234,7 @@ export function buildMatchEvidencePack(brief,inputs={}){
     teamProfiles:home&&away?{home,away}:null,
     headToHead:h2h,
     competitionContext:{tableStatus:"not_connected",table:null,reason:"No current standings feed is currently connected to this research pack."},
+    statisticalSpecification:getSportStatSpec(sport),
     preMatchMarkets:{observedBookmakerSnapshots:markets,marketRows:markets.length,consensusRows:targetRecords.filter(r=>r.kind==="consensus").map(r=>({providerId:r.providerId,opening:r.row.opening||null,closing:r.row.closing||null,marketDataType:r.row.marketDataType||"consensus_market_lines",captureTimestamp:null,executionPrice:false})).slice(0,20)},
     playerEvidence:{uniquePlayers:playerEvidence.length,players:playerEvidence,sourceCoverage:"Imported player-event datasets only; a missing player record does not mean the player did not play."},
     postMatch,
