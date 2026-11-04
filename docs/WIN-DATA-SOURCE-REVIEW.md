@@ -149,3 +149,17 @@ The corresponding counts and totals are retained in team statistics so a consume
 This is a targeted extension, not a claim that all 372 source columns have been normalized. Every non-empty source value remains available in the compact event `sourceFields` encoding, while other fields remain raw evidence until their definitions, attribution rules and aggregation semantics have been reviewed. In particular, source-level player ratings, confirmed snap participation, player position/starting status and injury data are not manufactured from PBP rows. The official nflreadr PBP dictionary documents the 372-field schema and should remain the field-definition reference: https://nflreadr.nflverse.com/articles/dictionary_pbp.html.
 
 The 2025/2026 payload-size sample implies a rough long-history storage planning estimate of approximately 4.86–4.96 GB of UTF-8 JSON if the 7,395 game IDs in the previously inspected PBP manifest were all stored at the two-season sample's observed per-game average (about 658–671 KB/game). This is a planning extrapolation only: historical field density and season schema differences may change the actual size, and JSON bytes are not billed Netlify Blob storage. Do not use this estimate as approval for a bulk import.
+
+### NFL player-level advanced and special-teams normalisation (updated 2026-11-04)
+
+The PBP adapter now also exposes source-defined player metrics where attribution is clear:
+
+- Quarterbacks: average `qb_epa` per play, average `cpoe` across attempts with a source value, air yards per attempt, and summed WPA.
+- Rushers: EPA per rush and summed WPA.
+- Receivers: actual yards after catch per reception, plus completed-pass xYAC model outputs (expected YAC EPA, expected YAC yards, expected success probability and expected first-down probability).
+- Kickers: field-goal attempts/makes, extra-point attempts/makes and kickoffs, using nflverse's `kicker_player_id` / `kicker_player_name` fields.
+- Punters: punt count and punt distance using the source `punter_player_id`, `punter_player_name` and `kick_distance` fields.
+
+The quarterback `qb_epa` definition credits the passer through the point where a receiver loses a fumble, and CPOE is completion percentage over expectation. nflfastR documents the expected-YAC fields as model expectations from the catch point; WIN aggregates them only for completed passes when describing post-catch performance. These remain provider-derived performance statistics, **not player ratings**. The nflverse PBP release does not provide an independent player-rating scale, player position/starting status, full snap participation or injury status. Those require separately sourced roster, participation, snap-count, injury or rating feeds, with their own coverage and rights review.
+
+The player metric catalogue and regression tests now cover the new QB, rusher, receiver, kicker and punter fields. The source's non-empty raw values remain retained per play so additional fields can be normalized later without discarding evidence.
