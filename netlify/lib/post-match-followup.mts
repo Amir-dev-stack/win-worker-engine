@@ -135,7 +135,7 @@ async function searchGoogleResultLeads(leg:any,budget:{remaining:number}){
    const response=await fetch(url,{headers:{"user-agent":"WIN-PostMatch-Learning/1.0","accept":"application/rss+xml, application/xml, text/xml"},signal:AbortSignal.timeout(10000),cache:"no-store"});
    if(!response.ok)throw new Error("google_news_rss_http_"+response.status);
    const xml=await response.text();
-   leads=[...xml.matchAll(/<item>([\\s\\S]*?)<\\/item>/gi)].slice(0,5).flatMap((match:any)=>{
+   leads=[...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)].slice(0,5).flatMap((match:any)=>{
     const item=String(match[1]||"");
     const url=rssValue(item,"link");
     if(!/^https:\/\//i.test(url))return [];
@@ -150,7 +150,7 @@ async function searchGoogleResultLeads(leg:any,budget:{remaining:number}){
   return result;
  }catch(error){
   const result={query,mode,leads:[],checkedAt,cacheHit:false,searchStatus:"failed",
-   error:String(error).replace(/key=[^&\\s]+/gi,"key=[REDACTED]").slice(0,240),
+   error:String(error).replace(/key=[^&\s]+/gi,"key=[REDACTED]").slice(0,240),
    limitation:"No Google result lead was retrieved. A search failure is not evidence that the event did not occur."};
   await put("library/post-match-search-cache",cacheKey,result);
   return result;
