@@ -194,7 +194,7 @@ add("NFL play-by-play adapter is source-attributed, sport-scoped and provenance-
   (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("rawChecksum") &&
   providers.includes('id:"nflverse-pbp-data"') &&
   providers.includes("historical_match_play_by_play") &&
-  providers.includes("CC-BY-4.0") &&
+  providers.includes("CC BY 4.0") &&
   (await read("netlify/functions/learning-data-jobs.mts")).includes("nflverse_american_football_play_by_play") &&
   (await read("netlify/functions/research-status.mts")).includes("getNflversePlayByPlaySyncStatus") &&
   (await read("scripts/nflverse-pbp-adapter.test.mjs")).includes("player ratings are not invented"),
