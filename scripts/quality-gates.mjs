@@ -1,10 +1,4 @@
 import { readFile } from "node:fs/promises";
-add("All consensus source IDs and per-provider data domains are registry-validated",
-  (await read("netlify/lib/consensus-market-adapter.mts")).includes("export const CONSENSUS_SOURCES") &&
-  (await read("scripts/public-data-source-policy.test.mjs")).includes("all 12 consensus datasets") &&
-  (await read("netlify/lib/data-provider-registry.mts")).includes("enabledDomains.every"),
-  "The 12 consensus dataset mappings are tested against the actual registry; connected API providers must be bound to their own HTTPS terms and permitted data domains.");
-
 
 const read = path => readFile(path, "utf8");
 const checks = [];
@@ -176,6 +170,13 @@ add("Every automatic public dataset adapter enforces the central provider regist
   (await read("scripts/public-data-source-policy.test.mjs")).includes("registry changes immediately block a source before its adapter can fetch") &&
   (await read("scripts/public-data-source-policy.test.mjs")).includes("each adapter checks registry policy before its first upstream operation"),
   "Every import path requires an approved registry record, permitted access mode, HTTPS licence reference, attribution and every requested data domain before its first upstream fetch.");
+
+add("All consensus source IDs and per-provider data domains are registry-validated",
+  (await read("netlify/lib/consensus-market-adapter.mts")).includes("export const CONSENSUS_SOURCES") &&
+  (await read("scripts/public-data-source-policy.test.mjs")).includes("all 12 consensus datasets") &&
+  (await read("netlify/lib/data-provider-registry.mts")).includes("enabledDomains.every"),
+  "The 12 consensus dataset mappings are tested against the actual registry; connected API providers must be bound to their own HTTPS terms and permitted data domains.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
