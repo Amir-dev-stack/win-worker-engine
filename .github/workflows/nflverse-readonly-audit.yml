@@ -31,5 +31,5 @@ jobs:
           node-version: 22
       - name: Run read-only source and payload audit
         env:
-          NFLVERSE_AUDIT_SEASON: ${{ inputs.season || '' }}
+          NFLVERSE_AUDIT_SEASON: ${{ github.event.inputs.season || '' }}
         run: node --experimental-strip-types scripts/nflverse-readonly-audit.mjs
