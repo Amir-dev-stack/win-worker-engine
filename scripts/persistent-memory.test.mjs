@@ -15,6 +15,8 @@ test("WIN Neon memory remains opt-in and preserves Blobs as the default", async 
   assert.match(store, /const current = result\?\.modified \? value : await primary\.get/);
   assert.doesNotMatch(store, /if \(value !== null && value !== undefined\) return value/);
   assert.doesNotMatch(store, /library\/model-lab\//);
+  assert.match(store, /if \(secondary && selected\.length < maxItems\) await collect\(secondary\)/);
+  assert.match(store, /primaryValue !== null && primaryValue !== undefined/);
 });
 
 test("Neon store uses parameterized SQL and conditional single-key writes", async () => {
@@ -24,6 +26,9 @@ test("Neon store uses parameterized SQL and conditional single-key writes", asyn
   assert.match(adapter, /WHERE record_key = \$\{key\} AND etag = \$\{options\.onlyIfMatch\}/);
   assert.match(adapter, /payload = \$\{payload\}::jsonb/);
   assert.match(adapter, /WIN_NEON_DATABASE_URL/);
+  assert.match(adapter, /key\.lastIndexOf\("\/"\)/);
+  assert.match(adapter, /getRuntimeEnv\("WIN_NEON_DATABASE_URL"\)/);
+  assert.doesNotMatch(adapter, /process\.env\.WIN_NEON_DATABASE_URL/);
   assert.doesNotMatch(adapter, /console\.log\(.*connectionString/);
 });
 
