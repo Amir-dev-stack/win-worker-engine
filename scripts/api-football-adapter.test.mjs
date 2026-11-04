@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { buildApiFootballEvidenceRecord, buildApiFootballMatchDossier, getApiFootballReadiness } from "../netlify/lib/api-football-adapter.mts";
 import { DATA_PROVIDER_REGISTRY, providerMayRunAutomatically } from "../netlify/lib/data-provider-registry.mts";
+import { buildMatchEvidencePack } from "../netlify/lib/match-evidence.mts";
 
 const fixturePayload = {
   response: [{
@@ -80,6 +81,42 @@ test("missing fields remain null and coverage false is not converted into zero s
   assert.equal(dossier.fixture.home.name, "Home FC");
 });
 
+
+test("API-Football record rows are consumed by WIN's multi-provider match evidence engine", () => {
+  const dossier = buildApiFootballMatchDossier({
+    fixturePayload,
+    statisticsPayload: { response: [{ team: { id: 1, name: "Home FC" }, statistics: [{ type: "Total Shots", value: 14 }] }] },
+    playersPayload: { response: [{ team: { id: 1, name: "Home FC" }, players: [{ player: { id: 10, name: "Player One" }, statistics: [{ games: { rating: "8.1", minutes: 90 }, shots: { total: 4 } }] }] }] },
+    retrievedAt: "2026-11-04T19:00:00.000Z"
+  }, { allowResults: true, allowPlayerRatings: true });
+  const record = buildApiFootballEvidenceRecord(dossier);
+  const pack = buildMatchEvidencePack({
+    sport: "football",
+    competition: "UEFA Champions League",
+    homeTeam: "Away FC",
+    awayTeam: "Home FC",
+    startTime: "2026-11-07T20:00:00Z"
+  }, {
+    nowMs: Date.parse("2026-11-07T12:00:00Z"),
+    historicalDatasets: [{
+      id: dossier.id,
+      providerId: "api-sports",
+      sport: "football",
+      competition: "UEFA Champions League",
+      season: "2026",
+      sourceUrl: dossier.provenance.sourceUrl,
+      sourceLicence: "API-Football licensed commercial data",
+      retrievedAt: dossier.provenance.retrievedAt,
+      rawChecksum: dossier.provenance.rawPayloadSha256,
+      records: [record],
+      origin: "provider_historical_data"
+    }]
+  });
+  assert.equal(pack.coverage.historicalMatchRows, 1);
+  assert.equal(pack.headToHead.length, 1);
+  assert.equal(pack.headToHead[0].score[0], 2);
+  assert.equal(pack.headToHead[0].score[1], 1);
+});
 
 test("result scores are redacted unless the separate results domain is enabled", () => {
   const dossier = buildApiFootballMatchDossier({ fixturePayload });
