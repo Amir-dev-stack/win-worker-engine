@@ -58,3 +58,16 @@ The validation audit is a schema/consistency filter, not an independent verifica
 The nflverse schedule release is documented as CC BY 4.0 (subject to dataset-specific exceptions). Its schedule dictionary defines game_id as the primary cross-dataset identifier, gameday as the game date, and gametime as 24-hour Eastern Time. WIN now parses the schedule CSV separately and joins by exact game_id, then verifies date and canonical home/away team identities before enriching PBP records. Eastern kickoff is converted to UTC using the IANA America/New_York zone; the original local date/time/zone and schedule checksum are retained. Missing, invalid, mismatched or conflicting schedule rows leave the PBP record date-only. The schedule is not a source of final scores or PBP events, and no row is treated as independently verified merely because it appears in the schedule.
 
 Release documentation: https://nflreadr.nflverse.com/articles/dictionary_schedules.html. Dataset license overview: https://github.com/nflverse.
+
+
+### Schedule asset and identifier cross-check (updated 2026-11-04)
+
+The upstream nflverse/nfldata release workflow publishes the schedule dataset under release tag `schedules`, file name `games`, in CSV, CSV.GZ, Parquet and RDS formats. The corresponding WIN CSV endpoint is `https://github.com/nflverse/nflverse-data/releases/download/schedules/games.csv`. The upstream workflow upserts by `game_id` before publishing.
+
+The schedule dictionary documents `game_id` as the human-readable season/week/away/home key, and `gametime` as 24-hour Eastern Time. Current nflreadr PBP examples show the same human-readable `game_id` format and keep the ten-digit legacy identifier in `old_game_id`. WIN therefore joins schedule to PBP on `game_id`, not `old_game_id`, then independently checks date and home/away teams. The current nflverse/nfldata repository's 2026 schedule rows and nflverse-pbp-internal released-game identifiers use the same human-readable format.
+
+The schedule pipeline is reported by nflreadr to update every five minutes during the season. That is source availability cadence, not a guarantee that every schedule value is final or that PBP is already complete.
+
+DST policy: convert Eastern wall-clock times only when they map to exactly one UTC instant. Nonexistent spring-forward times and ambiguous fall-back times remain date-only for WIN's kickoff purposes rather than selecting an arbitrary UTC interpretation.
+
+Validation boundary: public documentation, release-workflow source and current indexed schedule rows support the schema, asset naming and key choice. The full live schedule CSV has not yet been downloaded and row-count/checksum audited by WIN, and no PBP/schedule bulk import has been run.
