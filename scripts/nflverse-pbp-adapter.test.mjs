@@ -128,6 +128,23 @@ test("NFL schedule joins exact game identity and converts Eastern kickoff to UTC
   });
 });
 
+test("NFL schedule parser joins a current upstream 2026 game ID and Eastern kickoff sample", () => {
+  const sourceLikePbpRows = parseNflverseCsv(csv).map(row => ({
+    ...row, game_id: "2026_08_CAR_GB", game_date: "2026-10-29",
+    home_team: "GB", away_team: "CAR"
+  }));
+  const match = buildNflverseMatchRecords(sourceLikePbpRows, 2026, "https://source.example/pbp.csv")[0];
+  const schedule = parseNflverseScheduleCsv([
+    "game_id,season,game_type,week,gameday,weekday,gametime,away_team,away_score,home_team,home_score",
+    "2026_08_CAR_GB,2026,REG,8,2026-10-29,Thursday,20:15,CAR,0,GB,0"
+  ].join("\n"));
+  const joined = enrichNflverseRecordsWithSchedule([match], schedule);
+  assert.equal(joined.matched, 1);
+  assert.equal(joined.records[0].eventStart, "2026-10-30T00:15:00.000Z");
+  assert.equal(joined.records[0].homeTeam, "Green Bay Packers");
+  assert.equal(joined.records[0].awayTeam, "Carolina Panthers");
+});
+
 test("NFL schedule kickoff conversion handles DST and rejects ambiguous or nonexistent local times", () => {
   const baseFor = date => buildNflverseMatchRecords(
     parseNflverseCsv(csv).map(row => ({ ...row, game_date: date })),
