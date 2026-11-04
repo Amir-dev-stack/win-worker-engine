@@ -583,7 +583,9 @@ export function buildNflverseMatchRecords(
       ["solo_tackle_1_player_id", "solo_tackle_1_player_name", "solo_tackles"],
       ["solo_tackle_2_player_id", "solo_tackle_2_player_name", "solo_tackles"],
       ["assist_tackle_1_player_id", "assist_tackle_1_player_name", "assisted_tackles"],
-      ["assist_tackle_2_player_id", "assist_tackle_2_player_name", "assisted_tackles"]
+      ["assist_tackle_2_player_id", "assist_tackle_2_player_name", "assisted_tackles"],
+      ["assist_tackle_3_player_id", "assist_tackle_3_player_name", "assisted_tackles"],
+      ["assist_tackle_4_player_id", "assist_tackle_4_player_name", "assisted_tackles"]
     ];
     for (const [idKey, nameKey, statKey] of tacklers) {
       const tackler = playerLine(game.playerStats, row[idKey], row[nameKey], defense);
@@ -595,11 +597,23 @@ export function buildNflverseMatchRecords(
       ["half_sack_2_player_id", "half_sack_2_player_name", "half_sacks"],
       ["interception_player_id", "interception_player_name", "interceptions"],
       ["fumble_recovery_1_player_id", "fumble_recovery_1_player_name", "fumble_recoveries"],
-      ["fumble_recovery_2_player_id", "fumble_recovery_2_player_name", "fumble_recoveries"]
+      ["fumble_recovery_2_player_id", "fumble_recovery_2_player_name", "fumble_recoveries"],
+      ["tackle_for_loss_1_player_id", "tackle_for_loss_1_player_name", "tackles_for_loss"],
+      ["tackle_for_loss_2_player_id", "tackle_for_loss_2_player_name", "tackles_for_loss"],
+      ["qb_hit_1_player_id", "qb_hit_1_player_name", "qb_hits"],
+      ["qb_hit_2_player_id", "qb_hit_2_player_name", "qb_hits"],
+      ["pass_defense_1_player_id", "pass_defense_1_player_name", "passes_defended"],
+      ["pass_defense_2_player_id", "pass_defense_2_player_name", "passes_defended"],
+      ["forced_fumble_player_1_player_id", "forced_fumble_player_1_player_name", "forced_fumbles"],
+      ["forced_fumble_player_2_player_id", "forced_fumble_player_2_player_name", "forced_fumbles"]
     ];
     for (const [idKey, nameKey, statKey] of defenderEvents) {
       const defender = playerLine(game.playerStats, row[idKey], row[nameKey], defense);
       if (defender) increment(defender._statLine.defense, statKey);
+    }
+    const blockedPlayer = playerLine(game.playerStats, row.blocked_player_id, row.blocked_player_name, defense);
+    if (blockedPlayer && (hasValue(row, "blocked_player_id") || playType === "field_goal" || playType === "punt")) {
+      increment(blockedPlayer._statLine.defense, "blocks");
     }
     // nflverse PBP uses kicker_player_id/name for both field goals and extra points.
     const kicker = playerLine(game.playerStats, row.kicker_player_id, row.kicker_player_name, kickingTeam);
