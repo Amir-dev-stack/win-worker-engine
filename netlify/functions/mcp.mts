@@ -58,7 +58,7 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
 
   server.registerTool("list_win_audit_records", {
     title: "List WIN audit records",
-    description: "List recent records from a strict allowlist of WIN research, historical data, calibration, settlement, reviewer and learning collections. Does not expose human bookmaker account credentials or permit writes.",
+    description: "List recent records from a strict allowlist of WIN historical data, calibration, settlement, reviewer and learning collections, plus read-only research-run metadata. Cannot start research, mutate records, approve coupons or place bets.",
     inputSchema: {
       category: z.enum(["calibration_reports","settled_market_datasets","observed_market_snapshots","historical_event_datasets","consensus_market_datasets","player_event_datasets","department_smoke_tests","review_operations","lesson_review_cases","win_post_match_cases","win_coupon_candidates","research_runs","research_jobs","learning_cycles","lessons"]),
       limit: z.number().int().min(1).max(100).optional()
@@ -73,7 +73,7 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
 
   server.registerTool("get_win_audit_record", {
     title: "Get one WIN audit record",
-    description: "Read one exact record by ID from the same allowlisted audit collections. Strictly read-only; no arbitrary store paths are accepted.",
+    description: "Read one exact record by ID from the same allowlisted audit collections, including read-only research-run metadata. Strictly read-only; no arbitrary store paths are accepted.",
     inputSchema: {
       category: z.enum(["calibration_reports","settled_market_datasets","observed_market_snapshots","historical_event_datasets","consensus_market_datasets","player_event_datasets","department_smoke_tests","review_operations","lesson_review_cases","win_post_match_cases","win_coupon_candidates","research_runs","research_jobs","learning_cycles","lessons"]),
       recordId: z.string().min(1).max(300)
