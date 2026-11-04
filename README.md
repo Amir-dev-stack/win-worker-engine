@@ -328,3 +328,7 @@ WIN now provides an optional, manually triggered connector for selected StatsBom
 ## SportScore live multi-sport API
 
 WIN includes an on-demand, no-key SportScore match-list connector for football, basketball, cricket and tennis. It uses the provider's public free tier with the required visible `Powered by SportScore` dofollow link, a 60-second cache and no scheduled polling. Its match rows are source-reported supplementary evidence only; they do not directly settle predictions or coupons. See [docs/SPORTSCORE_LIVE_API.md](docs/SPORTSCORE_LIVE_API.md) for the published usage terms, request limits, attribution and safeguards.
+
+## SkillCorner Open Data — ACB basketball
+
+WIN includes an optional, manual import of three SkillCorner Open Data ACB 2025/26 player-team-season aggregate CSVs (shots, drives and picks). The upstream README reports offense-only aggregate coverage of 293/327 games. It is stored separately from match-level datasets; raw 25fps tracking files are not imported, and traded-player season-total rows are kept distinct from per-team rows. SkillCorner credit is preserved. See [docs/SKILLCORNER_BASKETBALL.md](docs/SKILLCORNER_BASKETBALL.md) for limitations, provenance and import controls.
