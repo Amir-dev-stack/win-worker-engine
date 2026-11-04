@@ -176,6 +176,13 @@ test("American-football coverage recognises source play types and leaves unavail
   });
   assert.ok(coverage.team.find(group => group.id === "passing").availableMetrics.includes("pass_attempts"));
   assert.ok(coverage.team.find(group => group.id === "rushing").availableMetrics.includes("rushing_yards"));
+  const advancedCoverage = coverage.team.find(group => group.id === "advanced");
+  assert.ok(advancedCoverage.availableMetrics.includes("epa_total"));
+  assert.ok(advancedCoverage.availableMetrics.includes("epa_per_play"));
+  assert.ok(advancedCoverage.availableMetrics.includes("success_rate"));
+  assert.ok(advancedCoverage.availableMetrics.includes("air_yards_per_attempt"));
+  assert.ok(advancedCoverage.availableMetrics.includes("yards_after_catch_per_completion"));
+  assert.ok(advancedCoverage.availableMetrics.includes("win_probability_added"));
   assert.ok(coverage.player.find(group => group.id === "passing").availableMetrics.includes("completions"));
   assert.equal(coverage.player.find(group => group.id === "rating").missingMetrics.includes("rating"), true);
   assert.ok(coverage.eventTypes.find(event => event.eventType === "kickoff").status === "present");
