@@ -122,9 +122,9 @@ test("NFL source-row audit rejects impossible dates, malformed scores and confli
   assert.equal(audit.rejectedByReason.home_score_invalid, 1);
   assert.equal(audit.rejectedByReason.game_identity_conflict, 2);
   assert.deepEqual(audit.conflictingGames, ["CONFLICT"]);
-  assert.equal(audit.gamesSeen, 3);
+  assert.equal(audit.gamesSeen, 4);
   assert.equal(audit.gamesAccepted, 1);
-  assert.equal(audit.gamesRejected, 2);
+  assert.equal(audit.gamesRejected, 3);
 });
 
 test("NFL CSV parser fails closed on duplicate headers and mismatched column counts", () => {
