@@ -148,9 +148,15 @@ test("real WIN coupon follow-up, independent outcome review and second-stage les
     assert.equal(outcomeReview.body.coupon.outcome, "lost");
     assert.equal(outcomeReview.body.reviewCase.reviewStatus, "approved");
 
+    const writesBeforeRetry = memoryStore.writes.length;
     const retriedOutcomeReview = await reviewCaseForIsolatedTest(couponReview, { credentialId: "reviewer-outcome-1" });
     assert.equal(retriedOutcomeReview.status, 200);
-    assert.deepEqual(retriedOutcomeReview.body, outcomeReview.body, "an exact retry must return the prior completed result");
+    assert.deepEqual(
+      JSON.parse(JSON.stringify(retriedOutcomeReview.body)),
+      JSON.parse(JSON.stringify(outcomeReview.body)),
+      "an exact retry must return the same JSON-persisted completed result"
+    );
+    assert.equal(memoryStore.writes.length, writesBeforeRetry, "an exact retry must not write settlement artifacts again");
 
     const diagnosticId = "post-match-diagnostic-isolated-e2e-coupon-1";
     const candidate = await memoryStore.get("library/lessons/" + diagnosticId);
