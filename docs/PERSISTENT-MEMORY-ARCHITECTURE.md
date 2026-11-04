@@ -47,7 +47,7 @@ The migration also defines `win_financial_accounts` and an append-only `win_fina
 ## Backups and recovery
 
 - Neon is the structured-memory database; Netlify Blobs is the independent provider replica and versioned backup destination.
-- The scheduled backup writes AES-256-GCM encrypted, gzip-compressed JSONL snapshots to `library/memory-backups/`, with a manifest containing row/byte counts, SHA-256 hashes, collection counts, schema version and export time. Retention is 30 days.
+- The scheduled backup writes AES-256-GCM encrypted, gzip-compressed JSONL snapshots to `library/memory-backups/`, including both structured agent memory and the transactional financial accounts/ledger. The manifest contains row/byte counts, SHA-256 hashes, collection counts, schema version and export time. Retention is 30 days. Restore replays missing financial accounts/ledger entries idempotently and never overwrites existing account configuration or ledger rows.
 - `WIN_MEMORY_BACKUP_KEY` is a separate 32-byte hex secret. Keep an offline copy in a password manager or other secure secret store. Losing this key makes existing encrypted snapshots unrecoverable.
 - The restore endpoint only replays snapshots into Neon while Blobs is primary; it does not delete records or overwrite the Blobs copy. Restore is an explicit owner action, not automatic rollback.
 - This provides two-provider redundancy (Neon + Netlify). It is not a third-provider/offline backup. For protection against loss of both provider accounts, periodically copy encrypted snapshots and the key to a separate secure location.
