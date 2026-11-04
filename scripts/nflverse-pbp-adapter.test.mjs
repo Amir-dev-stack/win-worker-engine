@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   parseNflverseCsv,
-  buildNflverseMatchRecords
+  buildNflverseMatchRecords,
+  auditNflverseRows
 } from "../netlify/lib/nflverse-pbp-adapter.mts";
 import {
   extractPlayerPerformances,
@@ -57,6 +58,9 @@ test("NFL match builder creates scores, team box scores, player lines and play e
   assert.equal(match.awayTeam, "Baltimore Ravens");
   assert.deepEqual(match.fullTimeScore, [7, 0]);
   assert.equal(match.status, "completed");
+  assert.equal(match.eventDate, "2026-09-10");
+  assert.equal(match.eventStart, null);
+  assert.equal(match.eventTimePrecision, "date_only");
   assert.equal(match.playCount, 3);
   assert.ok(match.events.some(event => event.type === "kickoff"));
   assert.ok(match.events.some(event => event.eventTypes.includes("completion")));
@@ -95,4 +99,45 @@ test("American-football coverage recognises source play types and leaves unavail
   assert.equal(coverage.player.find(group => group.id === "rating").missingMetrics.includes("rating"), true);
   assert.ok(coverage.eventTypes.find(event => event.eventType === "kickoff").status === "present");
   assert.ok(coverage.eventTypes.find(event => event.eventType === "completion").status === "present");
+});
+
+
+test("NFL source-row audit rejects impossible dates, malformed scores and conflicting game identities", () => {
+  const valid = {
+    game_id: "2026_01_KC_BAL", game_date: "2026-09-10", home_team: "KC", away_team: "BAL",
+    home_score: "7", away_score: "0", play_id: "1"
+  };
+  const rows = [
+    valid,
+    { ...valid, game_id: "BAD_DATE", game_date: "2026-02-30" },
+    { ...valid, game_id: "BAD_SCORE", home_score: "-1" },
+    { ...valid, game_id: "CONFLICT", home_team: "KC" },
+    { ...valid, game_id: "CONFLICT", home_team: "BUF" }
+  ];
+  const audit = auditNflverseRows(rows);
+  assert.equal(audit.rowsSeen, 5);
+  assert.equal(audit.rowsAccepted, 1);
+  assert.equal(audit.rowsRejected, 4);
+  assert.equal(audit.rejectedByReason.game_date_invalid, 1);
+  assert.equal(audit.rejectedByReason.home_score_invalid, 1);
+  assert.equal(audit.rejectedByReason.game_identity_conflict, 2);
+  assert.deepEqual(audit.conflictingGames, ["CONFLICT"]);
+  assert.equal(audit.gamesSeen, 3);
+  assert.equal(audit.gamesAccepted, 1);
+  assert.equal(audit.gamesRejected, 2);
+});
+
+test("NFL CSV parser fails closed on duplicate headers and mismatched column counts", () => {
+  assert.throws(
+    () => parseNflverseCsv("game_id,game_date,home_team,away_team,home_team\\n1,2026-09-10,KC,BAL,KC"),
+    /nflverse_csv_schema_duplicate_header/
+  );
+  assert.throws(
+    () => parseNflverseCsv("game_id,game_date,home_team,away_team\\n1,2026-09-10,KC"),
+    /nflverse_csv_column_count_mismatch_at_row_2/
+  );
+  assert.throws(
+    () => parseNflverseCsv("game_id,game_date,home_team,away_team\\n1,2026-09-10,KC,BAL,EXTRA"),
+    /nflverse_csv_column_count_mismatch_at_row_2/
+  );
 });
