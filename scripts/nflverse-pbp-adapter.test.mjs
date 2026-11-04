@@ -5,7 +5,8 @@ import {
   buildNflverseMatchRecords,
   auditNflverseRows,
   parseNflverseScheduleCsv,
-  enrichNflverseRecordsWithSchedule
+  enrichNflverseRecordsWithSchedule,
+  measureNflverseDatasetPayloads
 } from "../netlify/lib/nflverse-pbp-adapter.mts";
 import {
   extractPlayerPerformances,
@@ -40,6 +41,40 @@ const csv = [
     season_type:"REG",week:1,play_type_nfl:"END_GAME",desc:"END GAME"
   })
 ].join("\n");
+
+test("NFL payload size audit reports exact UTF-8 bytes and distribution metrics", () => {
+  const records = [
+    { eventId: "2026_01_A_B", playCount: 2, playerCount: 1, eventDate: "2026-09-10", eventTimePrecision: "date_only", events: [{ sourceFields: { desc: "small" } }] },
+    { eventId: "2026_02_C_D", playCount: 4, playerCount: 2, eventDate: "2026-09-17", eventTimePrecision: "date_only", events: [{ sourceFields: { desc: "a longer play description" } }] }
+  ];
+  const metadata = {
+    season: 2026, sourceUrl: "https://source.example/pbp.csv",
+    retrievedAt: "2026-11-04T10:00:00.000Z", rawChecksum: "pbp-hash", scheduleChecksum: "schedule-hash"
+  };
+  const measured = measureNflverseDatasetPayloads(records, metadata);
+  const expected = records.map(record => {
+    const datasetId = "nflverse-pbp-2026-" + record.eventId;
+    const payload = {
+      id: datasetId, providerId: "nflverse-pbp-data", sport: "american_football", season: "2026",
+      competition: "NFL", sourceUrl: metadata.sourceUrl, sourceLicence: "CC-BY-4.0",
+      licenceReference: "https://github.com/nflverse/nflverse-data/blob/main/LICENSE.md",
+      attribution: "nflverse play-by-play and schedule data — CC BY 4.0. Attribute nflverse and any upstream provider stated by the release.",
+      retrievedAt: metadata.retrievedAt, rawChecksum: metadata.rawChecksum,
+      totalRows: 1, scoredRows: 1, playCount: record.playCount, playerCount: record.playerCount,
+      eventDate: record.eventDate, eventTimePrecision: record.eventTimePrecision,
+      records: [record], origin: "provider_historical_data", lab: "model-lab"
+    };
+    return Buffer.byteLength(JSON.stringify(payload), "utf8");
+  }).sort((a,b) => a-b);
+  assert.equal(measured.recordCount, 2);
+  assert.deepEqual(measured.largestRecords.map(item => item.jsonPayloadBytes), [...expected].reverse());
+  assert.equal(measured.jsonPayloadBytesTotal, expected.reduce((sum, size) => sum + size, 0));
+  assert.equal(measured.averageJsonPayloadBytes, Math.round(measured.jsonPayloadBytesTotal / 2));
+  assert.equal(measured.medianJsonPayloadBytes, expected[0]);
+  assert.equal(measured.p90JsonPayloadBytes, expected[1]);
+  assert.equal(measured.p95JsonPayloadBytes, expected[1]);
+  assert.equal(measured.largestJsonPayloadBytes, expected[1]);
+});
 
 test("nflverse CSV parser preserves commas in quoted descriptions and maps headers", () => {
   const rows = parseNflverseCsv(csv);
