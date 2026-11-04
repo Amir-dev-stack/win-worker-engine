@@ -9,10 +9,10 @@ Add an independent PostgreSQL copy of WIN's existing key/value memory without de
 - **Netlify Blobs** remains the current production source of truth by default.
 - **Neon PostgreSQL** stores the same `kind/id` records in `win_memory_records`.
 - `WIN_MEMORY_BACKEND=blobs` (default): existing behaviour; no Neon connection is attempted.
-- `WIN_MEMORY_BACKEND=mirror`: Blobs is primary and every successful write is also copied to Neon. Reads remain Blobs-first and fall back to Neon for individual missing keys; list reads include the primary collection and use the replica only when the primary has fewer than the requested limit.
-- `WIN_MEMORY_BACKEND=neon`: Neon is primary and Blobs is the replica. Do not enable until a complete backfill and reconciliation has been performed.
+- `WIN_MEMORY_BACKEND=mirror`: Blobs is primary and writes to an explicit allowlist of structured memory collections are also copied to Neon. Large raw data collections are intentionally excluded. Reads remain Blobs-first and can fall back to Neon for individual missing keys; list reads include the primary collection and consult the replica when the primary has fewer than the requested limit.
+- `WIN_MEMORY_BACKEND=neon`: Neon is primary only for the allowlisted structured memory collections; Blobs remains the primary store for raw data and the replica for structured memory. Do not enable until a complete backfill and reconciliation has been performed.
 
-Both stores are written on mutations. This is a recoverable dual-write, not a distributed transaction: a failure after the primary write can leave the replica behind. The request fails visibly; retrying the same stable key is idempotent. Monitor and reconcile before a backend cutover.
+Both stores are written on allowlisted structured-memory mutations. This is a recoverable dual-write, not a distributed transaction: a failure after the primary write can leave the replica behind. The request fails visibly; retrying the same stable key is idempotent. Monitor and reconcile before a backend cutover.
 
 ## Neon setup
 
@@ -36,7 +36,7 @@ The current store API uses a generic record table to preserve every existing WIN
 - `etag`: opaque per-write token for conditional updates
 - `created_at`, `updated_at`: database timestamps
 
-This includes agent profiles, observations, research runs, frozen predictions, match/player datasets, coupons, settlements, learning candidates and review records. It does not mark unverified user submissions or candidate lessons as trusted.
+This includes agent profiles, observations, research runs, frozen predictions, player/team entity dossiers, coupons, settlements, learning candidates and review records. Raw match timelines, play-by-play rows and provider payload archives are excluded. It does not mark unverified user submissions or candidate lessons as trusted.
 
 ## Backups and recovery
 
