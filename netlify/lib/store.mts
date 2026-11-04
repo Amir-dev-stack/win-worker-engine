@@ -200,12 +200,13 @@ export async function getWithMetadata<T>(kind: string, id: string): Promise<{ va
   const { primary, secondary } = await stores(recordKey);
   try {
     const result = await primary.getWithMetadata(recordKey, { type: "json", consistency: "strong" });
-    return result ? { value: result.data as T, etag: result.etag } : null;
+    if (result) return { value: result.data as T, etag: result.etag };
   } catch (error) {
     if (!secondary) throw error;
-    const fallback = await secondary.getWithMetadata(recordKey, { type: "json", consistency: "strong" });
-    return fallback ? { value: fallback.data as T, etag: fallback.etag } : null;
   }
+  if (!secondary) return null;
+  const fallback = await secondary.getWithMetadata(recordKey, { type: "json", consistency: "strong" });
+  return fallback ? { value: fallback.data as T, etag: fallback.etag } : null;
 }
 
 /** Diagnostic metadata only; never returns a connection string or credential. */
