@@ -118,6 +118,45 @@ test("API-Football record rows are consumed by WIN's multi-provider match eviden
   assert.equal(pack.headToHead[0].score[1], 1);
 });
 
+test("API-Football per-player ratings and stats reach WIN post-match evidence", () => {
+  const dossier = buildApiFootballMatchDossier({
+    fixturePayload,
+    statisticsPayload: { response: [{ team: { id: 1, name: "Home FC" }, statistics: [{ type: "Total Shots", value: 14 }] }] },
+    playersPayload: { response: [{ team: { id: 1, name: "Home FC" }, players: [{ player: { id: 10, name: "Player One", pos: "F" }, statistics: [{ games: { rating: "8.1", minutes: 90, position: "F" }, shots: { total: 4, on: 2 }, passes: { total: 20, key: 2 } }] }] }] },
+    enabledDomains: ["player_match_statistics","player_ratings","team_match_statistics","results"],
+    retrievedAt: "2026-11-04T19:00:00.000Z"
+  }, { allowPlayerRatings: true, allowResults: true });
+  const record = buildApiFootballEvidenceRecord(dossier);
+  const pack = buildMatchEvidencePack({
+    sport: "football",
+    competition: "UEFA Champions League",
+    homeTeam: "Home FC",
+    awayTeam: "Away FC",
+    startTime: "2026-11-04T20:00:00+00:00"
+  }, {
+    nowMs: Date.parse("2026-11-05T12:00:00Z"),
+    historicalDatasets: [{
+      id: dossier.id,
+      providerId: "api-sports",
+      sport: "football",
+      competition: "UEFA Champions League",
+      season: "2026",
+      sourceUrl: dossier.provenance.sourceUrl,
+      sourceLicence: "API-Football licensed commercial data",
+      retrievedAt: dossier.provenance.retrievedAt,
+      rawChecksum: dossier.provenance.rawPayloadSha256,
+      records: [record],
+      origin: "provider_historical_data"
+    }]
+  });
+  assert.equal(pack.postMatch.status, "source_reported_completed_match");
+  assert.equal(pack.postMatch.playerPerformance.players.length, 1);
+  assert.equal(pack.postMatch.playerPerformance.players[0].name, "Player One");
+  assert.equal(pack.postMatch.playerPerformance.players[0].rating, 8.1);
+  assert.ok(pack.postMatch.details.teamStats);
+  assert.ok(pack.postMatch.details.coverage);
+});
+
 test("result scores are redacted unless the separate results domain is enabled", () => {
   const dossier = buildApiFootballMatchDossier({ fixturePayload });
   assert.equal(dossier.fixture.goals, null);
