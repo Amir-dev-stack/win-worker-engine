@@ -98,6 +98,8 @@ The connector limits each response to 5 MB and each API request to 25 seconds. O
 
 Every stored dossier includes the raw source payloads received by the connector, endpoint audit/quota metadata, retrieval time, a SHA-256 digest of the imported payload set, provider attribution, source URL, and a flag that source-reported data has not been independently verified by WIN.
 
+Each stored dossier also contains a single normalized `records[]` evidence row with `homeTeam`, `awayTeam`, `eventStart`, result fields only when the `results` domain is enabled, and the source-provided team/player/event detail fragments. This is the shared schema consumed by WIN's existing multi-provider `buildMatchEvidencePack` pipeline. The original dossier remains alongside that row so the detailed response and its raw source fields are not lost during cross-provider merging.
+
 API-Football does not become an independent ground-truth validator just because it is the provider. Results used in learning/settlement should still be independently corroborated when the learning policy requires that.
 
 ## Current implementation boundary
