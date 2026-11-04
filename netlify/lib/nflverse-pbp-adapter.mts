@@ -375,7 +375,10 @@ function buildPlayTimeline(rows: Record<string, string>[]) {
       playType: text(row.play_type) || null,
       passer: text(row.passer_player_name) || null,
       rusher: text(row.rusher_player_name) || null,
-      receiver: text(row.receiver_player_name) || null
+      receiver: text(row.receiver_player_name) || null,
+      // Keep every non-empty provider-native field, including metrics not yet
+      // normalised by WIN, so the original play evidence is not discarded.
+      sourceFields: Object.fromEntries(Object.entries(row).filter(([, value]) => text(value) !== ""))
     });
     if (flag(row.quarter_end)) {
       timeline.push({
@@ -573,6 +576,9 @@ export function buildNflverseMatchRecords(
       competition: "NFL", gameType: game.gameType || game.seasonType || null,
       week: game.week, event: homeName + " vs " + awayName,
       homeTeam: homeName, awayTeam: awayName,
+      sourceDataGrain: "one_row_per_play",
+      sourceSchemaFields: Object.keys(game.rows[0] || {}),
+      sourceSchemaFieldCount: Object.keys(game.rows[0] || {}).length,
       eventStart: null, eventDate: game.date, eventTimePrecision: "date_only",
       fullTimeScore: [game.homeScore, game.awayScore], status: "completed",
       teamStats, playerStats, events: eventTimeline, eventTimeline,
