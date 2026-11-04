@@ -129,20 +129,23 @@ test("NFL schedule joins exact game identity and converts Eastern kickoff to UTC
 });
 
 test("NFL schedule kickoff conversion handles DST and rejects ambiguous or nonexistent local times", () => {
-  const base = buildNflverseMatchRecords(parseNflverseCsv(csv), 2026, "https://source.example/pbp.csv")[0];
+  const baseFor = date => buildNflverseMatchRecords(
+    parseNflverseCsv(csv).map(row => ({ ...row, game_date: date })),
+    2026, "https://source.example/pbp.csv"
+  )[0];
   const scheduleFor = (date, time) => parseNflverseScheduleCsv([
     "game_id,gameday,gametime,away_team,home_team",
-    \`2026_01_KC_BAL,\${date},\${time},BAL,KC\`
+    "2026_01_KC_BAL," + date + "," + time + ",BAL,KC"
   ].join("\n"));
-  const summer = enrichNflverseRecordsWithSchedule([base], scheduleFor("2026-07-15", "13:00"));
+  const summer = enrichNflverseRecordsWithSchedule([baseFor("2026-07-15")], scheduleFor("2026-07-15", "13:00"));
   assert.equal(summer.records[0].eventStart, "2026-07-15T17:00:00.000Z");
-  const winter = enrichNflverseRecordsWithSchedule([base], scheduleFor("2026-12-15", "13:00"));
+  const winter = enrichNflverseRecordsWithSchedule([baseFor("2026-12-15")], scheduleFor("2026-12-15", "13:00"));
   assert.equal(winter.records[0].eventStart, "2026-12-15T18:00:00.000Z");
-  const springGap = enrichNflverseRecordsWithSchedule([base], scheduleFor("2026-03-08", "02:30"));
+  const springGap = enrichNflverseRecordsWithSchedule([baseFor("2026-03-08")], scheduleFor("2026-03-08", "02:30"));
   assert.equal(springGap.matched, 0);
-  const fallFold = enrichNflverseRecordsWithSchedule([base], scheduleFor("2026-11-01", "01:30"));
+  const fallFold = enrichNflverseRecordsWithSchedule([baseFor("2026-11-01")], scheduleFor("2026-11-01", "01:30"));
   assert.equal(fallFold.matched, 0);
-  const afterFold = enrichNflverseRecordsWithSchedule([base], scheduleFor("2026-11-01", "03:30"));
+  const afterFold = enrichNflverseRecordsWithSchedule([baseFor("2026-11-01")], scheduleFor("2026-11-01", "03:30"));
   assert.equal(afterFold.records[0].eventStart, "2026-11-01T08:30:00.000Z");
 });
 
