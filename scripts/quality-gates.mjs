@@ -153,6 +153,14 @@ add("Detailed health diagnostics require WIN bearer authentication and are not c
 add("Dashboard static assets require a signed HttpOnly session while APIs and ChatGPT OAuth remain reachable", dashboardAuth.includes('path: "/*"') && dashboardAuth.includes('"/api/*"') && dashboardAuth.includes('"/mcp"') && dashboardAuth.includes('"/oauth/*"') && dashboardAuth.includes('"/.well-known/*"') && dashboardAuth.includes('["WIN_DASHBOARD", "PASSWORD"].join("_")') && dashboardAuth.includes('["WIN_DASHBOARD", "SESSION_SECRET"].join("_")') && dashboardAuth.includes("crypto.subtle.verify") && dashboardAuth.includes("HttpOnly") && dashboardAuth.includes("SameSite=Strict") && dashboardAuth.includes("return loginPage();"), "The dashboard fails closed behind an HMAC-signed eight-hour session; bearer-protected APIs and OAuth/MCP routes are excluded from the dashboard gate.");
 add("Deploy builds do not install a floating Netlify CLI dependency", !pkg.includes('"netlify-cli":') && pkg.includes("netlify-cli@27.14.2 dev"), "The deploy dependency tree stays clear of the floating Netlify CLI release that introduced the unavailable cache-utils version; local development uses a pinned CLI.");
 add("Dashboard sessions fail closed and logout clears the cookie", dashboardAuth.includes("if (password.length < 32 || sessionSecret.length < 32)") && dashboardAuth.includes("/__win_dashboard_logout") && dashboardAuth.includes('secureCookie(request, "", 0)') && dashboardAuth.includes("function isSameOriginLoginRequest(") && dashboardAuth.includes('request.headers.get("sec-fetch-site")') && dashboardAuth.includes('fetchSite === "same-origin"') && dashboardAuth.includes('fetchMode === "navigate"') && dashboardAuth.includes('request.headers.get("origin")') && dashboardAuth.includes("Max-Age=\" + maxAge"), "Short or missing secrets cannot expose the dashboard; login is same-origin and logout invalidates the browser session cookie.");
+add("TipsAudit historical predictions are catalogued as research-only pending snapshot and rights review",
+  providers.includes("tipsaudit-track-record-public") &&
+  providers.includes('accessMode:"research_candidate"') &&
+  providers.includes('licenceReview:"required"') &&
+  providers.includes("timestamped_track_record_snapshots") &&
+  (await read("scripts/public-data-source-policy.test.mjs")).includes("providerMayRunAutomatically") &&
+  (await read("scripts/public-data-source-policy.test.mjs")).includes("snapshot hash matches"),
+  "The source is discoverable, but immutable pre-kickoff snapshot, manifest, timestamp-proof, data-rights and methodology checks must pass before ingestion.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;

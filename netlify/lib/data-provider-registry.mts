@@ -19,6 +19,8 @@ export type ProviderRecord = {
   licenceReview: "required" | "documented_open_terms" | "approved";
   automationAllowed: boolean;
   notes: string;
+  licenceReference?: string;
+  attribution?: string;
 };
 
 export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
@@ -128,6 +130,18 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     sports:["tennis"], dataDomains:["historical_match_winner_probabilities","fair_closing_odds","best_available_closing_price","match_results","player_metadata"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
     notes:"5,791 ATP/WTA singles matches, CC BY 4.0. Includes consensus fair prices and best available closing prices, but the best-price bookmaker identity is not supplied; retired and walkover matches must be excluded from ordinary settlement calibration."
+  },
+  {
+    id:"tipsaudit-track-record-public",
+    name:"TipsAudit public pre-match 1X2 track record",
+    website:"https://github.com/tipsaudit/track-record-public",
+    sports:["football"],
+    dataDomains:["historical_pre_match_predictions","model_probabilities","pinnacle_prices","closing_line_value","bookmaker_margins","timestamped_track_record_snapshots"],
+    accessMode:"research_candidate", historicalSupport:"documented", authentication:"none",
+    licenceReview:"required", automationAllowed:false,
+    licenceReference:"https://github.com/tipsaudit/track-record-public/blob/main/LICENSE",
+    attribution:"TipsAudit — https://tipsaudit.com",
+    notes:"Candidate only. The repository states CC BY 4.0 and publishes a monthly 1X2 CSV plus daily immutable JSON snapshots, a SHA-256 manifest and OpenTimestamps proofs. Before ingestion, verify that each prediction is present in a snapshot captured before its kick-off and that the snapshot hash matches the manifest; newest timestamp proofs may still be pending. Exclude void rows. Do not treat source-reported results or CLV as independent ground truth. Its documented CLV is raw-price versus raw-price, best-soft fields include exchanges, earlier best-soft history may contain look-ahead, and Betfair venue labelling was mixed through 2026-10-15. Dataset-specific data rights and methodology remain under review; no automatic download or ingestion."
   },
   {
     id:"sportmonks", name:"Sportmonks", website:"https://www.sportmonks.com/",
