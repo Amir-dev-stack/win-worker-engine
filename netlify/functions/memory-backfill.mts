@@ -27,8 +27,7 @@ const PREFIXES = [
   "library/coupon-history/",
   "library/coupon-research-cases/",
   "library/win-coupon-candidates/",
-  "library/learning-cycles/",
-  "library/meta/"
+  "library/learning-cycles/"
 ];
 const STORE_OPTIONS = { name: "win-engine", region: "eu-central-1", consistency: "strong" as const };
 
