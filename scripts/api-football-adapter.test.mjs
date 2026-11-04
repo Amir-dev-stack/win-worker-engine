@@ -155,6 +155,8 @@ test("API-Football per-player ratings and stats reach WIN post-match evidence", 
   assert.equal(pack.postMatch.playerPerformance.players[0].rating, 8.1);
   assert.ok(pack.postMatch.details.teamStats);
   assert.ok(pack.postMatch.details.coverage);
+  assert.ok(pack.postMatch.availableStatisticSections.includes("halfTimeTeamStatistics"));
+  assert.ok(pack.postMatch.availableStatisticSections.includes("coverage"));
 });
 
 test("result scores are redacted unless the separate results domain is enabled", () => {
