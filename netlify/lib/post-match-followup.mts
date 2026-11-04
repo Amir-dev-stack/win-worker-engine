@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { get, list, put } from "./store.mts";
+import { aggregateCouponOutcome, evaluateFullTimeLeg as evaluateLeg, isEligibleWinForecastCoupon } from "./win-learning-core.mjs";
 
 const API = "https://api.openligadb.de";
 const SOURCE_ROOT = "https://api.openligadb.de";
@@ -43,43 +44,6 @@ function extractFinalScore(match:Match){
  if(candidates.length!==1)return null;
  const result=candidates[0];
  return {home:Number(result.pointsTeam1),away:Number(result.pointsTeam2),resultName:clean(result.resultName,80),resultTypeId:result.resultTypeID??null};
-}
-function parseLine(text:string){
- const match=text.match(/(?:\+|over\s*|under\s*|o\s*|u\s*|[<>]\s*)?(\d+(?:[.,]\d+)?)/i);
- if(!match)return null;
- const value=Number(match[1].replace(",","."));return Number.isFinite(value)?value:null;
-}
-function evaluateLeg(leg:any,score:{home:number;away:number}):{status:string;reason:string}{
- const market=normalized(clean(leg.market,180)+" "+clean(leg.settlementRule,500));
- const pick=normalized(clean(leg.pick||leg.selection,180));
- const total=score.home+score.away;
- if(/first half|1st half|1st period|half time|halftime|1 polowa|pierwsza polowa/.test(market+" "+pick))
-  return {status:"unsupported_market",reason:"The source provides a match-final score; this period-specific market needs a period score."};
- if(/both teams to score|btts|obie druzyny strzela|obie druzyny/.test(market)){
-  const yes=score.home>0&&score.away>0;
-  const saysYes=/\b(yes|tak)\b/.test(" "+pick),saysNo=/\b(no|nie)\b/.test(" "+pick);
-  if(!saysYes&&!saysNo)return {status:"unsupported_market",reason:"BTTS pick could not be parsed safely."};
-  return {status:(yes===saysYes)?"won":"lost",reason:"Settled from the verified full-time score."};
- }
- if(/over|under|total goals|liczba goli|gole/.test(market)){
-  const line=parseLine(clean(leg.pick||leg.selection,180)+" "+clean(leg.market,180));
-  if(line===null)return {status:"unsupported_market",reason:"Goal-total line could not be extracted."};
-  const under=/under|ponizej|less than|poniżej/.test(pick)||/under|ponizej|less than/.test(market);
-  const over=/over|powyzej|more than/.test(pick)||/over|powyzej|more than/.test(market);
-  if(!under&&!over)return {status:"unsupported_market",reason:"Over/under direction could not be extracted."};
-  const status=total===line?"void":(over?(total>line):(total<line))?"won":"lost";
-  return {status,reason:"Settled from the verified full-time score and stated goal line."};
- }
- if(/1x2|match winner|moneyline|full time result|wynik meczu|zwyciezca meczu|zwycięzca meczu/.test(market)){
-  const selectedHome=/\b(1|home| gospodarze|team 1)\b/.test(" "+pick)||sameTeam(pick,leg.homeTeam||"");
-  const selectedAway=/\b(2|away|goście|goscie|team 2)\b/.test(" "+pick)||sameTeam(pick,leg.awayTeam||"");
-  const selectedDraw=/\b(x|draw|remis)\b/.test(" "+pick);
-  const result=score.home>score.away?"home":score.home<score.away?"away":"draw";
-  const chosen=selectedHome?"home":selectedAway?"away":selectedDraw?"draw":null;
-  if(!chosen)return {status:"unsupported_market",reason:"1X2 selection could not be mapped to home/draw/away."};
-  return {status:chosen===result?"won":"lost",reason:"Settled from the verified full-time score."};
- }
- return {status:"unsupported_market",reason:"This market is not yet supported by the deterministic result adapter."};
 }
 function xmlText(value:string){
  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,"$1")
@@ -254,13 +218,6 @@ function historicalDatasetResult(datasets:any[],leg:any,sport:string){
   sourceRetrievedAt:dataset.retrievedAt||null,verifiedEventIdentity:true
  };
 }
-function aggregateOutcome(legs:any[]){
- if(!legs.length||legs.some(x=>!["won","lost","void"].includes(x.status)))return "pending";
- if(legs.every(x=>x.status==="won"))return "won";
- if(legs.some(x=>x.status==="lost"))return "lost";
- if(legs.every(x=>x.status==="void"))return "void";
- return "partial";
-}
 async function saveLossLesson(coupon:any,leg:any,index:number){
  const id="post-match-diagnostic-"+coupon.id+"-"+index;
  if(await get<any>("library/lessons",id))return id;
@@ -353,7 +310,7 @@ async function processCoupon(coupon:any,historicalDatasets:any[],searchBudget:{r
     searchStatus:search.searchStatus||"not_run",checkedAt:new Date().toISOString()});
   }
  }
- const outcome=aggregateOutcome(legs);
+ const outcome=aggregateCouponOutcome(legs);
  const lost=legs.filter(x=>x.status==="lost");
  const lessonIds=[];
  for(const [idx,leg] of lost.entries())lessonIds.push(await saveLossLesson(coupon,leg,leg.index||idx+1));
@@ -396,7 +353,7 @@ export async function runPostMatchFollowups(){
   list<any>("library/model-lab/market-consensus-datasets",100)
  ]);
  const coupons=allCoupons.filter(x=>
-  x.origin==="win"&&x.outcome==="pending"&&Array.isArray(x.selections)&&x.selections.length>0
+  isEligibleWinForecastCoupon(x)
  ).sort((a,b)=>dateMs(a.createdAt)-dateMs(b.createdAt)).slice(0,BATCH_LIMIT);
  const summaries:any[]=[];
  for(const coupon of coupons){
@@ -436,7 +393,7 @@ export async function getPostMatchFollowupStatus(){
  ]);
  const latest=runs.sort((a,b)=>dateMs(b.startedAt)-dateMs(a.startedAt))[0]||null;
  const winCoupons=coupons.filter(x=>x.origin==="win");
- const eligibleCoupons=winCoupons.filter(x=>x.outcome==="pending"&&Array.isArray(x.selections)&&x.selections.length>0);
+ const eligibleCoupons=winCoupons.filter(isEligibleWinForecastCoupon);
  const blockedCandidates=candidates.filter(x=>x.status==="BLOCKED");
  return {
   lastCheck:state?.lastCheck||null,status:state?.status||"not_yet_run",latestRun:latest,

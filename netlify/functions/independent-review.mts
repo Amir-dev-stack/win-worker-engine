@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { authorized } from "../lib/auth.mts";
 import { get, getWithMetadata, list, put, putIfMatch, putIfNew, remove } from "../lib/store.mts";
+import { deriveReviewedCouponOutcome as deriveCouponOutcome } from "../lib/win-learning-core.mjs";
 
 const OWNER_SUBMITTER_CREDENTIAL = "owner-internal-token";
 const HUMAN_OUTCOMES = new Set(["won", "lost", "void", "partial", "cancelled"]);
@@ -219,14 +220,6 @@ async function completeReviewOperation(operationId: string, operation: any, etag
   throw new Error("Review artifacts were saved, but the completion marker needs the same review submission retried after the operation lease expires.");
 }
 
-function deriveCouponOutcome(legs:any[]){
- const results=legs.map((leg:any)=>String(leg.status||"").toLowerCase());
- if(!results.length||results.some((status:string)=>!["won","lost","void"].includes(status)))return null;
- if(results.includes("lost"))return "lost";
- if(results.every((status:string)=>status==="void"))return "void";
- if(results.every((status:string)=>status==="won"))return "won";
- return "partial";
-}
 async function reviewCase(body: any, reviewer: { credentialId: string }) {
   const caseType = clean(body?.caseType, 30);
   const caseId = clean(body?.caseId, 180);

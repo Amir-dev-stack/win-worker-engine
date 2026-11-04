@@ -3,6 +3,7 @@ import { getAIbudgetStatus } from "./ai-budget.mts";
 import { getPublicResearchSourceDiscoveryStatus } from "./public-source-discovery.mts";
 import { getPostMatchFollowupStatus } from "./post-match-followup.mts";
 import { WIN_DEPARTMENTS } from "./worker-org.mts";
+import { isIndependentlyValidatedLesson as validatedLesson } from "./win-learning-core.mjs";
 
 const goodOutcome = new Set(["won", "lost"]);
 const timeOf=(value:any)=>{const n=Date.parse(typeof value==="string"?value:"");return Number.isFinite(n)?n:0;};
@@ -14,14 +15,6 @@ function approved(item:any){
    Array.isArray(review?.evidence)&&review.evidence.some((e:any)=>{
     try{return new URL(typeof e==="string"?e:e?.url||e?.reference).protocol==="https:";}catch{return false;}
    }));
-}
-function validatedLesson(item:any){
- const r=item?.independentReview;
- return item?.validationStatus==="validated"&&r?.status==="approved"&&r?.reviewerAuth==="separate_reviewer_credential"&&
-  Boolean(item?.submitterCredentialId)&&Boolean(r?.reviewerCredentialId)&&item.submitterCredentialId!==r.reviewerCredentialId&&
-  timeOf(r.reviewedAt)>0&&Array.isArray(r.evidence)&&r.evidence.some((e:any)=>{
-   try{return new URL(typeof e==="string"?e:e?.url||e?.reference).protocol==="https:";}catch{return false;}
-  });
 }
 export async function getLearningObservatory(){
  const [budget,smoke,reviewerConfig,reviewOps,lessonCases,humanCases,winCases,lessons,coupons,

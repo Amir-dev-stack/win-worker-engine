@@ -1,4 +1,5 @@
 import { get, list, put, putIfNew, remove } from "./store.mts";
+import { isIndependentlyValidatedLesson } from "./win-learning-core.mjs";
 
 export type LibraryOutcome = "pending" | "won" | "lost" | "void" | "partial" | "cancelled" | "unknown";
 export type EntityKind = "sport" | "country" | "league" | "club" | "player" | "manager" | "event" | "specialist";
@@ -16,36 +17,6 @@ function slug(value: string): string {
 }
 function safeArray(value: unknown, max = 100): any[] {
   return Array.isArray(value) ? value.slice(0, max) : [];
-}
-function isHttpsUrl(value: unknown): boolean {
-  const raw = clean(value, 1500);
-  try {
-    const parsed = new URL(raw);
-    return parsed.protocol === "https:" && Boolean(parsed.hostname);
-  } catch {
-    return false;
-  }
-}
-function evidenceHasHttpsUrl(entry: any): boolean {
-  return isHttpsUrl(typeof entry === "string" ? entry : entry?.url || entry?.reference || entry?.sourceUrl || entry?.evidenceUrl);
-}
-
-/**
- * A lesson is trusted only after approval through the separate reviewer credential.
- * This proves credential separation, not the holder's real-world identity.
- */
-function isIndependentlyValidatedLesson(lesson: any): boolean {
-  const review = lesson?.independentReview;
-  const submitterCredentialId = clean(lesson?.submitterCredentialId, 256);
-  const reviewerCredential = clean(review?.reviewerCredentialId, 256);
-  return lesson?.validationStatus === "validated"
-    && review?.status === "approved"
-    && review?.reviewerAuth === "separate_reviewer_credential"
-    && Boolean(submitterCredentialId)
-    && Boolean(reviewerCredential)
-    && reviewerCredential !== submitterCredentialId
-    && Number.isFinite(Date.parse(review?.reviewedAt || ""))
-    && safeArray(review?.evidence, 30).some(evidenceHasHttpsUrl);
 }
 function searchText(value: unknown): string {
   try { return JSON.stringify(value).toLowerCase(); } catch { return ""; }

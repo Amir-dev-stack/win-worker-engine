@@ -57,6 +57,8 @@ const required = [
   "netlify/functions/post-match-check.mts",
   "netlify/functions/post-match-runner.mts",
   "netlify/lib/post-match-followup.mts",
+  "netlify/lib/win-learning-core.mjs",
+  "scripts/win-learning-core.test.mjs",
   "netlify/functions/learning-observatory.mts",
   "netlify/lib/learning-observatory.mts",
   "scripts/quality-gates.mjs"
