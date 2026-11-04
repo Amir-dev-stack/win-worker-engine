@@ -1,5 +1,8 @@
 import { requireAuth } from "../lib/auth.mts";
+import { getStore } from "@netlify/blobs";
 import { getMemoryBackendMode } from "../lib/store.mts";
+
+const STORE_OPTIONS = { name: "win-engine", region: "eu-central-1", consistency: "strong" as const };
 
 export default async (req: Request) => {
   const denied = requireAuth(req);
@@ -8,10 +11,16 @@ export default async (req: Request) => {
 
   const mode = getMemoryBackendMode();
   const configured = Boolean(process.env.WIN_NEON_DATABASE_URL?.trim());
+  let backfill: unknown = null;
+  try {
+    backfill = await getStore(STORE_OPTIONS).get("library/meta/neon-backfill-status", { type: "json" });
+  } catch {
+    backfill = null;
+  }
   if (mode === "blobs") {
     return Response.json({
       ok: true, backendMode: mode, primary: "netlify_blobs",
-      neonConfigured: configured, neonChecked: false,
+      neonConfigured: configured, neonChecked: false, backfill,
       note: "Neon is not active. Existing WIN storage remains on Netlify Blobs."
     }, { headers: { "cache-control": "no-store" } });
   }
@@ -22,7 +31,7 @@ export default async (req: Request) => {
       ok: true, backendMode: mode,
       primary: mode === "neon" ? "neon_postgres" : "netlify_blobs",
       replica: mode === "neon" ? "netlify_blobs" : "neon_postgres",
-      neonConfigured: configured, neonChecked: true,
+      neonConfigured: configured, neonChecked: true, backfill,
       recordCount: health.recordCount, databaseTime: health.databaseTime
     }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
