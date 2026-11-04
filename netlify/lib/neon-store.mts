@@ -117,6 +117,49 @@ export function getNeonStore() {
         SELECT COUNT(*)::text AS record_count, now()::text AS database_time
         FROM win_memory_records`);
       return { ok: true, recordCount: Number(rows[0]?.record_count || 0), databaseTime: rows[0]?.database_time || null };
+    },
+
+    async createFinancialAccount(input: {
+      accountId: string; currency: string; openingBalance: number;
+      maxTotalExposure: number; maxSingleExposure: number; dailyLossLimit: number;
+    }) {
+      const rows = rowsOf<any>(await sql()`INSERT INTO win_financial_accounts
+        (account_id, currency, opening_balance, max_total_exposure, max_single_exposure, daily_loss_limit)
+        VALUES (${input.accountId}, ${input.currency}, ${input.openingBalance},
+          ${input.maxTotalExposure}, ${input.maxSingleExposure}, ${input.dailyLossLimit})
+        RETURNING account_id, currency, opening_balance, max_total_exposure,
+          max_single_exposure, daily_loss_limit, is_active, created_at`);
+      return rows[0] ?? null;
+    },
+
+    async getFinancialAccount(accountId: string) {
+      const accounts = rowsOf<any>(await sql()`SELECT account_id, currency, opening_balance,
+        max_total_exposure, max_single_exposure, daily_loss_limit, is_active, created_at, updated_at
+        FROM win_financial_accounts WHERE account_id = ${accountId} LIMIT 1`);
+      if (!accounts[0]) return null;
+      const stats = rowsOf<any>(await sql()`SELECT
+        (SELECT COALESCE(SUM(amount), 0) FROM win_financial_ledger WHERE account_id = ${accountId})::text AS ledger_delta,
+        (SELECT COALESCE(SUM(exposure_delta), 0) FROM win_financial_ledger WHERE account_id = ${accountId})::text AS current_exposure,
+        (SELECT GREATEST(0, -COALESCE(SUM(amount), 0)) FROM win_financial_ledger
+          WHERE account_id = ${accountId} AND entry_type = 'realized_pnl'
+          AND created_at >= date_trunc('day', NOW()))::text AS daily_loss`);
+      return {
+        ...accounts[0],
+        current_balance: Number(accounts[0].opening_balance) + Number(stats[0]?.ledger_delta || 0),
+        current_exposure: Number(stats[0]?.current_exposure || 0),
+        daily_loss: Number(stats[0]?.daily_loss || 0)
+      };
+    },
+
+    async recordFinancialEntry(input: {
+      accountId: string; idempotencyKey: string; entryType: string;
+      amount: number; exposureDelta: number; referenceId?: string | null; metadata?: Record<string, unknown>;
+    }) {
+      const rows = rowsOf<any>(await sql()`SELECT * FROM win_record_financial_entry(
+        ${input.accountId}, ${input.idempotencyKey}, ${input.entryType},
+        ${input.amount}, ${input.exposureDelta}, ${input.referenceId || null},
+        ${JSON.stringify(input.metadata || {})}::jsonb)`);
+      return rows[0] ?? null;
     }
   };
 }
