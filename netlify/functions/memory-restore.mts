@@ -66,8 +66,16 @@ export default async (req: Request) => {
   }
 
   const lockKey = "library/meta/neon-restore-lock";
-  const lock = await blobs.setJSON(lockKey, { startedAt: new Date().toISOString(), date }, { onlyIfNew: true });
-  if (!lock?.modified) return Response.json({ error: "A Neon restore is already running." }, { status: 409 });
+  const now = new Date();
+  const lockValue = { startedAt: now.toISOString(), date };
+  const existingLock = await blobs.getWithMetadata(lockKey, { type: "json", consistency: "strong" });
+  if (existingLock?.data?.startedAt && now.getTime() - Date.parse(existingLock.data.startedAt) < 30 * 60_000) {
+    return Response.json({ error: "A Neon restore is already running." }, { status: 409 });
+  }
+  const lock = existingLock?.etag
+    ? await blobs.setJSON(lockKey, lockValue, { onlyIfMatch: existingLock.etag })
+    : await blobs.setJSON(lockKey, lockValue, { onlyIfNew: true });
+  if (!lock?.modified) return Response.json({ error: "Could not acquire the Neon restore lock." }, { status: 409 });
   const statusKey = "library/meta/neon-restore-status";
   const status: any = { date, status: "running", startedAt: new Date().toISOString(), restored: 0 };
   await blobs.setJSON(statusKey, status);
