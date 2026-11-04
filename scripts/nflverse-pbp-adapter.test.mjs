@@ -10,7 +10,7 @@ import {
   inspectStatisticCoverage
 } from "../netlify/lib/sport-stat-catalog.mts";
 
-const headers = "game_id,game_date,home_team,away_team,home_score,away_score,season_type,week,play_id,qtr,time,posteam,defteam,kicking_team,play_type,kickoff_attempt,pass_attempt,complete_pass,passing_yards,passer_player_id,passer_player_name,receiver_player_id,receiver_player_name,rush_attempt,rushing_yards,rusher_player_id,rusher_player_name,first_down,yards_gained,rush_touchdown,touchdown,desc".split(",");
+const headers = "game_id,game_date,home_team,away_team,home_score,away_score,season_type,week,play_id,play_type_nfl,qtr,time,posteam,defteam,kicking_team,play_type,kickoff_attempt,pass_attempt,complete_pass,passing_yards,passer_player_id,passer_player_name,receiver_player_id,receiver_player_name,rush_attempt,rushing_yards,rusher_player_id,rusher_player_name,first_down,yards_gained,rush_touchdown,touchdown,desc".split(",");
 const csvCell = value => '"' + String(value ?? "").replaceAll('"', '""') + '"';
 const csvRow = values => headers.map(key => csvCell(values[key])).join(",");
 const csv = [
@@ -32,12 +32,16 @@ const csv = [
     season_type:"REG",week:1,play_id:3,qtr:1,time:"13:40",posteam:"KC",defteam:"BAL",play_type:"run",
     rush_attempt:1,rushing_yards:5,rusher_player_id:"00-003",rusher_player_name:"R. Runner",
     first_down:1,yards_gained:5,rush_touchdown:1,touchdown:1,desc:"Five-yard rushing touchdown"
+  }),
+  csvRow({
+    game_id:"2026_01_KC_BAL",game_date:"2026-09-10",home_team:"KC",away_team:"BAL",home_score:7,away_score:0,
+    season_type:"REG",week:1,play_type_nfl:"END_GAME",desc:"END GAME"
   })
 ].join("\n");
 
 test("nflverse CSV parser preserves commas in quoted descriptions and maps headers", () => {
   const rows = parseNflverseCsv(csv);
-  assert.equal(rows.length, 3);
+  assert.equal(rows.length, 4);
   assert.equal(rows[0].desc, "Kickoff, opening play");
   assert.equal(rows[1].desc, "Pass complete, 10 yards");
   assert.equal(rows[1].pass_attempt, "1");
@@ -65,6 +69,7 @@ test("NFL match builder creates scores, team box scores, player lines and play e
   assert.ok(match.events.some(event => event.type === "kickoff"));
   assert.ok(match.events.some(event => event.eventTypes.includes("completion")));
   assert.ok(match.events.some(event => event.eventTypes.includes("touchdown")));
+  assert.ok(match.events.some(event => event.eventTypes.includes("game_end")));
 
   const home = match.teamStats.find(team => team.side === "home");
   assert.equal(home.pass_attempts, 1);
@@ -81,6 +86,11 @@ test("NFL match builder creates scores, team box scores, player lines and play e
   assert.equal(performances.players.find(player => player.name === "R. Receiver").statistics[0].receiving.receptions, 1);
   assert.equal(performances.players.find(player => player.name === "R. Runner").statistics[0].rushing.rushing_yards, 5);
   assert.equal(performances.players.every(player => player.rating === null), true);
+});
+
+test("NFL matches with a score but no explicit END_GAME marker are not labelled completed", () => {
+  const rows = parseNflverseCsv(csv).filter(row => row.play_type_nfl !== "END_GAME");
+  assert.equal(buildNflverseMatchRecords(rows, 2026, "https://source.example/pbp.csv").length, 0);
 });
 
 test("American-football coverage recognises source play types and leaves unavailable player ratings unknown", () => {
