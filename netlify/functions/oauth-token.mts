@@ -1,6 +1,6 @@
 import type { Config } from "@netlify/functions";
 import {
-  WIN_RESOURCE, issueTokenPair, hashSecret, readOAuthRecord, saveOAuthRecord
+  WIN_RESOURCE, issueTokenPair, hashSecret, readOAuthRecordWithMetadata, consumeOAuthRecord
 } from "../lib/oauth-store.mts";
 
 type CodeRecord = {
@@ -35,12 +35,13 @@ export default async (req: Request) => {
     }
     const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
     const challenge = Buffer.from(hash).toString("base64url");
-    const record = await readOAuthRecord<CodeRecord>("codes", hashSecret(code));
-    if (!record || record.consumedAt || record.expiresAt <= Date.now()) return fail("invalid_grant");
+    const stored = await readOAuthRecordWithMetadata<CodeRecord>("codes", hashSecret(code));
+    const record = stored?.value;
+    if (!record || !stored || record.consumedAt || record.expiresAt <= Date.now()) return fail("invalid_grant");
     if (record.issuer !== "https://win-worker-engine.netlify.app" || record.clientId !== clientId || record.redirectUri !== redirectUri || record.challenge !== challenge ||
         record.audience !== WIN_RESOURCE) return fail("invalid_grant");
 
-    await saveOAuthRecord("codes", hashSecret(code), { ...record, consumedAt: Date.now() });
+    if (!await consumeOAuthRecord("codes", hashSecret(code), { ...record, consumedAt: Date.now() }, stored.etag)) return fail("invalid_grant");
     const pair = await issueTokenPair(clientId, record.audience, record.scopes);
     return Response.json({
       access_token: pair.accessToken, token_type: "Bearer", expires_in: pair.expiresIn,
@@ -52,12 +53,13 @@ export default async (req: Request) => {
     const refreshToken = String(form.get("refresh_token") || "");
     if (!refreshToken) return fail("invalid_request");
     const key = hashSecret(refreshToken);
-    const record = await readOAuthRecord<RefreshRecord>("refresh", key);
-    if (!record || record.consumedAt || record.expiresAt <= Date.now() || record.clientId !== clientId ||
+    const stored = await readOAuthRecordWithMetadata<RefreshRecord>("refresh", key);
+    const record = stored?.value;
+    if (!record || !stored || record.consumedAt || record.expiresAt <= Date.now() || record.clientId !== clientId ||
         record.issuer !== "https://win-worker-engine.netlify.app" || record.audience !== WIN_RESOURCE) {
       return fail("invalid_grant");
     }
-    await saveOAuthRecord("refresh", key, { ...record, consumedAt: Date.now() });
+    if (!await consumeOAuthRecord("refresh", key, { ...record, consumedAt: Date.now() }, stored.etag)) return fail("invalid_grant");
     const pair = await issueTokenPair(clientId, record.audience, record.scopes);
     return Response.json({
       access_token: pair.accessToken, token_type: "Bearer", expires_in: pair.expiresIn,
