@@ -42,7 +42,7 @@ ${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}
 };
 
 function scopesFrom(value: string): string[] | null {
-  const requested = value.trim() ? value.trim().split(/\s+/) : [...WIN_SCOPES];
+  const requested = value.trim() ? value.trim().split(/\s+/) : [];
   if (!requested.length || requested.some(s => !(WIN_SCOPES as readonly string[]).includes(s))) return null;
   return [...new Set(requested)];
 }
