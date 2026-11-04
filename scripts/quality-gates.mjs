@@ -146,6 +146,25 @@ add("WIN structured coupon candidates require full run approval and preserve rej
 add("Dashboard shows WIN-built, won and lost coupon boards", html.includes('id="winBuiltList"') && html.includes('id="wonCouponList"') && html.includes('id="lostCouponList"') && app.includes("refreshCouponBoards") && app.includes("renderCouponBoardCard") && app.includes("View full coupon"), "The dashboard displays structured built candidates and separate won/lost records with their full selections and evidence.");
 add("WIN coupons preserve validated kickoff and participant identity for future result checks", library.includes("leg?.startTime || leg?.eventStart") && library.includes("eventStart: leg.eventStart") && library.includes("eventId: leg.eventId") && library.includes("homeTeam: leg.homeTeam") && library.includes("awayTeam: leg.awayTeam") && worker.includes("startTime: exactKickoff") && worker.includes("eventStart: exactKickoff"), "Post-match lookup has an explicit event date and two sides; it never substitutes an odds-capture timestamp for a kickoff.");
 add("Multi-sport historical settlement lookup is exact and source-linked", postMatch.includes("historicalDatasetResult") && postMatch.includes("row.status!==\"completed\"") && postMatch.includes("Multiple historical rows match this event") && postMatch.includes("sourceLicence:dataset.sourceLicence"), "Imported historical market datasets can resolve exact completed events where an applicable settlement field exists; ambiguous rows remain unresolved.");
+add("SportScore free live API is on-demand, attributed, cached and never treated as settlement truth",
+  providers.includes('id:"sportscore-live"') &&
+  providers.includes('accessMode:"open_api"') &&
+  providers.includes('licenceReview:"documented_open_terms"') &&
+  providers.includes('automationAllowed:false') &&
+  (await read("netlify/lib/sportscore-live-adapter.mts")).includes("assertSportScoreTerms();") &&
+  (await read("netlify/lib/sportscore-live-adapter.mts")).includes("CACHE_SECONDS = 60") &&
+  (await read("netlify/lib/sportscore-live-adapter.mts")).includes('url.searchParams.set("src", "win-worker-engine")') &&
+  (await read("netlify/functions/sportscore-live.mts")).includes("requireAuth") &&
+  (await read("netlify/functions/sportscore-live.mts")).includes('path: "/api/sportscore-live"') &&
+  html.includes('href="https://sportscore.com/" rel="dofollow"') &&
+  html.includes("Powered by SportScore") &&
+  app.includes("refreshSportScoreMatches") &&
+  app.includes('addEventListener("click",refreshSportScoreMatches)') &&
+  !app.includes('setInterval(()=>{if(token&&!document.hidden)refreshSportScoreMatches()') &&
+  !learningDataJobsFn.includes("syncSportScore") &&
+  (await read("scripts/sportscore-normalize.test.mjs")).includes("zero scores preserved") &&
+  (await read("docs/SPORTSCORE_LIVE_API.md")).includes("approximately 10,000 requests per 24 hours per IP"),
+  "SportScore requests are manually triggered, cached for 60 seconds, authenticated, visibly attributed, rate-limited by cache, and treated as supplementary evidence only.");
 add("StatsBomb Open Data stays manual, bounded, attributed and isolated from betting records",
   providers.includes('id:"statsbomb-open-data"') &&
   providers.includes('licenceReview:"documented_open_terms"') &&
