@@ -17,3 +17,6 @@ Isolation guarantees:
 - The synthetic fixture is not evidence of predictive performance, accuracy, ROI, or real-world learning progress.
 
 The GitHub validation workflow runs this test alongside the existing pure settlement unit tests and architecture quality gates.
+
+
+The same test command also runs `scripts/win-store.test.mjs`, which verifies the shared storage contract: test-mode gating, paginated early stopping, zero/negative limits, at-most-16 parallel reads, ETag-based conditional writes, append and delete semantics.

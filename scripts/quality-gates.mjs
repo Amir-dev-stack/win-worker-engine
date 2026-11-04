@@ -50,6 +50,14 @@ add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("scripts/win-learning-e2e.test.mjs")).includes("reviewer-lesson-2") &&
   (await read("scripts/win-learning-e2e.test.mjs")).includes("Unexpected network request"),
   "The production save, result-check and reviewer services are exercised against a flagged in-memory store with network calls stubbed.");
+add("WIN storage pagination and conditional-write semantics have isolated in-memory tests",
+  (await read("scripts/win-store.test.mjs")).includes("WIN_STORE_TEST_MODE=1") &&
+  (await read("scripts/win-store.test.mjs")).includes("putIfNew") &&
+  (await read("scripts/win-store.test.mjs")).includes("putIfMatch") &&
+  (await read("scripts/win-store.test.mjs")).includes("pagesRequested") &&
+  (await read("scripts/win-store.test.mjs")).includes("maxConcurrentReads <= 16") &&
+  (await read("scripts/win-store.test.mjs")).includes("zero-sized request"),
+  "The shared store contract is tested for environment gating, paginated early-stop reads, bounded parallelism, ETags, append and delete without production storage.");
 add("Post-match follow-up uses public, no-AI result discovery and safe event identity", postMatch.includes("api.openligadb.de") && postMatch.includes("getmatchesbyteam") && postMatch.includes("matchDateTimeUTC") && postMatch.includes("matchIsFinished") && postMatch.includes("Math.abs(matchTime-when)<=36*60*60*1000") && postMatch.includes("Multiple result records match") && postMatch.includes("No exact kickoff date/time") && postMatch.includes("unsupported_market"), "Only one exact team/date fixture with an unambiguous final score can be evaluated; unsupported markets and ambiguous or undated fixtures remain unresolved.");
 add("Post-match polling is scheduled, bounded and has zero AI calls", postMatchFn.includes('schedule: "23 */4 * * *"') && postMatch.includes("BATCH_LIMIT = 30") && postMatch.includes("SEARCH_LIMIT_PER_RUN = 30") && postMatch.includes("CACHE_TTL_MS") && postMatch.includes("aiCalls:0") && !postMatchFn.includes("runWinAgent"), "The scheduled result checker uses public match data, a bounded batch and a six-hour cache without unlocking or using paid AI.");
 add("Post-match outcomes remain pending until separate reviewer approval", postMatch.includes('put("library/win-post-match-review-cases"') && postMatch.includes('reviewStatus:"pending_independent_review"') && postMatch.includes('record.status="review_submitted"') && postMatch.includes("lessonCandidateIds"), "WIN stores leg results and proposed diagnostic notes separately; it never places bets or applies official coupon settlement before review.");
