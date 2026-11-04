@@ -404,7 +404,7 @@ async function refreshLearning(){
   $("#learningDepartments").innerHTML='<div class="empty">Department test history unavailable: '+escapeHtml(error.message)+' · Check authentication and the /api/learning-observatory response, then refresh.</div>';
  }
 }
-async function refresh(){
+async function refresh({pollOnly=false}={}){
  try{
   const health=await fetch("/api/health").then(r=>r.json());
   $("#apiStatus").textContent=health.status==="online"?"API online":"API unavailable";
@@ -732,9 +732,9 @@ $("#libraryList").addEventListener("click",async e=>{
  }catch(err){alert(err.message);button.disabled=false}
 });
 
-if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();refreshResearch();refreshCouponBoards();refreshLearning();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
-setInterval(()=>{if(token&&!document.hidden)refresh()},20000);
-setInterval(()=>{if(token&&!document.hidden)refreshLearning()},60000);
+if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();refreshResearch();refreshLearning();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
+setInterval(()=>{if(token&&!document.hidden)refresh({pollOnly:true})},60000);
+setInterval(()=>{if(token&&!document.hidden)refreshLearning()},120000);
 
 $("#simulationForm").addEventListener("submit",async e=>{
  e.preventDefault();const form=e.currentTarget,f=new FormData(form),button=form.querySelector('button[type="submit"]');
