@@ -296,6 +296,8 @@ Human-performance analysis must include the complete available record, losses, o
  
 ## Match statistics and player-performance coverage
 
+The complete acceptance and reporting specification is maintained in [docs/MATCH_STATISTICS_MASTER_SPEC.md](docs/MATCH_STATISTICS_MASTER_SPEC.md). It defines the pre-event dossier, in-event team metrics, event timelines, per-player/athlete lines, provider-rated player comparisons, cross-sport event models, post-event interpretation, betting analysis and the evidence/coverage rules for every future data adapter.
+
 WIN's statistic catalogue describes what a sport can measure; it does **not** claim that every connected source supplies every metric. Each event dossier reports the fields actually present, provider-by-provider, with missing metrics marked `not_provided`. A missing field is unknown, not zero. Complementary feeds are merged while retaining each source's own coverage and rating scale.
 
 WIN's sport catalogue now follows every sport in its sport capability registry, including team/athlete metric groups, sport-specific event types and a provider-rating availability field. The first connected deep event-data adapter is `nflverse-pbp-data`. It imports the source's season play-by-play release, derives team box-score totals and per-player passing/rushing/receiving/defensive/special-teams lines, and preserves a play-by-play timeline with quarter, clock, down, yards-to-go, yards gained, event type, score state and source provenance. The source is CC BY 4.0 and requires nflverse attribution. WIN does not fabricate player ratings, confirmed lineups, injuries, snap counts or metrics absent from the source. See the provider registry for domain-level scope and licence controls.
