@@ -207,6 +207,19 @@ add("Football source references remain review-only until access and reuse terms 
   providers.includes("automationAllowed:false"),
   "UEFA, FotMob, ESPN and FootyStats are registered as discovery references, not scraped or treated as connected data feeds.");
 
+add("Every registered sport has a sport-specific statistics catalogue",
+  statCatalog.includes("water_sports:spec") &&
+  statCatalog.includes("athletics:spec") &&
+  statCatalog.includes("greyhound_racing:spec") &&
+  statCatalog.includes("field_hockey:spec") &&
+  statCatalog.includes("water_polo:spec") &&
+  statCatalog.includes("lacrosse:spec") &&
+  statCatalog.includes("floorball:spec") &&
+  statCatalog.includes("squash_padel:spec") &&
+  statCatalog.includes("winter_sports:spec") &&
+  statCatalog.includes("Provider-defined player rating") &&
+  (await read("scripts/match-evidence.test.mjs")).includes("every registered sport has its own team/participant statistics"),
+  "Every sport in WIN's sport capability registry has sport-specific team/athlete metric groups, event types and an explicit provider-rating availability field.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
