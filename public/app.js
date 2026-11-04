@@ -346,7 +346,7 @@ async function refreshLearning(){
   const data=await api("/api/learning-observatory");
   const l=data.learning||{},p=data.postMatch||{},r=data.reviewer||{},s=data.openSources||{};
   $("#postMatchStatus").textContent=learningLabel(p.status);
-  $("#postMatchUpdated").textContent=(p.lastCheck?"Checked "+new Date(p.lastCheck).toLocaleString():"No scheduled check recorded")+" · "+Number(p.awaitingIndependentReview||0)+" awaiting review · Google "+(p.googleSearchMode==="google_programmable_search_api"?"Google Search API":"Google News RSS")+" · "+Number(p.googleLeadsFound||0)+" leads";
+  $("#postMatchUpdated").textContent=(p.lastCheck?"Checked "+new Date(p.lastCheck).toLocaleString():"No scheduled check recorded")+" · "+Number(p.queuedCoupons||0)+" WIN coupons queued · "+Number(p.awaitingIndependentReview||0)+" awaiting review · Google "+(p.googleSearchMode==="google_programmable_search_api"?"Google Search API":"Google News RSS")+" · "+Number(p.googleLeadsFound||0)+" leads";
   $("#learningAiStatus").textContent=learningLabel(data.liveResearch?.status);
   $("#learningReviewerStatus").textContent=learningLabel(r.status);
   $("#learningReviewerNote").textContent=Number(r.pendingCases||0)+" review cases pending · "+Number(r.completedOperations||0)+" completed review operations";
@@ -384,6 +384,8 @@ async function refreshLearning(){
    ["Settled market observations",d.settledObservedMarketDatasets,d.settledObservedMarketRows+" selections"],
    ["Calibration reports",d.calibrationReports,"chronological benchmark reports"],
    ["Open-licence candidates",s.openLicenseCandidates,"metadata only; review still required"],
+   ["WIN coupons waiting for result check",p.queuedCoupons,"qualified pending WIN coupons"],
+   ["Blocked WIN candidates",p.blockedCandidates,"not tracked until all approval gates pass"],
    ["WIN post-match checks",p.totalCoupons,(p.awaitingIndependentReview||0)+" awaiting review"]
   ];
   $("#learningDataSources").innerHTML=counts.map(([title,note,detail])=>'<article class="observatory-data-item"><b>'+Number(note||0).toLocaleString()+'</b><small>'+escapeHtml(String(title))+' · '+escapeHtml(String(detail||""))+'</small></article>').join("");
@@ -419,6 +421,22 @@ async function refresh(){
 }
 $("#refreshBudget").addEventListener("click",refreshAIBudget);
 $("#refreshLearning").addEventListener("click",refreshLearning);
+async function runLearningDataJob(action,buttonId,label){
+ const button=$(buttonId),status=$("#learningJobsStatus");
+ button.disabled=true;
+ status.textContent=label+" queued… This uses public sources and no paid AI.";
+ try{
+  await api("/api/learning-data-jobs",{method:"POST",body:JSON.stringify({action})});
+  status.textContent=label+" accepted. The background job is running; refresh to see imported candidates and datasets.";
+  await refreshLearning();
+  await refreshResearch();
+ }catch(error){
+  status.textContent=label+" failed to start: "+error.message;
+ }finally{button.disabled=false;}
+}
+$("#runSourceDiscovery").addEventListener("click",()=>runLearningDataJob("discover_sources","#runSourceDiscovery","Worldwide public-source discovery"));
+$("#runHistoricalSync").addEventListener("click",()=>runLearningDataJob("sync_historical_data","#runHistoricalSync","Historical dataset import"));
+
 $("#runPostMatchCheck").addEventListener("click",async()=>{
  const button=$("#runPostMatchCheck");
  button.disabled=true;
