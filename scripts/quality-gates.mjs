@@ -158,7 +158,7 @@ add("StatsBomb Open Data stays manual, bounded, attributed and isolated from bet
   (await read("netlify/functions/learning-data-jobs.mts")).includes("syncStatsBombOpenDataResearch") &&
   (await read("netlify/functions/statsbomb-open-data.mts")).includes("requireAuth") &&
   (await read("netlify/lib/statsbomb-normalize.mjs")).includes("eventStartPrecision: \"date_only\"") &&
-  (await read("scripts/statsbomb-normalize.test.mjs")).includes("never invent a score") &&
+  (await read("scripts/statsbomb-normalize.test.mjs")).includes("never invents a score") &&
   (await read("docs/STATSBOMB_OPEN_DATA.md")).includes("private, non-commercial research only"),
   "The free StatsBomb source is owner-confirmed per import, manual-only, size-bounded, attributed and stored in the historical Model Lab without changing coupons or making AI calls.");
 add("Learning data jobs are authenticated, backgrounded, bounded by source adapters and no-AI", learningDataJobsFn.includes("requireAuth") && learningDataJobsFn.includes("discoverPublicResearchSources") && learningDataJobsFn.includes("syncOpenFootballHistoricalData") && learningDataJobsFn.includes("syncOpenFootballWorldCupData") && learningDataJobsFn.includes("syncConsensusMarketDatasets") && learningDataJobsFn.includes("syncSharpApiSampleMarkets") && learningDataJobsFn.includes('path: "/api/learning-data-jobs"') && learningDataJobsFn.includes("background: true") && learningDataJobsFn.includes("aiCalls: 0") && learningDataJobsFn.includes("humanCouponLabTouched: false") && !learningDataJobsFn.includes("runWinAgent"), "The dashboard can manually run metadata discovery and the existing licence-labelled historical adapters without paid AI or touching human coupon records.");
