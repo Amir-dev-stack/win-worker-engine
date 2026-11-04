@@ -83,12 +83,24 @@ export function getNeonStore() {
       const separator = prefix.indexOf("/");
       if (separator < 1 || !prefix.endsWith("/")) return;
       const kind = prefix.slice(0, -1);
-      const rows = rowsOf<{ record_key: string }>(await sql()`SELECT record_key FROM win_memory_records
-        WHERE kind = ${kind} ORDER BY updated_at DESC, record_key ASC`);
       const pageSize = 250;
-      for (let offset = 0; offset < rows.length; offset += pageSize) {
-        yield { blobs: rows.slice(offset, offset + pageSize).map(row => ({ key: row.record_key })) };
-        if (!options.paginate) break;
+      let cursor: { updatedAt: string; key: string } | null = null;
+      while (true) {
+        const page = cursor
+          ? rowsOf<{ record_key: string; updated_at: string }>(await sql()`SELECT record_key, updated_at::text AS updated_at
+              FROM win_memory_records
+              WHERE kind = ${kind}
+                AND (updated_at < ${cursor.updatedAt}::timestamptz
+                  OR (updated_at = ${cursor.updatedAt}::timestamptz AND record_key > ${cursor.key}))
+              ORDER BY updated_at DESC, record_key ASC LIMIT ${pageSize}`)
+          : rowsOf<{ record_key: string; updated_at: string }>(await sql()`SELECT record_key, updated_at::text AS updated_at
+              FROM win_memory_records WHERE kind = ${kind}
+              ORDER BY updated_at DESC, record_key ASC LIMIT ${pageSize}`);
+        if (!page.length) break;
+        yield { blobs: page.map(row => ({ key: row.record_key })) };
+        if (!options.paginate || page.length < pageSize) break;
+        const last = page[page.length - 1];
+        cursor = { updatedAt: last.updated_at, key: last.record_key };
       }
     },
 
