@@ -44,6 +44,8 @@ const addNumber = (target: Record<string, number>, key: string, value: unknown) 
   if (parsed !== null) target[key] = (target[key] || 0) + parsed;
 };
 const hasValue = (row: Record<string, string>, key: string) => text(row[key]) !== "";
+const isGameEndRow = (row: Record<string, string>) =>
+  text(row.play_type_nfl).toUpperCase() === "END_GAME" || text(row.desc).trim().toUpperCase() === "END GAME";
 
 function validCalendarDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -210,6 +212,7 @@ function playerLine(players: Map<string, any>, idValue: unknown, nameValue: unkn
 function eventTypes(row: Record<string, string>) {
   const types = new Set<string>();
   const playType = text(row.play_type).toLowerCase();
+  if (isGameEndRow(row)) types.add("game_end");
   const passAttempt = flag(row.pass_attempt) || playType === "pass";
   if (playType === "kickoff" || flag(row.kickoff_attempt)) types.add("kickoff");
   if (playType === "kickoff" && (hasValue(row, "kickoff_returner_player_name") || hasValue(row, "return_yards"))) types.add("kickoff_return");
@@ -295,12 +298,13 @@ export function buildNflverseMatchRecords(
         id: gameId, date, home, away, rows: [],
         teamStats: { [home]: newTeamStats(), [away]: newTeamStats() },
         playerStats: new Map<string, any>(),
-        homeScore: null, awayScore: null, seasonType: text(row.season_type),
+        homeScore: null, awayScore: null, completedMarker: false, seasonType: text(row.season_type),
         week: number(row.week), gameType: text(row.game_type)
       };
       games.set(gameId, game);
     }
     game.rows.push(row);
+    if (isGameEndRow(row)) game.completedMarker = true;
     if (number(row.home_score) !== null) game.homeScore = number(row.home_score);
     if (number(row.away_score) !== null) game.awayScore = number(row.away_score);
 
@@ -440,7 +444,7 @@ export function buildNflverseMatchRecords(
     }
   }
 
-  return [...games.values()].filter(game => game.homeScore !== null && game.awayScore !== null).map(game => {
+  return [...games.values()].filter(game => game.completedMarker && game.homeScore !== null && game.awayScore !== null).map(game => {
     const sortedRows = game.rows.slice().sort((a, b) => (number(a.play_id) || 0) - (number(b.play_id) || 0));
     const recordId = "nflverse-" + game.id;
     const homeName = teamName(game.home);
@@ -515,7 +519,7 @@ export async function syncNflversePlayByPlayData(seasonInput?: number) {
     rowsRejected: qualityAudit.rowsRejected, rejectedByReason: qualityAudit.rejectedByReason,
     gamesSeen: qualityAudit.gamesSeen, gamesAccepted: qualityAudit.gamesAccepted,
     gamesRejected: qualityAudit.gamesRejected, conflictingGames: qualityAudit.conflictingGames,
-    gamesWithoutFinalScore: Math.max(0, qualityAudit.gamesAccepted - records.length),
+    gamesNotConfirmedFinal: Math.max(0, qualityAudit.gamesAccepted - records.length),
     dateOnlyEvents: records.length, matchesImported: saved,
     scoredMatches: saved, playsImported: records.reduce((total, record) => total + Number(record.playCount || 0), 0),
     playerLinesImported: records.reduce((total, record) => total + Number(record.playerCount || 0), 0),
