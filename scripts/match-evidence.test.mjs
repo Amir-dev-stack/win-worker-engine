@@ -23,7 +23,7 @@ test("pre-match evidence gives both teams recent form and excludes future/target
  assert.ok(pack.teamProfiles.away.last5[0].statisticCoverage);
  assert.ok(Array.isArray(pack.teamProfiles.away.last5[0].playerPerformances));
  assert.equal(pack.headToHead.length,1);
- assert.equal(pack.teamProfiles.away.seasonStats.played,3);
+ assert.equal(pack.teamProfiles.away.seasonStats.played,4);
  assert.equal(pack.teamProfiles.away.seasonStats.wins,2);
  assert.equal(pack.teamProfiles.away.homeStats.played,2);
  assert.equal(pack.teamProfiles.away.awayStats.played,2);
