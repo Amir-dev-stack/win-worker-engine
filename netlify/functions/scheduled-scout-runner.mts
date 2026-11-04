@@ -66,7 +66,7 @@ export default async (req: Request) => {
   try {
     const reviewStarted = new Date().toISOString();
     const libraryReview = await getMandatoryLearningPack(run.brief);
-    const modelLabResearchPack = await getModelLabResearchPack();
+    const modelLabResearchPack = await getModelLabResearchPack(run.brief);
     const allAgentTasks = await list<any>("library/agent-task-queue", 1000);
     const staleBefore = Date.now() - 30 * 60 * 1000;
     for (const stale of allAgentTasks.filter(task => task.status === "running" && Date.parse(task.lastAttemptAt || "") < staleBefore)) {

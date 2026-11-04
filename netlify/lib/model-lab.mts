@@ -1,4 +1,5 @@
 import { list, put } from "./store.mts";
+import { buildMatchEvidencePack } from "./match-evidence.mts";
 export async function runOpenFootballBaselineLab() {
  const sets=await list<any>("library/model-lab/historical-event-datasets",1000);
  const id="openfootball-baseline-"+new Date().toISOString().slice(0,10);
@@ -20,7 +21,7 @@ export async function runOpenFootballBaselineLab() {
  const result={id,status:evaluated.length?"completed":"waiting_for_data",lab:"model-lab",origin:"provider_historical_data",modelVersion:"competition_frequency_baseline_v1",datasetCount:sets.length,evaluatedDatasets:evaluated.length,insufficientSampleDatasets:reports.length-evaluated.length,scoredMatches:reports.reduce((n,x)=>n+Number(x.scoredMatches||0),0),reports,limitations:["Each competition/season is evaluated separately; no cross-competition pooling.","Chronological 70/30 split; no random split or future-to-past leakage.","No historical bookmaker execution prices in the OpenFootball source; no ROI or CLV.","Frequency baseline only, not evidence of a predictive edge."],humanCouponLabTouched:false,createdAt:new Date().toISOString()};
  await put("library/model-lab/experiments",id,result);return result;
 }
-export async function getModelLabResearchPack(){
+export async function getModelLabResearchPack(targetBrief:any={}){
  const [events,consensus,observed,calibrations,experiments,runs,playerEventDatasets,settledObservedMarkets,settlementRuns,sourceCandidates,sourceDiscoveryRuns]=await Promise.all([
   list<any>("library/model-lab/historical-event-datasets",1000),
   list<any>("library/model-lab/market-consensus-datasets",100),
@@ -32,7 +33,8 @@ export async function getModelLabResearchPack(){
   list<any>("library/model-lab/settled-observed-markets",100),
   list<any>("library/model-lab/observed-market-settlement-runs",20),
   list<any>("library/research-source-candidates",1000),
-  list<any>("library/research-source-discovery-runs",20)
+  list<any>("library/research-source-discovery-runs",20),
+  list<any>("library/model-lab/observed-market-snapshots",100)
  ]);
  const latestCalibration=calibrations.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]||null;
  const latestSettlement=settlementRuns.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]||null;
@@ -74,6 +76,7 @@ export async function getModelLabResearchPack(){
   }:null,
   recentExperiments:experiments.slice(-8).map(x=>({id:x.id,status:x.status,scoredMatches:x.scoredMatches,evaluatedDatasets:x.evaluatedDatasets,insufficientSampleDatasets:x.insufficientSampleDatasets,reports:(x.reports||[]).slice(0,30).map((r:any)=>({providerId:r.providerId,competition:r.competition,season:r.season,status:r.status,scoredMatches:r.scoredMatches,testMatches:r.testMatches,oneXTwo:r.oneXTwo,goalLines:r.goalLines})),createdAt:x.createdAt})),
   recentProviderSyncs:runs.sort((a,b)=>String(b.startedAt).localeCompare(String(a.startedAt))).slice(0,8).map(x=>({id:x.id,status:x.status,startedAt:x.startedAt,completedAt:x.completedAt,rowsImported:x.rowsImported??x.matchesImported??x.marketsImported??0,failures:(x.failures||[]).length})),
+  matchEvidence:buildMatchEvidencePack(targetBrief,{historicalDatasets:events,consensusDatasets:consensus,observedSnapshots:observed,playerEventDatasets}),
   restrictions:["This is a read-only research context for WIN agents.","Consensus probabilities are benchmarks, not individual bookmaker prices.","Static SharpAPI samples are point-in-time snapshots, not live odds.","No human coupon or tipster-origin data is included.","No strategy is validated by this summary."]
  };
 }

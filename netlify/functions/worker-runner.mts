@@ -257,7 +257,7 @@ export default async (req: Request) => {
 
   try {
     const libraryReview = await getMandatoryLearningPack(run.brief);
-    const modelLabResearchPack = await getModelLabResearchPack();
+    const modelLabResearchPack = await getModelLabResearchPack(run.brief);
     // Attach a small, relevant slice of prior frozen records for Department 7.
     const priorPredictions = (await list<any>("predictions", 200)).slice(0, 20).map(p => ({
       id: p.id, runId: p.runId, recordedAt: p.recordedAt,
