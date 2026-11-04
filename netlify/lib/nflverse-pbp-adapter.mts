@@ -517,27 +517,66 @@ export function buildNflverseMatchRecords(
 
     const passer = playerLine(game.playerStats, row.passer_player_id, row.passer_player_name, offense);
     if (passer && passAttempt) {
-      increment(passer._statLine.passing, "pass_attempts");
-      if (complete) increment(passer._statLine.passing, "completions");
-      addNumber(passer._statLine.passing, "passing_yards", row.passing_yards);
-      if (flag(row.pass_touchdown)) increment(passer._statLine.passing, "passing_touchdowns");
-      if (flag(row.interception)) increment(passer._statLine.passing, "interceptions");
+      const passing = passer._statLine.passing;
+      increment(passing, "pass_attempts");
+      if (complete) increment(passing, "completions");
+      addNumber(passing, "passing_yards", row.passing_yards);
+      if (flag(row.pass_touchdown)) increment(passing, "passing_touchdowns");
+      if (flag(row.interception)) increment(passing, "interceptions");
+      // qb_epa credits the quarterback through the point of a receiver fumble;
+      // cpoe is a percentage-point model residual, not a raw completion count.
+      if (number(row.qb_epa) !== null) {
+        addNumber(passing, "qb_epa_total", row.qb_epa);
+        increment(passing, "qb_epa_plays");
+      }
+      if (number(row.cpoe) !== null) {
+        addNumber(passing, "cpoe_total", row.cpoe);
+        increment(passing, "cpoe_attempts");
+      }
+      if (number(row.air_yards) !== null) {
+        addNumber(passing, "air_yards_total", row.air_yards);
+        increment(passing, "air_yards_attempts");
+      }
+      if (number(row.wpa) !== null) addNumber(passing, "win_probability_added", row.wpa);
     }
     if (passer && flag(row.sack)) increment(passer._statLine.passing, "sacks_taken");
 
     const rusher = playerLine(game.playerStats, row.rusher_player_id, row.rusher_player_name, offense);
     if (rusher && rushAttempt) {
-      increment(rusher._statLine.rushing, "rush_attempts");
-      addNumber(rusher._statLine.rushing, "rushing_yards", number(row.rushing_yards) !== null ? row.rushing_yards : row.yards_gained);
-      if (flag(row.rush_touchdown)) increment(rusher._statLine.rushing, "rushing_touchdowns");
-      if (flag(row.fumble_lost)) increment(rusher._statLine.rushing, "fumbles_lost");
+      const rushing = rusher._statLine.rushing;
+      increment(rushing, "rush_attempts");
+      addNumber(rushing, "rushing_yards", number(row.rushing_yards) !== null ? row.rushing_yards : row.yards_gained);
+      if (flag(row.rush_touchdown)) increment(rushing, "rushing_touchdowns");
+      if (flag(row.fumble_lost)) increment(rushing, "fumbles_lost");
+      if (number(row.epa) !== null) {
+        addNumber(rushing, "epa_total", row.epa);
+        increment(rushing, "epa_plays");
+      }
+      if (number(row.wpa) !== null) addNumber(rushing, "win_probability_added", row.wpa);
     }
     const receiver = playerLine(game.playerStats, row.receiver_player_id, row.receiver_player_name, offense);
     if (receiver && passAttempt) {
-      increment(receiver._statLine.receiving, "targets");
-      if (complete) increment(receiver._statLine.receiving, "receptions");
-      addNumber(receiver._statLine.receiving, "receiving_yards", row.receiving_yards ?? (complete ? row.yards_gained : null));
-      if (flag(row.pass_touchdown)) increment(receiver._statLine.receiving, "receiving_touchdowns");
+      const receiving = receiver._statLine.receiving;
+      increment(receiving, "targets");
+      if (complete) increment(receiving, "receptions");
+      addNumber(receiving, "receiving_yards", row.receiving_yards ?? (complete ? row.yards_gained : null));
+      if (flag(row.pass_touchdown)) increment(receiving, "receiving_touchdowns");
+      if (complete) {
+        if (number(row.yards_after_catch) !== null) {
+          addNumber(receiving, "yards_after_catch_total", row.yards_after_catch);
+          increment(receiving, "receptions_with_yac");
+        }
+        // nflfastR's xYAC fields are model expectations at the catch point.
+        // Restrict aggregation to completed passes when describing actual
+        // post-catch outcomes, while preserving all source fields on the event.
+        if (number(row.xyac_epa) !== null) {
+          addNumber(receiving, "expected_yac_epa_total", row.xyac_epa);
+          increment(receiving, "completed_targets_with_xyac");
+        }
+        if (number(row.xyac_mean_yardage) !== null) addNumber(receiving, "expected_yac_yards_total", row.xyac_mean_yardage);
+        if (number(row.xyac_success) !== null) addNumber(receiving, "expected_yac_success_total", row.xyac_success);
+        if (number(row.xyac_fd) !== null) addNumber(receiving, "expected_yac_first_down_total", row.xyac_fd);
+      }
     }
 
     const tacklers = [
@@ -562,10 +601,21 @@ export function buildNflverseMatchRecords(
       const defender = playerLine(game.playerStats, row[idKey], row[nameKey], defense);
       if (defender) increment(defender._statLine.defense, statKey);
     }
-    const kicker = playerLine(game.playerStats, row.field_goal_kicker_player_id, row.field_goal_kicker_player_name, kickingTeam);
+    // nflverse PBP uses kicker_player_id/name for both field goals and extra points.
+    const kicker = playerLine(game.playerStats, row.kicker_player_id, row.kicker_player_name, kickingTeam);
     if (kicker && (playType === "field_goal" || flag(row.field_goal_attempt))) {
       increment(kicker._statLine.kicking, "field_goal_attempts");
       if (text(row.field_goal_result).toLowerCase() === "made") increment(kicker._statLine.kicking, "field_goals_made");
+    }
+    if (kicker && (playType === "extra_point" || flag(row.extra_point_attempt))) {
+      increment(kicker._statLine.kicking, "extra_point_attempts");
+      if (["good", "made"].includes(text(row.extra_point_result).toLowerCase())) increment(kicker._statLine.kicking, "extra_points_made");
+    }
+    if (kicker && (playType === "kickoff" || flag(row.kickoff_attempt))) increment(kicker._statLine.kicking, "kickoffs");
+    const punter = playerLine(game.playerStats, row.punter_player_id, row.punter_player_name, kickingTeam);
+    if (punter && (playType === "punt" || flag(row.punt_attempt))) {
+      increment(punter._statLine.kicking, "punts");
+      addNumber(punter._statLine.kicking, "punt_yards", row.kick_distance);
     }
     const returner = playerLine(
       game.playerStats,
@@ -602,6 +652,23 @@ export function buildNflverseMatchRecords(
       };
     });
     const playerStats = [...game.playerStats.values()].map(line => {
+      const stats = line._statLine;
+      const passing = stats.passing;
+      if (passing) {
+        passing.qb_epa_per_play = passing.qb_epa_plays ? passing.qb_epa_total / passing.qb_epa_plays : null;
+        passing.cpoe_average = passing.cpoe_attempts ? passing.cpoe_total / passing.cpoe_attempts : null;
+        passing.air_yards_per_attempt = passing.air_yards_attempts ? passing.air_yards_total / passing.air_yards_attempts : null;
+      }
+      const rushing = stats.rushing;
+      if (rushing) rushing.epa_per_rush = rushing.epa_plays ? rushing.epa_total / rushing.epa_plays : null;
+      const receiving = stats.receiving;
+      if (receiving) {
+        receiving.yards_after_catch_per_reception = receiving.receptions_with_yac ? receiving.yards_after_catch_total / receiving.receptions_with_yac : null;
+        receiving.expected_yac_epa_per_completion = receiving.completed_targets_with_xyac ? receiving.expected_yac_epa_total / receiving.completed_targets_with_xyac : null;
+        receiving.expected_yac_yards_per_completion = receiving.completed_targets_with_xyac ? receiving.expected_yac_yards_total / receiving.completed_targets_with_xyac : null;
+        receiving.expected_yac_success_rate = receiving.completed_targets_with_xyac ? receiving.expected_yac_success_total / receiving.completed_targets_with_xyac : null;
+        receiving.expected_yac_first_down_rate = receiving.completed_targets_with_xyac ? receiving.expected_yac_first_down_total / receiving.completed_targets_with_xyac : null;
+      }
       const { _statLine, ...publicLine } = line;
       return publicLine;
     });
