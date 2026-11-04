@@ -419,9 +419,11 @@ async function refresh({pollOnly=false}={}){
     renderRunDetail(current);
   }
   $("#mcpStatus").textContent="OAuth MCP endpoint deployed; plugin authorization test pending";
-  await refreshLibrary();
-  await refreshSimulations();
-  await refreshAIBudget();
+  if(!pollOnly){
+   await refreshLibrary();
+   await refreshSimulations();
+   await refreshAIBudget();
+  }
  }catch(e){$("#apiStatus").textContent="Authentication needed";$("#runsList").textContent=e.message}
 }
 $("#refreshBudget").addEventListener("click",refreshAIBudget);
