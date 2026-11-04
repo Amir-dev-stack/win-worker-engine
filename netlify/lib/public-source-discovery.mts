@@ -187,7 +187,7 @@ export async function discoverPublicResearchSources() {
   indexCounts.zenodo = found.filter(x => x.sourceType === "zenodo_record").length;
   indexCounts.datacite = found.filter(x => x.sourceType === "datacite_doi").length;
 
-  const existing = await list<any>("library/research-source-candidates", 50);
+  const existing = await list<any>("library/research-source-candidates", 25);
   const byId = new Map(existing.map(x => [x.id, x]));
   let newCount = 0, seen = 0;
   for (const candidate of found) {
