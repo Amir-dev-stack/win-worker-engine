@@ -58,7 +58,7 @@ function readCookie(request: Request, name: string): string {
   const prefix = name + "=";
   for (const item of (request.headers.get("cookie") || "").split(";")) {
     const cookie = item.trim();
-    if (cookie.startsWith(prefix)) return decodeURIComponent(cookie.slice(prefix.length));
+    if (cookie.startsWith(prefix)) return cookie.slice(prefix.length);
   }
   return "";
 }
