@@ -219,6 +219,57 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     licenceReview:"required", automationAllowed:false,
     notes:"Commercial candidate; archive access and sport-specific coverage must be verified against plan and contract."
   }
+
+  {
+    id:"nflverse-pbp-data", name:"nflverse NFL play-by-play and player statistics", website:"https://github.com/nflverse/nflverse-data",
+    sports:["american_football"],
+    dataDomains:["historical_match_play_by_play","team_match_statistics","player_match_statistics","player_events","results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none",
+    licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://github.com/nflverse/nflverse-data/blob/main/LICENSE.md",
+    attribution:"nflverse play-by-play data — CC BY 4.0.",
+    notes:"Automated season CSV releases provide NFL play-by-play, game scores and derived passing, rushing, receiving, tackling, turnover and special-teams counts. Attribution is required. The adapter intentionally does not use FTN-specific data fields and does not invent player ratings, lineups, injuries, snap counts or absent statistics. This provider covers American football, not association football."
+  },
+  {
+    id:"uefa-match-center", name:"UEFA official match centres", website:"https://www.uefa.com/uefachampionsleague/",
+    sports:["football"],
+    dataDomains:["fixtures","results","team_match_statistics","match_timeline","competition_context"],
+    accessMode:"research_candidate", historicalSupport:"possible", authentication:"none",
+    licenceReview:"required", automationAllowed:false,
+    licenceReference:"https://www.uefa.com/",
+    attribution:"UEFA — official match centre.",
+    notes:"Official reference source for competition fixtures, match reports and selected team statistics. This registry entry is a source pointer only; it does not authorize scraping, bulk downloads or automated reuse. Confirm per-competition availability and terms before building an adapter."
+  },
+  {
+    id:"fotmob-match-profiles", name:"FotMob match profiles", website:"https://www.fotmob.com/",
+    sports:["football"],
+    dataDomains:["fixtures","results","expected_goals","shot_maps","team_match_statistics","player_match_statistics","player_ratings","match_timeline"],
+    accessMode:"research_candidate", historicalSupport:"possible", authentication:"none",
+    licenceReview:"required", automationAllowed:false,
+    licenceReference:"https://www.fotmob.com/",
+    attribution:"FotMob — match profile and statistics.",
+    notes:"Reference source for match timelines, shot maps, xG and provider-calculated player ratings where available. No public bulk-data or redistribution permission is assumed; no automated ingestion is enabled."
+  },
+  {
+    id:"espn-match-center", name:"ESPN match centres", website:"https://www.espn.com/soccer/",
+    sports:["football","basketball","baseball","american_football","ice_hockey"],
+    dataDomains:["fixtures","results","match_timeline","team_match_statistics","player_match_statistics","lineups"],
+    accessMode:"research_candidate", historicalSupport:"possible", authentication:"none",
+    licenceReview:"required", automationAllowed:false,
+    licenceReference:"https://www.espn.com/",
+    attribution:"ESPN — match centre and scoreboard data.",
+    notes:"Reference destination for event commentary, schedules and sport-specific box scores where published. This entry is not an approved data API and does not permit automated scraping or redistribution."
+  },
+  {
+    id:"footystats-h2h", name:"FootyStats football H2H and trends", website:"https://footystats.org/",
+    sports:["football"],
+    dataDomains:["historical_results","head_to_head","team_form","competition_statistics","betting_trends"],
+    accessMode:"research_candidate", historicalSupport:"possible", authentication:"account_or_contract",
+    licenceReview:"required", automationAllowed:false,
+    licenceReference:"https://footystats.org/",
+    attribution:"FootyStats — historical H2H and trend reference.",
+    notes:"Reference source for historical form and H2H summaries. It is not an official governing-body feed; definitions, sample scope, access entitlements and reuse rights must be checked before any automated connection."
+  }
 ];
 
 
