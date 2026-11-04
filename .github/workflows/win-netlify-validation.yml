@@ -22,10 +22,14 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Run WIN build and quality gates
-        run: |
-          node scripts/build.mjs
-          node scripts/quality-gates.mjs
+      - name: Run WIN architecture checks
+        run: node scripts/build.mjs
+
+      - name: Run isolated WIN learning unit tests
+        run: node --test scripts/*.test.mjs
+
+      - name: Run WIN quality gates
+        run: node scripts/quality-gates.mjs
 
       - name: Bundle every Netlify function with esbuild
         run: |
