@@ -67,8 +67,7 @@ const MIRRORED_MEMORY_PREFIXES = [
   "library/coupon-history/",
   "library/coupon-research-cases/",
   "library/win-coupon-candidates/",
-  "library/learning-cycles/",
-  "library/meta/"
+  "library/learning-cycles/"
 ];
 
 function isStructuredMemoryKey(recordKey: string) {
