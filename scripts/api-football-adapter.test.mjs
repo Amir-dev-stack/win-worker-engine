@@ -25,7 +25,7 @@ test("API-Football dossier preserves fixture identity and normalizes team/player
     injuriesPayload: { response: [] },
     endpointAudit: [{ endpoint: "/fixtures", status: "success" }],
     retrievedAt: "2026-11-04T19:00:00.000Z"
-  });
+  }, { allowPlayerRatings: true });
   assert.equal(dossier.id, "api-football-12345");
   assert.equal(dossier.fixture.home.name, "Home FC");
   assert.equal(dossier.fixture.goals.away, 1);
@@ -35,9 +35,22 @@ test("API-Football dossier preserves fixture identity and normalizes team/player
   assert.equal(dossier.events[0].player.name, "Player One");
   assert.equal(dossier.lineups[0].formation, "4-3-3");
   assert.equal(dossier.playerStatistics[0].statistics[0].shots.on, 2);
+  assert.equal(dossier.coverage.find(x => x.id === "player_ratings").status, "available");
   assert.equal(dossier.playerRatings[0].rating, "8.1");
   assert.equal(dossier.provenance.sourceReportedNotIndependentlyVerified, true);
   assert.ok(dossier.raw.players);
+
+test("player ratings are not exposed unless the separate player_ratings domain is enabled", () => {
+  const dossier = buildApiFootballMatchDossier({
+    fixturePayload,
+    playersPayload: { response: [{ team: { id: 1, name: "Home FC" }, players: [{ player: { id: 10, name: "Player One" }, statistics: [{ games: { minutes: 90, rating: "8.1" }, shots: { total: 2 } }] }] }] },
+    retrievedAt: "2026-11-04T19:00:00.000Z"
+  });
+  assert.equal(dossier.playerStatistics[0].statistics[0].games.rating, null);
+  assert.deepEqual(dossier.playerRatings, []);
+  assert.equal(dossier.coverage.find(x => x.id === "player_ratings").status, "not_authorized_by_enabled_domain");
+});
+
 });
 
 test("missing fields remain null and coverage false is not converted into zero statistics", () => {
