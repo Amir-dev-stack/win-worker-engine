@@ -31,6 +31,7 @@ test("API-Football dossier preserves fixture identity and normalizes team/player
   assert.equal(dossier.fixture.home.name, "Home FC");
   assert.equal(dossier.fixture.goals.away, 1);
   assert.equal(dossier.competition.seasonCoverage.year, 2026);
+  assert.equal(dossier.coverage.find(x => x.id === "competition_season_coverage").status, "available");
   assert.equal(dossier.teamStatistics[0].statistics[0].value, 14);
   assert.equal(dossier.events[0].type, "Goal");
   assert.equal(dossier.events[0].player.name, "Player One");
