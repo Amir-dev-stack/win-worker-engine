@@ -7,6 +7,7 @@ import { createSimulationRun } from "../lib/simulation.mts";
 import { runStrategyBacktest } from "../lib/backtest.mts";
 import { getTipsterSourceReport, importTipsterCoupon, listTipsterSources } from "../lib/source-intelligence.mts";
 import { authorizeMcpRequest, WIN_ISSUER } from "../lib/oauth-store.mts";
+import { getLearningObservatory } from "../lib/learning-observatory.mts";
 
 const resourceMetadata = WIN_ISSUER + "/.well-known/oauth-protected-resource/mcp";
 
@@ -24,6 +25,67 @@ function authRequired(scope: string) {
 
 function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
   const server = new McpServer({ name: "WIN Worker Engine", version: "0.3.0" });
+
+  // Read-only audit surface. The dedicated win:audit scope grants no research or mutation tools.
+  const auditCollections = {
+    calibration_reports: "library/model-lab/market-calibration-reports",
+    settled_market_datasets: "library/model-lab/settled-observed-markets",
+    observed_market_snapshots: "library/model-lab/observed-market-snapshots",
+    historical_event_datasets: "library/model-lab/historical-event-datasets",
+    consensus_market_datasets: "library/model-lab/market-consensus-datasets",
+    player_event_datasets: "library/model-lab/player-event-datasets",
+    department_smoke_tests: "library/department-smoke-tests",
+    review_operations: "library/review-operations",
+    lesson_review_cases: "library/lesson-review-cases",
+    win_post_match_cases: "library/win-post-match-review-cases",
+    win_coupon_candidates: "library/win-coupon-candidates",
+    research_runs: "runs",
+    research_jobs: "library/research-jobs",
+    learning_cycles: "library/learning-cycles",
+    lessons: "library/lessons"
+  } as const;
+  type AuditCategory = keyof typeof auditCollections;
+
+  server.registerTool("get_win_audit_overview", {
+    title: "Get WIN live audit overview",
+    description: "Read the live WIN Learning Observatory: department tests, reviewer status, independently verified outcomes, validated lessons, post-match checks, source discovery, dataset counts, calibration report counts and AI budget lock. Strictly read-only.",
+    inputSchema: {},
+    securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]
+  }, async () => {
+    if (!scopes.includes("win:audit")) return authRequired("win:audit");
+    return { content: [{ type: "text" as const, text: JSON.stringify(await getLearningObservatory()) }] };
+  });
+
+  server.registerTool("list_win_audit_records", {
+    title: "List WIN audit records",
+    description: "List recent records from a strict allowlist of WIN research, historical data, calibration, settlement, reviewer and learning collections. Does not expose human bookmaker account credentials or permit writes.",
+    inputSchema: {
+      category: z.enum(["calibration_reports","settled_market_datasets","observed_market_snapshots","historical_event_datasets","consensus_market_datasets","player_event_datasets","department_smoke_tests","review_operations","lesson_review_cases","win_post_match_cases","win_coupon_candidates","research_runs","research_jobs","learning_cycles","lessons"]),
+      limit: z.number().int().min(1).max(100).optional()
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]
+  }, async ({ category, limit }) => {
+    if (!scopes.includes("win:audit")) return authRequired("win:audit");
+    const rows = await list<any>(auditCollections[category as AuditCategory], Math.min(100, Math.max(1, limit || 25)));
+    rows.sort((a: any, b: any) => Date.parse(b.updatedAt || b.completedAt || b.settledAt || b.createdAt || b.observedAt || "") - Date.parse(a.updatedAt || a.completedAt || a.settledAt || a.createdAt || a.observedAt || ""));
+    return { content: [{ type: "text" as const, text: JSON.stringify({ category, count: rows.length, records: rows }) }] };
+  });
+
+  server.registerTool("get_win_audit_record", {
+    title: "Get one WIN audit record",
+    description: "Read one exact record by ID from the same allowlisted audit collections. Strictly read-only; no arbitrary store paths are accepted.",
+    inputSchema: {
+      category: z.enum(["calibration_reports","settled_market_datasets","observed_market_snapshots","historical_event_datasets","consensus_market_datasets","player_event_datasets","department_smoke_tests","review_operations","lesson_review_cases","win_post_match_cases","win_coupon_candidates","research_runs","research_jobs","learning_cycles","lessons"]),
+      recordId: z.string().min(1).max(300)
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]
+  }, async ({ category, recordId }) => {
+    if (!scopes.includes("win:audit")) return authRequired("win:audit");
+    const record = await get<any>(auditCollections[category as AuditCategory], recordId);
+    return { content: [{ type: "text" as const, text: JSON.stringify(record ?? { error: "Record not found", category, recordId }) }] };
+  });
+
+
 
   server.registerTool("start_research_run", {
     title: "Start WIN multi-department research",
