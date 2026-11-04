@@ -136,3 +136,14 @@ test("WIN memory capacity monitor measures Neon usage, records thresholds and ne
   assert.match(monitor, /memory-capacity-latest/);
   assert.doesNotMatch(helper + endpoint + monitor, /\.delete\(/);
 });
+
+test("WIN dashboard exposes capacity status and early-warning refresh", async () => {
+  const html = await read("../public/index.html");
+  const app = await read("../public/app.js");
+  assert.match(html, /id="memoryCapacity"/);
+  assert.match(html, /id="memoryNeonUsed"/);
+  assert.match(html, /id="memoryCapacityAlert"/);
+  assert.match(app, /\/api\/memory-capacity/);
+  assert.match(app, /new Notification\("WIN memory capacity "/);
+  assert.match(app, /refreshMemoryCapacity\(\)},300000/);
+});
