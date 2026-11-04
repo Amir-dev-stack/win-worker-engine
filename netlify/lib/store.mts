@@ -72,7 +72,7 @@ export async function get<T>(kind: string, id: string): Promise<T | null> {
 export async function list<T>(kind: string, limit = 100): Promise<T[]> {
   const maxItems = Math.max(0, Math.floor(limit));
   if (maxItems === 0) return [];
-  const { primary, secondary } = await stores();
+  const { primary, secondary } = await stores(kind + "/");
   const selected: Array<{ key: string }> = [];
   const seen = new Set<string>();
   const collect = async (backend: StoreAdapter) => {
@@ -130,8 +130,8 @@ export async function putIfMatch(kind: string, id: string, value: unknown, etag:
 }
 
 export async function getWithMetadata<T>(kind: string, id: string): Promise<{ value: T; etag: string } | null> {
-  const { primary, secondary } = await stores();
   const recordKey = key(kind, id);
+  const { primary, secondary } = await stores(recordKey);
   const result = await primary.getWithMetadata(recordKey, { type: "json", consistency: "strong" });
   if (result) return { value: result.data as T, etag: result.etag };
   const fallback = secondary ? await secondary.getWithMetadata(recordKey, { type: "json", consistency: "strong" }) : null;
