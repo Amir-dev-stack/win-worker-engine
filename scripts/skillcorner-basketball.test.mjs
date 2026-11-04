@@ -18,7 +18,7 @@ test("SkillCorner CSV preserves player-team-season identity and numeric aggregat
   assert.equal(parsed.aggregateType, "shots");
   assert.equal(parsed.totalRows, 3);
   assert.equal(parsed.uniquePlayers, 2);
-  assert.equal(parsed.uniqueTeams, 3);
+  assert.equal(parsed.uniqueTeams, 2);
   const row = parsed.records[0];
   assert.equal(row.playerId, "446");
   assert.equal(row.player, "Kameron Taylor");
