@@ -12,15 +12,22 @@ export default async (req: Request) => {
   const mode = getMemoryBackendMode();
   const configured = Boolean(process.env.WIN_NEON_DATABASE_URL?.trim());
   let backfill: unknown = null;
+  let backup: unknown = null;
+  let restore: unknown = null;
   try {
-    backfill = await getStore(STORE_OPTIONS).get("library/meta/neon-backfill-status", { type: "json" });
+    const blobs = getStore(STORE_OPTIONS);
+    [backfill, backup, restore] = await Promise.all([
+      blobs.get("library/meta/neon-backfill-status", { type: "json" }),
+      blobs.get("library/meta/neon-backup-latest", { type: "json" }),
+      blobs.get("library/meta/neon-restore-latest", { type: "json" })
+    ]);
   } catch {
     backfill = null;
   }
   if (mode === "blobs") {
     return Response.json({
       ok: true, backendMode: mode, primary: "netlify_blobs",
-      neonConfigured: configured, neonChecked: false, backfill,
+      neonConfigured: configured, neonChecked: false, backfill, backup, restore,
       note: "Neon is not active. Existing WIN storage remains on Netlify Blobs."
     }, { headers: { "cache-control": "no-store" } });
   }
@@ -31,7 +38,7 @@ export default async (req: Request) => {
       ok: true, backendMode: mode,
       primary: mode === "neon" ? "neon_postgres" : "netlify_blobs",
       replica: mode === "neon" ? "netlify_blobs" : "neon_postgres",
-      neonConfigured: configured, neonChecked: true, backfill,
+      neonConfigured: configured, neonChecked: true, backfill, backup, restore,
       recordCount: health.recordCount, databaseTime: health.databaseTime
     }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
