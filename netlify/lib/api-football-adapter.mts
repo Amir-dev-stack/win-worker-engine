@@ -170,10 +170,11 @@ function getCoverage(leaguePayload: any, season: number) {
 }
 
 function availabilityStatus(coverageValue: unknown, requested: boolean, count: number, error?: unknown) {
+  if (count > 0) return "available";
   if (coverageValue === false) return "not_in_competition_coverage";
   if (error) return "source_error";
   if (!requested) return coverageValue === true ? "not_requested" : "coverage_unknown_not_requested";
-  return count > 0 ? "available" : "no_records_returned";
+  return "no_records_returned";
 }
 
 function normaliseEvents(payload: any): any[] {
@@ -471,7 +472,7 @@ export async function syncApiFootballFixtureDossier(
     fetchOptional("fixtures/players", { fixture: fixtureId }, "player_match_statistics", readiness, apiKey, endpointAudit, cov?.fixtures?.statistics_players !== false)
   ]);
   const halfStatisticsPayload = options.includeHalfTime !== false && season >= 2024
-    ? await fetchOptional("fixtures/statistics", { fixture: fixtureId, half: "true" }, "team_match_statistics", readiness, apiKey, endpointAudit, cov?.fixtures?.statistics_fixtures !== false)
+    ? await fetchOptional("fixtures/statistics", { fixture: fixtureId, half: "true" }, "half_time_team_statistics", readiness, apiKey, endpointAudit, cov?.fixtures?.statistics_fixtures !== false)
     : null;
 
   let injuriesPayload: any = null, predictionsPayload: any = null, oddsPayload: any = null, standingsPayload: any = null;
