@@ -18,6 +18,18 @@ function slug(value: string): string {
 function safeArray(value: unknown, max = 100): any[] {
   return Array.isArray(value) ? value.slice(0, max) : [];
 }
+function isHttpsUrl(value: unknown): boolean {
+  const raw = clean(value, 1500);
+  try {
+    const parsed = new URL(raw);
+    return parsed.protocol === "https:" && Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+function evidenceHasHttpsUrl(entry: any): boolean {
+  return isHttpsUrl(typeof entry === "string" ? entry : entry?.url || entry?.reference || entry?.sourceUrl || entry?.evidenceUrl);
+}
 function searchText(value: unknown): string {
   try { return JSON.stringify(value).toLowerCase(); } catch { return ""; }
 }
