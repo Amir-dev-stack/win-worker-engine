@@ -26,16 +26,16 @@ function validatedLesson(item:any){
 export async function getLearningObservatory(){
  const [budget,smoke,reviewerConfig,reviewOps,lessonCases,humanCases,winCases,lessons,coupons,
   postMatch,sourceDiscovery,eventData,consensusData,observedData,playerData,settledMarketData,calibration,cycles,agentTasks]=await Promise.all([
-  getAIbudgetStatus(),list<any>("library/department-smoke-tests",100),
-  get<any>("library/reviewer-config","active"),list<any>("library/review-operations",200),
-  list<any>("library/lesson-review-cases",100),list<any>("library/human-settlement-cases",250),
-  list<any>("library/win-post-match-review-cases",100),list<any>("library/lessons",100),
-  list<any>("library/coupons",150),getPostMatchFollowupStatus(),
-  getPublicResearchSourceDiscoveryStatus(),list<any>("library/model-lab/historical-event-datasets",200),
-  list<any>("library/model-lab/market-consensus-datasets",100),list<any>("library/model-lab/observed-market-snapshots",100),
-  list<any>("library/model-lab/player-event-datasets",200),list<any>("library/model-lab/settled-observed-markets",100),
-  list<any>("library/model-lab/market-calibration-reports",50),list<any>("library/learning-cycles",100),
-  list<any>("library/agent-task-queue",100)
+  getAIbudgetStatus(),list<any>("library/department-smoke-tests",40),
+  get<any>("library/reviewer-config","active"),list<any>("library/review-operations",40),
+  list<any>("library/lesson-review-cases",40),list<any>("library/human-settlement-cases",40),
+  list<any>("library/win-post-match-review-cases",40),list<any>("library/lessons",40),
+  list<any>("library/coupons",40),getPostMatchFollowupStatus(),
+  getPublicResearchSourceDiscoveryStatus(),list<any>("library/model-lab/historical-event-datasets",40),
+  list<any>("library/model-lab/market-consensus-datasets",40),list<any>("library/model-lab/observed-market-snapshots",40),
+  list<any>("library/model-lab/player-event-datasets",40),list<any>("library/model-lab/settled-observed-markets",40),
+  list<any>("library/model-lab/market-calibration-reports",20),list<any>("library/learning-cycles",40),
+  list<any>("library/agent-task-queue",40)
  ]);
  const ordered=smoke.slice().sort((a,b)=>timeOf(b.createdAt)-timeOf(a.createdAt));
  const latestByDepartment=new Map<string,any>();
@@ -69,7 +69,7 @@ export async function getLearningObservatory(){
  const activeReviewer=Boolean(reviewerConfig?.status==="active"&&reviewerConfig?.tokenHash);
  return {
   generatedAt:new Date().toISOString(),
-  auditReadPolicy:{mode:"bounded_recent_sample",note:"Overview aggregates are computed from bounded recent record samples to keep read-only MCP requests within the function response window. Use list_win_audit_records for collection inspection; overview counts and rates are sample-bounded."},
+  auditReadPolicy:{mode:"bounded_recent_sample",maxRecordsPerCollection:40,note:"Overview aggregates are computed from bounded recent record samples (at most 40 records per collection) to keep read-only MCP requests within the function response window. Use list_win_audit_records for collection inspection; overview counts and rates are sample-bounded."},
   system:{status:"online",departments,departmentsTested:departments.filter(x=>x.status!=="not_tested").length,departmentsPassed:departments.filter(x=>x.status==="passed").length},
   liveResearch:{status:Netlify.env.get("WIN_AI_BUDGET_APPROVED")==="true"&&!budget.spendingLocked?"enabled":"locked",approvalFlag:Netlify.env.get("WIN_AI_BUDGET_APPROVED")==="true",spendingLocked:budget.spendingLocked,aiCallsAllowed:Netlify.env.get("WIN_AI_BUDGET_APPROVED")==="true"&&!budget.spendingLocked},
   reviewer:{status:operationsComplete?"review_recorded":activeReviewer?"credential_created_waiting_for_review":"credential_not_created",activeCredentialConfigured:activeReviewer,pendingCases:pendingReview,pendingLessonCases:lessonCases.filter((x:any)=>x.reviewStatus==="pending_independent_review").length,pendingHumanCouponCases:humanCases.filter((x:any)=>x.reviewStatus==="pending_independent_review").length,pendingWinCouponCases:winCases.filter((x:any)=>x.reviewStatus==="pending_independent_review").length,completedOperations:operationsComplete,interruptedOperations:reviewOps.filter((x:any)=>x.status==="in_progress"||x.status==="failed").length,note:"Credential separation is not proof of a different human identity. A different trusted reviewer must review a real case."},
