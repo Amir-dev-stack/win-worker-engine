@@ -57,7 +57,7 @@ export async function getModelLabResearchPack(targetBrief:any={}){
  const skillCornerMetricLeaderboards=(aggregateType:string,metric:string)=>{
   const rows=skillCornerDatasets.filter((dataset:any)=>dataset.aggregateType===aggregateType)
    .flatMap((dataset:any)=>(Array.isArray(dataset.records)?dataset.records:[]))
-   .filter((record:any)=>record.team!=="total"&&typeof record.statistics?.[metric]==="number");
+   .filter((record:any)=>!record.isSeasonTotalRow&&record.team!=="total"&&typeof record.statistics?.[metric]==="number");
   return rows.sort((a:any,b:any)=>Number(b.statistics[metric])-Number(a.statistics[metric])).slice(0,10)
    .map((record:any)=>({player:record.player,team:record.team,season:record.season,competition:record.competition,gamesPlayed:record.gamesPlayed,metric,value:record.statistics[metric],sourceUrl:record.sourceUrl}));
  };
