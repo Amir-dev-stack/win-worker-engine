@@ -5,7 +5,7 @@ import { assertProviderImportAllowed } from "./data-provider-registry.mts";
 const PROVIDER_ID = "nflverse-pbp-data";
 const LICENSE = "CC-BY-4.0";
 const LICENSE_URL = "https://github.com/nflverse/nflverse-data/blob/main/LICENSE.md";
-const ATTRIBUTION = "nflverse play-by-play data — CC BY 4.0. Attribute nflverse and any upstream provider stated by the release.";
+const ATTRIBUTION = "nflverse play-by-play and schedule data — CC BY 4.0. Attribute nflverse and any upstream provider stated by the release.";
 const RELEASE_BASE = "https://github.com/nflverse/nflverse-data/releases/download/pbp";
 const USER_AGENT = "WIN-ResearchEngine/1.0 (+https://github.com/Amir-dev-stack/win-worker-engine)";
 const MAX_CSV_CHARACTERS = 115_000_000;
@@ -119,6 +119,103 @@ export function auditNflverseRows(rows: Record<string, string>[]) {
     gamesRejected: Math.max(0, gamesSeen.size - acceptedGames.size),
     conflictingGames: [...conflictingGames].sort()
   };
+}
+
+
+function parseCsvRecords(raw: string): string[][] {
+  if (typeof raw !== "string" || raw.length === 0) throw new Error("nflverse_csv_empty");
+  if (raw.length > MAX_CSV_CHARACTERS) throw new Error("nflverse_csv_exceeds_size_guard");
+  const records: string[][] = [];
+  let record: string[] = [];
+  let field = "";
+  let quoted = false;
+  for (let i = 0; i < raw.length; i++) {
+    const char = raw[i];
+    if (quoted) {
+      if (char === '"' && raw[i + 1] === '"') { field += '"'; i++; }
+      else if (char === '"') quoted = false;
+      else field += char;
+      continue;
+    }
+    if (char === '"' && field.length === 0) { quoted = true; continue; }
+    if (char === ",") { record.push(field); field = ""; continue; }
+    if (char === "\n") {
+      record.push(field.replace(/\r$/, ""));
+      if (record.some(value => value !== "")) records.push(record);
+      record = []; field = "";
+      continue;
+    }
+    field += char;
+  }
+  if (quoted) throw new Error("nflverse_csv_unclosed_quote");
+  if (field.length || record.length) {
+    record.push(field.replace(/\r$/, ""));
+    if (record.some(value => value !== "")) records.push(record);
+  }
+  if (records.length < 2) throw new Error("nflverse_csv_has_no_data_rows");
+  const headers = records[0].map((value, index) => (index === 0 ? value.replace(/^\uFEFF/, "") : value).trim());
+  if (headers.some(header => !header)) throw new Error("nflverse_csv_schema_empty_header");
+  if (new Set(headers).size !== headers.length) throw new Error("nflverse_csv_schema_duplicate_header");
+  const dataRows = records.slice(1);
+  for (let index = 0; index < dataRows.length; index++) {
+    if (dataRows[index].length !== headers.length) {
+      throw new Error("nflverse_csv_column_count_mismatch_at_row_" + String(index + 2));
+    }
+  }
+  return [headers, ...dataRows];
+}
+
+function easternKickoffToUtc(date: string, time: string): string | null {
+  if (!validCalendarDate(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return null;
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  const utcGuess = Date.UTC(year, month - 1, day, hour, minute);
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
+  });
+  const parts = Object.fromEntries(formatter.formatToParts(new Date(utcGuess)).map(part => [part.type, part.value]));
+  const representedAsUtc = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    Number(parts.hour), Number(parts.minute), Number(parts.second));
+  const offset = representedAsUtc - utcGuess;
+  return new Date(utcGuess - offset).toISOString();
+}
+
+export function parseNflverseScheduleCsv(raw: string): Record<string, string>[] {
+  const [headers, ...dataRows] = parseCsvRecords(raw);
+  const required = ["game_id", "gameday", "gametime", "away_team", "home_team"];
+  const missing = required.filter(key => !headers.includes(key));
+  if (missing.length) throw new Error("nflverse_schedule_schema_missing_" + missing.join("_"));
+  return dataRows.map(cells => Object.fromEntries(headers.map((header, index) => [header, cells[index]])));
+}
+
+export function enrichNflverseRecordsWithSchedule(records: any[], scheduleRows: Record<string, string>[]) {
+  const byId = new Map<string, Record<string, string>>();
+  const conflicts = new Set<string>();
+  for (const row of scheduleRows) {
+    const id = text(row.game_id);
+    if (!id) continue;
+    const previous = byId.get(id);
+    if (previous && [previous.gameday, previous.home_team, previous.away_team, previous.gametime].join("|") !==
+      [row.gameday, row.home_team, row.away_team, row.gametime].join("|")) conflicts.add(id);
+    else byId.set(id, row);
+  }
+  const enriched = records.map(record => {
+    const id = text(record.eventId);
+    const row = byId.get(id);
+    if (!row || conflicts.has(id)) return record;
+    const identityMatches = text(row.gameday) === text(record.eventDate) &&
+      teamName(row.home_team) === record.homeTeam && teamName(row.away_team) === record.awayTeam;
+    const kickoff = identityMatches ? easternKickoffToUtc(text(row.gameday), text(row.gametime)) : null;
+    if (!kickoff) return record;
+    return {
+      ...record, eventStart: kickoff, eventTimePrecision: "scheduled_kickoff",
+      kickoffLocal: { date: text(row.gameday), time: text(row.gametime), timeZone: "America/New_York" },
+      kickoffSource: "nflverse-schedules", kickoffSourceLicence: LICENSE
+    };
+  });
+  const matched = enriched.filter(record => record.eventTimePrecision === "scheduled_kickoff").length;
+  return { records: enriched, matched, unmatched: records.length - matched, conflictingGameIds: [...conflicts].sort() };
 }
 
 export function parseNflverseCsv(raw: string): Record<string, string>[] {
@@ -493,8 +590,17 @@ export async function syncNflversePlayByPlayData(seasonInput?: number) {
   const retrievedAt = new Date().toISOString();
   const rows = parseNflverseCsv(raw);
   const qualityAudit = auditNflverseRows(rows);
-  const records = buildNflverseMatchRecords(qualityAudit.acceptedRows, season, sourceUrl, retrievedAt)
-    .map(record => ({ ...record, rawChecksum }));
+  const scheduleUrl = "https://github.com/nflverse/nflverse-data/releases/download/schedules/games.csv";
+  const scheduleResponse = await fetch(scheduleUrl, {
+    headers: { "user-agent": USER_AGENT, accept: "text/csv" }, signal: AbortSignal.timeout(60000)
+  });
+  if (!scheduleResponse.ok) throw new Error("nflverse_schedule_http_" + scheduleResponse.status);
+  const scheduleRaw = await scheduleResponse.text();
+  const scheduleChecksum = createHash("sha256").update(scheduleRaw).digest("hex");
+  const scheduleRows = parseNflverseScheduleCsv(scheduleRaw);
+  const baseRecords = buildNflverseMatchRecords(qualityAudit.acceptedRows, season, sourceUrl, retrievedAt);
+  const scheduleJoin = enrichNflverseRecordsWithSchedule(baseRecords, scheduleRows);
+  const records = scheduleJoin.records.map(record => ({ ...record, rawChecksum, scheduleChecksum }));
   if (!records.length) throw new Error("nflverse_pbp_no_completed_matches_found");
   let saved = 0;
   for (const record of records) {
@@ -515,12 +621,16 @@ export async function syncNflversePlayByPlayData(seasonInput?: number) {
     status: "completed", startedAt, completedAt: new Date().toISOString(),
     sourceUrl, sourceLicence: LICENSE, licenceReference: LICENSE_URL, attribution: ATTRIBUTION,
     rawChecksum, sourceReleaseAsset: "play_by_play_" + season + ".csv",
+    scheduleUrl, scheduleChecksum, scheduleRows: scheduleRows.length,
+    scheduleKickoffsMatched: scheduleJoin.matched, scheduleKickoffsUnmatched: scheduleJoin.unmatched,
+    scheduleConflictingGameIds: scheduleJoin.conflictingGameIds,
     csvRows: rows.length, rowsSeen: qualityAudit.rowsSeen, rowsAccepted: qualityAudit.rowsAccepted,
     rowsRejected: qualityAudit.rowsRejected, rejectedByReason: qualityAudit.rejectedByReason,
     gamesSeen: qualityAudit.gamesSeen, gamesAccepted: qualityAudit.gamesAccepted,
     gamesRejected: qualityAudit.gamesRejected, conflictingGames: qualityAudit.conflictingGames,
     gamesNotConfirmedFinal: Math.max(0, qualityAudit.gamesAccepted - records.length),
-    dateOnlyEvents: records.length, matchesImported: saved,
+    dateOnlyEvents: records.filter(record => record.eventTimePrecision === "date_only").length,
+    scheduledKickoffEvents: scheduleJoin.matched, matchesImported: saved,
     scoredMatches: saved, playsImported: records.reduce((total, record) => total + Number(record.playCount || 0), 0),
     playerLinesImported: records.reduce((total, record) => total + Number(record.playerCount || 0), 0),
     aiCalls: 0, sourceReportedNotIndependentlyVerified: true,
