@@ -119,3 +119,20 @@ test("encrypted backup and restore include financial accounts and append-only le
   assert.match(restore, /restoreFinancialRecord\("account"/);
   assert.match(restore, /restoreFinancialRecord\("ledger"/);
 });
+
+test("WIN memory capacity monitor measures Neon usage, records thresholds and never deletes data", async () => {
+  const helper = await read("../netlify/lib/memory-capacity.mts");
+  const endpoint = await read("../netlify/functions/memory-capacity.mts");
+  const monitor = await read("../netlify/functions/memory-capacity-monitor.mts");
+  assert.match(helper, /pg_database_size\(current_database\(\)\)/);
+  assert.match(helper, /warningPercent: 75/);
+  assert.match(helper, /criticalPercent: 90/);
+  assert.match(helper, /WIN_NEON_STORAGE_LIMIT_BYTES/);
+  assert.match(helper, /objectCountTruncated/);
+  assert.match(helper, /does not expose object byte sizes/);
+  assert.match(endpoint, /requireAuth/);
+  assert.match(endpoint, /\/api\/memory-capacity/);
+  assert.match(monitor, /40 3 \* \* \*/);
+  assert.match(monitor, /memory-capacity-latest/);
+  assert.doesNotMatch(helper + endpoint + monitor, /\.delete\(/);
+});
