@@ -122,3 +122,20 @@ A second read-only run against the same 2026 PBP release after compact field enc
 These are exact JSON serialization measurements from the audit runner, not billed storage usage. No Blob writes, scheduler-state updates, production data changes or AI calls occurred. The 2025 and 2026 full-season audits are now both complete. The 2025 run (2026-11-04) found a 97,951,481-byte PBP CSV with SHA-256 `8ce0001826f0f7b895b7a1068e4db7f43696c699db7064ccb1201855768fd06c`, 48,771 rows accepted, 0 rejected, 285 games, 285 completed match records, 285/285 schedule joins, 0 identity conflicts, 48,771 source plays and 18,120 player match lines. Its 285-game compact JSON payload measured 187,247,711 bytes total; average 657,010; median 653,471; p90 717,550; p95 740,121; maximum 832,737 bytes.
 
 Across 2025 and 2026 together, the validated sample covers 406 games, 69,962 source plays and 25,888 player match lines. The exact JSON payload total is 268,289,941 bytes (about 255.86 MiB), averaging about 660,813 bytes per match. Both seasons had zero rejected rows and complete exact schedule joins. These are two full-season samples, not all 28 seasons since 1999, and JSON payload bytes are not a billed storage measurement.
+
+### NFL play-by-play derived metric normalisation (updated 2026-11-04)
+
+The adapter now derives an additional, explicitly denominator-aware team efficiency layer from the source play fields:
+
+- `epa_total`: sum of non-null source `epa` values for plays attributed to the team's possession.
+- `epa_per_play`: `epa_total` divided by the number of those plays with non-null EPA.
+- `success_rate`: successful source `success = 1` plays divided by all plays with a non-null source `success` value.
+- `air_yards_per_attempt`: mean non-null `air_yards` across pass attempts.
+- `yards_after_catch_per_completion`: mean non-null `yards_after_catch` across completed passes.
+- `win_probability_added`: sum of non-null source `wpa` values.
+
+The corresponding counts and totals are retained in team statistics so a consumer can see the denominator behind each rate. A metric remains null when its denominator is zero; missing source values are not converted to zero. The standard team metric catalogue and regression tests now include these normalized values.
+
+This is a targeted extension, not a claim that all 372 source columns have been normalized. Every non-empty source value remains available in the compact event `sourceFields` encoding, while other fields remain raw evidence until their definitions, attribution rules and aggregation semantics have been reviewed. In particular, source-level player ratings, confirmed snap participation, player position/starting status and injury data are not manufactured from PBP rows. The official nflreadr PBP dictionary documents the 372-field schema and should remain the field-definition reference: https://nflreadr.nflverse.com/articles/dictionary_pbp.html.
+
+The 2025/2026 payload-size sample implies a rough long-history storage planning estimate of approximately 4.86–4.95 GB of UTF-8 JSON if the 7,395 game IDs in the previously inspected PBP manifest were all stored at the two-season sample's observed per-game average (about 657–670 KB/game). This is a planning extrapolation only: historical field density and season schema differences may change the actual size, and JSON bytes are not billed Netlify Blob storage. Do not use this estimate as approval for a bulk import.
