@@ -34,6 +34,11 @@ test("BTTS yes and no settle from the full-time score", () => {
 
 test("period markets, ambiguous picks, unsupported markets and invalid scores fail closed", () => {
   assert.equal(evaluateFullTimeLeg({ market: "1st Half - Over 0.5 Goals", pick: "Over 0.5" }, { home: 1, away: 0 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "2nd Half - Over 0.5 Goals", pick: "Over 0.5" }, { home: 1, away: 0 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Second Period BTTS", pick: "Yes" }, { home: 1, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Over 2.25 Goals", pick: "Over 2.25" }, { home: 3, away: 0 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Under 2.75 Goals", pick: "Under 2.75" }, { home: 1, away: 0 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Extra Time Goals Over 0.5", pick: "Over 0.5" }, { home: 1, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "Full Time Result 1X2", pick: "Alpha or Beta" }, { home: 1, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "Corners Over 8.5", pick: "Over 8.5" }, { home: 1, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "Total Cards Over 4.5", pick: "Over 4.5" }, { home: 1, away: 0 }).status, "unsupported_market");

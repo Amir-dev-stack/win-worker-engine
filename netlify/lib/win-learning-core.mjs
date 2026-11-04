@@ -26,8 +26,8 @@ export function evaluateFullTimeLeg(leg, score) {
     return { status: "unsupported_market", reason: "A valid non-negative full-time score is required." };
   }
   const total = home + away;
-  if (/first half|1st half|1st period|half time|halftime|1 polowa|pierwsza polowa/.test(market + " " + pick))
-    return { status: "unsupported_market", reason: "The source provides a match-final score; this period-specific market needs a period score." };
+  if (/first half|1st half|second half|2nd half|first period|1st period|second period|2nd period|third period|3rd period|fourth period|4th period|first quarter|1st quarter|second quarter|2nd quarter|third quarter|3rd quarter|fourth quarter|4th quarter|first set|1st set|second set|2nd set|third set|3rd set|fourth set|4th set|first inning|1st inning|second inning|2nd inning|third inning|3rd inning|half time|halftime|extra time|overtime|penalty shootout|penalties|shootout|1 polowa|2 polowa|pierwsza polowa|druga polowa/.test(market + " " + pick))
+    return { status: "unsupported_market", reason: "The source provides a match-final score; this period-specific or extra-time market needs a period-specific result." };
   if (/both teams to score|btts|obie druzyny strzela|obie druzyny/.test(market)) {
     const yes = home > 0 && away > 0;
     const saysYes = /\b(yes|tak)\b/.test(" " + pick), saysNo = /\b(no|nie)\b/.test(" " + pick);
@@ -41,6 +41,8 @@ export function evaluateFullTimeLeg(leg, score) {
   if (fullMatchGoalTotal) {
     const line = parseLine(rawPick + " " + clean(leg?.market, 180));
     if (line === null) return { status: "unsupported_market", reason: "Goal-total line could not be extracted." };
+    const fractionalCents = Math.round((line - Math.floor(line)) * 100);
+    if (fractionalCents === 25 || fractionalCents === 75) return { status: "unsupported_market", reason: "Quarter-goal Asian totals require split-line settlement data." };
     const under = /under|ponizej|less than|poniżej/.test(pick) || /under|ponizej|less than/.test(market);
     const over = /over|powyzej|more than/.test(pick) || /over|powyzej|more than/.test(market);
     if (!under && !over) return { status: "unsupported_market", reason: "Over/under direction could not be extracted." };
