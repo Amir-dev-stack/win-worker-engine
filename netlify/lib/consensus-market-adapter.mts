@@ -1,19 +1,20 @@
 import { createHash } from "node:crypto";
 import { get, put, list } from "./store.mts";
+import { assertProviderImportAllowed } from "./data-provider-registry.mts";
 
 const SOURCES = [
- {id:"hf-minmaxxxer-nfl-2026",repo:"minmaxxxer/nfl-odds-2026",sport:"american_football"},
- {id:"hf-minmaxxxer-nfl-2025",repo:"minmaxxxer/nfl-closing-lines-ats-2025",sport:"american_football"},
- {id:"hf-minmaxxxer-nba-2025-26",repo:"minmaxxxer/nba-closing-lines-ats-2025-26",sport:"basketball"},
- {id:"hf-minmaxxxer-nba-2024-25",repo:"minmaxxxer/nba-closing-lines-ats-2024-25",sport:"basketball"},
- {id:"hf-minmaxxxer-nba-2026-27",repo:"minmaxxxer/nba-odds-2026-27",sport:"basketball"},
- {id:"hf-minmaxxxer-nhl-2026-27",repo:"minmaxxxer/nhl-odds-2026-27",sport:"ice_hockey"},
- {id:"hf-minmaxxxer-nhl-2025-26",repo:"minmaxxxer/nhl-closing-odds-2025-26",sport:"ice_hockey"},
- {id:"hf-minmaxxxer-mlb-2025",repo:"minmaxxxer/mlb-closing-odds-2025",sport:"baseball"},
- {id:"hf-minmaxxxer-epl-2025-26",repo:"minmaxxxer/premier-league-closing-odds-2025-26",sport:"football"},
- {id:"hf-minmaxxxer-top3-europe-2025-26",repo:"minmaxxxer/laliga-serie-a-bundesliga-closing-odds-2025-26",sport:"football"},
- {id:"hf-minmaxxxer-atp-wta-2025",repo:"minmaxxxer/atp-wta-closing-odds-2025",sport:"tennis"},
- {id:"hf-minmaxxxer-epl-2026-27",repo:"minmaxxxer/premier-league-odds-2026-27",sport:"football"}
+ {id:"hf-minmaxxxer-nfl-2026",requiredDomains:["historical_consensus_market_lines","results"],repo:"minmaxxxer/nfl-odds-2026",sport:"american_football"},
+ {id:"hf-minmaxxxer-nfl-2025",requiredDomains:["historical_consensus_moneyline","spread","totals","settled_results"],repo:"minmaxxxer/nfl-closing-lines-ats-2025",sport:"american_football"},
+ {id:"hf-minmaxxxer-nba-2025-26",requiredDomains:["historical_consensus_market_lines","results"],repo:"minmaxxxer/nba-closing-lines-ats-2025-26",sport:"basketball"},
+ {id:"hf-minmaxxxer-nba-2024-25",requiredDomains:["historical_consensus_moneyline","spread","totals","settled_results"],repo:"minmaxxxer/nba-closing-lines-ats-2024-25",sport:"basketball"},
+ {id:"hf-minmaxxxer-nba-2026-27",requiredDomains:["historical_consensus_market_lines","results"],repo:"minmaxxxer/nba-odds-2026-27",sport:"basketball"},
+ {id:"hf-minmaxxxer-nhl-2026-27",requiredDomains:["historical_consensus_market_lines","results"],repo:"minmaxxxer/nhl-odds-2026-27",sport:"ice_hockey"},
+ {id:"hf-minmaxxxer-nhl-2025-26",requiredDomains:["historical_consensus_moneyline","puck_line","totals","settled_results"],repo:"minmaxxxer/nhl-closing-odds-2025-26",sport:"ice_hockey"},
+ {id:"hf-minmaxxxer-mlb-2025",requiredDomains:["historical_consensus_moneyline","run_line","totals","settled_results"],repo:"minmaxxxer/mlb-closing-odds-2025",sport:"baseball"},
+ {id:"hf-minmaxxxer-epl-2025-26",requiredDomains:["historical_consensus_market_lines","results"],repo:"minmaxxxer/premier-league-closing-odds-2025-26",sport:"football"},
+ {id:"hf-minmaxxxer-top3-europe-2025-26",requiredDomains:["historical_consensus_1x2","totals","btts","asian_handicap","settled_results"],repo:"minmaxxxer/laliga-serie-a-bundesliga-closing-odds-2025-26",sport:"football"},
+ {id:"hf-minmaxxxer-atp-wta-2025",requiredDomains:["historical_match_winner_probabilities","fair_closing_odds","best_available_closing_price","match_results","player_metadata"],repo:"minmaxxxer/atp-wta-closing-odds-2025",sport:"tennis"},
+ {id:"hf-minmaxxxer-epl-2026-27",requiredDomains:["historical_consensus_market_lines","results"],repo:"minmaxxxer/premier-league-odds-2026-27",sport:"football"}
 ] as const;
 
 function parseCsv(text:string):string[][] {
@@ -32,6 +33,7 @@ function parseCsv(text:string):string[][] {
 const number=(v:unknown)=>{if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null;};
 
 async function syncOne(source:typeof SOURCES[number]){
+ assertProviderImportAllowed(source.id,source.requiredDomains);
  const treeRes=await fetch("https://huggingface.co/api/datasets/"+source.repo+"/tree/main?recursive=true&expand=false",{headers:{"user-agent":"WIN-ResearchEngine/1.0"}});
  if(!treeRes.ok)throw Error("huggingface_tree_http_"+treeRes.status);
  const tree:any[]=await treeRes.json();
@@ -98,7 +100,7 @@ async function syncOne(source:typeof SOURCES[number]){
     totalResult:String(r.total_result||r.ou25_result||""),
     bttsResult:String(r.btts_result||"")
    },
-   sourceUrl:url,sourceLicence:"CC-BY-4.0",licenceReference:"https://creativecommons.org/licenses/by/4.0/",
+   sourceUrl:url,sourceLicence:"CC-BY-4.0",licenceReference:"https://huggingface.co/datasets/"+source.repo,attribution:"Min Maxxxer via Hugging Face; CC BY 4.0.",
    retrievedAt:new Date().toISOString(),origin:"provider_historical_data",lab:"model-lab",
    rawIndex:index
   };

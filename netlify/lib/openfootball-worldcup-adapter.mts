@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { get, put, list } from "./store.mts";
+import { assertProviderImportAllowed } from "./data-provider-registry.mts";
 
 const YEARS=[1930,1934,1938,1950,1954,1958,1962,1966,1970,1974,1978,1982,1986,1990,1994,1998,2002,2006,2010,2014,2018,2022,2026];
 const PATHS=[
@@ -68,10 +69,11 @@ async function syncOne(path:typeof PATHS[number]){
   playerEventRows:playerEventRows.length,records,origin:"provider_historical_data",lab:"model-lab",
   attribution:"OpenFootball worldcup.json — public-domain data (CC0-1.0)."
  });
- await put("library/model-lab/player-event-datasets",datasetId,{id:datasetId,providerId:"openfootball-worldcup-json",sport:"football",season:String(path.year),competition:parsed.name||path.competition,sourceUrl:url,sourceLicence:"CC0-1.0",rawChecksum:checksum,totalRows:playerEventRows.length,records:playerEventRows,origin:"provider_historical_data",lab:"model-lab"});
+ await put("library/model-lab/player-event-datasets",datasetId,{id:datasetId,providerId:"openfootball-worldcup-json",sport:"football",season:String(path.year),competition:parsed.name||path.competition,sourceUrl:url,sourceLicence:"CC0-1.0",licenceReference:"https://github.com/openfootball/worldcup.json/blob/master/LICENSE.md",attribution:"OpenFootball worldcup.json — CC0 1.0.",rawChecksum:checksum,totalRows:playerEventRows.length,records:playerEventRows,origin:"provider_historical_data",lab:"model-lab"});
  return {datasetId,year:path.year,competition:parsed.name||path.competition,matches:records.length,scored:records.filter(x=>x.fullTimeScore).length,playerEvents:playerEventRows.length,checksum};
 }
 export async function syncOpenFootballWorldCupData(){
+ assertProviderImportAllowed("openfootball-worldcup-json",["fixtures","results","player_events"]);
  const startedAt=new Date().toISOString(),results:any[]=[],failures:any[]=[];
  // Four concurrent downloads keep the daily job bounded and avoid a request burst.
  for(let i=0;i<PATHS.length;i+=4){

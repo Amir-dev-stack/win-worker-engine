@@ -29,6 +29,8 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     sports:["football","baseball"], dataDomains:["observed_bookmaker_odds","market_catalogue","multi_source_price_snapshots"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
     licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://creativecommons.org/licenses/by/4.0/",
+    attribution:"SharpAPI (sharpapi.io), Sports Betting Odds Sample Dataset — CC BY 4.0.",
     notes:"Two static CC BY 4.0 snapshots: 6,132 World Cup prices across 20 sources and 3,673 MLB prices across 14 sources. Preserve sportsbook/exchange/prediction-market identity; snapshots are not live odds or settled results. Attribution required."
   },
   {
@@ -36,6 +38,8 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     sports:["football"], dataDomains:["fixtures","results","goalscorers","lineups","substitutions","bookings","venues","player_events"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
     licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://github.com/openfootball/worldcup.json/blob/master/LICENSE.md",
+    attribution:"OpenFootball worldcup.json — CC0 1.0.",
     notes:"CC0 public-domain data for men's World Cups 1930–2026 and 2025 Club World Cup. Full match files include scorer, lineup, substitution and booking events where available. Upstream is community-maintained, not a guaranteed live feed."
   },
   {
@@ -50,6 +54,8 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     sports:["football"], dataDomains:["fixtures","results","competition_metadata"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
     licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://github.com/openfootball/football.json/blob/master/LICENSE.md",
+    attribution:"OpenFootball football.json — CC0 1.0.",
     notes:"Specific football.json dataset documents CC0/public-domain data. Adapter stores source URL, retrieval timestamp and SHA-256 checksum; this approval does not extend to every OpenFootball repository."
   },
 
@@ -58,6 +64,8 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     sports:["american_football"], dataDomains:["historical_consensus_market_lines","results"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
     licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://huggingface.co/datasets/minmaxxxer/nfl-odds-2026",
+    attribution:"Min Maxxxer, Hugging Face dataset nfl-odds-2026 — CC BY 4.0.",
     notes:"CC BY 4.0 dataset; consensus opening/closing moneyline probabilities, spreads, totals and settled results. Bookmaker identities and individual prices are not included."
   },
   {
@@ -65,6 +73,8 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     sports:["basketball"], dataDomains:["historical_consensus_market_lines","results"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
     licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://huggingface.co/datasets/minmaxxxer/nba-closing-lines-ats-2025-26",
+    attribution:"Min Maxxxer, Hugging Face dataset nba-closing-lines-ats-2025-26 — CC BY 4.0.",
     notes:"CC BY 4.0 dataset; consensus opening/closing moneyline probabilities, spreads, totals and settled results. Not bookmaker-level raw odds."
   },
   {
@@ -72,6 +82,8 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     sports:["basketball"], dataDomains:["historical_consensus_market_lines","results"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
     licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://huggingface.co/datasets/minmaxxxer/nba-odds-2026-27",
+    attribution:"Min Maxxxer, Hugging Face dataset nba-odds-2026-27 — CC BY 4.0.",
     notes:"CC BY 4.0 dataset; current-season consensus opening/closing lines and results as published. Not bookmaker-level raw odds."
   },
   {
@@ -79,6 +91,8 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     sports:["football"], dataDomains:["historical_consensus_market_lines","results"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
     licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://huggingface.co/datasets/minmaxxxer/premier-league-closing-odds-2025-26",
+    attribution:"Min Maxxxer, Hugging Face dataset premier-league-closing-odds-2025-26 — CC BY 4.0.",
     notes:"CC BY 4.0 dataset; consensus opening/closing 1X2, totals, BTTS and Asian handicap lines with results. Not bookmaker-level raw odds."
   },
   {
@@ -86,6 +100,8 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     sports:["football"], dataDomains:["historical_consensus_market_lines","results"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
     licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://huggingface.co/datasets/minmaxxxer/premier-league-odds-2026-27",
+    attribution:"Min Maxxxer, Hugging Face dataset premier-league-odds-2026-27 — CC BY 4.0.",
     notes:"CC BY 4.0 dataset; current-season consensus opening/closing 1X2, totals, BTTS and Asian handicap lines with results. Not bookmaker-level raw odds."
   },
   {
@@ -93,42 +109,56 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     sports:["ice_hockey"], dataDomains:["historical_consensus_market_lines","results"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none",
     licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://huggingface.co/datasets/minmaxxxer/nhl-odds-2026-27",
+    attribution:"Min Maxxxer, Hugging Face dataset nhl-odds-2026-27 — CC BY 4.0.",
     notes:"CC BY 4.0 consensus opening/closing moneyline, puck-line and total probabilities with settled results. Bookmaker identities and individual prices are not included."
   },
   {
     id:"hf-minmaxxxer-nfl-2025", name:"Hugging Face — NFL 2025 closing lines", website:"https://huggingface.co/datasets/minmaxxxer/nfl-closing-lines-ats-2025",
     sports:["american_football"], dataDomains:["historical_consensus_moneyline","spread","totals","settled_results"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://huggingface.co/datasets/minmaxxxer/nfl-closing-lines-ats-2025",
+    attribution:"Min Maxxxer, Hugging Face dataset nfl-closing-lines-ats-2025 — CC BY 4.0.",
     notes:"285 NFL games, CC BY 4.0. Consensus opening/closing probabilities and graded moneyline, spread and total outcomes; not individual bookmaker prices."
   },
   {
     id:"hf-minmaxxxer-nba-2024-25", name:"Hugging Face — NBA 2024/25 closing lines", website:"https://huggingface.co/datasets/minmaxxxer/nba-closing-lines-ats-2024-25",
     sports:["basketball"], dataDomains:["historical_consensus_moneyline","spread","totals","settled_results"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://huggingface.co/datasets/minmaxxxer/nba-closing-lines-ats-2024-25",
+    attribution:"Min Maxxxer, Hugging Face dataset nba-closing-lines-ats-2024-25 — CC BY 4.0.",
     notes:"About 1,310 NBA games, CC BY 4.0. Consensus opening/closing probabilities and graded results; not individual bookmaker prices."
   },
   {
     id:"hf-minmaxxxer-nhl-2025-26", name:"Hugging Face — NHL 2025/26 closing odds", website:"https://huggingface.co/datasets/minmaxxxer/nhl-closing-odds-2025-26",
     sports:["ice_hockey"], dataDomains:["historical_consensus_moneyline","puck_line","totals","settled_results"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://huggingface.co/datasets/minmaxxxer/nhl-closing-odds-2025-26",
+    attribution:"Min Maxxxer, Hugging Face dataset nhl-closing-odds-2025-26 — CC BY 4.0.",
     notes:"1,394 NHL games, CC BY 4.0. Consensus opening/closing probabilities and graded moneyline, puck-line and totals; overtime/shootout included as described by dataset."
   },
   {
     id:"hf-minmaxxxer-mlb-2025", name:"Hugging Face — MLB 2025 closing odds", website:"https://huggingface.co/datasets/minmaxxxer/mlb-closing-odds-2025",
     sports:["baseball"], dataDomains:["historical_consensus_moneyline","run_line","totals","settled_results"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://huggingface.co/datasets/minmaxxxer/mlb-closing-odds-2025",
+    attribution:"Min Maxxxer, Hugging Face dataset mlb-closing-odds-2025 — CC BY 4.0.",
     notes:"2,480 MLB games, CC BY 4.0. Consensus opening/closing probabilities and graded moneyline, run-line and totals; extra innings included."
   },
   {
     id:"hf-minmaxxxer-top3-europe-2025-26", name:"Hugging Face — LaLiga, Serie A and Bundesliga 2025/26", website:"https://huggingface.co/datasets/minmaxxxer/laliga-serie-a-bundesliga-closing-odds-2025-26",
     sports:["football"], dataDomains:["historical_consensus_1x2","totals","btts","asian_handicap","settled_results"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://huggingface.co/datasets/minmaxxxer/laliga-serie-a-bundesliga-closing-odds-2025-26",
+    attribution:"Min Maxxxer, Hugging Face dataset laliga-serie-a-bundesliga-closing-odds-2025-26 — CC BY 4.0.",
     notes:"1,066 matches across three European leagues, CC BY 4.0. Consensus market probabilities and graded outcomes; bookmaker-level prices are not included."
   },
   {
     id:"hf-minmaxxxer-atp-wta-2025", name:"Hugging Face — ATP/WTA 2025 closing odds", website:"https://huggingface.co/datasets/minmaxxxer/atp-wta-closing-odds-2025",
     sports:["tennis"], dataDomains:["historical_match_winner_probabilities","fair_closing_odds","best_available_closing_price","match_results","player_metadata"],
     accessMode:"open_download", historicalSupport:"documented", authentication:"none", licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://huggingface.co/datasets/minmaxxxer/atp-wta-closing-odds-2025",
+    attribution:"Min Maxxxer, Hugging Face dataset atp-wta-closing-odds-2025 — CC BY 4.0.",
     notes:"5,791 ATP/WTA singles matches, CC BY 4.0. Includes consensus fair prices and best available closing prices, but the best-price bookmaker identity is not supplied; retired and walkover matches must be excluded from ordinary settlement calibration."
   },
   {
@@ -174,6 +204,33 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     notes:"Commercial candidate; archive access and sport-specific coverage must be verified against plan and contract."
   }
 ];
+
+
+const IMPORTABLE_ACCESS_MODES = new Set<ProviderAccessMode>(["open_download", "open_api"]);
+const PROVIDER_ID_ALIASES: Record<string, string> = {
+  "openfootball-football-json": "openfootball"
+};
+
+/**
+ * Fail-closed guard used by the actual public-data import adapters.
+ * This is intentionally distinct from providerMayRunAutomatically(), which
+ * also requires a verified live connection for credentialed providers.
+ */
+export function assertProviderImportAllowed(providerId: string, requiredDomains: string[] = []) {
+  const requestedId = typeof providerId === "string" ? providerId.trim() : "";
+  const canonicalId = PROVIDER_ID_ALIASES[requestedId] || requestedId;
+  const provider = DATA_PROVIDER_REGISTRY.find(item => item.id === canonicalId);
+  if (!provider) throw new Error("provider_import_blocked: provider_not_registered:" + requestedId);
+  if (!provider.automationAllowed) throw new Error("provider_import_blocked: automation_disabled:" + canonicalId);
+  if (provider.licenceReview !== "approved") throw new Error("provider_import_blocked: licence_review_not_approved:" + canonicalId);
+  if (!IMPORTABLE_ACCESS_MODES.has(provider.accessMode)) throw new Error("provider_import_blocked: access_mode_not_importable:" + canonicalId);
+  if (!/^https:\/\//i.test(provider.licenceReference || "")) throw new Error("provider_import_blocked: https_licence_reference_missing:" + canonicalId);
+  if (!provider.attribution?.trim()) throw new Error("provider_import_blocked: attribution_missing:" + canonicalId);
+  const required = [...new Set(requiredDomains.filter(Boolean))];
+  const missing = required.filter(domain => !provider.dataDomains.includes(domain));
+  if (missing.length) throw new Error("provider_import_blocked: data_domain_not_approved:" + canonicalId + ":" + missing.join(","));
+  return provider;
+}
 
 export type ProviderConnection = {
   providerId: string;

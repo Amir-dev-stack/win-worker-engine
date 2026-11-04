@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { get, put } from "./store.mts";
+import { assertProviderImportAllowed } from "./data-provider-registry.mts";
 
 const API = "https://api.github.com/repos/openfootball/football.json/contents";
 const RAW = "https://raw.githubusercontent.com/openfootball/football.json/master";
@@ -23,6 +24,7 @@ function validScore(score: any) {
 }
 
 export async function syncOpenFootballHistoricalData() {
+  assertProviderImportAllowed("openfootball-football-json", ["fixtures", "results"]);
   const startedAt = new Date().toISOString();
   const root = await getJson(API);
   const seasons = (root as any[])
@@ -82,7 +84,7 @@ export async function syncOpenFootballHistoricalData() {
               status:ft ? "completed" : "scheduled_or_unscored",
               sourceProvider:"openfootball-football-json",
               sourceUrl:url, retrievedAt:new Date().toISOString(),
-              sourceLicence:"CC0-1.0", origin:"provider_historical_data",
+              sourceLicence:"CC0-1.0", licenceReference:"https://github.com/openfootball/football.json/blob/master/LICENSE.md", attribution:"OpenFootball football.json — CC0 1.0.", origin:"provider_historical_data",
               rawIndex:index
             }];
           });

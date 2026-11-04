@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { get, put, list } from "./store.mts";
+import { assertProviderImportAllowed } from "./data-provider-registry.mts";
 import { validateObservedMarket, type ObservedMarket } from "./market-catalog.mts";
 
 const FILES=[
@@ -43,6 +44,7 @@ function classifySource(name:string):ObservedMarket["bookmakerType"]{
  return "unknown";
 }
 async function syncOne(file:typeof FILES[number]){
+ assertProviderImportAllowed("sharpapi-sample-data",["observed_bookmaker_odds","multi_source_price_snapshots"]);
  const url=BASE+file.path,res=await fetch(url,{headers:{"user-agent":"WIN-ResearchEngine/1.0"}});
  if(!res.ok)throw Error("source_http_"+res.status);
  const raw=await res.text();if(raw.length>5_000_000)throw Error("source_file_over_5mb");
