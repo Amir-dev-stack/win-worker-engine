@@ -42,6 +42,7 @@ const required = [
   "netlify/lib/openfootball-worldcup-adapter.mts",
   "netlify/functions/openfootball-worldcup-sync.mts",
   "netlify/functions/research-status.mts",
+  "netlify/functions/learning-data-jobs.mts",
   "netlify/lib/public-source-discovery.mts",
   "netlify/functions/public-source-discovery.mts",
   "netlify/functions/research-source-candidates.mts",
