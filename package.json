@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs && node scripts/quality-gates.mjs",
-    "dev": "netlify dev",
+    "dev": "npx --yes netlify-cli@27.14.2 dev",
     "test": "node scripts/quality-gates.mjs"
   },
   "dependencies": {
@@ -17,8 +17,5 @@
     "@netlify/functions": "latest",
     "zod": "latest",
     "@openai/agents": "0.21.0"
-  },
-  "devDependencies": {
-    "netlify-cli": "latest"
   }
 }

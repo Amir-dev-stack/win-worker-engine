@@ -12,6 +12,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -29,3 +30,56 @@ jobs:
       - name: Bundle every Netlify function with esbuild
         run: |
           npx --yes esbuild netlify/functions/*.mts --bundle --packages=external --platform=node --format=esm --outdir=/tmp/win-netlify-functions
+
+      - name: Smoke-test dashboard login and anonymous health protection
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 3
+        env:
+          WIN_PREVIEW_URL: https://deploy-preview-3--win-worker-engine.netlify.app
+        run: |
+          node --input-type=module <<'NODE'
+          const base = new URL(process.env.WIN_PREVIEW_URL);
+          const deadline = Date.now() + 8 * 60 * 1000;
+          let passed = false;
+          let lastFailure = "preview has not become ready";
+
+          while (Date.now() < deadline && !passed) {
+            try {
+              const login = await fetch(base, { redirect: "manual" });
+              const loginHtml = await login.text();
+              const loginReady =
+                login.status === 200 &&
+                loginHtml.includes("Private dashboard") &&
+                loginHtml.includes('action="/__win_dashboard_login"');
+
+              if (loginReady) {
+                const health = await fetch(new URL("/api/health", base), {
+                  headers: { accept: "application/json" },
+                  redirect: "manual"
+                });
+                const healthBody = await health.text();
+                const cacheControl = (health.headers.get("cache-control") || "").toLowerCase();
+                let payload = null;
+                try { payload = JSON.parse(healthBody); } catch {}
+
+                passed =
+                  health.status === 401 &&
+                  cacheControl.includes("no-store") &&
+                  payload?.error === "Unauthorized";
+
+                if (!passed) {
+                  lastFailure = "health endpoint expected 401 JSON Unauthorized with Cache-Control: no-store; received HTTP " +
+                    health.status + " and Cache-Control: " + (cacheControl || "(missing)");
+                }
+              } else {
+                lastFailure = "dashboard login page not ready; received HTTP " + login.status;
+              }
+            } catch (error) {
+              lastFailure = error instanceof Error ? error.message : String(error);
+            }
+
+            if (!passed) await new Promise(resolve => setTimeout(resolve, 10000));
+          }
+
+          if (!passed) throw new Error("Preview security smoke test did not pass: " + lastFailure);
+          console.log("PASS: dashboard is behind its login page; anonymous /api/health returns 401 with no-store.");
+          NODE

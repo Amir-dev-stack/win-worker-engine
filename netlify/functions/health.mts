@@ -1,7 +1,14 @@
+import { requireAuth } from "../lib/auth.mts";
 import { getAIbudgetStatus } from "../lib/ai-budget.mts";
 import { get, list } from "../lib/store.mts";
 
-export default async () => {
+export default async (req: Request) => {
+  const denied = requireAuth(req);
+  if (denied) {
+    denied.headers.set("cache-control", "no-store");
+    return denied;
+  }
+
   const budget = await getAIbudgetStatus();
   const [schedulerState, cycles, runs] = await Promise.all([
     get<any>("scheduler-state", "balanced-hourly"),
@@ -41,6 +48,6 @@ export default async () => {
     blockedCalls: budget.blockedCalls
   },
   note: "This endpoint reports service configuration and budget status only; it does not run AI research. AI calls fail closed until WIN_AI_BUDGET_APPROVED=true after provider-side spending controls and API-key rotation are verified."
-  });
+  }, { headers: { "cache-control": "no-store" } });
 };
 export const config = {path:"/api/health"};
