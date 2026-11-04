@@ -59,6 +59,7 @@ export function parseSkillCornerCsv(csvText, aggregateType, source = {}) {
       player: String(item.player_name).trim(),
       teamId: item.team_id === null ? null : String(item.team_id),
       team: String(item.team_name).trim(),
+      isSeasonTotalRow: item.team_id === null || String(item.team_name).trim().toLowerCase() === "total",
       competitionId: item.competition_id === null ? null : String(item.competition_id),
       competition: String(item.competition_name).trim(),
       seasonId: item.season_id === null ? null : String(item.season_id),
