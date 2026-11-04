@@ -103,9 +103,12 @@ export async function put(kind: string, id: string, value: unknown) {
 export async function get<T>(kind: string, id: string): Promise<T | null> {
   const recordKey = key(kind, id);
   const { primary, secondary } = await stores(recordKey);
-  const value = await primary.get(recordKey, { type: "json" }) as T | null;
-  if (value !== null && value !== undefined) return value;
-  return secondary ? await secondary.get(recordKey, { type: "json" }) as T | null : null;
+  try {
+    return await primary.get(recordKey, { type: "json" }) as T | null;
+  } catch (error) {
+    if (!secondary) throw error;
+    return await secondary.get(recordKey, { type: "json" }) as T | null;
+  }
 }
 
 export async function list<T>(kind: string, limit = 100): Promise<T[]> {
@@ -125,8 +128,14 @@ export async function list<T>(kind: string, limit = 100): Promise<T[]> {
       }
     }
   };
-  await collect(primary);
-  if (secondary && selected.length < maxItems) await collect(secondary);
+  try {
+    await collect(primary);
+  } catch (error) {
+    if (!secondary) throw error;
+    selected.length = 0;
+    seen.clear();
+    await collect(secondary);
+  }
   selected.reverse();
 
   const rows: T[] = [];
@@ -134,9 +143,12 @@ export async function list<T>(kind: string, limit = 100): Promise<T[]> {
   for (let offset = 0; offset < selected.length; offset += batchSize) {
     const batch = selected.slice(offset, offset + batchSize);
     const values = await Promise.all(batch.map(async item => {
-      const primaryValue = await primary.get(item.key, { type: "json" }) as T | null;
-      if (primaryValue !== null && primaryValue !== undefined) return primaryValue;
-      return secondary ? await secondary.get(item.key, { type: "json" }) as T | null : null;
+      try {
+        return await primary.get(item.key, { type: "json" }) as T | null;
+      } catch (error) {
+        if (!secondary) throw error;
+        return await secondary.get(item.key, { type: "json" }) as T | null;
+      }
     }));
     for (const value of values) if (value !== null) rows.push(value);
   }
@@ -159,7 +171,10 @@ export async function putIfNew(kind: string, id: string, value: unknown) {
   const recordKey = key(kind, id);
   const { primary, secondary } = await stores(recordKey);
   const result = await primary.setJSON(recordKey, value, { onlyIfNew: true });
-  if (result?.modified && secondary) await secondary.setJSON(recordKey, value);
+  if (secondary) {
+    const current = result?.modified ? value : await primary.get(recordKey, { type: "json" });
+    if (current !== null && current !== undefined) await secondary.setJSON(recordKey, current);
+  }
   return result;
 }
 
@@ -167,18 +182,24 @@ export async function putIfMatch(kind: string, id: string, value: unknown, etag:
   const recordKey = key(kind, id);
   const { primary, secondary } = await stores(recordKey);
   const result = await primary.setJSON(recordKey, value, { onlyIfMatch: etag });
-  if (result?.modified && secondary) await secondary.setJSON(recordKey, value);
+  if (secondary) {
+    const current = result?.modified ? value : await primary.get(recordKey, { type: "json" });
+    if (current !== null && current !== undefined) await secondary.setJSON(recordKey, current);
+  }
   return result;
 }
 
 export async function getWithMetadata<T>(kind: string, id: string): Promise<{ value: T; etag: string } | null> {
   const recordKey = key(kind, id);
   const { primary, secondary } = await stores(recordKey);
-  const result = await primary.getWithMetadata(recordKey, { type: "json", consistency: "strong" });
-  if (result) return { value: result.data as T, etag: result.etag };
-  const fallback = secondary ? await secondary.getWithMetadata(recordKey, { type: "json", consistency: "strong" }) : null;
-  if (!fallback) return null;
-  return { value: fallback.data as T, etag: fallback.etag };
+  try {
+    const result = await primary.getWithMetadata(recordKey, { type: "json", consistency: "strong" });
+    return result ? { value: result.data as T, etag: result.etag } : null;
+  } catch (error) {
+    if (!secondary) throw error;
+    const fallback = await secondary.getWithMetadata(recordKey, { type: "json", consistency: "strong" });
+    return fallback ? { value: fallback.data as T, etag: fallback.etag } : null;
+  }
 }
 
 /** Diagnostic metadata only; never returns a connection string or credential. */
