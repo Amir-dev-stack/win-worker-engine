@@ -13,11 +13,23 @@ export async function get<T>(kind: string, id: string): Promise<T | null> {
   return await store().get(key(kind, id), { type: "json" }) as T | null;
 }
 export async function list<T>(kind: string, limit = 100): Promise<T[]> {
-  const result = await store().list({ prefix: kind + "/" });
-  const selected = result.blobs.slice(0, Math.max(0, limit)).reverse();
+  // Netlify Blobs list() fetches every page by default. Ask for an iterator
+  // and stop after the requested sample so large collections cannot turn a
+  // small dashboard read into an unbounded metadata scan.
+  const maxItems = Math.max(0, Math.floor(limit));
+  if (maxItems === 0) return [];
+  const selected: Array<{ key: string }> = [];
+  for await (const page of store().list({ prefix: kind + "/", paginate: true })) {
+    for (const item of page.blobs) {
+      selected.push(item);
+      if (selected.length >= maxItems) break;
+    }
+    if (selected.length >= maxItems) break;
+  }
+  selected.reverse();
   const rows: T[] = [];
-  // Bounded parallel reads replace the former one-by-one Blob fetch loop.
-  // A modest batch keeps the audit/dashboard responsive without flooding Blobs.
+  // Bounded parallel reads keep each requested sample responsive without
+  // flooding Blobs or downloading records that the caller did not request.
   const batchSize = 16;
   for (let offset = 0; offset < selected.length; offset += batchSize) {
     const batch = selected.slice(offset, offset + batchSize);
