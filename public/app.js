@@ -6,6 +6,28 @@ let knownBudgetAlertIds=new Set();
 const dialog=$("#tokenDialog");
 function headers(){return {"content-type":"application/json","authorization":"Bearer "+token}}
 async function api(path,options={}){const r=await fetch(path,{...options,headers:{...headers(),...(options.headers||{})}});if(r.status===401){if(!dialog.open)dialog.showModal();throw new Error("Connect using your WIN internal token.");}const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||"Request failed ("+r.status+")");return data}
+function formatMemoryBytes(value){
+ const n=Number(value||0);if(!Number.isFinite(n))return "Unknown";
+ if(n<1024)return n+" B";const units=["KB","MB","GB","TB"];let v=n/1024,i=0;while(v>=1024&&i<units.length-1){v/=1024;i++}return v.toFixed(2)+" "+units[i];
+}
+async function refreshMemoryCapacity(){
+ const status=$("#memoryCapacityAlert");if(!status)return;
+ try{
+  const data=await api("/api/memory-capacity");
+  const neon=data.neon||{},blobs=data.netlifyBlobs||{};
+  $("#memoryNeonUsed").textContent=neon.usedBytes===null?"Not connected":formatMemoryBytes(neon.usedBytes);
+  $("#memoryNeonRemaining").textContent=neon.remainingBytes===undefined?"Remaining capacity unavailable":formatMemoryBytes(neon.remainingBytes)+" remaining";
+  $("#memoryNeonLimit").textContent=neon.limitBytes?formatMemoryBytes(neon.limitBytes):"Unknown";
+  $("#memoryNeonLimitSource").textContent=neon.limitSource==="configured"?"Owner-configured limit":"1 GiB planning baseline — verify actual Neon quota";
+  $("#memoryCapacityState").textContent=String(data.overallStatus||"unknown").toUpperCase();
+  $("#memoryCapacityGrowth").textContent="Daily growth "+(data.growthBytes===null||data.growthBytes===undefined?"not measured":(data.growthBytes>=0?"+":"")+formatMemoryBytes(Math.abs(data.growthBytes)));
+  $("#memoryBlobsCount").textContent=blobs.objectCount===undefined?"—":(blobs.objectCountTruncated?blobs.objectCount+"+":blobs.objectCount);
+  $("#memoryBlobsNote").textContent="Object count only · byte usage checked in Netlify";
+  $("#memoryCapacityChecked").textContent="Checked "+new Date(data.checkedAt).toLocaleString();
+  status.className="budget-alert "+(data.overallStatus==="critical"?"danger":data.overallStatus==="warning"?"warning":"empty");
+  status.textContent=(data.actions||[]).join(" ");
+ }catch(error){status.className="budget-alert empty";status.textContent="Capacity check unavailable: "+error.message;}
+}
 async function reviewerApi(path,options={}){const r=await fetch(path,{...options,headers:{"content-type":"application/json","authorization":"Bearer "+reviewerToken,...(options.headers||{})}});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||"Reviewer request failed ("+r.status+")");return data}
 function escapeHtml(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function decisionClass(text=""){const t=String(text).toUpperCase();return t.includes("NO BET")?"no":t.includes("BET")?"bet":"wait"}
@@ -643,6 +665,7 @@ $("#runForm").addEventListener("submit",async e=>{
 $("#tipForm").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget;const f=new FormData(form);try{await api("/api/tips",{method:"POST",body:JSON.stringify({tip:f.get("tip"),sourceUrl:f.get("sourceUrl"),tipster:f.get("tipster")})});form.reset();await refresh()}catch(err){alert(err.message)}});
 $("#runsList").addEventListener("click",e=>{const b=e.target.closest("[data-run-id]");if(b)openRun(b.dataset.runId)});
 $("#refresh").addEventListener("click",refresh);
+$("#refreshMemoryCapacity").addEventListener("click",refreshMemoryCapacity);
 $("#refreshCoverage").addEventListener("click",refreshCoverage);
 $("#refreshResearch").addEventListener("click",refreshResearch);
 
@@ -776,9 +799,10 @@ $("#libraryList").addEventListener("click",async e=>{
  }catch(err){alert(err.message);button.disabled=false}
 });
 
-if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();refreshResearch();refreshCouponBoards();refreshLearning();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
+if(!token)dialog.showModal();else {refresh();refreshMemoryCapacity();refreshSources();refreshCoverage();refreshResearch();refreshCouponBoards();refreshLearning();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
 setInterval(()=>{if(token&&!document.hidden)refresh()},20000);
 setInterval(()=>{if(token&&!document.hidden)refreshLearning()},60000);
+setInterval(()=>{if(token&&!document.hidden)refreshMemoryCapacity()},300000);
 
 $("#simulationForm").addEventListener("submit",async e=>{
  e.preventDefault();const form=e.currentTarget,f=new FormData(form),button=form.querySelector('button[type="submit"]');
