@@ -639,7 +639,7 @@ $("#budgetNotifications").addEventListener("click",async()=>{
  if(permission==="granted")alert("WIN desktop budget alerts are enabled. Keep the dashboard open to receive limit notifications.");
  else alert("Desktop notifications were not enabled. You will still see budget alarms inside the WIN dashboard.");
 });
-$("#saveToken").addEventListener("click",e=>{e.preventDefault();token=$("#tokenInput").value.trim();if(token){sessionStorage.setItem("win-token",token);dialog.close();refresh();refreshSources();refreshResearch()}});
+$("#saveToken").addEventListener("click",e=>{e.preventDefault();token=$("#tokenInput").value.trim();if(token){sessionStorage.setItem("win-token",token);dialog.close();refresh();refreshMemoryCapacity();refreshSources();refreshResearch()}});
 $("#runForm").addEventListener("submit",async e=>{
  e.preventDefault();
  const form=e.currentTarget;
