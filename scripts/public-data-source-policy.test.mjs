@@ -14,6 +14,8 @@ test("TipsAudit is discoverable but cannot enter automated data ingestion", () =
   assert.equal(candidate.automationAllowed, false);
   assert.match(candidate.licenceReference, /^https:\/\//);
   assert.match(candidate.attribution, /TipsAudit/);
+  assert.match(candidate.notes, /snapshot hash matches the manifest/);
+  assert.match(candidate.notes, /captured before its kick-off/);
   assert.ok(candidate.sports.includes("football"));
   assert.ok(candidate.dataDomains.includes("historical_pre_match_predictions"));
   assert.ok(getProviderCandidates("football").some(x => x.id === candidate.id));
