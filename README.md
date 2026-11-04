@@ -311,3 +311,13 @@ The football source registry separately records the user's requested reference d
 These four entries are **reference-only candidates**. They are not connected APIs and do not authorize scraping, bulk download or redistribution. API-SPORTS, StatsBomb Open Data and other specialist sources remain gated by account entitlements, data rights, coverage and methodology review. In particular, the current nflverse adapter covers American football, not association football; it does not solve missing football pass maps, xG, player ratings or UEFA match-level data.
 
 The manual **Import historical datasets** job now includes the NFL play-by-play import. It runs without OpenAI calls and writes into the existing model-lab event dataset collection so the same pre-match cutoff, exact-event matching, multi-source merge and coverage inspector can use it. Source sync status is surfaced in the research engine panel.
+
+
+### API-Football association-football connector
+
+WIN now has a **code-complete but intentionally disabled** API-Football v3 connector on the feature branch. It can build a match dossier from an exact fixture ID: competition/season coverage, score and match context, team/half-time statistics, player match lines and provider ratings (separately permission-gated), goals/cards/substitutions/VAR events, lineups, and optional injuries, standings, H2H, predictions and pre-match odds. It records endpoint-level success/quota information, raw payloads, retrieval time and a payload checksum.
+
+The connector is not live until the API key, documented rights approval, reviewed HTTPS terms, explicit data-domain allowlist and a separate code-reviewed provider-registry approval are all present. No API key is assumed and no API-Football calls or fixture imports have been run from the feature branch. The dashboard exposes connection testing and exact fixture import actions, while the research status shows its blockers and coverage.
+
+Read [docs/API_FOOTBALL_CONNECTOR.md](docs/API_FOOTBALL_CONNECTOR.md) before enabling it. API-Football is licensed commercial data—not an open-source dataset—and its terms prohibit resale of its data to third parties. The connector does not promise full optical tracking, every pass event, xG, shot coordinates/maps, PPDA or xT. Those fields stay unavailable unless another approved feed actually provides them. Its Free tier currently advertises 100 requests/day, so context-rich match imports must be budgeted.
+
