@@ -176,7 +176,7 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
   {
     id:"api-sports", name:"API-Football (API-SPORTS football API)", website:"https://www.api-football.com/",
     sports:["football"],
-    dataDomains:["fixtures","results","competition_standings","team_match_statistics","half_time_team_statistics","player_match_statistics","player_ratings","match_events","lineups","injuries","team_season_statistics","player_season_statistics","pre_match_odds","predictions","head_to_head"],
+    dataDomains:["fixtures","results","competition_coverage","competition_standings","team_match_statistics","half_time_team_statistics","player_match_statistics","player_ratings","match_events","lineups","injuries","team_season_statistics","player_season_statistics","pre_match_odds","predictions","head_to_head"],
     accessMode:"licensed_api", historicalSupport:"possible", authentication:"api_key",
     licenceReview:"required", automationAllowed:false,
     licenceReference:"https://www.api-football.com/terms",
