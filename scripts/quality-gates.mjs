@@ -199,6 +199,23 @@ add("NFL play-by-play adapter is source-attributed, sport-scoped and provenance-
   (await read("netlify/functions/research-status.mts")).includes("getNflversePlayByPlaySyncStatus") &&
   (await read("scripts/nflverse-pbp-adapter.test.mjs")).includes("performances.ratingsAvailable, 0"),
   "The licensed feed contributes American-football play timelines and derived player/team box-score counts; ratings and absent fields remain explicitly unavailable.");
+add("API-Football dossier ingestion is authenticated, provenance-preserving and rights-gated",
+  providers.includes('id:"api-sports"') &&
+  providers.includes('licenceReview:"required"') &&
+  providers.includes('automationAllowed:false') &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("getApiFootballReadiness") &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("providerMayRunAutomatically") &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("buildApiFootballMatchDossier") &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("rawPayloadSha256") &&
+  (await read("netlify/functions/api-football-sync.mts")).includes("requireAuth") &&
+  (await read("netlify/functions/research-status.mts")).includes("getApiFootballSyncStatus") &&
+  (await read("scripts/api-football-adapter.test.mjs")).includes("coverage false is not converted into zero"),
+  "The API-Football adapter cannot request data until the provider registry, terms approval, API key and explicitly enabled domains pass; fixture identity, player ratings, raw payloads and gaps are stored with source provenance.");
+add("API-Football metric availability is not overstated as full tracking data",
+  providers.includes("Standard event feed is goals, cards, substitutions and VAR") &&
+  providers.includes("shot-coordinate maps and advanced pressure/field-tilt metrics") &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("not_in_competition_coverage"),
+  "The connector records documented standard stats and provider events while retaining a blocker for unsupported tracking/shot-map fields and competition-specific gaps.");
 add("Football source references remain review-only until access and reuse terms are verified",
   providers.includes('id:"uefa-match-center"') &&
   providers.includes('id:"fotmob-match-profiles"') &&
