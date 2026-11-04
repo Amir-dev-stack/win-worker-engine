@@ -79,7 +79,7 @@ export function parseSkillCornerCsv(csvText, aggregateType, source = {}) {
     headers,
     totalRows: records.length,
     uniquePlayers: new Set(records.map(x => x.playerId)).size,
-    uniqueTeams: new Set(records.map(x => x.teamId || x.team)).size,
+    uniqueTeams: new Set(records.filter(x => !x.isSeasonTotalRow).map(x => x.teamId || x.team)).size,
     records
   };
 }
