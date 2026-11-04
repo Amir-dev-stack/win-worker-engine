@@ -13,7 +13,7 @@ import {
   inspectStatisticCoverage
 } from "../netlify/lib/sport-stat-catalog.mts";
 
-const headers = "game_id,game_date,home_team,away_team,home_score,away_score,season_type,week,play_id,quarter_end,play_type_nfl,qtr,time,posteam,defteam,kicking_team,play_type,kickoff_attempt,pass_attempt,complete_pass,passing_yards,passer_player_id,passer_player_name,receiver_player_id,receiver_player_name,rush_attempt,rushing_yards,rusher_player_id,rusher_player_name,first_down,yards_gained,epa,success,wpa,air_yards,yards_after_catch,qb_epa,cpoe,xyac_epa,xyac_mean_yardage,xyac_success,xyac_fd,field_goal_attempt,field_goal_result,kicker_player_id,kicker_player_name,punt_attempt,kick_distance,punter_player_id,punter_player_name,rush_touchdown,touchdown,desc".split(",");
+const headers = "game_id,game_date,home_team,away_team,home_score,away_score,season_type,week,play_id,quarter_end,play_type_nfl,qtr,time,posteam,defteam,kicking_team,play_type,kickoff_attempt,pass_attempt,complete_pass,passing_yards,passer_player_id,passer_player_name,receiver_player_id,receiver_player_name,rush_attempt,rushing_yards,rusher_player_id,rusher_player_name,first_down,yards_gained,epa,success,wpa,air_yards,yards_after_catch,qb_epa,cpoe,xyac_epa,xyac_mean_yardage,xyac_success,xyac_fd,field_goal_attempt,field_goal_result,kicker_player_id,kicker_player_name,punt_attempt,kick_distance,punter_player_id,punter_player_name,tackle_for_loss_1_player_id,tackle_for_loss_1_player_name,qb_hit_1_player_id,qb_hit_1_player_name,pass_defense_1_player_id,pass_defense_1_player_name,forced_fumble_player_1_player_id,forced_fumble_player_1_player_name,rush_touchdown,touchdown,desc".split(",");
 const csvCell = value => '"' + String(value ?? "").replaceAll('"', '""') + '"';
 const csvRow = values => headers.map(key => csvCell(values[key])).join(",");
 function sourceFieldValue(match, event, fieldName) {
@@ -36,13 +36,13 @@ const csv = [
     game_id:"2026_01_KC_BAL",game_date:"2026-09-10",home_team:"KC",away_team:"BAL",home_score:0,away_score:0,
     season_type:"REG",week:1,play_id:2,qtr:1,time:"14:20",posteam:"KC",defteam:"BAL",play_type:"pass",
     pass_attempt:1,complete_pass:1,passing_yards:10,epa:1.2,success:1,wpa:0.03,air_yards:8,yards_after_catch:4,qb_epa:1.2,cpoe:5.5,xyac_epa:0.3,xyac_mean_yardage:4.2,xyac_success:0.6,xyac_fd:0.2,passer_player_id:"00-001",passer_player_name:"P. Quarterback",
-    receiver_player_id:"00-002",receiver_player_name:"R. Receiver",first_down:0,yards_gained:10,
+    receiver_player_id:"00-002",receiver_player_name:"R. Receiver",qb_hit_1_player_id:"00-006",qb_hit_1_player_name:"D. Defender",pass_defense_1_player_id:"00-006",pass_defense_1_player_name:"D. Defender",first_down:0,yards_gained:10,
     desc:"Pass complete, 10 yards"
   }),
   csvRow({
     game_id:"2026_01_KC_BAL",game_date:"2026-09-10",home_team:"KC",away_team:"BAL",home_score:7,away_score:0,
     season_type:"REG",week:1,play_id:3,qtr:1,time:"13:40",posteam:"KC",defteam:"BAL",play_type:"run",
-    rush_attempt:1,rushing_yards:5,epa:-0.2,success:0,wpa:-0.01,rusher_player_id:"00-003",rusher_player_name:"R. Runner",
+    rush_attempt:1,rushing_yards:5,epa:-0.2,success:0,wpa:-0.01,rusher_player_id:"00-003",rusher_player_name:"R. Runner",tackle_for_loss_1_player_id:"00-006",tackle_for_loss_1_player_name:"D. Defender",forced_fumble_player_1_player_id:"00-006",forced_fumble_player_1_player_name:"D. Defender",
     first_down:1,yards_gained:5,rush_touchdown:1,touchdown:1,quarter_end:1,desc:"Five-yard rushing touchdown"
   }),
   csvRow({
@@ -163,7 +163,7 @@ test("NFL match builder creates scores, team box scores, player lines and play e
   assert.equal(home.yards_after_catch_per_completion, 4);
 
   const performances = extractPlayerPerformances(match, "nflverse-pbp-data");
-  assert.equal(performances.players.length, 5);
+  assert.equal(performances.players.length, 6);
   assert.equal(performances.ratingsAvailable, 0);
   assert.equal(performances.players.find(player => player.name === "P. Quarterback").statistics[0].passing.pass_attempts, 1);
   assert.equal(performances.players.find(player => player.name === "R. Receiver").statistics[0].receiving.receptions, 1);
@@ -184,6 +184,11 @@ test("NFL match builder creates scores, team box scores, player lines and play e
   assert.equal(performances.players.find(player => player.name === "K. Kicker").statistics[0].kicking.field_goals_made, 1);
   assert.equal(performances.players.find(player => player.name === "P. Punter").statistics[0].kicking.punts, 1);
   assert.equal(performances.players.find(player => player.name === "P. Punter").statistics[0].kicking.punt_yards, 45);
+  const defender = performances.players.find(player => player.name === "D. Defender").statistics[0].defense;
+  assert.equal(defender.qb_hits, 1);
+  assert.equal(defender.passes_defended, 1);
+  assert.equal(defender.tackles_for_loss, 1);
+  assert.equal(defender.forced_fumbles, 1);
   assert.equal(performances.players.every(player => player.rating === null), true);
 });
 
@@ -221,6 +226,11 @@ test("American-football coverage recognises source play types and leaves unavail
   const specialTeamsCoverage = coverage.player.find(group => group.id === "special_teams");
   assert.ok(specialTeamsCoverage.availableMetrics.includes("field_goals_made"));
   assert.ok(specialTeamsCoverage.availableMetrics.includes("punt_yards"));
+  const playerDefenseCoverage = coverage.player.find(group => group.id === "defense");
+  assert.ok(playerDefenseCoverage.availableMetrics.includes("tackles_for_loss"));
+  assert.ok(playerDefenseCoverage.availableMetrics.includes("qb_hits"));
+  assert.ok(playerDefenseCoverage.availableMetrics.includes("passes_defended"));
+  assert.ok(playerDefenseCoverage.availableMetrics.includes("forced_fumbles"));
   assert.ok(coverage.player.find(group => group.id === "passing").availableMetrics.includes("completions"));
   assert.equal(coverage.player.find(group => group.id === "rating").missingMetrics.includes("rating"), true);
   assert.ok(coverage.eventTypes.find(event => event.eventType === "kickoff").status === "present");
