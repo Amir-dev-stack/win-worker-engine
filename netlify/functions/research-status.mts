@@ -15,13 +15,13 @@ export default async (req: Request) => {
  const [openfootball,openfootballWorldCup,consensus,sharpapi,calibration,observedMarketSettlement,sourceDiscovery,agentEvolution,experiments,datasets,consensusDatasets,observedMarketDatasets,playerEventDatasets,settledObservedMarketDatasets,agentTasks,agentProfiles]=await Promise.all([
   getOpenFootballSyncStatus(),getOpenFootballWorldCupSyncStatus(),getConsensusMarketSyncStatus(),getSharpApiSampleStatus(),getMarketCalibrationStatus(),getObservedMarketSettlementStatus(),getPublicResearchSourceDiscoveryStatus(),getAgentEvolutionStatus(),
   list<any>("library/model-lab/experiments",30),
-  list<any>("library/model-lab/historical-event-datasets",1000),
+  list<any>("library/model-lab/historical-event-datasets",50),
   list<any>("library/model-lab/market-consensus-datasets",100),
   list<any>("library/model-lab/observed-market-snapshots",100),
-  list<any>("library/model-lab/player-event-datasets",1000),
+  list<any>("library/model-lab/player-event-datasets",50),
   list<any>("library/model-lab/settled-observed-markets",100),
-  list<any>("library/agent-task-queue",1000),
-  list<any>("library/persistent-agent-profiles",1000)
+  list<any>("library/agent-task-queue",50),
+  list<any>("library/persistent-agent-profiles",50)
  ]);
  return Response.json({
   providers:DATA_PROVIDER_REGISTRY.map(p=>({
@@ -30,6 +30,7 @@ export default async (req: Request) => {
   })),
   openfootball,openfootballWorldCup,consensus,sharpapi,calibration,observedMarketSettlement,sourceDiscovery,
   persistentAgents:{profiles:agentProfiles.length,queued:agentTasks.filter(x=>x.status==="queued").length,running:agentTasks.filter(x=>x.status==="running").length,completed:agentTasks.filter(x=>x.status==="completed").length,failed:agentTasks.filter(x=>x.status==="failed").length,recentTasks:agentTasks.sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))).slice(0,10).map(x=>({id:x.id,agentId:x.agentId,name:x.name,tier:x.tier,status:x.status,attempts:x.attempts,createdAt:x.createdAt,updatedAt:x.updatedAt}))},
+  sampling:{mode:"bounded_recent_sample",note:"Research status aggregates are computed from bounded recent samples; use the audit record list for full recent collection inspection."},
   modelLab:{
    eventDatasetCount:datasets.length,
    eventMatchCount:datasets.reduce((n,d)=>n+Number(d.totalRows||0),0),
