@@ -279,7 +279,7 @@ async function refreshResearch(){
  try{
   const d=await api("/api/research-status");
   const providers=(d.providers||[]).map(p=>'<article class="mini-row"><div><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.status||"unknown")+' · '+escapeHtml(p.accessMode||"")+' · licence '+escapeHtml(p.licenceReview||"unverified")+'</small></div></article>').join("");
-  const open=d.openfootball||{},nfl=d.nflverse||{},worldCup=d.openfootballWorldCup||{},statsBomb=d.statsBomb||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{},evolution=d.agentEvolution||{};
+  const open=d.openfootball||{},nfl=d.nflverse||{},worldCup=d.openfootballWorldCup||{},statsBomb=d.statsBomb||{},sportScore=d.sportScore||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{},evolution=d.agentEvolution||{};
   const couponSims=(cal.reports||[]).flatMap(r=>r.couponSimulation?.results||[]);
   const candidateRows=renderSourceCandidates(discovery.topCandidates||[]);
   const sections=[
@@ -287,7 +287,7 @@ async function refreshResearch(){
    '<article class="mini-row"><div><b>API-Football detailed match dossiers</b><small>'+escapeHtml(footballApi.status||"blocked")+' · '+Number(footballApi.totals?.matchesImported||0).toLocaleString()+' matches imported · '+Number(footballApi.totals?.availableSections||0)+' latest fixture sections available · '+(footballApi.blockers||[]).map(escapeHtml).join(", ")+'</small></div></article>',
    '<article class="mini-row"><div><b>OpenFootball historical results</b><small>'+escapeHtml(open.status||"not yet run")+' · '+Number(open.totals?.matchesImported||0).toLocaleString()+' matches imported · last check '+escapeHtml(open.lastCheck||"not yet")+'</small></div></article>',
    '<article class="mini-row"><div><b>World Cup history and player events</b><small>'+escapeHtml(worldCup.status||"not yet run")+' · '+Number(lab.worldCupMatchCount||0).toLocaleString()+' matches · '+Number(lab.playerEventRows||0).toLocaleString()+' player events · '+Number(lab.worldCupDatasetCount||0)+' tournament datasets</small></div></article>',
-   '<article class="mini-row"><div><b>StatsBomb open football events (manual research import)</b><small>'+escapeHtml(statsBomb.status||"not imported")+' · '+Number(statsBomb.matchesImported||0).toLocaleString()+' matches · '+Number(statsBomb.eventRows||0).toLocaleString()+' event records · automated import disabled · '+Number(statsBomb.datasetCount||0)+' competition/season datasets</small></div></article>',
+   '<article class="mini-row"><div><b>StatsBomb open football events (manual research import)</b><small>'+escapeHtml(statsBomb.status||"not imported")+' · '+Number(statsBomb.matchesImported||0).toLocaleString()+' matches · '+Number(statsBomb.eventRows||0).toLocaleString()+' event records · automated import disabled · '+Number(statsBomb.datasetCount||0)+' competition/season datasets</small></div></article>',\n   '<article class="mini-row"><div><b>SportScore live cross-sport feed</b><small>'+escapeHtml(sportScore.status||"not yet queried")+' · football, basketball, cricket and tennis · user-triggered requests only · 60-second cache · attribution required</small></div></article>',
    '<article class="mini-row"><div><b>Consensus market history</b><small>'+escapeHtml(cons.status||"not yet run")+' · '+Number(lab.consensusMarketRows||0).toLocaleString()+' rows · '+Number(lab.consensusSettledRows||0).toLocaleString()+' settled events</small></div></article>',
    '<article class="mini-row"><div><b>SharpAPI multi-source snapshots</b><small>'+escapeHtml(sharp.status||"not yet run")+' · '+Number(lab.observedMarketRows||0).toLocaleString()+' observed prices · '+Number(lab.observedMarketFamilies?.length||0)+' market families</small></div></article>',
    '<article class="mini-row"><div><b>Market calibration lab</b><small>'+escapeHtml(cal.status||"waiting for first report")+' · '+Number(cal.totalEvents||0).toLocaleString()+' events · '+Number(cal.reports?.length||0)+' dataset reports · consensus benchmark only · '+Number(couponSims.length||0)+' coupon simulation bands</small></div></article>',
@@ -513,6 +513,30 @@ $("#runStatsBombImport").addEventListener("click",()=>{
   competitionId,seasonId,maxMatches,confirmResearchUse:"I_CONFIRM_PRIVATE_STATSBOMB_RESEARCH_USE"
  },"#statsBombStatus");
 });
+async function refreshSportScoreMatches(){
+ const button=$("#refreshSportScore"),status=$("#sportScoreStatus"),target=$("#sportScoreMatches");
+ const sport=$("#sportScoreSport").value;
+ button.disabled=true;
+ status.textContent="Requesting "+sport+" matches from SportScore…";
+ target.innerHTML='<div class="empty">Loading source data…</div>';
+ try{
+  const result=await api("/api/sportscore-live?sport="+encodeURIComponent(sport));
+  const matches=Array.isArray(result.matches)?result.matches:[];
+  const cacheNote=result.cached?" · cached "+Number(result.cacheAgeSeconds||0)+"s ago":" · freshly retrieved";
+  status.textContent=matches.length+" "+sport+" matches · "+new Date(result.fetchedAt).toLocaleString()+cacheNote+" · source data is not independently verified.";
+  target.innerHTML=matches.length?matches.map(item=>{
+   const score=item.scoreAvailable?String(item.homeScore)+"–"+String(item.awayScore):"Score not supplied";
+   const details=[item.competition,item.startsAt,item.status,item.venue].filter(Boolean).map(escapeHtml).join(" · ");
+   return '<article class="mini-row"><div><b>'+escapeHtml(item.event)+'</b><small>'+escapeHtml(score)+(details?' · '+details:'')+'</small><small>SportScore source · not independently verified</small></div></article>';
+  }).join(""):'<div class="empty">SportScore returned no match rows for this sport. This does not mean there are no scheduled matches.</div>';
+  await refreshResearch();
+ }catch(error){
+  status.textContent="SportScore request failed: "+error.message;
+  target.innerHTML='<div class="empty">No match data loaded. Try again after the provider cache/rate-limit window.</div>';
+ }finally{button.disabled=false;}
+}
+$("#refreshSportScore").addEventListener("click",refreshSportScoreMatches);
+
 async function runApiFootballAction(action,buttonId,label,extra={}){
  const button=$(buttonId),status=$("#apiFootballStatus");
  button.disabled=true;
