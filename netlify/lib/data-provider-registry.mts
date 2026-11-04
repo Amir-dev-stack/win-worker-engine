@@ -188,8 +188,10 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     sports:["football"],
     dataDomains:["selected_competitions_historical_matches","match_events","lineups","selected_match_360_data"],
     accessMode:"research_candidate", historicalSupport:"documented", authentication:"none",
-    licenceReview:"required", automationAllowed:false,
-    notes:"Publicly shared event and lineup JSON for selected competitions/seasons, plus 360 data for selected matches. Attribution/brand requirements apply; coverage is selective, updates are not guaranteed live, and commercial player/season IQ metrics are not the same as the open event files. Terms and reuse rights must be reviewed before automated ingestion."
+    licenceReview:"documented_open_terms", automationAllowed:false,
+    licenceReference:"https://github.com/hudl/open-data#terms--conditions",
+    attribution:"Data source: StatsBomb Open Data. If publishing, sharing or distributing derived analysis, credit StatsBomb and use its official logo.",
+    notes:"Manual, owner-confirmed import only for private non-commercial football research. The repository makes selected competitions/seasons publicly available for research and genuine football-analytics interest. It does not publish a general-purpose CC licence for the dataset. No scheduled/automatic ingestion, no raw-data redistribution, and no claim of comprehensive league coverage. If publishing, sharing or distributing derived research, cite StatsBomb and use its official logo."
   },
   {
     id:"sportmonks", name:"Sportmonks", website:"https://www.sportmonks.com/",
