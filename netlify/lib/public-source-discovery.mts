@@ -187,7 +187,7 @@ export async function discoverPublicResearchSources() {
   indexCounts.zenodo = found.filter(x => x.sourceType === "zenodo_record").length;
   indexCounts.datacite = found.filter(x => x.sourceType === "datacite_doi").length;
 
-  const existing = await list<any>("library/research-source-candidates", 1000);
+  const existing = await list<any>("library/research-source-candidates", 50);
   const byId = new Map(existing.map(x => [x.id, x]));
   let newCount = 0, seen = 0;
   for (const candidate of found) {
@@ -225,7 +225,7 @@ export async function discoverPublicResearchSources() {
 export async function getPublicResearchSourceDiscoveryStatus() {
   const [state, candidates, runs] = await Promise.all([
     get<any>("scheduler-state", "public-source-discovery"),
-    list<any>("library/research-source-candidates", 1000),
+    list<any>("library/research-source-candidates", 50),
     list<any>("library/research-source-discovery-runs", 20)
   ]);
   const latest: any = runs.sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)))[0] || null;
@@ -234,7 +234,7 @@ export async function getPublicResearchSourceDiscoveryStatus() {
   return {
     status: state?.status || "not_yet_run", lastCheck: state?.lastCheck || null,
     indexesSearched: latest?.indexesSearched || ["Hugging Face", "GitHub", "Zenodo", "DataCite"],
-    totalCandidates: candidates.length,
+    totalCandidates: candidates.length, totalCandidatesSampled: true,
     byIndex,
     openLicenseCandidates: candidates.filter(x => x.licenseStatus === "open_data_license_candidate").length,
     reviewRequired: candidates.filter(x => x.reviewStatus === "review_required").length,
