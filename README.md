@@ -324,3 +324,7 @@ Read [docs/API_FOOTBALL_CONNECTOR.md](docs/API_FOOTBALL_CONNECTOR.md) before ena
 ## StatsBomb Open Data research connector
 
 WIN now provides an optional, manually triggered connector for selected StatsBomb Open Data competition/season datasets. It imports a bounded sample of match metadata, event records and lineups into the historical Model Lab only; it does not change coupons, predictions or human settlement records and makes no AI calls. The source is intended for private non-commercial football research, has no general-purpose CC licence, and requires owner confirmation before each import. Automated ingestion remains disabled. See [docs/STATSBOMB_OPEN_DATA.md](docs/STATSBOMB_OPEN_DATA.md) for source terms, size limits, attribution and time-handling rules.
+
+## SportScore live multi-sport API
+
+WIN includes an on-demand, no-key SportScore match-list connector for football, basketball, cricket and tennis. It uses the provider's public free tier with the required visible `Powered by SportScore` dofollow link, a 60-second cache and no scheduled polling. Its match rows are source-reported supplementary evidence only; they do not directly settle predictions or coupons. See [docs/SPORTSCORE_LIVE_API.md](docs/SPORTSCORE_LIVE_API.md) for the published usage terms, request limits, attribution and safeguards.
