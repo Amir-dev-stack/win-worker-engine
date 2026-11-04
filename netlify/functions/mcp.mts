@@ -8,6 +8,7 @@ import { runStrategyBacktest } from "../lib/backtest.mts";
 import { getTipsterSourceReport, importTipsterCoupon, listTipsterSources } from "../lib/source-intelligence.mts";
 import { authorizeMcpRequest, WIN_ISSUER } from "../lib/oauth-store.mts";
 import { getLearningObservatory } from "../lib/learning-observatory.mts";
+import { getSportScoreMatches } from "../lib/sportscore-live-adapter.mts";
 
 const resourceMetadata = WIN_ISSUER + "/.well-known/oauth-protected-resource/mcp";
 
@@ -122,6 +123,26 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
       body: JSON.stringify({ ...args, event })
     });
     return { content: [{ type: "text" as const, text: await response.text() }], isError: !response.ok && response.status !== 202 };
+  });
+
+  server.registerTool("get_sportscore_live_matches", {
+    title: "Get SportScore live and recent matches",
+    description: "Read a bounded live/recent match list for football, basketball, cricket or tennis from SportScore's free public API. User-triggered only, no key required, and cached for 60 seconds. Requires WIN read access. Results are source-reported and not independently verified; use SportScore only as corroborating context, never as the sole source or final settlement evidence. Preserve the visible Powered by SportScore attribution in any user-facing display.",
+    inputSchema: {
+      sport: z.enum(["football", "basketball", "cricket", "tennis"])
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:read"] }]
+  }, async ({ sport }) => {
+    if (!scopes.includes("win:read")) return authRequired("win:read");
+    try {
+      const result = await getSportScoreMatches(sport);
+      return { content: [{ type: "text" as const, text: JSON.stringify({
+        ...result,
+        warning: "SportScore aggregates upstream data. Verify important scores and times independently. Do not use this feed as the sole source of truth or as final settlement evidence."
+      }) }] };
+    } catch (error) {
+      return { content: [{ type: "text" as const, text: "SportScore request failed: " + String(error).slice(0, 300) }], isError: true };
+    }
   });
 
   server.registerTool("get_run", {
