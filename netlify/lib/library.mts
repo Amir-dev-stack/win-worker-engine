@@ -120,43 +120,74 @@ export async function searchWinLibrary(options: {
   await ensureLegacyLibraryImport();
   const limit = Math.min(100, Math.max(1, Number(options.limit) || 30));
   const category = clean(options.category || "all", 40).toLowerCase();
-  const [coupons, winning, losing, pending, winCouponCandidates, lessons, lessonReviewCases, entities, profiles, observations, runs,
-    humanTips, agentNotes, couponHistory, couponCases, frozenPredictions, settledResults, otherSettlements, learningCycles, strategyCandidates, backtestRuns, persistentAgentProfiles, agentTasks, historicalMarketData, consensusMarketData, observedMarketData, settledObservedMarketData, playerEventData, marketCalibrationReports, marketSettlementRuns, sourceCandidates, sourceDiscoveryRuns, agentProposals, agentSandboxEvaluations] = await Promise.all([
-    list<any>("library/coupons", 500),
-    list<any>("library/winning-coupons", 500),
-    list<any>("library/losing-coupons", 500),
-    list<any>("library/pending-coupons", 500),
-    list<any>("library/win-coupon-candidates", 500),
-    list<any>("library/lessons", 500),
-    list<any>("library/lesson-review-cases", 300),
-    list<any>("library/entity-profiles", 500),
-    list<any>("library/agent-profiles", 500),
-    list<any>("library/agent-observations", 500),
-    list<any>("library/research-runs", 200),
-    list<any>("library/human-tips", 300),
-    list<any>("library/agent-notes", 500),
-    list<any>("library/coupon-history", 500),
-    list<any>("library/coupon-research-cases", 200),
-    list<any>("library/frozen-predictions", 500),
-    list<any>("library/settled-results", 500),
-    list<any>("library/other-settlements", 500),
-    list<any>("library/learning-cycles", 500),
-    list<any>("library/strategy-candidates", 1000),
-    list<any>("library/backtest-runs", 500),
-    list<any>("library/persistent-agent-profiles", 1000),
-    list<any>("library/agent-task-queue", 1000),
-    list<any>("library/model-lab/historical-event-datasets", 1000),
-    list<any>("library/model-lab/market-consensus-datasets", 100),
-    list<any>("library/model-lab/observed-market-snapshots", 100),
-    list<any>("library/model-lab/settled-observed-markets", 100),
-    list<any>("library/model-lab/player-event-datasets", 1000),
-    list<any>("library/model-lab/market-calibration-reports", 20),
-    list<any>("library/model-lab/observed-market-settlement-runs", 20),
-    list<any>("library/research-source-candidates", 1000),
-    list<any>("library/research-source-discovery-runs", 20),
-    list<any>("library/agent-proposals", 500),
-    list<any>("library/agent-sandbox-evaluations", 500)
-  ]);
+
+  // Read only the collections needed by the requested library view. The former
+  // implementation fetched all 34 collections for every category, causing
+  // unrelated Blob scans to dominate simple dashboard requests.
+  const collectionSpecs: Record<string, { key: string; path: string; cap: number }[]> = {
+    winning: [{ key: "winning", path: "library/winning-coupons", cap: 500 }],
+    losing: [{ key: "losing", path: "library/losing-coupons", cap: 500 }],
+    pending: [{ key: "pending", path: "library/pending-coupons", cap: 500 }],
+    "win-candidates": [{ key: "winCouponCandidates", path: "library/win-coupon-candidates", cap: 500 }],
+    coupons: [{ key: "coupons", path: "library/coupons", cap: 500 }],
+    lessons: [{ key: "lessons", path: "library/lessons", cap: 500 }],
+    "lesson-reviews": [{ key: "lessonReviewCases", path: "library/lesson-review-cases", cap: 300 }],
+    entities: [{ key: "entities", path: "library/entity-profiles", cap: 500 }],
+    agents: [
+      { key: "profiles", path: "library/agent-profiles", cap: 500 },
+      { key: "persistentAgentProfiles", path: "library/persistent-agent-profiles", cap: 1000 },
+      { key: "agentTasks", path: "library/agent-task-queue", cap: 1000 },
+      { key: "agentProposals", path: "library/agent-proposals", cap: 500 },
+      { key: "agentSandboxEvaluations", path: "library/agent-sandbox-evaluations", cap: 500 }
+    ],
+    "market-data": [
+      { key: "historicalMarketData", path: "library/model-lab/historical-event-datasets", cap: 1000 },
+      { key: "consensusMarketData", path: "library/model-lab/market-consensus-datasets", cap: 100 },
+      { key: "observedMarketData", path: "library/model-lab/observed-market-snapshots", cap: 100 },
+      { key: "settledObservedMarketData", path: "library/model-lab/settled-observed-markets", cap: 100 },
+      { key: "playerEventData", path: "library/model-lab/player-event-datasets", cap: 1000 },
+      { key: "marketCalibrationReports", path: "library/model-lab/market-calibration-reports", cap: 20 },
+      { key: "marketSettlementRuns", path: "library/model-lab/observed-market-settlement-runs", cap: 20 }
+    ],
+    sources: [
+      { key: "sourceCandidates", path: "library/research-source-candidates", cap: 1000 },
+      { key: "sourceDiscoveryRuns", path: "library/research-source-discovery-runs", cap: 20 }
+    ],
+    observations: [{ key: "observations", path: "library/agent-observations", cap: 500 }],
+    runs: [{ key: "runs", path: "library/research-runs", cap: 200 }],
+    tips: [{ key: "humanTips", path: "library/human-tips", cap: 300 }],
+    notes: [{ key: "agentNotes", path: "library/agent-notes", cap: 500 }],
+    "coupon-history": [{ key: "couponHistory", path: "library/coupon-history", cap: 500 }],
+    "coupon-cases": [{ key: "couponCases", path: "library/coupon-research-cases", cap: 200 }],
+    predictions: [{ key: "frozenPredictions", path: "library/frozen-predictions", cap: 500 }],
+    results: [{ key: "settledResults", path: "library/settled-results", cap: 500 }],
+    "other-settlements": [{ key: "otherSettlements", path: "library/other-settlements", cap: 500 }],
+    "learning-cycles": [{ key: "learningCycles", path: "library/learning-cycles", cap: 500 }],
+    strategies: [{ key: "strategyCandidates", path: "library/strategy-candidates", cap: 1000 }],
+    backtests: [{ key: "backtestRuns", path: "library/backtest-runs", cap: 500 }]
+  };
+  const allSpecs = Object.values(collectionSpecs).flat();
+  const selectedSpecs = category === "all" || !collectionSpecs[category] ? allSpecs : collectionSpecs[category];
+  const loaded = Object.fromEntries(await Promise.all(selectedSpecs.map(async spec =>
+    [spec.key, await list<any>(spec.path, spec.cap)] as const
+  )));
+  const rows = (key: string): any[] => loaded[key] || [];
+  const coupons = rows("coupons"), winning = rows("winning"), losing = rows("losing"), pending = rows("pending");
+  const winCouponCandidates = rows("winCouponCandidates"), lessons = rows("lessons");
+  const lessonReviewCases = rows("lessonReviewCases"), entities = rows("entities");
+  const profiles = rows("profiles"), observations = rows("observations"), runs = rows("runs");
+  const humanTips = rows("humanTips"), agentNotes = rows("agentNotes"), couponHistory = rows("couponHistory");
+  const couponCases = rows("couponCases"), frozenPredictions = rows("frozenPredictions");
+  const settledResults = rows("settledResults"), otherSettlements = rows("otherSettlements");
+  const learningCycles = rows("learningCycles"), strategyCandidates = rows("strategyCandidates");
+  const backtestRuns = rows("backtestRuns"), persistentAgentProfiles = rows("persistentAgentProfiles");
+  const agentTasks = rows("agentTasks"), historicalMarketData = rows("historicalMarketData");
+  const consensusMarketData = rows("consensusMarketData"), observedMarketData = rows("observedMarketData");
+  const settledObservedMarketData = rows("settledObservedMarketData"), playerEventData = rows("playerEventData");
+  const marketCalibrationReports = rows("marketCalibrationReports"), marketSettlementRuns = rows("marketSettlementRuns");
+  const sourceCandidates = rows("sourceCandidates"), sourceDiscoveryRuns = rows("sourceDiscoveryRuns");
+  const agentProposals = rows("agentProposals"), agentSandboxEvaluations = rows("agentSandboxEvaluations");
+
   const marketDataItems = [
     ...historicalMarketData.map((d:any)=>({id:d.id,recordType:"model_lab_historical_event_dataset",providerId:d.providerId,sport:d.sport,competition:d.competition,season:d.season,sourceUrl:d.sourceUrl,sourceLicence:d.sourceLicence,retrievedAt:d.retrievedAt,totalRows:d.totalRows,scoredRows:d.scoredRows,playerEventRows:d.playerEventRows,origin:d.origin,lab:d.lab})),
     ...consensusMarketData.map((d:any)=>({id:d.id,recordType:"model_lab_consensus_market_dataset",providerId:d.providerId,sport:d.sport,repository:d.repository,sourceUrl:d.sourceUrl,sourceLicence:d.sourceLicence,retrievedAt:d.retrievedAt,totalRows:d.totalRows,settledRows:d.settledRows,marketDataType:d.marketDataType,origin:d.origin,lab:d.lab})),
@@ -165,6 +196,10 @@ export async function searchWinLibrary(options: {
     ...playerEventData.map((d:any)=>({id:d.id,recordType:"model_lab_player_event_dataset",providerId:d.providerId,competition:d.competition,season:d.season,sourceUrl:d.sourceUrl,sourceLicence:d.sourceLicence,totalRows:d.totalRows,origin:d.origin,lab:d.lab})),
     ...marketCalibrationReports.map((d:any)=>({id:d.id,recordType:"model_lab_market_calibration_report",status:d.status,createdAt:d.createdAt,totalEvents:d.totalEvents,sourceDatasetCount:d.sourceDatasetCount,origin:d.origin,lab:d.lab})),
     ...marketSettlementRuns.map((d:any)=>({id:d.id,recordType:"model_lab_market_settlement_run",status:d.status,createdAt:d.createdAt,settledSelections:d.settledSelections,uniqueEvents:d.uniqueEvents,simulationRunId:d.simulationRunId,simulation:d.simulation,caveats:d.caveats,sourceHash:d.sourceHash,origin:"provider_historical_data",lab:"model-lab"}))
+  ];
+  const sourceItems = [
+    ...sourceCandidates.map((x:any)=>({id:x.id,recordType:"research_source_candidate",name:x.name,sourceType:x.sourceType,sourceUrl:x.sourceUrl,license:x.license,licenseStatus:x.licenseStatus,sports:x.sports,dataDomains:x.dataDomains,downloads:x.downloads,stars:x.stars,reviewStatus:x.reviewStatus,automationAllowed:false,lastSeenAt:x.lastSeenAt,reviewNote:x.reviewNote})),
+    ...sourceDiscoveryRuns
   ];
   let items: any[] = [];
   if (category === "winning") items = winning;
@@ -177,7 +212,7 @@ export async function searchWinLibrary(options: {
   else if (category === "entities") items = entities;
   else if (category === "agents") items = [...profiles, ...persistentAgentProfiles, ...agentTasks, ...agentProposals, ...agentSandboxEvaluations];
   else if (category === "market-data") items = marketDataItems;
-  else if (category === "sources") items = [...sourceCandidates.map((x:any)=>({id:x.id,recordType:"research_source_candidate",name:x.name,sourceType:x.sourceType,sourceUrl:x.sourceUrl,license:x.license,licenseStatus:x.licenseStatus,sports:x.sports,dataDomains:x.dataDomains,downloads:x.downloads,stars:x.stars,reviewStatus:x.reviewStatus,automationAllowed:false,lastSeenAt:x.lastSeenAt,reviewNote:x.reviewNote})),...sourceDiscoveryRuns];
+  else if (category === "sources") items = sourceItems;
   else if (category === "observations") items = observations;
   else if (category === "runs") items = runs;
   else if (category === "tips") items = humanTips;
@@ -191,7 +226,7 @@ export async function searchWinLibrary(options: {
   else if (category === "strategies") items = strategyCandidates;
   else if (category === "backtests") items = backtestRuns;
   else items = [...coupons, ...winCouponCandidates, ...lessons, ...lessonReviewCases, ...entities, ...profiles, ...observations, ...runs,
-    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns, ...persistentAgentProfiles, ...agentTasks, ...agentProposals, ...agentSandboxEvaluations, ...marketDataItems, ...sourceCandidates.map((x:any)=>({id:x.id,recordType:"research_source_candidate",name:x.name,sourceType:x.sourceType,sourceUrl:x.sourceUrl,license:x.license,licenseStatus:x.licenseStatus,sports:x.sports,dataDomains:x.dataDomains,downloads:x.downloads,stars:x.stars,reviewStatus:x.reviewStatus,automationAllowed:false,lastSeenAt:x.lastSeenAt})), ...sourceDiscoveryRuns];
+    ...humanTips, ...agentNotes, ...couponHistory, ...couponCases, ...frozenPredictions, ...settledResults, ...otherSettlements, ...learningCycles, ...strategyCandidates, ...backtestRuns, ...persistentAgentProfiles, ...agentTasks, ...agentProposals, ...agentSandboxEvaluations, ...marketDataItems, ...sourceItems];
 
   let filtered = relevant(items, clean(options.query, 1000));
   if (options.outcome) filtered = filtered.filter((x: any) => x.outcome === options.outcome);
@@ -205,7 +240,6 @@ export async function searchWinLibrary(options: {
       "agent-notes", "persistent-agent-profiles", "agent-task-queue", "agent-proposals", "agent-sandbox-evaluations", "market-data", "research-source-candidates", "research-source-discovery-runs", "sources", "research-runs", "frozen-predictions", "settled-results", "other-settlements", "coupon-research-cases", "learning-cycles", "strategy-candidates", "backtest-runs"]
   };
 }
-
 export async function getMandatoryLearningPack(brief: any) {
   await ensureLegacyLibraryImport();
   const query = [
