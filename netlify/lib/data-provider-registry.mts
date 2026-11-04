@@ -194,6 +194,16 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     notes:"Public widget API is free without a key for personal, open-source, community and early-stage commercial projects with the visible attribution badge. Published terms list ~10,000 requests/24h/IP, allow a 60-second cache and derived analytics, but prohibit bulk raw-response redistribution and use to facilitate match-fixing or illegal gambling. WIN uses user-triggered requests only, one normalized sport response per 60-second cache window, no scheduled polling, and never treats the feed as sole truth or a final financial settlement source."
   },
   {
+    id:"skillcorner-open-basketball-acb-2025-26", name:"SkillCorner Open Data — Liga ACB Basketball 2025/26", website:"https://github.com/SkillCorner/opendata-basketball",
+    sports:["basketball"],
+    dataDomains:["player_season_shot_aggregates","player_season_drive_aggregates","player_season_pick_aggregates"],
+    accessMode:"manual_authorized_import", historicalSupport:"documented", authentication:"none",
+    licenceReview:"documented_open_terms", automationAllowed:false,
+    licenceReference:"https://github.com/SkillCorner/opendata-basketball/blob/main/LICENSE",
+    attribution:"SkillCorner Open Data — https://skillcorner.com/ (credit requested by repository README).",
+    notes:"Manual bounded import of three small ACB 2025-2026 player-team-season aggregate CSVs (shots, drives and picks) only. README reports coverage for 293 of 327 ACB games, offense-only aggregates, and 10 detailed match samples. This is not a current-season feed or match-level data. A traded player may have per-team rows plus a season-total row; never sum both. Large 25fps tracking archives and raw match event files are intentionally excluded. Preserve SkillCorner credit."
+  },
+  {
     id:"statsbomb-open-data", name:"StatsBomb Open Data", website:"https://github.com/hudl/open-data",
     sports:["football"],
     dataDomains:["selected_competitions_historical_matches","match_events","lineups","selected_match_360_data"],
