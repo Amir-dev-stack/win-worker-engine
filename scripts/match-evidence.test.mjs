@@ -93,3 +93,27 @@ test("all provider-supplied player lines and comparable highest/lowest ratings a
  assert.equal(extracted.unratedPlayers,1);
  assert.equal(extracted.players.find(x=>x.name==="Player A").minutes,90);
 });
+
+
+test("same match from multiple sources retains complementary team and player statistics and separates rating scales",()=>{
+ const base={sport:"football",competition:"UEFA Champions League",season:"2026-27",eventStart:"2026-10-20T19:00:00Z",homeTeam:"Manchester City",awayTeam:"RB Leipzig",fullTimeScore:[3,2],status:"completed",origin:"provider_historical_data"};
+ const teamFeed={...base,id:"match-team",teamStats:{possession:62,passes_total:550,passes_accurate:480,shots_total:18,corners:8},sourceProvider:"team-feed",sourceUrl:"https://team-feed.test/match"};
+ const playerFeed={...base,id:"match-player",playerStats:[
+  {player:{id:11,name:"High Rated"},team:{name:"Manchester City"},statistics:[{games:{minutes:"90",rating:"9.1"},passes:{total:40}}]},
+  {player:{id:12,name:"Low Rated"},team:{name:"RB Leipzig"},statistics:[{games:{minutes:"90",rating:"5.8"},tackles:{total:2}}]}
+ ],sourceProvider:"player-feed",sourceUrl:"https://player-feed.test/match"};
+ const pack=buildMatchEvidencePack({...target,startTime:"2026-10-20T19:00:00Z"},{historicalDatasets:[
+  {id:"team-data",providerId:"team-feed",sport:"football",records:[teamFeed]},
+  {id:"player-data",providerId:"player-feed",sport:"football",records:[playerFeed]}
+ ],nowMs});
+ assert.equal(pack.postMatch.source.providerIds.length,2);
+ assert.ok(pack.postMatch.details.teamStats);
+ assert.ok(pack.postMatch.details.playerStats);
+ assert.equal(pack.postMatch.sourceDetailCount,2);
+ assert.equal(pack.postMatch.playerPerformanceByProvider.length,2);
+ const playerProvider=pack.postMatch.playerPerformanceByProvider.find(x=>x.providerId==="player-feed");
+ assert.equal(playerProvider.bestRated[0].name,"High Rated");
+ assert.equal(playerProvider.lowestRated[0].name,"Low Rated");
+ assert.deepEqual(pack.postMatch.statisticCoverageBySource.map(x=>x.providerId).sort(),["player-feed","team-feed"]);
+ assert.equal(pack.postMatch.detailConflicts.includes("fullTimeScore"),false);
+});

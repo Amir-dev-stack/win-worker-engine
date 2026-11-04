@@ -43,10 +43,12 @@ function normalizeRows(collections){
         const season=clean(row.season||dataset.season||"",30);
         const providerId=clean(row.sourceProvider||row.providerId||dataset.providerId||"unknown",100);
         const sourceUrl=clean(row.sourceUrl||dataset.sourceUrl||dataset.repositoryUrl||"",1200);
+        const details=rowDetails(row);
         const record={kind,datasetId:clean(dataset.id,180),providerId,sport,competition,season,eventMs,eventStart:clean(row.eventStart,60),sides,score,row,sourceUrl,
           sourceLicence:dataset.sourceLicence||row.sourceLicence||null,retrievedAt:dataset.retrievedAt||row.retrievedAt||null,
-          rawChecksum:dataset.rawChecksum||null,status:row.status||"unknown",details:rowDetails(row)};
-        record.detailScore=Object.keys(record.details).length+(["playerEvents","matchStats","matchStatistics","statistics","stats","events","matchEvents"].filter(k=>row?.[k]!==undefined).length*4);
+          rawChecksum:dataset.rawChecksum||null,status:row.status||"unknown",details,
+          sourceDetails:[{providerId,sourceUrl,datasetId:clean(dataset.id,180),details,sourceLicence:dataset.sourceLicence||row.sourceLicence||null,retrievedAt:dataset.retrievedAt||row.retrievedAt||null,rawChecksum:dataset.rawChecksum||null}]};
+        record.detailScore=Object.keys(details).length+(["playerEvents","playerStats","playerStatistics","teamStats","teamStatistics","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays"].filter(k=>row?.[k]!==undefined).length*4);
         out.push(record);
       }
     }
@@ -55,15 +57,34 @@ function normalizeRows(collections){
   for(const record of out){
     const key=[record.sport,Math.floor(record.eventMs/86400000),norm(record.sides.one),norm(record.sides.two)].join("|");
     const prior=grouped.get(key);
-    if(!prior){grouped.set(key,{...record,sourceProviders:[record.providerId],sourceRefs:[record.sourceUrl].filter(Boolean),sourceDatasetIds:[record.datasetId].filter(Boolean),scoreConflict:false});continue;}
-    prior.sourceProviders=[...new Set([...prior.sourceProviders,record.providerId])];
-    prior.sourceRefs=[...new Set([...prior.sourceRefs,record.sourceUrl].filter(Boolean))].slice(0,8);
-    prior.sourceDatasetIds=[...new Set([...prior.sourceDatasetIds,record.datasetId].filter(Boolean))].slice(0,8);
-    if(prior.score&&record.score&&(prior.score[0]!==record.score[0]||prior.score[1]!==record.score[1]))prior.scoreConflict=true;
-    if(record.detailScore>prior.detailScore){
-      const replacement={...record,sourceProviders:prior.sourceProviders,sourceRefs:prior.sourceRefs,sourceDatasetIds:prior.sourceDatasetIds,scoreConflict:prior.scoreConflict};
-      grouped.set(key,replacement);
+    if(!prior){
+      grouped.set(key,{...record,sourceProviders:[record.providerId],sourceRefs:[record.sourceUrl].filter(Boolean),sourceDatasetIds:[record.datasetId].filter(Boolean),sourceDetails:record.sourceDetails,scoreConflict:false,detailConflicts:[]});
+      continue;
     }
+    const sourceDetails=[...(prior.sourceDetails||[]),...(record.sourceDetails||[])];
+    const uniqueSourceDetails=[...new Map(sourceDetails.map(source=>[[source.providerId,source.datasetId,source.sourceUrl].join("|"),source])).values()].slice(0,20);
+    const sourceProviders=[...new Set([...prior.sourceProviders,record.providerId])];
+    const sourceRefs=[...new Set([...prior.sourceRefs,record.sourceUrl].filter(Boolean))].slice(0,20);
+    const sourceDatasetIds=[...new Set([...prior.sourceDatasetIds,record.datasetId].filter(Boolean))].slice(0,20);
+    let scoreConflict=prior.scoreConflict||false;
+    if(prior.score&&record.score&&(prior.score[0]!==record.score[0]||prior.score[1]!==record.score[1]))scoreConflict=true;
+    const mergedDetails={...(prior.details||{})};
+    const detailConflicts=[...(prior.detailConflicts||[])];
+    for(const [field,value] of Object.entries(record.details||{})){
+      if(mergedDetails[field]===undefined){mergedDetails[field]=value;continue;}
+      if(JSON.stringify(mergedDetails[field])!==JSON.stringify(value)){
+        if(!detailConflicts.includes(field))detailConflicts.push(field);
+      }
+    }
+    const preferred=(!prior.score&&record.score)||record.detailScore>prior.detailScore?record:prior;
+    const mergedRow=preferred.row;
+    grouped.set(key,{
+      ...preferred,row:mergedRow,score:prior.score||record.score||null,
+      details:mergedDetails,detailScore:Math.max(prior.detailScore,record.detailScore),
+      sourceProviders,sourceRefs,sourceDatasetIds,sourceDetails:uniqueSourceDetails,
+      sourceDetailCount:sourceDetails.length,sourceDetailsTruncated:sourceDetails.length>20,
+      scoreConflict,detailConflicts
+    });
   }
   return [...grouped.values()].sort((a,b)=>a.eventMs-b.eventMs);
 }
@@ -90,7 +111,10 @@ function teamPerspective(record,team){
     sourceLicence:record.sourceLicence,scoreConflict:record.scoreConflict||false,
     matchStatistics:record.details,
     statisticCoverage:inspectStatisticCoverage(record.sport,record.details),
-    playerPerformances:extractPlayerPerformances(record.details,record.providerId).players
+    statisticCoverageBySource:(record.sourceDetails||[]).map(source=>({providerId:source.providerId,sourceUrl:source.sourceUrl,coverage:inspectStatisticCoverage(record.sport,source.details)})),
+    playerPerformancesByProvider:(record.sourceDetails||[]).map(source=>({providerId:source.providerId,sourceUrl:source.sourceUrl,...extractPlayerPerformances(source.details,source.providerId)})),
+    playerPerformances:(record.sourceDetails||[]).flatMap(source=>extractPlayerPerformances(source.details,source.providerId).players),
+    sourceDetails:record.sourceDetails||[]
   };
 }
 function aggregateTeamGames(games){
@@ -164,7 +188,12 @@ function matchPostReport(record,nowMs,sport){
   const details=record.details||{};
   const actualStatsKeys=["playerEvents","playerStats","playerStatistics","teamStats","teamStatistics","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","goals","cards","lineups","lineup","substitutions"].filter(k=>details[k]!==undefined);
   const statCoverage=inspectStatisticCoverage(sport,details);
-  const playerPerformance=extractPlayerPerformances(details,record.providerId);
+  const sourceDetails=record.sourceDetails?.length?record.sourceDetails:[{providerId:record.providerId,sourceUrl:record.sourceUrl,details,sourceLicence:record.sourceLicence,retrievedAt:record.retrievedAt}];
+  const playerPerformanceByProvider=sourceDetails.map(source=>({providerId:source.providerId,sourceUrl:source.sourceUrl,...extractPlayerPerformances(source.details,source.providerId)}));
+  const playerPerformance={players:playerPerformanceByProvider.flatMap(x=>x.players),ratingsAvailable:playerPerformanceByProvider.reduce((n,x)=>n+x.ratingsAvailable,0),
+    bestRated:playerPerformanceByProvider.flatMap(x=>x.bestRated.map(p=>({...p,ratingProviderId:x.providerId}))),
+    lowestRated:playerPerformanceByProvider.flatMap(x=>x.lowestRated.map(p=>({...p,ratingProviderId:x.providerId}))),
+    comparison:"Ratings are compared only within each provider's own match response. Highest/lowest are not ranked across providers or rating scales."};
   const eventTimeline=details.events||details.matchEvents||details.timeline||details.playByPlay||details.plays||details.playerEvents||null;
   return {
     status:"source_reported_completed_match",
@@ -174,10 +203,13 @@ function matchPostReport(record,nowMs,sport){
     availableStatisticSections:actualStatsKeys,
     statisticCoverage:statCoverage,
     playerPerformance:{...playerPerformance,highestRatedPlayers:playerPerformance.bestRated,lowestRatedPlayers:playerPerformance.lowestRated},
+    playerPerformanceByProvider,
+    statisticCoverageBySource:sourceDetails.map(source=>({providerId:source.providerId,sourceUrl:source.sourceUrl,retrievedAt:source.retrievedAt,coverage:inspectStatisticCoverage(sport,source.details)})),
+    sourceDetailCount:record.sourceDetailCount||sourceDetails.length,sourceDetailsTruncated:Boolean(record.sourceDetailsTruncated),detailConflicts:record.detailConflicts||[],
     eventTimeline,eventTimelineCount:Array.isArray(eventTimeline)?eventTimeline.length:null,
     unavailableStatisticSections:[...statCoverage.team,...statCoverage.player].filter(x=>x.status==="not_provided").map(x=>x.label),
     unavailableEventTypes:statCoverage.eventTypes.filter(x=>x.status==="not_provided").map(x=>x.eventType),
-    source:{providerId:record.providerId,urls:record.sourceRefs,retrievedAt:record.retrievedAt,licence:record.sourceLicence,rawChecksum:record.rawChecksum},
+    source:{providerId:record.providerId,providerIds:record.sourceProviders||[record.providerId],urls:record.sourceRefs,retrievedAt:record.retrievedAt,licence:record.sourceLicence,rawChecksum:record.rawChecksum,sourceDetails:sourceDetails.map(({details,...source})=>source)},
     sourceReportedNotIndependentlyVerified:true
   };
 }
