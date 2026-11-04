@@ -279,7 +279,7 @@ async function refreshResearch(){
  try{
   const d=await api("/api/research-status");
   const providers=(d.providers||[]).map(p=>'<article class="mini-row"><div><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.status||"unknown")+' · '+escapeHtml(p.accessMode||"")+' · licence '+escapeHtml(p.licenceReview||"unverified")+'</small></div></article>').join("");
-  const open=d.openfootball||{},nfl=d.nflverse||{},worldCup=d.openfootballWorldCup||{},statsBomb=d.statsBomb||{},sportScore=d.sportScore||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{},evolution=d.agentEvolution||{};
+  const open=d.openfootball||{},nfl=d.nflverse||{},worldCup=d.openfootballWorldCup||{},statsBomb=d.statsBomb||{},sportScore=d.sportScore||{},skillCornerBasketball=d.skillCornerBasketball||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{},evolution=d.agentEvolution||{};
   const couponSims=(cal.reports||[]).flatMap(r=>r.couponSimulation?.results||[]);
   const candidateRows=renderSourceCandidates(discovery.topCandidates||[]);
   const sections=[
@@ -289,6 +289,7 @@ async function refreshResearch(){
    '<article class="mini-row"><div><b>World Cup history and player events</b><small>'+escapeHtml(worldCup.status||"not yet run")+' · '+Number(lab.worldCupMatchCount||0).toLocaleString()+' matches · '+Number(lab.playerEventRows||0).toLocaleString()+' player events · '+Number(lab.worldCupDatasetCount||0)+' tournament datasets</small></div></article>',
    '<article class="mini-row"><div><b>StatsBomb open football events (manual research import)</b><small>'+escapeHtml(statsBomb.status||"not imported")+' · '+Number(statsBomb.matchesImported||0).toLocaleString()+' matches · '+Number(statsBomb.eventRows||0).toLocaleString()+' event records · automated import disabled · '+Number(statsBomb.datasetCount||0)+' competition/season datasets</small></div></article>',
    '<article class="mini-row"><div><b>SportScore live cross-sport feed</b><small>'+escapeHtml(sportScore.status||"not yet queried")+' · football, basketball, cricket and tennis · user-triggered requests only · 60-second cache · attribution required</small></div></article>',
+   '<article class="mini-row"><div><b>SkillCorner ACB basketball season aggregates</b><small>'+escapeHtml(skillCornerBasketball.status||"not imported")+' · '+Number(skillCornerBasketball.aggregateRows||0).toLocaleString()+' player-team-season rows · '+Number(skillCornerBasketball.datasetCount||0)+' aggregate files · 2025/26 season only · offense-only</small></div></article>',
    '<article class="mini-row"><div><b>Consensus market history</b><small>'+escapeHtml(cons.status||"not yet run")+' · '+Number(lab.consensusMarketRows||0).toLocaleString()+' rows · '+Number(lab.consensusSettledRows||0).toLocaleString()+' settled events</small></div></article>',
    '<article class="mini-row"><div><b>SharpAPI multi-source snapshots</b><small>'+escapeHtml(sharp.status||"not yet run")+' · '+Number(lab.observedMarketRows||0).toLocaleString()+' observed prices · '+Number(lab.observedMarketFamilies?.length||0)+' market families</small></div></article>',
    '<article class="mini-row"><div><b>Market calibration lab</b><small>'+escapeHtml(cal.status||"waiting for first report")+' · '+Number(cal.totalEvents||0).toLocaleString()+' events · '+Number(cal.reports?.length||0)+' dataset reports · consensus benchmark only · '+Number(couponSims.length||0)+' coupon simulation bands</small></div></article>',
@@ -474,6 +475,13 @@ async function runLearningDataJob(action,buttonId,label,extra={},statusId="#lear
 }
 $("#runSourceDiscovery").addEventListener("click",()=>runLearningDataJob("discover_sources","#runSourceDiscovery","Worldwide public-source discovery"));
 $("#runHistoricalSync").addEventListener("click",()=>runLearningDataJob("sync_historical_data","#runHistoricalSync","Historical dataset import"));
+$("#runSkillCornerImport").addEventListener("click",()=>{
+ const accepted=confirm("Import the three SkillCorner Open Data CSV aggregates for Liga ACB 2025/26 (shots, drives and picks)? This is player-team-season data, not match-level results, and the source covers 293 of 327 games with offense-only metrics. WIN will retain SkillCorner attribution and will not import the large tracking archives. Traded players may have both team rows and a season-total row. Continue only for private research and analysis with credit to SkillCorner.");
+ if(!accepted)return;
+ runLearningDataJob("sync_skillcorner_basketball","#runSkillCornerImport","SkillCorner ACB 2025/26 aggregates",{
+  confirmResearchUse:"I_CONFIRM_SKILLCORNER_ACB_2025_26_RESEARCH"
+ },"#skillCornerStatus");
+});
 let statsBombCompetitionRows=[];
 function refreshStatsBombSeasonOptions(){
  const competitionId=Number($("#statsBombCompetition").value);
