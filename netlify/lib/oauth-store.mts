@@ -30,6 +30,17 @@ export async function readOAuthRecord<T>(kind: string, id: string): Promise<T | 
   return await store.get(recordKey(kind, id), { type: "json" }) as T | null;
 }
 
+export async function readOAuthRecordWithMetadata<T>(kind: string, id: string): Promise<{ value: T; etag: string } | null> {
+  const result = await store.getWithMetadata(recordKey(kind, id), { type: "json", consistency: "strong" });
+  if (!result || result.data === null) return null;
+  return { value: result.data as T, etag: result.etag };
+}
+
+export async function consumeOAuthRecord(kind: string, id: string, value: unknown, etag: string): Promise<boolean> {
+  const result = await store.setJSON(recordKey(kind, id), value, { onlyIfMatch: etag });
+  return result.modified;
+}
+
 export async function validateOwnerToken(value: string): Promise<boolean> {
   const expected = Netlify.env.get("WIN_INTERNAL_TOKEN");
   return Boolean(expected && value && safeEqual(value, expected));
