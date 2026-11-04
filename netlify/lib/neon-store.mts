@@ -95,6 +95,13 @@ export function getNeonStore() {
     async delete(key: string) {
       await sql()`DELETE FROM win_memory_records WHERE record_key = ${key}`;
       return { deleted: true };
+    },
+
+    async health() {
+      const rows = rowsOf<{ record_count: string; database_time: string }>(await sql()`
+        SELECT COUNT(*)::text AS record_count, now()::text AS database_time
+        FROM win_memory_records`);
+      return { ok: true, recordCount: Number(rows[0]?.record_count || 0), databaseTime: rows[0]?.database_time || null };
     }
   };
 }
