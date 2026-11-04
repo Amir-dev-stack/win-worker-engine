@@ -41,20 +41,21 @@ export function getNeonStore() {
     async setJSON(key: string, value: unknown, options: StoreOptions = {}) {
       const { kind, id } = splitKey(key);
       const payload = JSON.stringify(value);
+      if (payload === undefined) throw new Error("WIN memory records must be JSON-serializable values.");
       const etag = randomUUID();
       if (options.onlyIfNew) {
         const rows = rowsOf<NeonRow>(await sql()`INSERT INTO win_memory_records
           (record_key, kind, record_id, payload, etag)
           VALUES (${key}, ${kind}, ${id}, ${payload}::jsonb, ${etag})
           ON CONFLICT (record_key) DO NOTHING
-          RETURNING record_key`);
+          RETURNING record_key, etag`);
         return { modified: rows.length > 0, etag: rows[0]?.etag ?? null };
       }
       if (options.onlyIfMatch) {
         const rows = rowsOf<NeonRow>(await sql()`UPDATE win_memory_records
           SET payload = ${payload}::jsonb, etag = ${etag}, updated_at = now()
           WHERE record_key = ${key} AND etag = ${options.onlyIfMatch}
-          RETURNING record_key`);
+          RETURNING record_key, etag`);
         return { modified: rows.length > 0, etag: rows[0]?.etag ?? null };
       }
       const rows = rowsOf<NeonRow>(await sql()`INSERT INTO win_memory_records
@@ -63,7 +64,7 @@ export function getNeonStore() {
         ON CONFLICT (record_key) DO UPDATE
         SET kind = EXCLUDED.kind, record_id = EXCLUDED.record_id,
             payload = EXCLUDED.payload, etag = EXCLUDED.etag, updated_at = now()
-        RETURNING record_key`);
+        RETURNING record_key, etag`);
       return { modified: rows.length > 0, etag };
     },
 
