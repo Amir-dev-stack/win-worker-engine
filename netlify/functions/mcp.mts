@@ -253,17 +253,18 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
 
   server.registerTool("validate_win_lesson", {
     title: "Validate WIN Library Lesson",
-    description: "Validate a proposed lesson only when evidence references are supplied. Only validated lessons are reused as established knowledge in later coupon reviews.",
-    inputSchema: { lessonId: z.string().min(1), evidence: z.array(z.any()).min(1) },
+    description: "Deprecated safety guard. Research-scoped MCP access cannot independently approve lessons. A different trusted reviewer must use WIN's separate reviewer workflow; credential separation is not proof of real-world identity.",
+    inputSchema: { lessonId: z.string().min(1) },
     securitySchemes: [{ type: "oauth2", scopes: ["win:research"] }]
-  }, async (args) => {
+  }, async () => {
     if (!scopes.includes("win:research")) return authRequired("win:research");
-    const lesson = await get<any>("library/lessons", args.lessonId);
-    if (!lesson) return { content: [{ type: "text" as const, text: "Lesson not found." }], isError: true };
-    const updated = { ...lesson, validationStatus: "validated", validationEvidence: args.evidence.slice(0, 30), validatedAt: new Date().toISOString() };
-    const { put } = await import("../lib/store.mts");
-    await put("library/lessons", args.lessonId, updated);
-    return { content: [{ type: "text" as const, text: JSON.stringify(updated) }] };
+    return {
+      content: [{
+        type: "text" as const,
+        text: "Independent lesson validation is unavailable through the research-scoped MCP tool. A different trusted reviewer must complete the separate reviewer workflow. No lesson record was changed."
+      }],
+      isError: true
+    };
   });
 
   server.registerTool("run_historical_coupon_simulation", {
