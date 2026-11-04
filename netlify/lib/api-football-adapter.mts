@@ -440,6 +440,62 @@ async function fetchOptional(
   }
 }
 
+export function buildApiFootballEvidenceRecord(dossier: any) {
+  const fixture = dossier?.fixture || {};
+  const home = fixture?.home?.name || null;
+  const away = fixture?.away?.name || null;
+  const eventStart = fixture?.date || null;
+  if (!home || !away || !eventStart || !Number.isFinite(Date.parse(eventStart))) {
+    throw new Error("api_football_evidence_record_missing_identity");
+  }
+  const isFinal = fixture?.status?.short === "FT";
+  const goals = fixture?.goals;
+  const validScore = isFinal && goals && goals.home !== null && goals.home !== undefined &&
+    goals.away !== null && goals.away !== undefined &&
+    Number.isFinite(Number(goals.home)) && Number.isFinite(Number(goals.away));
+  return {
+    origin: "provider_historical_data",
+    providerId: PROVIDER_ID,
+    sourceProvider: PROVIDER_ID,
+    sourceUrl: dossier?.provenance?.sourceUrl || API_BASE,
+    sourceLicence: "API-Football licensed commercial data; terms govern permitted use and prohibit resale",
+    licenceReference: dossier?.provenance?.termsReference || TERMS_URL,
+    attribution: dossier?.provenance?.attribution || ATTRIBUTION,
+    retrievedAt: dossier?.provenance?.retrievedAt || new Date().toISOString(),
+    sport: "football",
+    competition: dossier?.competition?.name || dossier?.competition?.league || null,
+    season: String(dossier?.competition?.season ?? ""),
+    eventStart,
+    homeTeam: home,
+    awayTeam: away,
+    status: text(fixture?.status?.short) || "unknown",
+    ...(validScore ? {
+      homeScore: Number(goals.home),
+      awayScore: Number(goals.away),
+      fullTimeScore: [Number(goals.home), Number(goals.away)],
+      halfTimeScore: fixture?.score?.halftime
+        ? [fixture.score.halftime.home ?? null, fixture.score.halftime.away ?? null] : null,
+      resultBasis: "provider_reported_full_time_score"
+    } : {}),
+    referee: fixture?.referee ?? null,
+    venue: fixture?.venue ?? null,
+    round: fixture?.round ?? null,
+    teamStats: dossier?.teamStatistics || [],
+    teamStatistics: dossier?.teamStatistics || [],
+    halfTimeTeamStatistics: dossier?.halfTimeTeamStatistics || [],
+    playerStats: dossier?.playerStatistics || [],
+    playerStatistics: dossier?.playerStatistics || [],
+    playerRatings: dossier?.playerRatings || [],
+    events: dossier?.events || [],
+    matchEvents: dossier?.events || [],
+    timeline: dossier?.events || [],
+    lineups: dossier?.lineups || [],
+    coverage: dossier?.coverage || [],
+    sourceRecordId: String(fixture?.id ?? ""),
+    sourceReportedNotIndependentlyVerified: true
+  };
+}
+
 export async function syncApiFootballFixtureDossier(
   fixtureIdInput: number,
   options: { includeContext?: boolean; includeHalfTime?: boolean } = {}
@@ -503,6 +559,7 @@ export async function syncApiFootballFixtureDossier(
   }, { allowPlayerRatings: domainEnabled(readiness, "player_ratings"), allowResults: domainEnabled(readiness, "results") });
   const failedEndpoints = endpointAudit.filter(item => item.status !== "success");
   const availableSections = dossier.coverage.filter((item: any) => item.status === "available").length;
+  const evidenceRecord = buildApiFootballEvidenceRecord(dossier);
   const summary = {
     id: "api-football-sync-" + fixtureId + "-" + startedAt.replace(/[^0-9]/g, ""),
     providerId: PROVIDER_ID,
@@ -523,8 +580,10 @@ export async function syncApiFootballFixtureDossier(
     ...dossier,
     id: dossier.id,
     eventId: String(fixtureId),
+    records: [evidenceRecord],
+    rawChecksum: dossier.provenance.rawPayloadSha256,
     totalRows: 1,
-    scoredRows: domainEnabled(readiness, "results") && fixture?.fixture?.status?.short === "FT" ? 1 : 0,
+    scoredRows: evidenceRecord.fullTimeScore ? 1 : 0,
     retrievedAt,
     origin: "provider_historical_data",
     lab: "model-lab"
