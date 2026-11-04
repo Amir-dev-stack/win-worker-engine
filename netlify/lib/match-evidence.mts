@@ -186,7 +186,7 @@ function matchPostReport(record,nowMs,sport){
   if(record.eventMs>nowMs)return {status:"not_started"};
   if(!record.score)return {status:"awaiting_source_result"};
   const details=record.details||{};
-  const actualStatsKeys=["playerEvents","playerStats","playerStatistics","teamStats","teamStatistics","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","goals","cards","lineups","lineup","substitutions"].filter(k=>details[k]!==undefined);
+  const actualStatsKeys=["playerEvents","playerStats","playerStatistics","playerRatings","teamStats","teamStatistics","halfTimeTeamStatistics","coverage","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","goals","cards","lineups","lineup","substitutions"].filter(k=>details[k]!==undefined);
   const statCoverage=inspectStatisticCoverage(sport,details);
   const sourceDetails=record.sourceDetails?.length?record.sourceDetails:[{providerId:record.providerId,sourceUrl:record.sourceUrl,details,sourceLicence:record.sourceLicence,retrievedAt:record.retrievedAt}];
   const playerPerformanceByProvider=sourceDetails.map(source=>({providerId:source.providerId,sourceUrl:source.sourceUrl,...extractPlayerPerformances(source.details,source.providerId)}));
