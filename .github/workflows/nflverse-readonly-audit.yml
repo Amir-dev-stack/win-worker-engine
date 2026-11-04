@@ -9,11 +9,6 @@ on:
       - "scripts/nflverse-readonly-audit.mjs"
       - ".github/workflows/nflverse-readonly-audit.yml"
   workflow_dispatch:
-    inputs:
-      season:
-        description: "NFL season to audit (defaults to current season)"
-        required: false
-        type: string
 
 concurrency:
   group: nflverse-readonly-audit-${{ github.event.pull_request.number || github.ref }}
@@ -26,6 +21,10 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        season: [2025, 2026]
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -35,5 +34,5 @@ jobs:
           node-version: 22
       - name: Run read-only source and payload audit
         env:
-          NFLVERSE_AUDIT_SEASON: ${{ github.event.inputs.season || '' }}
+          NFLVERSE_AUDIT_SEASON: ${{ matrix.season }}
         run: node --experimental-strip-types scripts/nflverse-readonly-audit.mjs
