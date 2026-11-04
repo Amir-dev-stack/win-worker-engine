@@ -175,6 +175,7 @@ export async function syncStatsBombOpenDataResearch(input: {
     }
   });
 
+  if (rawBytes > MAX_TOTAL_BYTES) throw new Error("statsbomb_import_exceeds_48mb");
   const normalized = records.filter(Boolean);
   if (!normalized.length) throw new Error("statsbomb_import_has_no_complete_match_records");
 
