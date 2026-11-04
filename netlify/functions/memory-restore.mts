@@ -105,11 +105,24 @@ export default async (req: Request) => {
     for (let offset = 0; offset < lines.length; offset += 12) {
       const batch = lines.slice(offset, offset + 12).map(line => JSON.parse(line));
       for (const entry of batch) {
-        if (!entry || typeof entry.key !== "string" || !allowed(entry.key) || !("value" in entry)) {
-          throw new Error("Snapshot contains a record outside the approved structured-memory collections.");
+        const financialAccount = typeof entry?.key === "string" && entry.key.startsWith("__financial__/account/");
+        const financialLedger = typeof entry?.key === "string" && entry.key.startsWith("__financial__/ledger/");
+        const memoryRecord = typeof entry?.key === "string" && allowed(entry.key);
+        if (!entry || (!memoryRecord && !financialAccount && !financialLedger) || !("value" in entry)) {
+          throw new Error("Snapshot contains a record outside the approved WIN memory collections.");
+        }
+        if (financialAccount && entry.value?.account_id !== entry.key.slice("__financial__/account/".length)) {
+          throw new Error("Financial account snapshot key does not match its account ID.");
+        }
+        if (financialLedger && entry.value?.entry_id !== entry.key.slice("__financial__/ledger/".length)) {
+          throw new Error("Financial ledger snapshot key does not match its entry ID.");
         }
       }
-      await Promise.all(batch.map((entry: any) => neon.setJSON(entry.key, entry.value)));
+      await Promise.all(batch.map((entry: any) => {
+        if (entry.key.startsWith("__financial__/account/")) return neon.restoreFinancialRecord("account", entry.value);
+        if (entry.key.startsWith("__financial__/ledger/")) return neon.restoreFinancialRecord("ledger", entry.value);
+        return neon.setJSON(entry.key, entry.value);
+      }));
       status.restored += batch.length;
       await blobs.setJSON(statusKey, status);
     }
