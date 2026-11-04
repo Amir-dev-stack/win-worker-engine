@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { put } from "./store.mts";
+import { get, list, put } from "./store.mts";
 import { assertProviderImportAllowed } from "./data-provider-registry.mts";
 
 const PROVIDER_ID = "nflverse-pbp-data";
@@ -437,4 +437,17 @@ export async function syncNflversePlayByPlayData(seasonInput?: number) {
     playerLinesImported: summary.playerLinesImported, sourceUrl
   });
   return summary;
+}
+
+
+export async function getNflversePlayByPlaySyncStatus() {
+  const state = await get<any>("scheduler-state", "nflverse-pbp-sync");
+  const runs = await list<any>("library/model-lab/provider-sync-runs", 100);
+  const recentRuns = runs.filter(run => run.providerId === PROVIDER_ID)
+    .sort((a, b) => Date.parse(b.startedAt || "") - Date.parse(a.startedAt || ""))
+    .slice(0, 5);
+  return {
+    providerId: PROVIDER_ID, status: state?.status || "not_yet_run",
+    lastCheck: state?.lastCheck || null, totals: state || null, recentRuns
+  };
 }
