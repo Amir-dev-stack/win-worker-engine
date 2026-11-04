@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createDecipheriv, createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 import { getStore } from "@netlify/blobs";
 import { requireAuth } from "../lib/auth.mts";
@@ -46,6 +46,10 @@ export default async (req: Request) => {
     return Response.json({ error: "Provide a valid backup date and explicit restore confirmation." }, { status: 400 });
   }
 
+  const keyHex = process.env.WIN_MEMORY_BACKUP_KEY?.trim() || "";
+  if (!/^[0-9a-fA-F]{64}$/.test(keyHex)) {
+    return Response.json({ error: "WIN_MEMORY_BACKUP_KEY is not configured correctly." }, { status: 503 });
+  }
   const blobs = getStore(STORE_OPTIONS);
   const date = body.date;
   const snapshotKey = "library/memory-backups/" + date + ".jsonl.gz";
@@ -69,7 +73,17 @@ export default async (req: Request) => {
   try {
     const raw = await blobs.get(snapshotKey, { type: "arrayBuffer" });
     if (!raw) throw new Error("Snapshot object is missing.");
-    const content = gunzipSync(Buffer.from(raw as ArrayBuffer));
+    const encrypted = Buffer.from(raw as ArrayBuffer);
+    if (encrypted.byteLength !== manifest.encryptedBytes || encrypted.byteLength < 28) throw new Error("Encrypted snapshot byte count is invalid.");
+    const encryptedDigest = createHash("sha256").update(encrypted).digest("hex");
+    if (encryptedDigest !== manifest.encryptedSha256) throw new Error("Encrypted snapshot SHA-256 verification failed.");
+    const iv = encrypted.subarray(0, 12);
+    const authTag = encrypted.subarray(12, 28);
+    const ciphertext = encrypted.subarray(28);
+    const decipher = createDecipheriv("aes-256-gcm", Buffer.from(keyHex, "hex"), iv);
+    decipher.setAuthTag(authTag);
+    const compressed = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    const content = gunzipSync(compressed);
     if (content.byteLength !== manifest.rawBytes) throw new Error("Snapshot byte count does not match its manifest.");
     const digest = createHash("sha256").update(content).digest("hex");
     if (digest !== manifest.sha256) throw new Error("Snapshot SHA-256 verification failed.");
