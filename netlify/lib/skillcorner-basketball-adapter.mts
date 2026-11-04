@@ -93,7 +93,7 @@ export async function syncSkillCornerBasketballAggregates(input: { confirmResear
     datasetsImported: datasets.length,
     totalRows: datasets.reduce((sum, dataset) => sum + dataset.totalRows, 0),
     uniquePlayers: new Set(datasets.flatMap(dataset => dataset.records.map(record => record.playerId))).size,
-    uniqueTeams: new Set(datasets.flatMap(dataset => dataset.records.map(record => record.team))).size,
+    uniqueTeams: new Set(datasets.flatMap(dataset => dataset.records.filter(record => !record.isSeasonTotalRow).map(record => record.team))).size,
     importedAggregates: datasets.map(dataset => ({
       type: dataset.aggregateType,
       rows: dataset.totalRows,
