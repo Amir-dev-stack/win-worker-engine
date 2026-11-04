@@ -255,6 +255,7 @@ async function refreshResearch(){
   const candidateRows=renderSourceCandidates(discovery.topCandidates||[]);
   const sections=[
    '<article class="mini-row"><div><b>NFL play-by-play and player box scores</b><small>'+escapeHtml(nfl.status||"not yet run")+' · '+Number(nfl.totals?.matchesImported||0).toLocaleString()+' matches · '+Number(nfl.totals?.playsImported||0).toLocaleString()+' play events · '+Number(nfl.totals?.playerLinesImported||0).toLocaleString()+' player lines · '+escapeHtml(nfl.lastCheck||"not yet synced")+'</small></div></article>',
+   '<article class="mini-row"><div><b>API-Football detailed match dossiers</b><small>'+escapeHtml(footballApi.status||"blocked")+' · '+Number(footballApi.totals?.matchesImported||0).toLocaleString()+' matches imported · '+Number(footballApi.totals?.availableSections||0)+' latest fixture sections available · '+(footballApi.blockers||[]).map(escapeHtml).join(", ")+'</small></div></article>',
    '<article class="mini-row"><div><b>OpenFootball historical results</b><small>'+escapeHtml(open.status||"not yet run")+' · '+Number(open.totals?.matchesImported||0).toLocaleString()+' matches imported · last check '+escapeHtml(open.lastCheck||"not yet")+'</small></div></article>',
    '<article class="mini-row"><div><b>World Cup history and player events</b><small>'+escapeHtml(worldCup.status||"not yet run")+' · '+Number(lab.worldCupMatchCount||0).toLocaleString()+' matches · '+Number(lab.playerEventRows||0).toLocaleString()+' player events · '+Number(lab.worldCupDatasetCount||0)+' tournament datasets</small></div></article>',
    '<article class="mini-row"><div><b>Consensus market history</b><small>'+escapeHtml(cons.status||"not yet run")+' · '+Number(lab.consensusMarketRows||0).toLocaleString()+' rows · '+Number(lab.consensusSettledRows||0).toLocaleString()+' settled events</small></div></article>',
@@ -442,6 +443,25 @@ async function runLearningDataJob(action,buttonId,label){
 }
 $("#runSourceDiscovery").addEventListener("click",()=>runLearningDataJob("discover_sources","#runSourceDiscovery","Worldwide public-source discovery"));
 $("#runHistoricalSync").addEventListener("click",()=>runLearningDataJob("sync_historical_data","#runHistoricalSync","Historical dataset import"));
+async function runApiFootballAction(action,buttonId,label,extra={}){
+ const button=$(buttonId),status=$("#apiFootballStatus");
+ button.disabled=true;
+ status.textContent=label+"…";
+ try{
+  const result=await api("/api/football-data",{method:"POST",body:JSON.stringify({action,...extra})});
+  if(action==="sync_fixture") status.textContent="Imported fixture "+result.result.fixtureId+" · "+result.result.playerCount+" player lines · "+result.result.eventCount+" timeline events · "+result.result.availableSections+" dossier sections available.";
+  else status.textContent="API-Football connection successful · quota remaining "+(result.result.quota?.dailyRemaining??"not reported");
+  await refreshResearch();
+ }catch(error){
+  status.textContent="API-Football "+label.toLowerCase()+" blocked or failed: "+error.message;
+ }finally{button.disabled=false;}
+}
+$("#testApiFootballConnection").addEventListener("click",()=>runApiFootballAction("test_connection","#testApiFootballConnection","Testing connection"));
+$("#syncApiFootballFixture").addEventListener("click",()=>{
+ const fixtureId=Number($("#apiFootballFixtureId").value);
+ if(!Number.isSafeInteger(fixtureId)||fixtureId<=0){$("#apiFootballStatus").textContent="Enter a valid positive API-Football fixture ID.";return;}
+ runApiFootballAction("sync_fixture","#syncApiFootballFixture","Importing match dossier",{fixtureId,includeContext:true,includeHalfTime:true});
+});
 
 $("#runPostMatchCheck").addEventListener("click",async()=>{
  const button=$("#runPostMatchCheck");
