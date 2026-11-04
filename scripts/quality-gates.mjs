@@ -180,7 +180,7 @@ add("SportScore free live API is on-demand, attributed, cached and never treated
   (await read("netlify/lib/sportscore-live-adapter.mts")).includes("CACHE_SECONDS = 60") &&
   (await read("netlify/lib/sportscore-live-adapter.mts")).includes('url.searchParams.set("src", "win-worker-engine")') &&
   (await read("netlify/functions/sportscore-live.mts")).includes("requireAuth") &&
-  mcp.includes('registerTool("get_sportscore_live_matches"') &&
+  (await read("netlify/functions/mcp.mts")).includes('registerTool("get_sportscore_live_matches"') &&
   (await read("netlify/functions/mcp.mts")).includes('scopes: ["win:read"]') &&
   (await read("netlify/functions/sportscore-live.mts")).includes('path: "/api/sportscore-live"') &&
   html.includes('href="https://sportscore.com/" rel="dofollow"') &&
