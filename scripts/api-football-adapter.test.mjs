@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { buildApiFootballMatchDossier, getApiFootballReadiness } from "../netlify/lib/api-football-adapter.mts";
+import { buildApiFootballEvidenceRecord, buildApiFootballMatchDossier, getApiFootballReadiness } from "../netlify/lib/api-football-adapter.mts";
 import { DATA_PROVIDER_REGISTRY, providerMayRunAutomatically } from "../netlify/lib/data-provider-registry.mts";
 
 const fixturePayload = {
@@ -40,6 +40,14 @@ test("API-Football dossier preserves fixture identity and normalizes team/player
   assert.equal(dossier.coverage.find(x => x.id === "player_ratings").status, "available");
   assert.equal(dossier.playerRatings[0].rating, "8.1");
   assert.equal(dossier.provenance.sourceReportedNotIndependentlyVerified, true);
+  const evidenceRecord = buildApiFootballEvidenceRecord(dossier);
+  assert.equal(evidenceRecord.homeTeam, "Home FC");
+  assert.equal(evidenceRecord.awayTeam, "Away FC");
+  assert.equal(evidenceRecord.eventStart, "2026-11-04T20:00:00+00:00");
+  assert.deepEqual(evidenceRecord.fullTimeScore, [2, 1]);
+  assert.equal(evidenceRecord.teamStats.length, 1);
+  assert.equal(evidenceRecord.playerStats.length, 1);
+  assert.equal(evidenceRecord.sourceReportedNotIndependentlyVerified, true);
   assert.ok(dossier.raw.players);
 
 test("player ratings are not exposed unless the separate player_ratings domain is enabled", () => {
@@ -79,6 +87,9 @@ test("result scores are redacted unless the separate results domain is enabled",
   assert.equal(dossier.fixture.score, null);
   assert.equal(dossier.raw.fixture.response[0].goals, undefined);
   assert.equal(dossier.raw.fixture.response[0].score, undefined);
+  const evidenceRecord = buildApiFootballEvidenceRecord(dossier);
+  assert.equal(evidenceRecord.fullTimeScore, undefined);
+  assert.equal(evidenceRecord.homeScore, undefined);
 });
 
 test("API-Football remains disabled until legal and credential approvals are configured", () => {
