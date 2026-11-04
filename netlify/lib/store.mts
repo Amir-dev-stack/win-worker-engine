@@ -106,11 +106,12 @@ export async function get<T>(kind: string, id: string): Promise<T | null> {
   const recordKey = key(kind, id);
   const { primary, secondary } = await stores(recordKey);
   try {
-    return await primary.get(recordKey, { type: "json" }) as T | null;
+    const primaryValue = await primary.get(recordKey, { type: "json" }) as T | null;
+    if (primaryValue !== null && primaryValue !== undefined) return primaryValue;
   } catch (error) {
     if (!secondary) throw error;
-    return await secondary.get(recordKey, { type: "json" }) as T | null;
   }
+  return secondary ? await secondary.get(recordKey, { type: "json" }) as T | null : null;
 }
 
 export async function list<T>(kind: string, limit = 100): Promise<T[]> {
@@ -136,8 +137,10 @@ export async function list<T>(kind: string, limit = 100): Promise<T[]> {
     if (!secondary) throw error;
     selected.length = 0;
     seen.clear();
-    await collect(secondary);
   }
+  // In mirror/neon mode, consult the replica when the primary has fewer
+  // records than requested; de-duplicate by stable record key.
+  if (secondary && selected.length < maxItems) await collect(secondary);
   selected.reverse();
 
   const rows: T[] = [];
@@ -146,11 +149,12 @@ export async function list<T>(kind: string, limit = 100): Promise<T[]> {
     const batch = selected.slice(offset, offset + batchSize);
     const values = await Promise.all(batch.map(async item => {
       try {
-        return await primary.get(item.key, { type: "json" }) as T | null;
+        const primaryValue = await primary.get(item.key, { type: "json" }) as T | null;
+        if (primaryValue !== null && primaryValue !== undefined) return primaryValue;
       } catch (error) {
         if (!secondary) throw error;
-        return await secondary.get(item.key, { type: "json" }) as T | null;
       }
+      return secondary ? await secondary.get(item.key, { type: "json" }) as T | null : null;
     }));
     for (const value of values) if (value !== null) rows.push(value);
   }
