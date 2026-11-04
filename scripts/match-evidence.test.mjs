@@ -129,3 +129,12 @@ test("every registered sport has its own team/participant statistics and a provi
   assert.notEqual(spec.label,"Sport-specific coverage not catalogued",sport.id+" must have a sport-specific catalogue");
  }
 });
+
+test("date-only American-football match dates are excluded from kickoff-sensitive history until scheduled times are verified",()=>{
+ const dateOnly={id:"nfl-date-only",sport:"american_football",competition:"NFL",season:"2026",eventDate:"2026-10-30",eventTimePrecision:"date_only",eventStart:null,homeTeam:"Kansas City Chiefs",awayTeam:"Baltimore Ravens",fullTimeScore:[24,20],status:"completed",origin:"provider_historical_data",sourceProvider:"nflverse-pbp-data"};
+ const brief={sport:"american_football",competition:"NFL",event:"Kansas City Chiefs vs Baltimore Ravens",startTime:"2026-11-05T20:00:00Z"};
+ const pack=buildMatchEvidencePack(brief,{historicalDatasets:[{id:"nfl-date-only-set",providerId:"nflverse-pbp-data",sport:"american_football",records:[dateOnly]}],nowMs:Date.parse("2026-11-04T12:00:00Z")});
+ assert.equal(pack.teamProfiles.home.last5.length,0);
+ assert.equal(pack.teamProfiles.away.last5.length,0);
+ assert.equal(pack.postMatch.status,"not_started_or_kickoff_unknown");
+});
