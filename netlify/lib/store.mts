@@ -1,16 +1,45 @@
-import { getStore } from "@netlify/blobs";
+// Netlify Blobs remains the production store. The optional adapter is only
+// installable in an explicitly flagged test process and keeps integration
+// fixtures away from every production collection.
+type StoreAdapter = {
+  setJSON(key: string, value: unknown, options?: any): Promise<any>;
+  get(key: string, options?: any): Promise<any>;
+  list(options?: any): AsyncIterable<{ blobs: Array<{ key: string }> }>;
+  delete(key: string): Promise<any>;
+  getWithMetadata(key: string, options?: any): Promise<any>;
+};
 
-// Strong consistency ensures a queued run is immediately visible to its
-// background worker, which may start on a different function instance.
-const store = () => getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" });
+let isolatedTestStore: StoreAdapter | null = null;
+
+export function installIsolatedTestStore(adapter: StoreAdapter) {
+  if (process.env.WIN_STORE_TEST_MODE !== "1") {
+    throw new Error("The isolated WIN store is available only when WIN_STORE_TEST_MODE=1.");
+  }
+  if (!adapter || typeof adapter.setJSON !== "function" ||
+      typeof adapter.get !== "function" || typeof adapter.list !== "function" ||
+      typeof adapter.delete !== "function" || typeof adapter.getWithMetadata !== "function") {
+    throw new Error("The isolated WIN store adapter is incomplete.");
+  }
+  if (isolatedTestStore && isolatedTestStore !== adapter) {
+    throw new Error("An isolated WIN store adapter is already installed in this process.");
+  }
+  isolatedTestStore = adapter;
+}
+
+async function store(): Promise<StoreAdapter> {
+  if (isolatedTestStore) return isolatedTestStore;
+  const { getStore } = await import("@netlify/blobs");
+  return getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" }) as unknown as StoreAdapter;
+}
+
 const key = (kind: string, id: string) => kind + "/" + id;
 
 export async function put(kind: string, id: string, value: unknown) {
-  await store().setJSON(key(kind, id), value);
+  await (await store()).setJSON(key(kind, id), value);
   return value;
 }
 export async function get<T>(kind: string, id: string): Promise<T | null> {
-  return await store().get(key(kind, id), { type: "json" }) as T | null;
+  return await (await store()).get(key(kind, id), { type: "json" }) as T | null;
 }
 export async function list<T>(kind: string, limit = 100): Promise<T[]> {
   // Netlify Blobs list() fetches every page by default. Ask for an iterator
@@ -18,8 +47,9 @@ export async function list<T>(kind: string, limit = 100): Promise<T[]> {
   // small dashboard read into an unbounded metadata scan.
   const maxItems = Math.max(0, Math.floor(limit));
   if (maxItems === 0) return [];
+  const backend = await store();
   const selected: Array<{ key: string }> = [];
-  for await (const page of store().list({ prefix: kind + "/", paginate: true })) {
+  for await (const page of backend.list({ prefix: kind + "/", paginate: true })) {
     for (const item of page.blobs) {
       selected.push(item);
       if (selected.length >= maxItems) break;
@@ -34,7 +64,7 @@ export async function list<T>(kind: string, limit = 100): Promise<T[]> {
   for (let offset = 0; offset < selected.length; offset += batchSize) {
     const batch = selected.slice(offset, offset + batchSize);
     const values = await Promise.all(batch.map(item =>
-      store().get(item.key, { type: "json" }) as Promise<T | null>
+      backend.get(item.key, { type: "json" }) as Promise<T | null>
     ));
     for (const value of values) if (value !== null) rows.push(value);
   }
@@ -44,19 +74,18 @@ export async function append(kind: string, id: string, value: unknown) {
   return put(kind, id, value);
 }
 export async function remove(kind: string, id: string) {
-  await store().delete(key(kind, id));
+  await (await store()).delete(key(kind, id));
 }
-
 
 /** Atomic, single-key conditional helpers for review-operation claims. */
 export async function putIfNew(kind: string, id: string, value: unknown) {
-  return await store().setJSON(key(kind, id), value, { onlyIfNew: true });
+  return await (await store()).setJSON(key(kind, id), value, { onlyIfNew: true });
 }
 export async function putIfMatch(kind: string, id: string, value: unknown, etag: string) {
-  return await store().setJSON(key(kind, id), value, { onlyIfMatch: etag });
+  return await (await store()).setJSON(key(kind, id), value, { onlyIfMatch: etag });
 }
 export async function getWithMetadata<T>(kind: string, id: string): Promise<{ value: T; etag: string } | null> {
-  const result = await store().getWithMetadata(key(kind, id), { type: "json", consistency: "strong" });
+  const result = await (await store()).getWithMetadata(key(kind, id), { type: "json", consistency: "strong" });
   if (!result) return null;
   return { value: result.data as T, etag: result.etag };
 }

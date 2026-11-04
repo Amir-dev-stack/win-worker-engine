@@ -26,7 +26,7 @@ jobs:
         run: node scripts/build.mjs
 
       - name: Run isolated WIN learning unit tests
-        run: node --test scripts/*.test.mjs
+        run: node --experimental-strip-types --test scripts/*.test.mjs
 
       - name: Run WIN quality gates
         run: node scripts/quality-gates.mjs

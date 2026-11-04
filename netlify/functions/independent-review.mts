@@ -561,6 +561,16 @@ async function reviewCase(body: any, reviewer: { credentialId: string }) {
 }
 
 
+// Direct service entry point for the isolated in-memory end-to-end test. The
+// ordinary Netlify handler still authenticates reviewer tokens before calling
+// this same reviewCase implementation.
+export async function reviewCaseForIsolatedTest(body: any, reviewer: { credentialId: string }) {
+  if (process.env.WIN_STORE_TEST_MODE !== "1") {
+    throw new Error("Direct reviewer invocation is disabled outside the isolated test process.");
+  }
+  return reviewCase(body, reviewer);
+}
+
 export default async (req: Request) => {
   let body: any = null;
   if (req.method === "POST") {

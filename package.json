@@ -9,7 +9,7 @@
   "scripts": {
     "build": "node scripts/build.mjs && node scripts/quality-gates.mjs",
     "dev": "npx --yes netlify-cli@27.14.2 dev",
-    "test": "node --test scripts/*.test.mjs && node scripts/quality-gates.mjs"
+    "test": "node --experimental-strip-types --test scripts/*.test.mjs && node scripts/quality-gates.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest",
