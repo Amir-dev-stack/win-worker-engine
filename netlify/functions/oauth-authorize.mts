@@ -13,7 +13,13 @@ type AuthRequest = {
 };
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]!));
-const page = (txn: string, client: string, scope: string, error = "") => {\n  const requested = scope.split(/\\s+/);\n  const auditOnly = requested.includes("win:audit") && !requested.includes("win:read") && !requested.includes("win:research");\n  const permissionText = auditOnly\n    ? "Read-only WIN diagnostics: live observatory, historical dataset metadata, calibration and settlement records, reviewer operations and learning history. No research runs, no writes, no coupon approval and no betting."\n    : "Can read WIN research records and start research runs. It cannot place bets or access your STS account.";\n  return `<!doctype html>
+const page = (txn: string, client: string, scope: string, error = "") => {
+  const requested = scope.split(/\s+/);
+  const auditOnly = requested.includes("win:audit") && !requested.includes("win:read") && !requested.includes("win:research");
+  const permissionText = auditOnly
+    ? "Read-only WIN diagnostics: live observatory, historical dataset metadata, calibration and settlement records, reviewer operations and learning history. No research runs, no writes, no coupon approval and no betting."
+    : "Can read WIN research records and start research runs. It cannot place bets or access your STS account.";
+  return `<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Connect WIN</title>
 <style>
@@ -32,7 +38,8 @@ ${error ? `<p class="error">${escapeHtml(error)}</p>` : ""}
 <label for="ownerToken">WIN internal token</label>
 <input id="ownerToken" name="ownerToken" type="password" autocomplete="current-password" required>
 <button type="submit">Authorize WIN connection</button>
-</form><p>Use the same private token you use to connect the WIN dashboard. It is checked on this secure WIN website and is not added to the plugin.</p></main></html>`;\n};
+</form><p>Use the same private token you use to connect the WIN dashboard. It is checked on this secure WIN website and is not added to the plugin.</p></main></html>`;
+};
 
 function scopesFrom(value: string): string[] | null {
   const requested = value.trim() ? value.trim().split(/\s+/) : [...WIN_SCOPES];
