@@ -653,6 +653,7 @@ export async function auditNflversePlayByPlayReadOnly(seasonInput?: number) {
   const retrievedAt = new Date().toISOString();
   const rows = parseNflverseCsv(raw);
   const qualityAudit = auditNflverseRows(rows);
+  const { acceptedRows, ...rowAuditSummary } = qualityAudit;
 
   const scheduleResponse = await fetch(scheduleUrl, {
     headers: { "user-agent": USER_AGENT, accept: "text/csv" },
@@ -662,7 +663,7 @@ export async function auditNflversePlayByPlayReadOnly(seasonInput?: number) {
   const scheduleRaw = await scheduleResponse.text();
   const scheduleChecksum = createHash("sha256").update(scheduleRaw).digest("hex");
   const scheduleRows = parseNflverseScheduleCsv(scheduleRaw);
-  const baseRecords = buildNflverseMatchRecords(qualityAudit.acceptedRows, season, sourceUrl, retrievedAt);
+  const baseRecords = buildNflverseMatchRecords(acceptedRows, season, sourceUrl, retrievedAt);
   const scheduleJoin = enrichNflverseRecordsWithSchedule(baseRecords, scheduleRows);
   const records = scheduleJoin.records.map(record => ({ ...record, rawChecksum, scheduleChecksum }));
   const payloadMetrics = measureNflverseDatasetPayloads(records, {
@@ -687,7 +688,7 @@ export async function auditNflversePlayByPlayReadOnly(seasonInput?: number) {
       etag: scheduleResponse.headers.get("etag"), lastModified: scheduleResponse.headers.get("last-modified"),
       totalRows: scheduleRows.length, seasonRows: seasonScheduleRows.length
     },
-    rowAudit: qualityAudit,
+    rowAudit: rowAuditSummary,
     scheduleJoin: {
       matched: scheduleJoin.matched, unmatched: scheduleJoin.unmatched,
       conflictingGameIds: scheduleJoin.conflictingGameIds
