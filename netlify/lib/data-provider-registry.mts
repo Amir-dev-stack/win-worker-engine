@@ -184,6 +184,16 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     notes:"Primary licensed association-football API candidate. Official documentation describes fixture/event/lineup data, team match statistics (shots, possession, corners, cards, goalkeeper saves and passing totals/accuracy), per-player match lines and provider-calculated ratings, injuries, predictions, standings and pre-match odds. Competition/season coverage flags must be retrieved for each fixture; true coverage flags still do not guarantee every record. Standard event feed is goals, cards, substitutions and VAR, not a complete optical tracking or every-pass event stream. xG, shot-coordinate maps and advanced pressure/field-tilt metrics must be marked available only when actually returned for that fixture. No request is permitted until terms/data rights have been approved and the API key plus allowed domains are configured."
   },
   {
+    id:"sportscore-live", name:"SportScore free live sports API", website:"https://sportscore.com/developers/",
+    sports:["football","basketball","cricket","tennis"],
+    dataDomains:["live_scores","recent_fixtures","match_status","team_names","competition_metadata","standings","top_scorers","player_statistics"],
+    accessMode:"open_api", historicalSupport:"unknown", authentication:"none",
+    licenceReview:"documented_open_terms", automationAllowed:false,
+    licenceReference:"https://sportscore.com/developers/terms/",
+    attribution:"Visible, crawlable dofollow link: Powered by SportScore — https://sportscore.com/ — required on every surface that displays its data.",
+    notes:"Public widget API is free without a key for personal, open-source, community and early-stage commercial projects with the visible attribution badge. Published terms list ~10,000 requests/24h/IP, allow a 60-second cache and derived analytics, but prohibit bulk raw-response redistribution and use to facilitate match-fixing or illegal gambling. WIN uses user-triggered requests only, one normalized sport response per 60-second cache window, no scheduled polling, and never treats the feed as sole truth or a final financial settlement source."
+  },
+  {
     id:"statsbomb-open-data", name:"StatsBomb Open Data", website:"https://github.com/hudl/open-data",
     sports:["football"],
     dataDomains:["selected_competitions_historical_matches","match_events","lineups","selected_match_360_data"],
