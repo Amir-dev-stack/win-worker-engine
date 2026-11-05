@@ -258,7 +258,8 @@ add("WIN ML training and inference provenance uses deterministic canonical hashe
   mlProvenance.includes("ml_provenance_non_finite_number") &&
   mlProvenanceTests.includes("canonical provenance hashes ignore object insertion order") &&
   mlProvenanceTests.includes("canonical provenance hashes preserve array order") &&
-  mlProvenanceTests.includes("unsupported, undefined, non-finite and cyclic values fail closed"),
+  mlProvenanceTests.includes("unsupported, undefined, non-finite and cyclic values fail closed") &&
+  mlProvenanceTests.includes("sparse arrays, symbol keys and accessors cannot create ambiguous hashes"),
   "Training configuration, exact split membership and feature vectors can be hashed reproducibly; ambiguous values and cyclic structures are rejected.");
 const llmExecution = await read("netlify/lib/llm-execution.mts");
 const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
