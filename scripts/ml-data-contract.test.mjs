@@ -46,3 +46,8 @@ test("training examples cannot cross dataset identities or use malformed feature
   const errors = validateWinMLTrainingExample(manifest(), example({ features: { broken: { value: Number.NaN, availableAt: "not-a-date", sourceId: "" } } }));
   assert.ok(errors.includes("feature_provenance_invalid:broken"));
 });
+
+test("point-in-time data rejects date-only timestamps without timezone precision", () => {
+  assert.ok(validateWinMLDatasetManifest(manifest({ retrievedAt: "2026-11-05" })).includes("retrieved_at_invalid"));
+  assert.ok(validateWinMLTrainingExample(manifest(), example({ predictionCutoff: "2026-11-05" })).includes("event_and_cutoff_timestamps_required"));
+});
