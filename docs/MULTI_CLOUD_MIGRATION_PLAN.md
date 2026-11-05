@@ -292,3 +292,53 @@ Dashboard edge-auth paths observed include /__win_dashboard_login and /__win_das
 - [ ] Netlify Blobs collection inventory and backup/restore verification.
 - [ ] Cloudflare and Oracle free-tier eligibility and compatibility review.
 - [ ] Final function-by-function migration mapping and test matrix.
+
+
+## Owner direction update — connected, workload-based architecture (2026-11-05)
+
+This section supersedes any implication in the earlier proposal that WIN should undergo an absolute migration away from Netlify.
+
+### Operating objective
+
+The goal is to reduce operational, deployment and execution burden on Netlify while keeping the existing WIN product intact. Netlify remains an important production provider. Providers are added only when a measured workload, reliability or cost requirement justifies them. No provider is added merely to increase the number of clouds.
+
+### Target connected architecture
+
+- **GitHub:** canonical source code, review history, CI validation and controlled release authority.
+- **Netlify:** retain the current dashboard, existing API routes, edge authentication and compatible serverless functions. Keep existing Blobs data and adapters until a collection-by-collection audit proves a safe reason to move any workload or data.
+- **Neon:** retain as the relational database for the structured records it is explicitly assigned. Do not assume it already owns all production memory; the audited production tables were empty at audit time.
+- **Cloudflare:** optional front-door services such as DNS, CDN, caching, rate limiting and selected lightweight stateless endpoints. Do not proxy every request through Workers if that adds latency, cost or another failure point.
+- **Separate worker runtime:** only for measured long-running, scheduled, CPU/memory-heavy or durable background jobs that do not fit Netlify's execution model or free quota. Oracle Always Free is a candidate, not a dependency; eligibility and capacity must be verified. A queue/worker design must preserve existing locks, leases, retries and idempotency.
+- **Ollama/local models:** optional private inference endpoint for suitable research/challenge tasks while the owner's PC is online. Core WIN functions must continue safely when local inference is unavailable.
+- **Sentry/UptimeRobot or equivalent:** optional independent error and uptime monitoring, subject to free-tier and data-privacy checks. Avoid duplicate monitoring that creates noise or costs.
+
+### Mandatory interconnection design
+
+1. Define versioned service contracts for health, job submission/status, research execution, sports-data ingestion and persistence operations.
+2. Use server-to-server authentication with least-privilege service identities, rotated secrets, timeouts, request IDs and bounded payloads. No secrets in browser code, Git or logs.
+3. Establish one owner for each data class and collection. No uncontrolled dual-writes or competing sources of truth.
+4. Use a durable job contract with idempotency keys, leases/compare-and-set claims, bounded retries, dead-letter handling and replay/recovery.
+5. Use a provider-neutral storage interface while preserving the current Blobs semantics, including conditional writes, ETags, pagination and metadata.
+6. Use a provider-neutral model interface. AI providers are replaceable; deterministic statistics, market settlement rules and WIN risk gates remain authoritative.
+7. Propagate correlation IDs across services. Centralize structured logs, health, latency, failures, queue depth, data freshness, backup age and quota usage.
+8. Define graceful degradation: if Cloudflare, a worker host, Neon, an external sports feed or Ollama is unavailable, unaffected WIN capabilities continue; dependent tasks are queued, retried safely or marked unavailable.
+9. Keep backups and restore tests independent of the primary runtime. Alert before free quotas are exhausted. Never enable paid upgrades or auto-recharge.
+10. Test contracts and failure modes in isolated preview/test environments before any production configuration or routing change.
+
+### Revised implementation sequence
+
+- **A. Complete the read-only inventory:** deployment triggers and costs, route contracts, env-key names, Blobs collections, job semantics, data ownership and provider dependencies.
+- **B. Optimise Netlify first:** remove avoidable production deploy triggers, reduce duplicate background work and retries, and tune caching only where safe. Do not change production settings without explicit approval.
+- **C. Add independent monitoring and security checks:** only after validating free tiers, privacy, alert routing and actual value.
+- **D. Add Cloudflare selectively:** start with DNS/CDN/cache/protection; introduce Workers only for proven suitable workloads.
+- **E. Offload background work only when justified:** select a separate runtime after measuring duration, memory, CPU, queue depth and quota pressure. Preserve the current Netlify path as fallback.
+- **F. Connect local AI optionally:** add a provider adapter and offline-safe queue; never make core production availability depend on the owner's PC.
+- **G. Verify end-to-end connectivity:** contract tests, auth tests, data reconciliation, retry/idempotency tests, outage simulation, backup/restore and quota guardrails.
+
+### Explicit non-goals
+
+- No full Netlify replacement or forced migration.
+- No duplicate database or storage system without a clear data-ownership reason.
+- No new paid plans, paid APIs, credit purchases or auto-recharge.
+- No production cutover, production data migration, destructive changes or existing PR merges without separate explicit approval.
+- No automated bookmaker bet placement.
