@@ -1,10 +1,12 @@
 import { timingSafeEqual } from "node:crypto";
 import {
   WinMLOwnerApprovalRegistryError,
+  evaluateWinMLTrainingReadiness,
   getWinMLOwnerTrainingApprovalStatus,
   listWinMLOwnerTrainingApprovalStatuses,
   registerWinMLOwnerTrainingApproval,
-  registerWinMLOwnerTrainingRevocation
+  registerWinMLOwnerTrainingRevocation,
+  registerWinMLLicenceReviewEvidence
 } from "../lib/ml-owner-approval-registry.mts";
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -58,6 +60,17 @@ export default async (req: Request) => {
 
   const trustedConfig = { publicKeyPem, reviewerId };
   try {
+    if (body?.action === "licence_evidence") {
+      const result = await registerWinMLLicenceReviewEvidence(body.evidence, trustedConfig);
+      return response({ action: "licence_evidence", ...result });
+    }
+    if (body?.action === "readiness") {
+      if (typeof body.datasetId !== "string" || typeof body.approvalId !== "string") {
+        return response({ error: "dataset_id_and_approval_id_required" }, 400);
+      }
+      const result = await evaluateWinMLTrainingReadiness(body.datasetId, body.approvalId, trustedConfig);
+      return response({ action: "readiness", ...result });
+    }
     if (body?.action === "approve") {
       const result = await registerWinMLOwnerTrainingApproval(body.evidence, trustedConfig);
       return response({ action: "approve", ...result });
