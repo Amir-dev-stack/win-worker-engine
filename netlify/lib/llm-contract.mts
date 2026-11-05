@@ -50,7 +50,7 @@ export type WinLLMResponseV1 = {
 
 export interface WinLLMProviderAdapter {
   readonly providerId: string;
-  execute(request: WinLLMRequestV1): Promise<WinLLMResponseV1>;
+  execute(request: WinLLMRequestV1, signal?: AbortSignal): Promise<WinLLMResponseV1>;
 }
 
 const CAPABILITIES = new Set<WinLLMCapability>([
