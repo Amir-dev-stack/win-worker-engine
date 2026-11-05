@@ -17,7 +17,9 @@ export type WinMLTrainingExampleV1 = {
   label: { market: "1x2" | "total_goals"; outcome: "HOME" | "DRAW" | "AWAY" | "OVER" | "UNDER" | "PUSH" | "VOID"; settlementRuleId: string; settledAt: string };
 };
 function nonEmpty(value: unknown): value is string { return typeof value === "string" && value.trim().length > 0; }
-function validTimestamp(value: unknown): value is string {\n  return nonEmpty(value) && /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value) && Number.isFinite(Date.parse(value));\n}
+function validTimestamp(value: unknown): value is string {
+  return nonEmpty(value) && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
+}
 function validSha256(value: unknown): value is string { return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value); }
 
 /** Validate the immutable source/provenance envelope before a dataset can enter an experiment. */
