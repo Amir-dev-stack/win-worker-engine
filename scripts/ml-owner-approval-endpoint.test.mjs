@@ -67,7 +67,7 @@ test("owner approval endpoint fails closed and accepts only a separately authent
       approvalVersion: "win.ml.owner-training-approval.v1", approvalId: "endpoint-approval-1",
       datasetId, datasetContentSha256: datasetHash, licenceId: "CC0-1.0",
       licenceEvidenceSha256: "e".repeat(64), scope: "training", reviewerId: "owner:amir",
-      approvedAt: "2026-11-06T09:00:00.000Z", expiresAt: "2026-12-06T09:00:00.000Z"
+      approvedAt: "2020-01-01T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z"
     };
     const evidence = {
       payload,
