@@ -151,6 +151,71 @@ Before any data migration, export and inventory every Blobs collection, compare 
 - External sports sources have individual licensing, attribution, rate-limit and permitted-use conditions.
 - Free plans are quota-limited; no design can honestly promise unlimited cloud compute or guaranteed free uptime.
 
+
+## Deeper Phase 0 findings (read-only inspection)
+
+### Runtime and storage compatibility
+
+- The current deployment baseline is the PR #10 combined preview branch, not main: 53 function entrypoints and one Edge Function. The main branch contains an earlier 42-function baseline.
+- The 53 function entrypoints are listed below so none is accidentally omitted during migration.
+- netlify/lib/store.mts is the shared key/value abstraction. Its contract includes get, list, put, append, remove, conditional putIfNew, conditional putIfMatch, and getWithMetadata. Preserve conditional-write/ETag semantics, strong-read expectations, pagination, ordering, and JSON behaviour.
+- The current store is not a simple single-store design. WIN_MEMORY_BACKEND supports blobs, mirror, and neon. Structured-memory prefixes can use Neon/mirroring, while raw event datasets, source payloads and non-memory collections remain in Netlify Blobs even when Neon mode is selected.
+- OAuth state has a separate direct @netlify/blobs store named win-oauth; it does not currently use the shared store abstraction.
+- The AI budget ledger has another direct @netlify/blobs store named win-engine. A migration must preserve its spending lock, reservations, monthly ledger, alerts and atomicity.
+- Backup/restore code directly reads and writes Netlify Blobs and uses Node crypto plus gzip. These routines need an explicit provider-neutral backup adapter and round-trip tests; they must not be silently dropped.
+- The runtime reads secrets through Netlify.env.get with a local process.env fallback. Replace this with a provider-neutral typed environment adapter while keeping secret values server-side.
+- The package is ESM on Node.js 22 and includes @netlify/blobs, @netlify/functions, @neondatabase/serverless, @modelcontextprotocol/sdk, @openai/agents, and Zod. Netlify type imports, background-function behaviour, scheduled-function configuration, Blobs APIs and environment APIs are platform-specific.
+- @openai/agents currently configures OpenAI as its model provider and uses the OpenAI web-search tool. Ollama/open-weight models are not a drop-in replacement: introduce a model-provider interface and explicit local-model adapter only after tests establish compatible tool, structured-output, timeout and usage behaviour.
+- The Neon adapter uses the Neon serverless HTTP driver and implements conditional writes/ETags. It must be tested in each target runtime; do not assume all database drivers or transaction patterns work identically in Workers and a persistent Node.js service.
+
+### Function inventory — all 53 entrypoints
+
+**Dashboard/API, research and record operations**
+- coverage.mts, department-smoke-test.mts, financial-memory.mts, health.mts, human-coupon-settlements.mts, human-coupons.mts, human-sources.mts, independent-review.mts, learning-observatory.mts, library.mts, memory-capacity.mts, memory-status.mts, observed-market-settlement.mts, predictions.mts, research-data.mts, research-source-candidates.mts, research-status.mts, results.mts, run-detail.mts, runs.mts, simulations.mts, sources.mts, sports.mts, tips.mts.
+
+**Sports data, discovery and historical research**
+- api-football-sync.mts, consensus-market-sync.mts, learning-data-jobs.mts, nflverse-audit.mts, openfootball-sync.mts, openfootball-worldcup-sync.mts, public-source-discovery.mts, sharpapi-sample-sync.mts, sportscore-live.mts, statsbomb-open-data.mts.
+
+**AI, orchestration, monitoring and execution**
+- ai-budget.mts, coverage-monitor.mts, hourly-monitor.mts, memory-capacity-monitor.mts, post-match-check.mts, post-match-followup.mts, post-match-runner.mts, scheduled-scout-runner.mts, simulation-runner.mts, worker-runner.mts.
+
+**Memory migration, backup and recovery**
+- memory-backfill.mts, memory-restore.mts, neon-memory-backup.mts.
+
+**OAuth, MCP and AI-provider diagnostics**
+- mcp.mts, oauth-authorize.mts, oauth-metadata.mts, oauth-register.mts, oauth-token.mts, openai-key-check.mts.
+
+This is a functional inventory by entrypoint name, not yet the final route contract. Exact custom paths, HTTP methods, request/response schemas, auth scopes, timeout requirements and dashboard callers still need to be extracted into the route matrix.
+
+### Confirmed schedules and background execution
+
+- coverage-monitor.mts: every six hours (0 */6 * * *).
+- hourly-monitor.mts: every four hours (0 */4 * * *).
+- neon-memory-backup.mts: daily at 03:23 UTC (23 3 * * *).
+- post-match-runner.mts, simulation-runner.mts, scheduled-scout-runner.mts, and worker-runner.mts are background-function workloads.
+- Background work currently relies on durable state/locks in the shared store. A replacement queue must preserve leases, compare-and-set claims, retry counts, idempotency and recovery of abandoned jobs.
+- Scheduled learning is explicitly gated by WIN_AI_BUDGET_APPROVED and the persistent AI spending lock. Preserve fail-closed behaviour; do not activate paid AI or scheduled AI workloads during migration.
+
+### Edge, OAuth and public integration compatibility
+
+- The only Edge Function in the audited tree is netlify/edge-functions/dashboard-auth.ts. Its cookie/session behaviour and protected-route coverage require dedicated tests before replacement.
+- OAuth issuer and MCP resource constants are currently hard-coded to the Netlify hostname in netlify/lib/oauth-store.mts. The discovery document, redirect URI validation, PKCE S256, one-time authorization-code consumption, refresh-token rotation, scopes and MCP resource audience must be migrated together.
+- MCP uses the Streamable HTTP transport from the MCP SDK and exposes both read-only/audit and research capabilities according to OAuth scopes. Keep the transport and scope boundaries intact.
+- The live MCP server and OAuth endpoints are externally connected contracts; changing hostnames may require client reauthorization. Keep the old issuer operational during any transition until the owner approves a compatibility plan.
+
+### Function-by-function target classification — preliminary
+
+- Cloudflare Workers candidates: short request/response APIs, read-only dashboard endpoints, health/coverage/status, lightweight routing, authentication middleware, and bounded sports-data proxy endpoints. Each candidate still requires compatibility tests for runtime APIs, Node imports, request limits and data-store calls.
+- Persistent Node.js worker candidates (Oracle only if free eligibility and capacity are confirmed): AI research orchestration, scheduled learning, post-match follow-up, simulations/backtests, large data imports, backup/restore and any work exceeding Worker CPU or request-duration limits.
+- Cloudflare Queues / scheduled Workers candidates: durable dispatch and bounded recurring triggers only after queue delivery, retry, idempotency, visibility timeout and dead-letter behaviour are designed and tested.
+- Storage adapter work required before porting: general WIN store, OAuth store, AI budget store, raw dataset/object storage and encrypted backup archive storage. Do not replace these with independent ad-hoc writes.
+- Local Ollama integration: optional model endpoint for the persistent worker, not for public browser calls. The home PC may be offline; jobs must queue/defer without blocking core WIN availability.
+
+### Environment-variable inventory status
+
+- Confirmed runtime key names include WIN_MEMORY_BACKEND, WIN_NEON_DATABASE_URL, WIN_INTERNAL_TOKEN, OPENAI_API_KEY, OPENAI_MODEL, WIN_AI_BUDGET_APPROVED, and WIN_MEMORY_BACKUP_KEY.
+- This list is not yet complete. Continue collecting every environment key reference across the 53 functions, 41 library modules, dashboard, build scripts and workflows. Never retrieve or expose secret values.
+
 ## Audit completion checklist
 
 - [x] Repository identity, visibility, default branch and connected permissions checked.
@@ -159,9 +224,9 @@ Before any data migration, export and inventory every Blobs collection, compare 
 - [x] Netlify project and recent deploy records inspected read-only.
 - [x] Neon project, branches, tables and row counts inspected read-only.
 - [x] Existing architecture and persistent-memory documentation reviewed.
-- [ ] Full per-function runtime/dependency classification.
-- [ ] Full API route and MCP tool inventory.
-- [ ] Environment-variable key/name inventory (never expose secret values).
+- [x] Preliminary per-function runtime/dependency classification and all 53 function entrypoints inventoried; exact route contracts remain open.
+- [ ] Exact API route/method/request-response/auth-scope and MCP tool inventory.
+- [ ] Complete environment-variable key/name inventory (never expose secret values); partial key list recorded.
 - [ ] Netlify Blobs collection inventory and backup/restore verification.
 - [ ] Cloudflare and Oracle free-tier eligibility and compatibility review.
-- [ ] Function-by-function migration mapping and test matrix.
+- [ ] Final function-by-function migration mapping and test matrix.
