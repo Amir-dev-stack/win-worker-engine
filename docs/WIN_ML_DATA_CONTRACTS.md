@@ -14,13 +14,13 @@ Status: isolated contract foundation on the Stage 1 development branch; no produ
 
 ## Deliberate boundaries
 
-- The validation functions are pure. The registry persists manifest metadata only when explicitly called; it does not fetch or import raw data, train models, or promote artifacts. The new registry test uses the isolated test store and does not touch production Blobs.
+- The validation functions are pure. The registry persists manifest metadata only when explicitly called; it does not fetch source data, train models, or promote artifacts. The offline football-results importer accepts caller-supplied bytes only; it performs no network request or persistent write. The new registry test uses the isolated test store and does not touch production Blobs.
 - Synthetic fixtures test the contract only; they are not sports evidence.
 - automationAllowed is distinct from approvedForTraining: manual research imports may be allowed without automatic ingestion, but training still requires explicit training approval and a licence use of training.
 - contentSha256 is supplied by the importer and validated as a digest shape; the importer must compute the hash over canonical raw bytes before the manifest can be trusted.
 - The contract does not claim that a valid manifest is legal advice or that a dataset is representative.
 - Real training remains blocked until an owner-approved, rights-cleared historical sample and reproducible importer are available.
 
-## Next gate
+## Offline football-results importer\n\n- `netlify/lib/ml-football-importer.mts` accepts a caller-supplied UTF-8 JSON byte payload using the normalized `win.football.results.v1` schema. It computes SHA-256 over the exact supplied bytes, validates finished-match rows, exact kickoff timestamps, non-negative integer scores, unique event/record IDs and source provenance, then returns chronologically sorted normalized match rows plus a manifest.\n- The importer is deliberately offline and non-persistent: it does not download data, write the registry, or build training examples. It hard-codes `automationAllowed: false`, `approvedForTraining: false` and `permittedUse: research_only`, regardless of source metadata. A separate owner/licence review is required before any training use.\n- Synthetic tests cover byte hashing, row ordering, malformed payloads, duplicate IDs, invalid scores/timestamps, unfinished matches, HTTPS provenance and required attribution. These tests are added but are not claimed to have run until CI or a local test execution reports results.\n\n## Next gate
 
 Next: add a reproducible, rights-cleared importer with canonical raw-byte hashing and row-level validation, initially against an owner-approved sample. Keep training disabled until source permissions and the dataset's training approval are independently verified. No hosted Python runtime or paid data provider is required for the registry stage.
