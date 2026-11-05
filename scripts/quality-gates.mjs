@@ -209,13 +209,15 @@ const llmExecution = await read("netlify/lib/llm-execution.mts");
 const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
 const agentsSdk = await read("netlify/lib/agents-sdk.mts");
 add("WIN production OpenAI agent calls have bounded cooperative cancellation",
-  ai.includes("new AbortController()") &&
+  ai.includes("executeWithAbortTimeout") &&
   ai.includes("90_000") &&
-  ai.includes("controller.abort") &&
-  ai.includes("signal: controller.signal") &&
-  ai.includes("Promise.race([sdkExecution, timeout])") &&
-  ai.includes("resolveTimeout(null)") &&
   ai.includes("settleAIRequest(requestBudgetId, null, 0, true)") &&
+  llmExecution.includes("export async function executeWithAbortTimeout") &&
+  llmExecution.includes("controller.abort") &&
+  llmExecution.includes("Promise.race([execution, timeout])") &&
+  llmExecutionTests.includes("shared bounded executor returns promptly") &&
+  llmExecutionTests.includes("shared bounded executor returns successful values") &&
+  llmExecutionTests.includes("shared bounded executor preserves operation errors") &&
   agentsSdk.includes("signal?: AbortSignal") &&
   agentsSdk.includes("signal: input.signal"),
   "The existing production Agents SDK path receives a 90-second abort signal; interrupted calls are settled conservatively as uncertain rather than replayed.");
