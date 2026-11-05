@@ -73,7 +73,7 @@ export async function executeWinLLMWithPolicy(input: {
     const execution = Promise.resolve().then(() => adapter.execute(input.request, controller.signal));
     const response = await Promise.race([execution, timeout]);
     const validationErrors = validateWinLLMResponse(input.request, response, selected.id);
-    if (response && !selected.models.includes(response.model)) validationErrors.push("response_model_not_approved");
+    if (response?.status === "completed" && !selected.models.includes(response.model)) validationErrors.push("response_model_not_approved");
     if (response && response.usage?.outputTokens > input.request.limits.maxOutputTokens) {
       validationErrors.push("response_output_token_limit_exceeded");
     }
