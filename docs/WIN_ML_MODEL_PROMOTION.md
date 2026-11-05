@@ -42,3 +42,10 @@ A model still needs human review, independent shadow evaluation, ongoing calibra
 ## Current status
 
 This is a pure validation contract with synthetic tests. No model was trained, no production data was imported, and no artifact was promoted. The first real experiment should use one sport/market, a rights-cleared owner-approved dataset, a reproducible feature builder, and a chronological held-out test.
+
+
+## Additional evaluation consistency checks
+
+The evaluator rejects a sport mismatch between the dataset and evaluation, incompatible market/algorithm pairs (1X2 with Logistic Regression or CatBoost; total goals with Poisson attack/defence or CatBoost), and target definitions that do not identify the declared market. These checks complement the existing exact dataset hash, chronological windows and training fit-data cutoff checks.
+
+The artifact's recorded training timestamp may be later than the historical test window in a retrospective offline evaluation. This is not, by itself, leakage: the relevant safeguard is that the fit-data cutoff remains within the training window and the validation/test windows remain chronologically held out. The evaluation record does not prove that these claims are truthful; reproducible training logs and independent review are still required.
