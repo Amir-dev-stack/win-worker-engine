@@ -81,7 +81,7 @@ Use a test-only memory adapter and synthetic records only:
 Assert that only allowlisted records and explicit financial records are restored, and that Blobs-primary records are never overwritten. Do not use real production credentials, production storage, or production records.
 
 ### D. API and scheduled-job contract inventory
-Before editing handlers, produce a machine-checkable route manifest containing:
+First-pass source inventory created at `docs/WIN_STAGE2_API_JOB_INVENTORY.md`. It lists explicit paths, initial auth markers, six source-declared schedules and functions needing trigger-chain review. It is not yet a complete method/scope/side-effect manifest. Continue by producing a machine-checkable route manifest containing:
 - exact path and HTTP methods;
 - authentication mechanism and required scopes/roles;
 - request and response schema identifiers;
