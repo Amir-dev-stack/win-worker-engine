@@ -315,11 +315,20 @@ async function askWorker(
       adapters: [createOpenAIWinLLMAdapter({ apiKey, model })]
     });
     if (execution.response.status !== "completed") {
-      await settleAIRequest(requestBudgetId, null, 0, true);
+      const observedUsage = execution.response.usage;
+      const observedSearches = observedUsage.billableUnits?.web_search_requests ?? 0;
+      if (observedUsage.inputTokens > 0 || observedUsage.outputTokens > 0 || observedSearches > 0) {
+        await settleAIRequest(requestBudgetId, {
+          input_tokens: observedUsage.inputTokens,
+          output_tokens: observedUsage.outputTokens
+        }, observedSearches);
+      } else {
+        await settleAIRequest(requestBudgetId, null, 0, true);
+      }
       budgetSettled = true;
       return failed("WIN LLM execution did not complete safely (" +
         (execution.response.error?.code ?? "unknown_execution_error") +
-        "). Outcome treated as uncertain; no automatic replay was attempted.");
+        "). Observed usage was settled when available; otherwise the reservation remains conservatively charged. No automatic replay was attempted.");
     }
     await settleAIRequest(requestBudgetId, {
       input_tokens: execution.response.usage.inputTokens,
