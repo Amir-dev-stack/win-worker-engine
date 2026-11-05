@@ -48,7 +48,8 @@ export async function claimNextPersistentAgentTask(
     const staleRunning = task.status === "running" && isStale(task, nowMs, leaseMs);
     if (!queued && !staleRunning) continue;
 
-    const attempts = Math.max(0, Number(task.attempts || 0));
+    const rawAttempts = Number(task.attempts || 0);
+    const attempts = Number.isFinite(rawAttempts) ? Math.max(0, Math.floor(rawAttempts)) : 0;
     if (attempts >= MAX_ATTEMPTS) {
       await putIfMatch(TASK_COLLECTION, task.id, {
         ...task,
