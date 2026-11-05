@@ -220,9 +220,12 @@ add("WIN production OpenAI agent calls use the governed LLM execution layer",
   agentsSdkAdapter.includes("runWinAgent") &&
   agentsSdkAdapter.includes("signal") &&
   agentsSdkAdapter.includes("openai_adapter_text_output_only") &&
+  agentsSdkAdapter.includes("openai_adapter_tool_call_limit_exceeded") &&
   agentsSdkAdapterTests.includes("maps Agents SDK output, citations, usage and cancellation signal") &&
   agentsSdkAdapterTests.includes("fails closed for unsupported structured output") &&
-  agentsSdkAdapterTests.includes("does not invoke the SDK after cancellation"),
+  agentsSdkAdapterTests.includes("rejects web-search usage above the request tool-call limit") &&
+  agentsSdkAdapterTests.includes("does not invoke the SDK after cancellation") &&
+  ai.includes("Observed usage was settled when available"),
   "The existing worker path now creates a versioned LLM request, applies provider/model/privacy/budget policy, invokes the OpenAI adapter and validates the result before settlement.");
 add("WIN production OpenAI agent calls have bounded cooperative cancellation",
   ai.includes("timeoutMs: 90_000") &&
