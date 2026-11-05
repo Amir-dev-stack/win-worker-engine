@@ -26,7 +26,7 @@ function canonical(value: unknown): string {
       JSON.stringify(key) + ":" + canonical(record[key])
     ).join(",") + "}";
   }
-  return JSON.stringify(value);
+  return JSON.stringify(value) ?? "null";
 }
 
 function validDatasetId(value: unknown): value is string {
