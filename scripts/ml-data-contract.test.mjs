@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { WIN_ML_DATASET_MANIFEST_VERSION, evaluateWinMLDatasetReadiness, validateWinMLDatasetManifest, validateWinMLTrainingExample } from "../netlify/lib/ml-data-contract.mts";
+import { WIN_ML_DATASET_MANIFEST_VERSION, WIN_ML_FOOTBALL_1X2_SETTLEMENT_RULE_ID, evaluateWinMLDatasetReadiness, validateWinMLDatasetManifest, validateWinMLTrainingExample } from "../netlify/lib/ml-data-contract.mts";
 const manifest = (overrides = {}) => ({
   manifestVersion: WIN_ML_DATASET_MANIFEST_VERSION, datasetId: "synthetic-football-2026",
   providerId: "synthetic-fixture", sport: "association_football", competition: "synthetic-league",
