@@ -1,5 +1,3 @@
-import { getStore } from "@netlify/blobs";
-
 type AIBudgetStore = {
   get(key: string, options?: any): Promise<any>;
   getWithMetadata(key: string, options?: any): Promise<any>;
@@ -25,8 +23,11 @@ export function installIsolatedAIBudgetTestStore(adapter: AIBudgetStore) {
   isolatedAIBudgetTestStore = adapter;
 }
 
-const STORE = () => isolatedAIBudgetTestStore ??
-  getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" });
+const STORE = async () => {
+  if (isolatedAIBudgetTestStore) return isolatedAIBudgetTestStore;
+  const { getStore } = await import("@netlify/blobs");
+  return getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" });
+};
 const LOCK_KEY = "ai-budget/controller-lock";
 const SETTINGS_KEY = "ai-budget/settings";
 const LIMIT_USD = 3;
@@ -118,7 +119,7 @@ function roundUsd(value: number) {
 }
 
 async function withControllerLock<T>(fn: () => Promise<T>): Promise<T> {
-  const store = STORE();
+  const store = await STORE();
   const owner = crypto.randomUUID();
   let acquired = false;
 
@@ -145,7 +146,7 @@ async function withControllerLock<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function readLedger(month = monthKey()): Promise<Ledger> {
-  const found = await STORE().get(ledgerKey(month), { type: "json" }) as Ledger | null;
+  const found = await (await STORE()).get(ledgerKey(month), { type: "json" }) as Ledger | null;
   return found ? {
     ...blankLedger(month), ...found,
     reservations: found.reservations || {},
@@ -155,7 +156,7 @@ async function readLedger(month = monthKey()): Promise<Ledger> {
 }
 
 async function readBudgetSettings(): Promise<BudgetSettings> {
-  const found = await STORE().get(SETTINGS_KEY, { type: "json" }) as Partial<BudgetSettings> | null;
+  const found = await (await STORE()).get(SETTINGS_KEY, { type: "json" }) as Partial<BudgetSettings> | null;
   return {
     limitEnabled: true,
     spendingLocked: found?.spendingLocked === true,
@@ -171,7 +172,7 @@ async function lockSpending(reason: string) {
   if (current.spendingLocked) return current;
   const next: BudgetSettings = { ...current, limitEnabled: true, spendingLocked: true,
     lockedAt: new Date().toISOString(), lockReason: reason, updatedAt: new Date().toISOString() };
-  await STORE().setJSON(SETTINGS_KEY, next);
+  await (await STORE()).setJSON(SETTINGS_KEY, next);
   return next;
 }
 export async function ownerApproveBudgetUnlock(confirmation: string) {
@@ -187,7 +188,7 @@ export async function ownerApproveBudgetUnlock(confirmation: string) {
     const current = await readBudgetSettings();
     const now = new Date().toISOString();
     const archiveId = now.replace(/[^0-9]/g, "");
-    await STORE().setJSON("ai-budget/archive/" + ledger.month + "/" + archiveId, {
+    await (await STORE()).setJSON("ai-budget/archive/" + ledger.month + "/" + archiveId, {
       ...ledger, archivedAt: now, archiveReason: "Explicit owner-authorized spending-cycle reset"
     });
     const fresh = blankLedger(ledger.month);
@@ -198,13 +199,13 @@ export async function ownerApproveBudgetUnlock(confirmation: string) {
     const next: BudgetSettings = { ...current, limitEnabled: true, spendingLocked: false,
       lockedAt: null, lockReason: null, lastOwnerApprovalAt: now,
       ownerApprovalCount: current.ownerApprovalCount + 1, updatedAt: now };
-    await STORE().setJSON(SETTINGS_KEY, next);
+    await (await STORE()).setJSON(SETTINGS_KEY, next);
     return next;
   });
 }
 async function writeLedger(ledger: Ledger) {
   ledger.updatedAt = new Date().toISOString();
-  await STORE().setJSON(ledgerKey(ledger.month), ledger);
+  await (await STORE()).setJSON(ledgerKey(ledger.month), ledger);
 }
 
 export type AIRequestBudget = {
