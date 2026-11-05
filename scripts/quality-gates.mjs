@@ -354,6 +354,7 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImporter.includes("MAX_ROWS") &&
   mlFootballImporter.includes("createHash") &&
   mlFootballImporter.includes('row.scoreBasis !== "regulation_time"') &&
+  mlFootballImporter.includes('"win.football.results.v2"') &&
   mlFootballImporter.includes("resultAvailableAt") &&
   mlFootballImporter.includes("result_available_before_kickoff") &&
   mlFootballImporter.includes("result_available_after_source_retrieval") &&
