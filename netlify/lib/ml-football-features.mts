@@ -90,8 +90,17 @@ export function buildWinFootballPointInTimeFeatures(args: {
   if (!Array.isArray(args.historicalRows)) throw new WinFootballFeatureError("historical_rows_required");
 
   const eligible: WinFootballResultWithAvailability[] = [];
+  const seenEvents = new Set<string>();
+  const seenSources = new Set<string>();
   let excluded = 0;
   for (const row of args.historicalRows) {
+    if (!row || typeof row.eventId !== "string" || !row.eventId.trim() ||
+        typeof row.sourceRecordId !== "string" || !row.sourceRecordId.trim() ||
+        seenEvents.has(row.eventId) || seenSources.has(row.sourceRecordId)) {
+      throw new WinFootballFeatureError("historical_row_identity_duplicate_or_invalid");
+    }
+    seenEvents.add(row.eventId);
+    seenSources.add(row.sourceRecordId);
     const rowKickoff = timestamp(row?.kickoff);
     const availableAt = timestamp(row?.resultAvailableAt);
     const validScores = Number.isSafeInteger(row?.homeGoals) && row.homeGoals >= 0 &&
