@@ -208,10 +208,24 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
 const llmExecution = await read("netlify/lib/llm-execution.mts");
 const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
 const agentsSdk = await read("netlify/lib/agents-sdk.mts");
-add("WIN production OpenAI agent calls have bounded cooperative cancellation",
-  ai.includes("executeWithAbortTimeout") &&
-  ai.includes("90_000") &&
+const agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
+const agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
+add("WIN production OpenAI agent calls use the governed LLM execution layer",
+  ai.includes("executeWinLLMWithPolicy") &&
+  ai.includes("createOpenAIWinLLMAdapter") &&
+  ai.includes("WIN_LLM_CONTRACT_VERSION") &&
+  ai.includes("pricingVerified: true") &&
+  ai.includes("budget: { reservationId: requestBudgetId, reservedUsd: budget.reservedUsd }") &&
   ai.includes("settleAIRequest(requestBudgetId, null, 0, true)") &&
+  agentsSdkAdapter.includes("runWinAgent") &&
+  agentsSdkAdapter.includes("signal") &&
+  agentsSdkAdapter.includes("openai_adapter_text_output_only") &&
+  agentsSdkAdapterTests.includes("maps Agents SDK output, citations, usage and cancellation signal") &&
+  agentsSdkAdapterTests.includes("fails closed for unsupported structured output") &&
+  agentsSdkAdapterTests.includes("does not invoke the SDK after cancellation"),
+  "The existing worker path now creates a versioned LLM request, applies provider/model/privacy/budget policy, invokes the OpenAI adapter and validates the result before settlement.");
+add("WIN production OpenAI agent calls have bounded cooperative cancellation",
+  ai.includes("timeoutMs: 90_000") &&
   llmExecution.includes("export async function executeWithAbortTimeout") &&
   llmExecution.includes("controller.abort") &&
   llmExecution.includes("Promise.race([execution, timeout])") &&
@@ -220,7 +234,7 @@ add("WIN production OpenAI agent calls have bounded cooperative cancellation",
   llmExecutionTests.includes("shared bounded executor preserves operation errors") &&
   agentsSdk.includes("signal?: AbortSignal") &&
   agentsSdk.includes("signal: input.signal"),
-  "The existing production Agents SDK path receives a 90-second abort signal; interrupted calls are settled conservatively as uncertain rather than replayed.");
+  "The production provider adapter passes a 90-second cancellation signal into the Agents SDK; uncertain calls are conservatively settled and never automatically replayed.");
 add("WIN LLM provider execution is bounded, validates responses and never blindly retries uncertain outcomes",
   llmExecution.includes("AbortController") &&
   llmExecution.includes("provider_timeout_outcome_uncertain") &&
