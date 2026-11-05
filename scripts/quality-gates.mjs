@@ -236,7 +236,10 @@ add("WIN production OpenAI agent calls have bounded cooperative cancellation",
   llmExecutionTests.includes("shared bounded executor returns successful values") &&
   llmExecutionTests.includes("shared bounded executor preserves operation errors") &&
   agentsSdk.includes("signal?: AbortSignal") &&
-  agentsSdk.includes("signal: input.signal"),
+  agentsSdk.includes("signal: input.signal") &&
+  agentsSdk.includes("modelSettings: { store: false, maxTokens: input.maxOutputTokens }") &&
+  agentsSdkAdapter.includes("maxOutputTokens: request.limits.maxOutputTokens") &&
+  agentsSdkAdapterTests.includes("assert.equal(received.maxOutputTokens, 200)"),
   "The production provider adapter passes a 90-second cancellation signal into the Agents SDK; uncertain calls are conservatively settled and never automatically replayed.");
 add("WIN LLM provider execution is bounded, validates responses and never blindly retries uncertain outcomes",
   llmExecution.includes("AbortController") &&
