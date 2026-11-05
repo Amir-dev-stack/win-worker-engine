@@ -1,4 +1,5 @@
 export const WIN_ML_DATASET_MANIFEST_VERSION = "win.ml.dataset.v1" as const;
+export const WIN_ML_FOOTBALL_1X2_SETTLEMENT_RULE_ID = "win.football.regulation_time_1x2.v1" as const;
 export type WinMLPermittedUse = "training" | "research_only" | "benchmark_only" | "blocked";
 export type WinMLEventTimePrecision = "instant" | "date" | "unknown";
 export type WinMLRowGrain = "match" | "player_match" | "event" | "market_snapshot";
@@ -79,7 +80,10 @@ export function validateWinMLTrainingExample(manifest: WinMLDatasetManifestV1, e
   const market = example?.label?.market, outcome = example?.label?.outcome;
   const validOutcome = market === "1x2" ? ["HOME", "DRAW", "AWAY", "VOID"].includes(outcome) :
     market === "total_goals" ? ["OVER", "UNDER", "PUSH", "VOID"].includes(outcome) : false;
-  if (!validOutcome || !nonEmpty(example?.label?.settlementRuleId) || !validTimestamp(example?.label?.settledAt)) errors.push("settlement_aware_label_invalid");
+  const settlementRuleValid = market === "1x2"
+    ? example?.label?.settlementRuleId === WIN_ML_FOOTBALL_1X2_SETTLEMENT_RULE_ID
+    : nonEmpty(example?.label?.settlementRuleId);
+  if (!validOutcome || !settlementRuleValid || !validTimestamp(example?.label?.settledAt)) errors.push("settlement_aware_label_invalid");
   else if (validTimestamp(example.eventStart) && Date.parse(example.label.settledAt) < Date.parse(example.eventStart)) errors.push("label_cannot_settle_before_event_start");
   return errors;
 }
