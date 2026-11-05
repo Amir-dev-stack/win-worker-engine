@@ -103,7 +103,8 @@ export function buildWinFootballPointInTimeFeatures(args: {
     seenSources.add(row.sourceRecordId);
     const rowKickoff = timestamp(row?.kickoff);
     const availableAt = timestamp(row?.resultAvailableAt);
-    const validScores = Number.isSafeInteger(row?.homeGoals) && row.homeGoals >= 0 &&
+    const validScores = row?.scoreBasis === "regulation_time" &&
+      Number.isSafeInteger(row?.homeGoals) && row.homeGoals >= 0 &&
       Number.isSafeInteger(row?.awayGoals) && row.awayGoals >= 0;
     if (!row || row.eventId === args.target.eventId || row.homeTeamId === row.awayTeamId ||
         rowKickoff === null || availableAt === null || !validScores ||
