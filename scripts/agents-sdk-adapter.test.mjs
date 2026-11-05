@@ -105,6 +105,24 @@ test("OpenAI adapter fails closed when model policy differs from configured mode
   assert.equal(response.error.code, "openai_adapter_model_policy_mismatch");
 });
 
+test("OpenAI adapter rejects web-search usage above the request tool-call limit", async () => {
+  const adapter = createOpenAIWinLLMAdapter({
+    apiKey: "synthetic-test-key",
+    model: "approved-model",
+    async runAgent() { return { ...agentResult, webSearchRequests: 2 }; }
+  });
+  const response = await adapter.execute(request({
+    limits: { maxOutputTokens: 200, maxToolCalls: 1, timeoutMs: 1000 }
+  }));
+  assert.equal(response.status, "failed");
+  assert.equal(response.error.code, "openai_adapter_tool_call_limit_exceeded");
+  assert.deepEqual(response.usage, {
+    inputTokens: 100,
+    outputTokens: 40,
+    billableUnits: { web_search_requests: 2 }
+  });
+});
+
 test("OpenAI adapter does not invoke the SDK after cancellation", async () => {
   let called = false;
   const controller = new AbortController();
