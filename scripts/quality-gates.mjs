@@ -218,6 +218,9 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContract.includes("evaluation_sport_mismatch") &&
   mlModelContract.includes("evaluation_market_algorithm_mismatch") &&
   mlModelContract.includes("evaluation_target_definition_market_mismatch") &&
+  mlModelContract.includes("training_config_hash_invalid") &&
+  mlModelContract.includes("split_manifest_hash_invalid") &&
+  mlModelContract.includes("feature_builder_commit_sha_invalid") &&
   mlModelContract.includes("automaticPromotionAllowed: false") &&
   mlModelContract.includes("productionPromotionAllowed: false") &&
   mlModelContractTests.includes("valid out-of-sample evaluation qualifies only for human shadow review") &&
@@ -227,6 +230,20 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContractTests.includes("evaluation rejects sport, market-algorithm and target-definition mismatches"),
   "A model artifact is blocked without an approved dataset, chronological train/validation/test separation, a fit-data cutoff, minimum sample sizes, baseline improvement and calibration. Passing never auto-promotes to production.");
 
+const mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
+const mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
+add("WIN ML predictions are provenance-bound to an evaluated model and shadow-only",
+  mlPredictionContract.includes('origin: "trained_model"') &&
+  mlPredictionContract.includes('usage: "shadow_only"') &&
+  mlPredictionContract.includes("prediction_provenance_mismatch") &&
+  mlPredictionContract.includes("prediction_generated_at_or_after_event_start") &&
+  mlPredictionContract.includes("prediction_probabilities_not_normalized") &&
+  mlPredictionContract.includes("productionUseAllowed: false") &&
+  mlPredictionContract.includes("automatedBettingAllowed: false") &&
+  mlPredictionTests.includes("LLM research output cannot be typed as a trained-model prediction") &&
+  mlPredictionTests.includes("prediction provenance must match the evaluated model and dataset") &&
+  mlPredictionTests.includes("invalid or unnormalized probability vectors are rejected"),
+  "LLM research and market benchmarks cannot be represented as WIN ML output; the 1X2 envelope must match an eligible artifact/dataset and remains shadow-only.");
 const llmExecution = await read("netlify/lib/llm-execution.mts");
 const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
 const agentsSdk = await read("netlify/lib/agents-sdk.mts");
