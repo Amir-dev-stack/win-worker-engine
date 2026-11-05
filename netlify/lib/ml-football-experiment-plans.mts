@@ -55,12 +55,25 @@ export function preflightWinMLExperiment(
   manifest: WinMLDatasetManifestV1,
   plan: WinMLExperimentPlan,
   candidateRows: number,
-  partitionRows?: { training: number; validation: number; test: number }
+  partitionRows?: { training: number; validation: number; test: number },
+  candidateContract?: { market: "1x2" | "total_goals"; featureSchemaVersion: string }
 ) {
   const readiness = evaluateWinMLDatasetReadiness(manifest);
   const reasons = [...readiness.reasons];
   if (manifest?.sport !== plan.sport) reasons.push("experiment_sport_mismatch");
   if (manifest?.rowGrain !== "match") reasons.push("experiment_requires_match_level_rows");
+  if ((plan.market === "1x2" && plan.algorithm !== "logistic_regression") ||
+      (plan.market === "total_goals" && plan.algorithm !== "poisson_attack_defence")) {
+    reasons.push("experiment_market_algorithm_mismatch");
+  }
+  if (!candidateContract || typeof candidateContract !== "object") {
+    reasons.push("candidate_contract_metadata_required");
+  } else {
+    if (candidateContract.market !== plan.market) reasons.push("candidate_market_mismatch");
+    if (candidateContract.featureSchemaVersion !== plan.featureSchemaVersion) {
+      reasons.push("candidate_feature_schema_mismatch");
+    }
+  }
   if (!Number.isSafeInteger(candidateRows) || candidateRows < 1) reasons.push("candidate_rows_missing");
   if (candidateRows < plan.minimumRows.training + plan.minimumRows.validation + plan.minimumRows.test) {
     reasons.push("candidate_rows_below_experiment_minimum");
