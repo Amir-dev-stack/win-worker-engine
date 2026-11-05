@@ -91,7 +91,7 @@ export async function registerWinMLOwnerTrainingApproval(
   const result = await putIfNew(APPROVAL_COLLECTION, payload.approvalId, record);
   if (result?.modified) return { recorded: true, idempotent: false, approvalId: payload.approvalId };
   const existing = await get<StoredApproval>(APPROVAL_COLLECTION, payload.approvalId);
-  if (existing && sameRecord(existing, record)) {
+  if (existing?.recordVersion === "win.ml.owner-training-approval-record.v1" && sameRecord(existing.evidence, evidence)) {
     return { recorded: false, idempotent: true, approvalId: payload.approvalId };
   }
   registryError("owner_approval_id_immutable_conflict");
@@ -129,7 +129,7 @@ export async function registerWinMLOwnerTrainingRevocation(
   const result = await putIfNew(REVOCATION_COLLECTION, payload.approvalId, record);
   if (result?.modified) return { recorded: true, idempotent: false, approvalId: payload.approvalId };
   const existing = await get<StoredRevocation>(REVOCATION_COLLECTION, payload.approvalId);
-  if (existing && sameRecord(existing, record)) {
+  if (existing?.recordVersion === "win.ml.owner-training-revocation-record.v1" && sameRecord(existing.evidence, evidence)) {
     return { recorded: false, idempotent: true, approvalId: payload.approvalId };
   }
   registryError("owner_revocation_already_recorded");
@@ -152,6 +152,7 @@ export async function getWinMLOwnerTrainingApprovalStatus(
   if (payload?.reviewerId !== trustedConfig.reviewerId) return { status: "invalid" as const, approvalId, reasons: ["owner_approval_reviewer_not_authorized"] };
   const manifest = await getWinMLDatasetManifest(payload.datasetId);
   if (!manifest) return { status: "invalid" as const, approvalId, reasons: ["owner_approval_dataset_not_registered"] };
+  if (manifest.permittedUse !== "training") return { status: "invalid" as const, approvalId, reasons: ["dataset_licence_not_marked_for_training"] };
   const verification = verifyWinMLOwnerTrainingApproval(approval.evidence, trustedConfig.publicKeyPem, {
     datasetId: manifest.datasetId,
     datasetContentSha256: manifest.contentSha256,
@@ -162,6 +163,7 @@ export async function getWinMLOwnerTrainingApprovalStatus(
 
   const revocation = await get<StoredRevocation>(REVOCATION_COLLECTION, approvalId);
   if (revocation) {
+    if (revocation.evidence?.payload?.reviewerId !== trustedConfig.reviewerId) return { status: "invalid" as const, approvalId, reasons: ["owner_revocation_reviewer_not_authorized"] };
     const revoked = verifyWinMLOwnerTrainingRevocation(revocation.evidence, trustedConfig.publicKeyPem, {
       approvalId,
       datasetId: payload.datasetId,
