@@ -8,6 +8,36 @@ import {
   type WinLLMResponseV1
 } from "./llm-contract.mts";
 
+/**
+ * Runs one asynchronous operation with cooperative cancellation and a hard
+ * caller-side wait bound. A timed-out operation may still be active if it
+ * ignores AbortSignal; callers must treat its external outcome as uncertain.
+ */
+export async function executeWithAbortTimeout<T>(
+  execute: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number
+): Promise<{ timedOut: false; value: T } | { timedOut: true }> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 1) {
+    throw new Error("WIN execution timeout must be a positive finite number.");
+  }
+  const controller = new AbortController();
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<{ timedOut: true }>(resolve => {
+    timeoutHandle = setTimeout(() => {
+      controller.abort(new Error("WIN asynchronous operation timed out"));
+      resolve({ timedOut: true });
+    }, timeoutMs);
+  });
+  try {
+    const execution = Promise.resolve()
+      .then(() => execute(controller.signal))
+      .then(value => ({ timedOut: false as const, value }));
+    return await Promise.race([execution, timeout]);
+  } finally {
+    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+  }
+}
+
 export type WinLLMExecutionResult = {
   providerId: string;
   response: WinLLMResponseV1;
