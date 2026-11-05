@@ -89,3 +89,16 @@ Added a storage-backed internal registry using the existing WIN Blobs store; no 
 Revocation records are also immutable and keyed by the original approval ID, allowing at most one effective revocation record per approval. The read-only status function rechecks the signature, current dataset identity/hash/licence, expiry and any revocation before reporting `active`, `revoked`, `invalid` or `missing`.
 
 **Security boundary remains incomplete by design:** these are internal library functions, not an HTTP route. No owner-authenticated UI/API, key provisioning, key rotation, or training-readiness integration has been added. A future route must source the public key and reviewer identity only from protected server configuration and authenticate the owner independently; request bodies must never supply either value. The dataset readiness gate continues to reject all training until that route, audit/revocation controls and explicit readiness integration are reviewed.
+
+
+## Owner-authenticated approval control-plane endpoint (2026-11-06)
+
+Added `POST /api/ml-owner-approval` with three actions: `approve`, `revoke` and read-only `status`. The endpoint requires a dedicated bearer token (minimum 32 characters), an Ed25519 public key and an exact configured reviewer ID, all sourced only from protected Netlify environment variables:
+
+- `WIN_ML_OWNER_APPROVAL_TOKEN`
+- `WIN_ML_OWNER_APPROVAL_PUBLIC_KEY`
+- `WIN_ML_OWNER_REVIEWER_ID`
+
+The endpoint does not accept any of those values from the request. It uses constant-time token comparison, requires JSON, caps the body at 64 KiB, disables response caching and fails with service-unavailable when configuration is absent. This is separate from the general `WIN_INTERNAL_TOKEN`; possessing the general internal token does not grant owner approval authority.
+
+**Not activated:** no environment variables or private signing key have been configured by this work, no approval has been issued, and no real dataset was approved. Until the dedicated token, public key and reviewer identity are provisioned securely, the endpoint returns `503 owner_approval_control_plane_not_configured`. Training readiness remains independently fail-closed.
