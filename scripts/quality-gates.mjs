@@ -340,6 +340,18 @@ add("WIN owner training approvals require dataset-bound Ed25519 signatures and l
   mlOwnerApprovalTests.includes("approval signature cannot be reused for a different dataset"),
   "The isolated verifier binds signed approval to dataset content, licence evidence, reviewer and validity window; readiness remains separately blocked.");
 
+const mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
+const mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
+add("WIN signed owner approvals and revocations are stored immutably and checked against the registered dataset",
+  mlOwnerApprovalRegistry.includes("putIfNew") &&
+  mlOwnerApprovalRegistry.includes("getWinMLDatasetManifest") &&
+  mlOwnerApprovalRegistry.includes("owner_approval_reviewer_not_authorized") &&
+  mlOwnerApprovalRegistry.includes("owner_revocation_already_recorded") &&
+  mlOwnerApprovalRegistry.includes("getWinMLOwnerTrainingApprovalStatus") &&
+  mlOwnerApprovalRegistryTests.includes("reports it active, and revokes it immutably") &&
+  mlOwnerApprovalRegistryTests.includes("recording owner approval must not silently unlock model training"),
+  "The registry uses immutable conditional writes, trusted signer configuration, dataset/hash/licence matching and explicit revocation status; readiness remains fail-closed.");
+
 const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
 const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
 const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
