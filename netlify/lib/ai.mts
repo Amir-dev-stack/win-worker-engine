@@ -1,4 +1,5 @@
 import { runWinAgent } from "./agents-sdk.mts";
+import { executeWithAbortTimeout } from "./llm-execution.mts";
 import { WIN_DEPARTMENTS, buildWorkerNetwork } from "./worker-org.mts";
 import { reserveAIRequest, settleAIRequest, releaseAIRequest } from "./ai-budget.mts";
 
@@ -297,8 +298,6 @@ async function askWorker(
 
   let budgetId: string | null = null;
   let budgetSettled = false;
-  let timedOut = false;
-  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   try {
     const maxOutputTokens = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 600 : 1000;
     const maxToolCalls = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 1 : 2;
@@ -310,32 +309,25 @@ async function askWorker(
       maxInputChars
     });
     if (!budget.allowed) throw new Error(budget.reason);
-    const controller = new AbortController();
-    let resolveTimeout!: (value: null) => void;
-    const timeout = new Promise<null>(resolve => { resolveTimeout = resolve; });
-    timeoutHandle = setTimeout(() => {
-      timedOut = true;
-      controller.abort(new Error("WIN AI request timed out after 90 seconds"));
-      resolveTimeout(null);
-    }, 90_000);
-    const sdkExecution = runWinAgent({
-      name: "WIN " + role,
-      instructions,
-      prompt: input,
-      model,
-      apiKey,
-      webSearch,
-      maxTurns: 2,
-      signal: controller.signal
-    });
-    const sdkResult = await Promise.race([sdkExecution, timeout]);
-    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
-    timeoutHandle = undefined;
-    if (timedOut || sdkResult === null) {
+    const bounded = await executeWithAbortTimeout(
+      signal => runWinAgent({
+        name: "WIN " + role,
+        instructions,
+        prompt: input,
+        model,
+        apiKey,
+        webSearch,
+        maxTurns: 2,
+        signal
+      }),
+      90_000
+    );
+    if (bounded.timedOut) {
       await settleAIRequest(requestBudgetId, null, 0, true);
       budgetSettled = true;
       return failed("WIN AI request exceeded its 90-second execution limit. The provider outcome is uncertain; its reservation was conservatively retained and no automatic replay was attempted.");
     }
+    const sdkResult = bounded.value;
     await settleAIRequest(requestBudgetId, sdkResult.usage, sdkResult.webSearchRequests);
     budgetSettled = true;
     const sdkOutput = sdkResult.rawResponses.flatMap((response: any) => response.output ?? []);
@@ -351,11 +343,7 @@ async function askWorker(
     if (budgetId && !budgetSettled) {
       try { await settleAIRequest(budgetId, null, 0, true); } catch { /* retain reservation if storage is unavailable */ }
     }
-    return failed(timedOut
-      ? "WIN AI request exceeded its 90-second execution limit. The provider outcome is treated as uncertain; no automatic replay was attempted."
-      : String(error));
-  } finally {
-    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+    return failed(String(error));
   }
 }
 
