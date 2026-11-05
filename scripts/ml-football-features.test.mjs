@@ -12,6 +12,7 @@ const match = (overrides = {}) => ({
   awayTeamId: "B",
   homeGoals: 2,
   awayGoals: 1,
+  scoreBasis: "regulation_time",
   resultAvailableAt: "2026-10-01T14:00:00.000Z",
   ...overrides
 });
@@ -87,4 +88,17 @@ test("point-in-time feature builder rejects duplicate or missing historical iden
     target,
     predictionCutoff: "2026-11-01T17:00:00.000Z"
   }), error => error.code === "historical_row_identity_duplicate_or_invalid");
+});
+
+
+test("point-in-time features exclude results with extra-time score semantics", () => {
+  const result = buildWinFootballPointInTimeFeatures({
+    datasetId: "fixture",
+    historicalRows: [match({ scoreBasis: "includes_extra_time" })],
+    target,
+    predictionCutoff: "2026-11-01T17:00:00.000Z"
+  });
+  assert.equal(result.evidence.homeMatchesUsed, 0);
+  assert.equal(result.evidence.awayMatchesUsed, 0);
+  assert.equal(result.evidence.excludedFutureOrUnavailableRows, 1);
 });
