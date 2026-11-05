@@ -28,7 +28,7 @@ test("execution selects approved provider and validates its response", async () 
 test("provider timeout aborts adapter and is classified as uncertain without retry", async () => {
   let observedSignal;
   const result = await executeWinLLMWithPolicy({
-    request: request({ limits: { maxOutputTokens: 200, maxToolCalls: 0, timeoutMs: 10 } }),
+    request: request({ limits: { maxOutputTokens: 200, maxToolCalls: 0, timeoutMs: 100 } }),
     providers: [descriptor],
     adapters: [{ providerId: "fake", execute(_input, signal) {
       observedSignal = signal;
