@@ -222,6 +222,7 @@ add("WIN production OpenAI agent calls use the governed LLM execution layer",
   agentsSdkAdapter.includes("openai_adapter_text_output_only") &&
   agentsSdkAdapter.includes("openai_adapter_tool_call_limit_exceeded") &&
   agentsSdkAdapterTests.includes("maps Agents SDK output, citations, usage and cancellation signal") &&
+  agentsSdkAdapterTests.includes("governed execution wrapper invokes the approved OpenAI adapter end to end") &&
   agentsSdkAdapterTests.includes("fails closed for unsupported structured output") &&
   agentsSdkAdapterTests.includes("rejects web-search usage above the request tool-call limit") &&
   agentsSdkAdapterTests.includes("does not invoke the SDK after cancellation") &&
