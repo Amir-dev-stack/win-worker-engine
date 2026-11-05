@@ -408,3 +408,34 @@ Each record should carry, where applicable: stable record ID; record type; sport
 - Do not make all services independently maintain their own copies of memory.
 - Do not auto-promote AI-generated lessons into trusted knowledge.
 - Do not let local Ollama availability become a prerequisite for memory reads/writes or core WIN operation.
+
+
+## Additional owner-supplied architecture ideas — reference notes (2026-11-05)
+
+The owner supplied an example Python monorepo/deployment generator and an autonomous sports-prediction workflow. Treat this material as design inspiration and requirements input, not as approved code, a fixed technology choice, or an instruction to reproduce its architecture literally.
+
+### Concepts to retain for future design
+
+- **Modular monorepo:** keep related orchestration, ML, memory, reliability, configuration, tests and deployment definitions organised in one repository, while deploying components independently where their runtime needs differ.
+- **Separate ML service:** isolate model training/inference from lightweight API orchestration. Use a real, versioned and validated model rather than a placeholder probability. The model service must expose a stable provider-neutral contract.
+- **Risk circuit breaker:** check exposure and risk state before coupon approval. Include daily and per-coupon limits, unsettled exposure, anomaly/drift conditions, emergency stop and authorised reset. Distinguish recommendations, manually approved wagers and confirmed actual stakes.
+- **Concurrency safety:** exposure checks must use atomic reservations/conditional writes and idempotency; a simple SUM query followed by an insert is race-prone.
+- **API resilience:** validate HTTP status, response schema and freshness; apply timeouts, bounded retries/backoff, rate-limit handling, structured errors and provider health reporting. Missing critical evidence must fail closed to WAIT/NO BET.
+- **Heartbeat and alerting:** monitor scheduled-job completion and external dependencies independently; verify notification delivery and alert when a critical provider or job remains unavailable.
+- **Cold-start handling:** if a hosted ML service sleeps, use a bounded readiness/real-request retry strategy and explicit degraded status. Do not rely on an unbounded dummy wake-up request or make a sleeping free-tier service a critical dependency.
+- **Post-match feedback:** scheduled result ingestion and market-specific settlement should connect immutable pre-match predictions to verified outcomes. Record actual financial returns only for manually confirmed/actual wagers; prediction accuracy is not profit.
+- **Learning loop:** evaluate model performance by sport/competition/market/version, detect drift, propose retraining and lessons, and require chronological/out-of-sample validation before promoting a model or lesson.
+- **Notifications:** Discord/Telegram can be optional notification adapters, not the source of truth or a substitute for the WIN dashboard and audit records.
+
+### Technology and code are not pre-approved
+
+The supplied example mentions Cloudflare Workers/Python, D1, Hugging Face Spaces, Groq, The Odds API and Discord. These are candidates only, subject to current documentation, free-tier limits, data licensing, security review, compatibility tests and a demonstrated need.
+
+Do not create a parallel D1 database for records already owned by Neon or Netlify Blobs. Do not introduce a second orchestration or betting system alongside WIN. Reuse the existing Netlify routes, store abstraction, AI budget controls, background-job patterns, result/settlement pipeline and memory contracts wherever suitable.
+
+The sample generator and scripts are illustrative and must not be deployed as-is. In particular, placeholder model probabilities, unverified API endpoints, plaintext secrets, non-atomic exposure checks, weak response handling and simplistic match-ID deduplication are not acceptable production implementations.
+
+### Design principle
+
+Choose the simplest architecture that meets WIN's measured workload and reliability requirements. Keep one coordinated memory architecture with explicit data ownership, while allowing each service to maintain only the operational state it needs. Services must communicate through versioned authenticated contracts, and failures must degrade safely without fabricating predictions or bypassing WIN's risk gates.
+
