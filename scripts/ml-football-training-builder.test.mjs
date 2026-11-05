@@ -88,3 +88,26 @@ test("explicit targets use the full row set as historical evidence without rejec
   assert.equal(result.candidates[0].sourceEvidence.historicalMatchesUsedHome, 2);
   assert.equal(result.rejected.length, 0);
 });
+
+
+test("rejects duplicate event and source identities before candidate creation", () => {
+  const duplicatedEvent = [
+    row({ eventId: "duplicate", sourceRecordId: "source-a" }),
+    row({ eventId: "duplicate", sourceRecordId: "source-b" })
+  ];
+  assert.throws(() => buildWinFootball1X2TrainingCandidates({
+    manifest: manifest(), rows: duplicatedEvent,
+    predictionCutoffsByEventId: { duplicate: "2026-09-30T11:00:00.000Z" },
+    settlementRuleId: "official-full-time-1x2-v1"
+  }), /football_training_input_identity_duplicate_or_invalid/);
+
+  const duplicatedSource = [
+    row({ eventId: "event-a", sourceRecordId: "same-source" }),
+    row({ eventId: "event-b", sourceRecordId: "same-source" })
+  ];
+  assert.throws(() => buildWinFootball1X2TrainingCandidates({
+    manifest: manifest(), rows: duplicatedSource,
+    predictionCutoffsByEventId: {},
+    settlementRuleId: "official-full-time-1x2-v1"
+  }), /football_training_input_identity_duplicate_or_invalid/);
+});
