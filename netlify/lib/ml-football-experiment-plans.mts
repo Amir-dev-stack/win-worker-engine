@@ -73,3 +73,62 @@ export function preflightWinMLExperiment(
     warning: "Preflight does not train a model. A separate explicit training action and reproducible execution environment are required."
   };
 }
+
+export type WinMLChronologicalExample = {
+  eventId: string;
+  eventStart: string;
+  predictionCutoff: string;
+};
+
+/**
+ * Stable chronological 70/15/15 split. Equal kickoff timestamps are never
+ * split across partitions; the exact sorted event IDs are returned for audit.
+ */
+export function splitWinMLExamplesChronologically<T extends WinMLChronologicalExample>(examples: T[]) {
+  if (!Array.isArray(examples) || examples.length < 3) {
+    throw new Error("chronological_split_requires_at_least_three_examples");
+  }
+  const seen = new Set<string>();
+  const sorted = [...examples].sort((a, b) =>
+    Date.parse(a.eventStart) - Date.parse(b.eventStart) || a.eventId.localeCompare(b.eventId));
+  for (const item of sorted) {
+    if (!item || typeof item.eventId !== "string" || !item.eventId.trim() ||
+        seen.has(item.eventId) || !Number.isFinite(Date.parse(item.eventStart)) ||
+        !Number.isFinite(Date.parse(item.predictionCutoff)) ||
+        Date.parse(item.predictionCutoff) >= Date.parse(item.eventStart)) {
+      throw new Error("chronological_split_example_invalid");
+    }
+    seen.add(item.eventId);
+  }
+  const rawTrainEnd = Math.max(1, Math.floor(sorted.length * 0.70));
+  let trainEnd = rawTrainEnd;
+  while (trainEnd < sorted.length &&
+      Date.parse(sorted[trainEnd - 1].eventStart) === Date.parse(sorted[trainEnd].eventStart)) trainEnd++;
+  const rawValidationEnd = Math.max(trainEnd + 1, Math.floor(sorted.length * 0.85));
+  let validationEnd = Math.min(sorted.length - 1, rawValidationEnd);
+  while (validationEnd < sorted.length &&
+      Date.parse(sorted[validationEnd - 1].eventStart) === Date.parse(sorted[validationEnd].eventStart)) validationEnd++;
+  if (trainEnd >= sorted.length || validationEnd >= sorted.length) {
+    throw new Error("chronological_split_has_insufficient_distinct_time_groups");
+  }
+  const training = sorted.slice(0, trainEnd);
+  const validation = sorted.slice(trainEnd, validationEnd);
+  const test = sorted.slice(validationEnd);
+  if (!training.length || !validation.length || !test.length) {
+    throw new Error("chronological_split_partition_empty");
+  }
+  return {
+    training, validation, test,
+    eventIds: {
+      training: training.map(item => item.eventId),
+      validation: validation.map(item => item.eventId),
+      test: test.map(item => item.eventId)
+    },
+    boundaries: {
+      trainingEndsAt: training[training.length - 1].eventStart,
+      validationStartsAt: validation[0].eventStart,
+      validationEndsAt: validation[validation.length - 1].eventStart,
+      testStartsAt: test[0].eventStart
+    }
+  };
+}
