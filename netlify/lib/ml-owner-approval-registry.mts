@@ -4,10 +4,17 @@ import {
   type WinMLOwnerTrainingApprovalEvidenceV1,
   type WinMLOwnerTrainingRevocationEvidenceV1
 } from "./ml-owner-approval.mts";
+import {
+  hashWinMLLicenceEvidence,
+  verifyWinMLLicenceEvidence,
+  type WinMLSignedLicenceEvidenceV1
+} from "./ml-licence-evidence.mts";
+import { evaluateWinMLDatasetReadiness } from "./ml-data-contract.mts";
 import { getWinMLDatasetManifest } from "./ml-dataset-registry.mts";
 import { canonicalizeWinMLProvenance } from "./ml-provenance.mts";
 import { get, list, putIfNew } from "./store.mts";
 
+const LICENCE_COLLECTION = "library/ml-licence-review-evidence";
 const APPROVAL_COLLECTION = "library/ml-owner-training-approvals";
 const REVOCATION_COLLECTION = "library/ml-owner-training-revocations";
 
@@ -25,6 +32,13 @@ export class WinMLOwnerApprovalRegistryError extends Error {
 type TrustedOwnerConfig = {
   publicKeyPem: string;
   reviewerId: string;
+};
+
+type StoredLicenceEvidence = {
+  recordVersion: "win.ml.licence-review-record.v1";
+  evidence: WinMLSignedLicenceEvidenceV1;
+  evidenceSha256: string;
+  recordedAt: string;
 };
 
 type StoredApproval = {
@@ -58,10 +72,54 @@ function registryError(code: string, details: string[] = []): never {
 }
 
 /**
- * Internal storage service only. A future owner-only route must obtain this
- * configuration from protected Netlify environment settings, never request data.
- * This module intentionally does not expose an HTTP endpoint or unlock training.
+ * Internal storage service. Trusted keys and reviewer identity must come from
+ * protected server configuration, never request data. All evidence records are
+ * immutable; registering them does not itself run or unlock model training.
  */
+export async function registerWinMLLicenceReviewEvidence(
+  evidence: WinMLSignedLicenceEvidenceV1,
+  trustedConfig: TrustedOwnerConfig,
+  now = new Date().toISOString()
+) {
+  if (!configValid(trustedConfig)) registryError("trusted_owner_approval_configuration_missing");
+  const payload = evidence?.payload;
+  if (!validId(payload?.evidenceId)) registryError("licence_evidence_id_invalid");
+  if (payload?.reviewerId !== trustedConfig.reviewerId) registryError("licence_evidence_reviewer_not_authorized");
+  let evidenceSha256: string;
+  try { evidenceSha256 = hashWinMLLicenceEvidence(payload); }
+  catch { registryError("licence_evidence_payload_invalid"); }
+  const verification = verifyWinMLLicenceEvidence(evidence, trustedConfig.publicKeyPem, {
+    licenceId: payload.licenceId, evidenceSha256, reviewerId: trustedConfig.reviewerId, now
+  });
+  if (!verification.valid) registryError("licence_evidence_invalid", verification.reasons);
+  const record: StoredLicenceEvidence = {
+    recordVersion: "win.ml.licence-review-record.v1", evidence, evidenceSha256, recordedAt: now
+  };
+  const result = await putIfNew(LICENCE_COLLECTION, evidenceSha256, record);
+  if (result?.modified) return { recorded: true, idempotent: false, evidenceId: payload.evidenceId, evidenceSha256 };
+  const existing = await get<StoredLicenceEvidence>(LICENCE_COLLECTION, evidenceSha256);
+  if (existing?.recordVersion === "win.ml.licence-review-record.v1" &&
+      existing.evidenceSha256 === evidenceSha256 && sameRecord(existing.evidence, evidence)) {
+    return { recorded: false, idempotent: true, evidenceId: payload.evidenceId, evidenceSha256 };
+  }
+  registryError("licence_evidence_hash_immutable_conflict");
+}
+
+async function verifyRegisteredLicenceEvidence(
+  evidenceSha256: string, licenceId: string, trustedConfig: TrustedOwnerConfig, now: string
+) {
+  if (!/^[a-f0-9]{64}$/i.test(evidenceSha256 || "")) {
+    return { valid: false, reasons: ["licence_evidence_hash_invalid"] };
+  }
+  const record = await get<StoredLicenceEvidence>(LICENCE_COLLECTION, evidenceSha256);
+  if (!record || record.recordVersion !== "win.ml.licence-review-record.v1" ||
+      record.evidenceSha256 !== evidenceSha256) {
+    return { valid: false, reasons: ["registered_licence_evidence_missing"] };
+  }
+  return verifyWinMLLicenceEvidence(record.evidence, trustedConfig.publicKeyPem, {
+    licenceId, evidenceSha256, reviewerId: trustedConfig.reviewerId, now
+  });
+}
 export async function registerWinMLOwnerTrainingApproval(
   evidence: WinMLOwnerTrainingApprovalEvidenceV1,
   trustedConfig: TrustedOwnerConfig,
@@ -75,6 +133,10 @@ export async function registerWinMLOwnerTrainingApproval(
   const manifest = await getWinMLDatasetManifest(payload.datasetId);
   if (!manifest) registryError("owner_approval_dataset_not_registered");
   if (manifest.permittedUse !== "training") registryError("dataset_licence_not_marked_for_training");
+  const licenceVerification = await verifyRegisteredLicenceEvidence(
+    payload.licenceEvidenceSha256, manifest.licenceId, trustedConfig, now
+  );
+  if (!licenceVerification.valid) registryError("owner_approval_licence_evidence_invalid", licenceVerification.reasons);
   const verification = verifyWinMLOwnerTrainingApproval(evidence, trustedConfig.publicKeyPem, {
     datasetId: manifest.datasetId,
     datasetContentSha256: manifest.contentSha256,
@@ -174,6 +236,10 @@ export async function getWinMLOwnerTrainingApprovalStatus(
   const manifest = await getWinMLDatasetManifest(payload.datasetId);
   if (!manifest) return { status: "invalid" as const, approvalId, reasons: ["owner_approval_dataset_not_registered"] };
   if (manifest.permittedUse !== "training") return { status: "invalid" as const, approvalId, reasons: ["dataset_licence_not_marked_for_training"] };
+  const licenceVerification = await verifyRegisteredLicenceEvidence(
+    payload.licenceEvidenceSha256, manifest.licenceId, trustedConfig, now
+  );
+  if (!licenceVerification.valid) return { status: "invalid" as const, approvalId, reasons: licenceVerification.reasons };
   const verification = verifyWinMLOwnerTrainingApproval(approval.evidence, trustedConfig.publicKeyPem, {
     datasetId: manifest.datasetId,
     datasetContentSha256: manifest.contentSha256,
