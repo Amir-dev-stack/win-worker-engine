@@ -111,7 +111,7 @@ export type WinMLOwnerTrainingRevocationEvidenceV1 = {
 export function verifyWinMLOwnerTrainingRevocation(
   evidence: WinMLOwnerTrainingRevocationEvidenceV1,
   trustedPublicKeyPem: string,
-  expected: { approvalId: string; datasetId: string; datasetContentSha256: string; now?: string }
+  expected: { approvalId: string; datasetId: string; datasetContentSha256: string; approvedAt: string; now?: string }
 ): { valid: boolean; reasons: string[] } {
   const reasons: string[] = [];
   const payload = evidence?.payload;
@@ -122,10 +122,14 @@ export function verifyWinMLOwnerTrainingRevocation(
   if (payload?.datasetContentSha256 !== expected?.datasetContentSha256) reasons.push("owner_revocation_dataset_hash_mismatch");
   if (typeof payload?.reviewerId !== "string" || !payload.reviewerId.trim()) reasons.push("owner_revocation_reviewer_missing");
   if (typeof payload?.reason !== "string" || payload.reason.trim().length < 8) reasons.push("owner_revocation_reason_required");
+  const approvedAt = timestamp(expected?.approvedAt);
   const revokedAt = timestamp(payload?.revokedAt);
   const now = timestamp(expected?.now ?? new Date().toISOString());
-  if (revokedAt === null || now === null) reasons.push("owner_revocation_timestamp_invalid");
-  else if (revokedAt > now) reasons.push("owner_revocation_not_yet_effective");
+  if (approvedAt === null || revokedAt === null || now === null) reasons.push("owner_revocation_timestamp_invalid");
+  else {
+    if (revokedAt < approvedAt) reasons.push("owner_revocation_predates_approval");
+    if (revokedAt > now) reasons.push("owner_revocation_not_yet_effective");
+  }
   if (typeof trustedPublicKeyPem !== "string" || !trustedPublicKeyPem.trim()) reasons.push("trusted_owner_approval_public_key_missing");
   if (typeof evidence?.signatureBase64 !== "string" ||
       !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(evidence.signatureBase64)) {
