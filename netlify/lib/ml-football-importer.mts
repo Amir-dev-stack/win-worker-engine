@@ -29,6 +29,7 @@ export type WinFootballResultRow = {
   season: string;
   homeTeamId: string;
   awayTeamId: string;
+  scoreBasis: "regulation_time";
   homeGoals: number;
   awayGoals: number;
 };
@@ -118,6 +119,7 @@ export function importWinFootballResultsBytes(
     if (!Number.isSafeInteger(row.homeGoals) || row.homeGoals < 0 ||
         !Number.isSafeInteger(row.awayGoals) || row.awayGoals < 0) errors.push(prefix + "score_invalid");
     if (row.status !== "finished") errors.push(prefix + "match_not_finished");
+    if (row.scoreBasis !== "regulation_time") errors.push(prefix + "score_basis_must_be_regulation_time");
     if (nonEmpty(row.homeTeamId) && row.homeTeamId === row.awayTeamId) errors.push(prefix + "teams_must_differ");
     if (nonEmpty(row.sourceRecordId)) {
       if (recordIds.has(row.sourceRecordId)) errors.push(prefix + "duplicate_source_record_id");
@@ -130,7 +132,7 @@ export function importWinFootballResultsBytes(
     if (required.every(field => nonEmpty(row[field])) && validTimestamp(row.kickoff) &&
         Number.isSafeInteger(row.homeGoals) && row.homeGoals >= 0 &&
         Number.isSafeInteger(row.awayGoals) && row.awayGoals >= 0 &&
-        row.status === "finished" && row.homeTeamId !== row.awayTeamId) {
+        row.status === "finished" && row.scoreBasis === "regulation_time" && row.homeTeamId !== row.awayTeamId) {
       rows.push({
         sourceRecordId: row.sourceRecordId,
         eventId: row.eventId,
@@ -139,6 +141,7 @@ export function importWinFootballResultsBytes(
         season: row.season,
         homeTeamId: row.homeTeamId,
         awayTeamId: row.awayTeamId,
+        scoreBasis: "regulation_time",
         homeGoals: row.homeGoals,
         awayGoals: row.awayGoals
       });
