@@ -197,6 +197,8 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   mlDataContract.includes("WIN_ML_DATASET_MANIFEST_VERSION") &&
   mlDataContract.includes("contentSha256") &&
   mlDataContract.includes("approvedForTraining") &&
+  mlDataContract.includes("trusted_owner_approval_evidence_missing") &&
+  mlDataContract.includes("Manifest permission flags are importer-supplied metadata") &&
   mlDataContract.includes("permittedUse") &&
   mlDataContract.includes("future_feature_leakage") &&
   mlDataContract.includes("settlement_aware_label_invalid") &&
@@ -205,7 +207,7 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   mlDataContractTests.includes("1X2 labels reject arbitrary caller-supplied settlement identifiers") &&
   mlDataContractTests.includes("research-only, unapproved and date-only sources") &&
   mlDataContractTests.includes("future features, post-kickoff cutoffs and invalid labels"),
-  "Synthetic-only tests enforce source/licence provenance, explicit training permission, exact event timing, feature availability cutoffs and settlement-aware labels before any model experiment.");
+  "Synthetic-only tests enforce source/licence provenance, block caller-asserted training approval without trusted owner evidence, and validate exact event timing, feature availability cutoffs and settlement-aware labels.");
 
 
 const mlModelContract = await read("netlify/lib/ml-model-contract.mts");
