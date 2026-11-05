@@ -43,3 +43,8 @@ Chronological splitting groups equal kickoff instants and chooses two group boun
 
 
 The chronological splitter validates timezone-qualified ISO timestamps before sorting. The split-aware preflight must receive the three realized partition counts; omitting them is a blocking condition. This prevents a large total candidate count from being treated as evidence that every holdout partition is adequately sized.
+
+
+## Experiment-to-candidate compatibility gate
+
+Experiment preflight now requires the realized candidate market and feature-schema version in addition to chronological partition counts. It rejects 1X2 labels supplied to the total-goals Poisson plan, total-goals labels supplied to the 1X2 Logistic Regression plan, and feature-schema mismatches. The current candidate builder emits only 1X2 examples; therefore the total-goals plan remains intentionally unusable until a separate, settlement-line-aware total-goals candidate builder exists. Both experiment plans continue to have fitting disabled.
