@@ -50,7 +50,7 @@ test("preflight blocks undersized datasets even if training permission is approv
   const result = preflightWinMLExperiment(manifest({
     approvedForTraining: true,
     permittedUse: "training"
-  }), WIN_FOOTBALL_TOTAL_GOALS_POISSON_PLAN, 500);
+  }), WIN_FOOTBALL_TOTAL_GOALS_POISSON_PLAN, 500, { training: 300, validation: 100, test: 100 });
   assert.ok(result.reasons.includes("candidate_rows_below_experiment_minimum"));
 });
 
@@ -143,4 +143,36 @@ test("chronological splitter requires full timezone-qualified timestamps", async
   assert.throws(() => splitWinMLExamplesChronologically([
     ...examples.slice(0, 5), null
   ]), /chronological_split_example_invalid/);
+});
+
+
+test("preflight requires chronological partition counts and enforces each minimum", () => {
+  const approved = manifest({ approvedForTraining: true, permittedUse: "training" });
+  const missing = preflightWinMLExperiment(approved, WIN_FOOTBALL_1X2_LOGISTIC_PLAN, 1000);
+  assert.ok(missing.reasons.includes("chronological_partition_counts_required"));
+  const undersized = preflightWinMLExperiment(approved, WIN_FOOTBALL_1X2_LOGISTIC_PLAN, 1000, {
+    training: 800, validation: 150, test: 50
+  });
+  assert.ok(undersized.reasons.includes("experiment_test_partition_below_minimum"));
+  assert.equal(undersized.status, "blocked");
+  const mismatch = preflightWinMLExperiment(approved, WIN_FOOTBALL_1X2_LOGISTIC_PLAN, 1000, {
+    training: 700, validation: 150, test: 149
+  });
+  assert.ok(mismatch.reasons.includes("chronological_partition_total_mismatch"));
+  const ready = preflightWinMLExperiment(approved, WIN_FOOTBALL_1X2_LOGISTIC_PLAN, 1000, {
+    training: 700, validation: 150, test: 150
+  });
+  assert.equal(ready.status, "eligible_for_separate_owner_approved_fit");
+  assert.equal(ready.fittingAllowed, false);
+});
+
+test("chronological splitter accepts valid timezone-qualified timestamps", async () => {
+  const { splitWinMLExamplesChronologically } = await import("../netlify/lib/ml-football-experiment-plans.mts");
+  const examples = Array.from({ length: 9 }, (_, index) => ({
+    eventId: "valid-" + index,
+    eventStart: new Date(Date.UTC(2026, 1, index + 1, 12)).toISOString(),
+    predictionCutoff: new Date(Date.UTC(2026, 1, index + 1, 11)).toISOString()
+  }));
+  const result = splitWinMLExamplesChronologically(examples);
+  assert.equal(result.training.length + result.validation.length + result.test.length, 9);
 });
