@@ -64,6 +64,9 @@ test("owner approval registry records signed evidence once, reports it active, a
       { recorded: true, idempotent: false, approvalId: approvalPayload.approvalId });
     assert.deepEqual(await registry.registerWinMLOwnerTrainingApproval(approval, trustedConfig, "2026-11-10T12:00:00.000Z"),
       { recorded: false, idempotent: true, approvalId: approvalPayload.approvalId });
+    assert.deepEqual(await registry.registerWinMLOwnerTrainingApproval(approval, trustedConfig, "2026-11-10T13:00:00.000Z"),
+      { recorded: false, idempotent: true, approvalId: approvalPayload.approvalId },
+      "resubmitting identical signed evidence later must not conflict because the registry recording timestamp differs");
     assert.equal((await registry.getWinMLOwnerTrainingApprovalStatus(approvalPayload.approvalId, trustedConfig, "2026-11-10T12:00:00.000Z")).status, "active");
     await assert.rejects(registry.registerWinMLOwnerTrainingApproval(approval, { ...trustedConfig, reviewerId: "someone-else" }, "2026-11-10T12:00:00.000Z"),
       error => error.code === "owner_approval_reviewer_not_authorized");
@@ -86,6 +89,9 @@ test("owner approval registry records signed evidence once, reports it active, a
     assert.equal((await registry.getWinMLOwnerTrainingApprovalStatus(approvalPayload.approvalId, trustedConfig, "2026-11-12T12:00:00.000Z")).status, "revoked");
     assert.deepEqual(await registry.registerWinMLOwnerTrainingRevocation(revocation, trustedConfig, "2026-11-12T12:00:00.000Z"),
       { recorded: false, idempotent: true, approvalId: approvalPayload.approvalId });
+    assert.deepEqual(await registry.registerWinMLOwnerTrainingRevocation(revocation, trustedConfig, "2026-11-12T13:00:00.000Z"),
+      { recorded: false, idempotent: true, approvalId: approvalPayload.approvalId },
+      "resubmitting identical revocation evidence must be idempotent");
 
     assert.equal(evaluateWinMLDatasetReadiness(manifest).eligible, false,
       "recording owner approval must not silently unlock model training before explicit readiness integration");
