@@ -211,6 +211,59 @@ This is a functional inventory by entrypoint name, not yet the final route contr
 - Storage adapter work required before porting: general WIN store, OAuth store, AI budget store, raw dataset/object storage and encrypted backup archive storage. Do not replace these with independent ad-hoc writes.
 - Local Ollama integration: optional model endpoint for the persistent worker, not for public browser calls. The home PC may be offline; jobs must queue/defer without blocking core WIN availability.
 
+
+### Dashboard and MCP public contract inventory (observed)
+
+Dashboard app.js currently calls these API paths; preserve the request/response behaviour and auth expectations of every one: 
+- /api/ai-budget
+- /api/coverage
+- /api/department-smoke-test
+- /api/football-data
+- /api/health
+- /api/human-coupon-settlements
+- /api/independent-review
+- /api/learning-data-jobs
+- /api/learning-observatory
+- /api/library
+- /api/memory-capacity
+- /api/openai-key-check
+- /api/post-match-check
+- /api/predictions
+- /api/research-source-candidates
+- /api/research-status
+- /api/runs (including run-detail paths)
+- /api/simulations
+- /api/sources
+- /api/sportscore-live
+- /api/statsbomb-open-data
+- /api/tips
+
+MCP endpoint: /mcp. The current server registers 20 tools:
+- get_win_audit_overview
+- list_win_audit_records
+- get_win_audit_record
+- start_research_run
+- get_sportscore_live_matches
+- get_run
+- list_runs
+- list_human_tips
+- list_predictions
+- search_win_library
+- save_human_coupon
+- record_coupon_outcome
+- save_win_entity_profile
+- save_win_learning_note
+- validate_win_lesson
+- run_historical_coupon_simulation
+- run_strategy_backtest
+- list_tipster_sources
+- get_tipster_source_report
+- import_public_tipster_coupon
+
+The MCP tool list is scope-gated. Audit-only access must remain read-only; research scope must not gain coupon placement or bookmaker-account capabilities. Keep the existing OAuth protected-resource metadata path and WWW-Authenticate challenge behaviour.
+
+Dashboard edge-auth paths observed include /__win_dashboard_login and /__win_dashboard_logout. The Edge Function uses Web Crypto HMAC signing, an eight-hour HttpOnly/SameSite=Strict session cookie, same-origin login checks and security response headers. Preserve those controls and test login, logout, expiry, tamper rejection, CSRF resistance and protected static assets.
+
 ### Environment-variable inventory status
 
 - Confirmed runtime key names include WIN_MEMORY_BACKEND, WIN_NEON_DATABASE_URL, WIN_INTERNAL_TOKEN, OPENAI_API_KEY, OPENAI_MODEL, WIN_AI_BUDGET_APPROVED, and WIN_MEMORY_BACKUP_KEY.
