@@ -1,6 +1,7 @@
 import {
   evaluateWinMLDatasetReadiness,
   validateWinMLTrainingExample,
+  WIN_ML_FOOTBALL_1X2_SETTLEMENT_RULE_ID,
   type WinMLDatasetManifestV1,
   type WinMLTrainingExampleV1
 } from "./ml-data-contract.mts";
@@ -45,7 +46,7 @@ export function buildWinFootball1X2TrainingCandidates(args: {
 }): WinFootballTrainingBuildResult {
   if (!args?.manifest || !Array.isArray(args.rows) ||
       !args.predictionCutoffsByEventId || typeof args.predictionCutoffsByEventId !== "object" ||
-      typeof args.settlementRuleId !== "string" || !args.settlementRuleId.trim()) {
+      args.settlementRuleId !== WIN_ML_FOOTBALL_1X2_SETTLEMENT_RULE_ID) {
     throw new Error("football_training_build_arguments_invalid");
   }
   if (args.targetEventIds !== undefined && (!Array.isArray(args.targetEventIds) ||
@@ -83,10 +84,11 @@ export function buildWinFootball1X2TrainingCandidates(args: {
       rejected.push({ eventId: target.eventId, reasons: ["prediction_cutoff_missing"] });
       continue;
     }
-    if (!Number.isSafeInteger(target.homeGoals) || target.homeGoals < 0 ||
+    if (target.scoreBasis !== "regulation_time" ||
+        !Number.isSafeInteger(target.homeGoals) || target.homeGoals < 0 ||
         !Number.isSafeInteger(target.awayGoals) || target.awayGoals < 0 ||
         !target.resultAvailableAt) {
-      rejected.push({ eventId: target.eventId, reasons: ["finished_target_and_settlement_timestamp_required"] });
+      rejected.push({ eventId: target.eventId, reasons: ["regulation_time_finished_target_and_settlement_timestamp_required"] });
       continue;
     }
 
