@@ -61,6 +61,14 @@ const required = [
   "scripts/win-learning-core.test.mjs",
   "netlify/functions/learning-observatory.mts",
   "netlify/lib/learning-observatory.mts",
+  "netlify/lib/ml-data-contract.mts",
+  "netlify/lib/ml-dataset-registry.mts",
+  "netlify/lib/ml-football-importer.mts",
+  "netlify/lib/ml-football-import-workflow.mts",
+  "netlify/lib/ml-football-features.mts",
+  "netlify/lib/ml-football-training-builder.mts",
+  "netlify/lib/ml-football-experiment-plans.mts",
+  "netlify/lib/ml-model-contract.mts",
   "scripts/quality-gates.mjs"
 ];
 
