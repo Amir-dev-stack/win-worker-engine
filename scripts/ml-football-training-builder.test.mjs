@@ -45,6 +45,7 @@ test("builds labeled 1X2 candidates but keeps research-only data blocked from fi
     manifest: manifest(),
     rows,
     predictionCutoffsByEventId: { "target-match": "2026-11-01T17:00:00.000Z" },
+    targetEventIds: ["target-match"],
     settlementRuleId: "official-full-time-1x2-v1"
   });
   assert.equal(result.candidates.length, 1);
@@ -52,7 +53,7 @@ test("builds labeled 1X2 candidates but keeps research-only data blocked from fi
   assert.equal(result.candidates[0].example.sourceRecordId, "target");
   assert.equal(result.trainingReadiness.eligible, false);
   assert.equal(result.readyForTraining, false);
-  assert.equal(result.rejected.length, 2);
+  assert.equal(result.rejected.length, 0);
 });
 
 test("rejects missing prediction cutoffs and unavailable target settlements", () => {
@@ -64,8 +65,26 @@ test("rejects missing prediction cutoffs and unavailable target settlements", ()
     manifest: manifest(),
     rows,
     predictionCutoffsByEventId: {},
+    targetEventIds: ["missing-cutoff", "no-settlement"],
     settlementRuleId: "official-full-time-1x2-v1"
   });
   assert.equal(result.candidates.length, 0);
   assert.ok(result.rejected.some(item => item.reasons.includes("prediction_cutoff_missing")));
+});
+
+
+test("explicit targets use the full row set as historical evidence without rejecting non-target rows", () => {
+  const rows = [
+    row({ eventId: "history-a", sourceRecordId: "history-a", kickoff: "2026-09-01T12:00:00.000Z", resultAvailableAt: "2026-09-01T14:00:00.000Z" }),
+    row({ eventId: "history-b", sourceRecordId: "history-b", kickoff: "2026-09-10T12:00:00.000Z", resultAvailableAt: "2026-09-10T14:00:00.000Z" }),
+    row({ eventId: "target", sourceRecordId: "target", kickoff: "2026-10-01T12:00:00.000Z", resultAvailableAt: "2026-10-01T14:00:00.000Z" })
+  ];
+  const result = buildWinFootball1X2TrainingCandidates({
+    manifest: manifest(), rows,
+    predictionCutoffsByEventId: { target: "2026-10-01T11:00:00.000Z" },
+    targetEventIds: ["target"], settlementRuleId: "official-full-time-1x2-v1"
+  });
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].sourceEvidence.historicalMatchesUsedHome, 2);
+  assert.equal(result.rejected.length, 0);
 });
