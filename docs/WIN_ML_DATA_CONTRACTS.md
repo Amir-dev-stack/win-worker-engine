@@ -33,3 +33,10 @@ Next: add a reproducible, rights-cleared importer with canonical raw-byte hashin
 - `netlify/lib/ml-football-experiment-plans.mts` defines reproducible experiment configurations for 1X2 multinomial Logistic Regression and total-goals Poisson attack/defence. Both use chronological 70/15/15 splits, fixed seeds, explicit optimization settings and minimum sample counts. The stable splitter keeps equal kickoff timestamps in a single partition and records exact event IDs.
 - Preflight rejects unapproved, incompatible or undersized datasets. Fitting is explicitly disabled in both plans. No model training, external runtime, paid provider or production operation is performed.
 - Synthetic tests cover candidate labeling, cutoff/settlement requirements, research-only blocking, fixed seeds, sample-size preflight and chronological split integrity. They are not evidence of model performance.
+
+
+## Training candidate and split integrity
+
+The football candidate builder rejects duplicate event IDs and source-record IDs across the supplied evidence set before creating examples. Explicit target-event selection lets non-target rows remain historical feature evidence without being emitted as labels.
+
+Chronological splitting groups equal kickoff instants and chooses two group boundaries nearest the requested 70/15/15 row proportions. It requires at least three distinct kickoff groups and never splits a simultaneous kickoff group across partitions. The resulting split is auditable by exact event IDs and boundary timestamps; actual sample-size requirements remain enforced separately by experiment preflight.
