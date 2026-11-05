@@ -21,6 +21,7 @@ export type WinMLModelEvaluationV1 = {
   validationWindow: { from: string; to: string };
   testWindow: { from: string; to: string };
   trainedAt: string;
+  fitDataCutoff: string;
   trainingRows: number;
   validationRows: number;
   testRows: number;
@@ -104,12 +105,14 @@ export function evaluateWinMLPromotionReadiness(
   const testFrom = timestamp(evaluation?.testWindow?.from);
   const testTo = timestamp(evaluation?.testWindow?.to);
   const trainedAt = timestamp(evaluation?.trainedAt);
-  if ([trainFrom, trainTo, validationFrom, validationTo, testFrom, testTo, trainedAt].some(value => value === null)) {
+  const fitDataCutoff = timestamp(evaluation?.fitDataCutoff);
+  if ([trainFrom, trainTo, validationFrom, validationTo, testFrom, testTo, trainedAt, fitDataCutoff].some(value => value === null)) {
     reasons.push("evaluation_timestamps_invalid");
   } else {
     if (!(trainFrom! <= trainTo! && trainTo! < validationFrom! && validationFrom! <= validationTo! &&
           validationTo! < testFrom! && testFrom! <= testTo!)) reasons.push("chronological_split_invalid_or_overlapping");
-    if (trainedAt! < testTo!) reasons.push("model_training_timestamp_precedes_test_period_end");
+    if (trainedAt! < trainTo!) reasons.push("model_training_timestamp_precedes_training_data_end");
+    if (fitDataCutoff! > trainTo!) reasons.push("fit_data_cutoff_exceeds_training_window");
   }
 
   for (const [field, value, minimum] of [
