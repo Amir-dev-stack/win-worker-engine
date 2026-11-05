@@ -53,7 +53,7 @@ test("football results v2 flows through availability-aware point-in-time candida
   assert.equal(candidates.candidates.length, 1);
   assert.equal(candidates.rejected.length, 0);
   assert.equal(candidates.candidates[0].example.label.outcome, "DRAW");
-  assert.equal(candidates.candidates[0].example.features.home_points_per_match.value, 3);
+  assert.equal(candidates.candidates[0].example.features.home_last5_points_per_match.value, 3);
   assert.equal(candidates.candidates[0].example.features.home_points_per_match.availableAt,
     records[0].resultAvailableAt);
   assert.equal(candidates.readyForTraining, false);
