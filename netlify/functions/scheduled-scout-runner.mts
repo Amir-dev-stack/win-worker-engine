@@ -1,11 +1,12 @@
 import type { Config } from "@netlify/functions";
 import { authorized } from "../lib/auth.mts";
-import { get, list, put } from "../lib/store.mts";
+import { get, put } from "../lib/store.mts";
 import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
 import { runScheduledLearning } from "../lib/ai.mts";
 import { getModelLabResearchPack } from "../lib/model-lab.mts";
 import { registerAgentProposals } from "../lib/agent-evolution.mts";
 import { getAIbudgetStatus } from "../lib/ai-budget.mts";
+import { claimNextPersistentAgentTask, updatePersistentAgentTaskLease } from "../lib/agent-task-queue.mts";
 
 function extractLearningCycle(report: string): any | null {
   const open = "<WIN_LEARNING_CYCLE_JSON>";
@@ -67,25 +68,20 @@ export default async (req: Request) => {
     const reviewStarted = new Date().toISOString();
     const libraryReview = await getMandatoryLearningPack(run.brief);
     const modelLabResearchPack = await getModelLabResearchPack(run.brief);
-    const allAgentTasks = await list<any>("library/agent-task-queue", 1000);
-    const staleBefore = Date.now() - 30 * 60 * 1000;
-    for (const stale of allAgentTasks.filter(task => task.status === "running" && Date.parse(task.lastAttemptAt || "") < staleBefore)) {
-      await put("library/agent-task-queue", stale.id, { ...stale, status: Number(stale.attempts || 0) >= 3 ? "failed" : "queued", updatedAt: new Date().toISOString(), error: "Recovered stale running task after worker timeout." });
-    }
-    const pendingAgentTasks = allAgentTasks
-      .filter(task => task.status === "queued" || (task.status === "running" && Number(task.attempts || 0) < 3 && Date.parse(task.lastAttemptAt || "") < staleBefore))
-      .sort((a,b) => Date.parse(a.createdAt || "") - Date.parse(b.createdAt || ""));
-    agentTask = pendingAgentTasks[0] || null;
-    if (agentTask) {
-      agentTask = { ...agentTask, status: "running", attempts: Number(agentTask.attempts || 0) + 1, lastAttemptAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-      await put("library/agent-task-queue", agentTask.id, agentTask);
-    }
+    agentTask = await claimNextPersistentAgentTask();
     stages.push(stage("review_existing_WIN_knowledge", "completed", reviewStarted, {
       counts: libraryReview.counts, areasReviewed: libraryReview.areasReviewed
     }));
 
     const aiStarted = new Date().toISOString();
-    const brief = { ...run.brief, runId: run.id, libraryReview, modelLabResearchPack, ...(agentTask ? { agentTask } : {}) };
+    const brief = {
+      ...run.brief, runId: run.id, libraryReview, modelLabResearchPack,
+      ...(agentTask ? { agentTask: {
+        id: agentTask.id, agentId: agentTask.agentId, name: agentTask.name,
+        tier: agentTask.tier, scope: agentTask.scope, sourceRunId: agentTask.sourceRunId,
+        attempts: agentTask.attempts
+      } } : {})
+    };
     const scout = await runScheduledLearning(brief);
     const completedAt = new Date().toISOString();
     const aiCompleted = scout.status === "completed" && Boolean(scout.report?.trim());
@@ -108,10 +104,19 @@ export default async (req: Request) => {
     if (stages[1]) { stages[1].status = cycleCompleted ? "completed" : "failed"; if (!structuredLearningValid && !stages[1].error) stages[1].error = "Required WIN_LEARNING_CYCLE_JSON block is missing or invalid."; if (agentTask && !entityAgentValid) stages[1].error = "Required WIN_ENTITY_AGENT_JSON block is missing or invalid."; }
     const strategyCandidates = Array.isArray(learningData?.candidateStrategies)
       ? learningData.candidateStrategies.slice(0, 20) : [];
+    let agentTaskLeaseCurrent = !agentTask;
     if (agentTask) {
       const taskStatus = cycleCompleted ? "completed" : agentTask.attempts >= 3 ? "failed" : "queued";
-      await put("library/agent-task-queue", agentTask.id, { ...agentTask, status: taskStatus, updatedAt: completedAt, completedAt: cycleCompleted ? completedAt : null, error: cycleCompleted ? null : (scout.error || (entityAgentValid ? "learning_cycle_json_invalid" : "entity_agent_json_invalid")), reportRunId: run.id });
-      if (cycleCompleted && entityAgentData) {
+      agentTaskLeaseCurrent = await updatePersistentAgentTaskLease(agentTask.id, agentTask.leaseId, {
+        status: taskStatus,
+        completedAt: cycleCompleted ? completedAt : null,
+        leaseExpiresAt: null,
+        error: cycleCompleted ? null : (scout.error || (entityAgentValid ? "learning_cycle_json_invalid" : "entity_agent_json_invalid")),
+        reportRunId: run.id
+      });
+      if (!agentTaskLeaseCurrent && stages[1]) stages[1].error = "Agent task lease was lost or expired; persistent profile write suppressed.";
+    }
+    if (agentTask && cycleCompleted && entityAgentData && agentTaskLeaseCurrent) {
         const prior = await get<any>("library/persistent-agent-profiles", agentTask.agentId) || {};
         const facts = entityAgentData.facts.filter((x:any) => typeof x?.claim === "string" && typeof x?.sourceUrl === "string" && x.sourceUrl.startsWith("https://") && typeof x?.retrievedAt === "string" && ["high","medium","low"].includes(x?.confidence)).slice(0, 50);
         const profile = { ...prior, id: agentTask.agentId, name: agentTask.name, tier: agentTask.tier, scope: agentTask.scope,
@@ -208,7 +213,11 @@ export default async (req: Request) => {
     await put("library/learning-cycles", run.id, { ...report, execution: { ...report.execution, stages } });
   } catch (error) {
     const failedAt = new Date().toISOString();
-    if (agentTask) await put("library/agent-task-queue", agentTask.id, { ...agentTask, status: agentTask.attempts >= 3 ? "failed" : "queued", updatedAt: failedAt, error: String(error).slice(0, 500) });
+    if (agentTask) await updatePersistentAgentTaskLease(agentTask.id, agentTask.leaseId, {
+      status: agentTask.attempts >= 3 ? "failed" : "queued",
+      leaseExpiresAt: null,
+      error: String(error).slice(0, 500)
+    });
     stages.push({ name: "research_cycle", status: "failed", finishedAt: failedAt, error: String(error) });
     const failed = { ...run, status: "failed", error: String(error), learningStages: stages,
       learningReportVersion: 2, updatedAt: failedAt, completedAt: failedAt };
