@@ -106,6 +106,11 @@ test("small test sample and poor calibration are blocked", () => {
   assert.ok(result.reasons.includes("calibration_error_above_limit"));
 });
 
+test("evaluation split row counts cannot exceed the dataset", () => {
+  const result = evaluateWinMLPromotionReadiness(manifest({ rowCount: 500, labeledRowCount: 500 }), evaluation());
+  assert.ok(result.reasons.includes("evaluation_rows_exceed_dataset_rows"));
+});
+
 test("dataset hash mismatch and invalid artifact identity are rejected", () => {
   const result = evaluateWinMLPromotionReadiness(manifest(), evaluation({
     datasetContentSha256: "d".repeat(64),
