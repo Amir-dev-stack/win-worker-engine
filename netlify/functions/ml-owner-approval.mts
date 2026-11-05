@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import {
   WinMLOwnerApprovalRegistryError,
   getWinMLOwnerTrainingApprovalStatus,
+  listWinMLOwnerTrainingApprovalStatuses,
   registerWinMLOwnerTrainingApproval,
   registerWinMLOwnerTrainingRevocation
 } from "../lib/ml-owner-approval-registry.mts";
@@ -64,6 +65,10 @@ export default async (req: Request) => {
     if (body?.action === "revoke") {
       const result = await registerWinMLOwnerTrainingRevocation(body.evidence, trustedConfig);
       return response({ action: "revoke", ...result });
+    }
+    if (body?.action === "list") {
+      const result = await listWinMLOwnerTrainingApprovalStatuses(trustedConfig, body.limit);
+      return response({ action: "list", ...result });
     }
     if (body?.action === "status") {
       if (typeof body.approvalId !== "string") return response({ error: "approval_id_required" }, 400);
