@@ -218,6 +218,15 @@ export type AIRequestBudget = {
 };
 
 export async function reserveAIRequest(input: AIRequestBudget) {
+  if (!input || typeof input.id !== "string" || !input.id.trim() ||
+      typeof input.model !== "string" || !input.model.trim() ||
+      typeof input.phase !== "string" || !input.phase.trim() ||
+      !Number.isFinite(input.inputChars) || input.inputChars < 0 ||
+      !Number.isFinite(input.maxOutputTokens) || input.maxOutputTokens < 0 ||
+      !Number.isFinite(input.maxToolCalls) || input.maxToolCalls < 0 ||
+      !Number.isFinite(input.maxInputChars) || input.maxInputChars < 0) {
+    return { allowed: false as const, reason: "Invalid WIN AI budget request; request blocked before provider invocation." };
+  }
   const rates = MODEL_RATES[input.model];
   if (!rates) return { allowed: false as const, reason: "No verified price policy exists for model " + input.model + "; AI call blocked." };
   if (input.inputChars > input.maxInputChars) {
@@ -234,6 +243,13 @@ export async function reserveAIRequest(input: AIRequestBudget) {
     const estimate = roundUsd(rawEstimate * 1.15);
     const reserved = reservedTotal(ledger);
     const projectedTotal = roundUsd(ledger.spentUsd + reserved + estimate);
+
+    if (ledger.reservations[input.id]) {
+      ledger.blockedCalls += 1;
+      ledger.lastError = "Duplicate WIN AI reservation ID; request blocked to prevent reservation overwrite.";
+      await writeLedger(ledger);
+      return { allowed: false as const, reason: "This WIN AI reservation ID already exists; duplicate request blocked." };
+    }
 
     if (settings.spendingLocked) {
       ledger.blockedCalls += 1;
@@ -285,11 +301,12 @@ export async function settleAIRequest(
       if (!reservation) continue;
       let charge = reservation.amountUsd;
       let source: "usage" | "reserved_estimate" = "reserved_estimate";
-      if (!uncertain && usage && Number.isFinite(usage.input_tokens) && Number.isFinite(usage.output_tokens)) {
+      if (!uncertain && usage && Number.isFinite(usage.input_tokens) && usage.input_tokens! >= 0 &&
+          Number.isFinite(usage.output_tokens) && usage.output_tokens! >= 0) {
         const rates = MODEL_RATES[reservation.model];
         if (rates) {
           charge = roundUsd(((Number(usage.input_tokens) * rates.input + Number(usage.output_tokens) * rates.output) / 1_000_000
-            + Math.max(0, webSearchRequests) * WEB_SEARCH_USD) * 1.05);
+            + Math.max(0, Number.isFinite(webSearchRequests) ? webSearchRequests : 0) * WEB_SEARCH_USD) * 1.05);
           source = "usage";
         }
       }
