@@ -93,6 +93,15 @@ test("persistent agent task claims use atomic leases and reject stale worker wri
     assert.equal(next, null, "tasks at the retry ceiling must not be claimed");
     const exhausted = await store.get("library/agent-task-queue", "exhausted-task");
     assert.equal(exhausted.status, "failed");
+
+    await store.put("library/agent-task-queue", "malformed-attempts-task", {
+      id: "malformed-attempts-task", status: "queued", attempts: "not-a-number",
+      createdAt: "2026-11-05T11:00:00.000Z"
+    });
+    const normalized = await claimNextPersistentAgentTask(now);
+    assert.equal(normalized.id, "malformed-attempts-task");
+    assert.equal(normalized.attempts, 1, "malformed retry counters must normalize safely instead of propagating NaN");
+
     assert.ok([...memoryStore.records.keys()].every(key => key.startsWith("library/agent-task-queue/")),
       "the test may write only synthetic task-queue records");
   } finally {
