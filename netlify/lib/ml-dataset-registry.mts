@@ -19,14 +19,19 @@ export class WinMLDatasetRegistryError extends Error {
 }
 
 function canonical(value: unknown): string {
-  if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
-  if (value && typeof value === "object") {
+  if (value === undefined) return "undefined:";
+  if (value === null) return "null:";
+  if (Array.isArray(value)) return "array:[" + value.map(canonical).join(",") + "]";
+  if (typeof value === "object") {
     const record = value as Record<string, unknown>;
-    return "{" + Object.keys(record).sort().map(key =>
+    return "object:{" + Object.keys(record).sort().map(key =>
       JSON.stringify(key) + ":" + canonical(record[key])
     ).join(",") + "}";
   }
-  return JSON.stringify(value) ?? "null";
+  if (typeof value === "string") return "string:" + JSON.stringify(value);
+  if (typeof value === "number") return "number:" + String(value);
+  if (typeof value === "boolean") return "boolean:" + String(value);
+  return typeof value + ":" + String(value);
 }
 
 function validDatasetId(value: unknown): value is string {
