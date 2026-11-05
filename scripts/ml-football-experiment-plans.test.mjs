@@ -50,7 +50,7 @@ test("preflight blocks undersized datasets even if training permission is approv
   const result = preflightWinMLExperiment(manifest({
     approvedForTraining: true,
     permittedUse: "training"
-  }), WIN_FOOTBALL_TOTAL_GOALS_POISSON_PLAN, 500, { training: 300, validation: 100, test: 100 });
+  }), WIN_FOOTBALL_TOTAL_GOALS_POISSON_PLAN, 500, { training: 300, validation: 100, test: 100 }, { market: "total_goals", featureSchemaVersion: "win.football.form.v1" });
   assert.ok(result.reasons.includes("candidate_rows_below_experiment_minimum"));
 });
 
@@ -161,7 +161,7 @@ test("preflight requires chronological partition counts and enforces each minimu
   assert.ok(mismatch.reasons.includes("chronological_partition_total_mismatch"));
   const ready = preflightWinMLExperiment(approved, WIN_FOOTBALL_1X2_LOGISTIC_PLAN, 1000, {
     training: 700, validation: 150, test: 150
-  });
+  }, { market: "1x2", featureSchemaVersion: "win.football.form.v1" });
   assert.equal(ready.status, "eligible_for_separate_owner_approved_fit");
   assert.equal(ready.fittingAllowed, false);
 });
@@ -175,4 +175,25 @@ test("chronological splitter accepts valid timezone-qualified timestamps", async
   }));
   const result = splitWinMLExamplesChronologically(examples);
   assert.equal(result.training.length + result.validation.length + result.test.length, 9);
+});
+
+
+test("preflight rejects candidate labels and feature schemas that do not match the experiment", () => {
+  const approved = manifest({ approvedForTraining: true, permittedUse: "training" });
+  const partitions = { training: 700, validation: 150, test: 150 };
+  const wrongMarket = preflightWinMLExperiment(
+    approved, WIN_FOOTBALL_TOTAL_GOALS_POISSON_PLAN, 1000, partitions,
+    { market: "1x2", featureSchemaVersion: "win.football.form.v1" }
+  );
+  assert.ok(wrongMarket.reasons.includes("candidate_market_mismatch"));
+  const wrongSchema = preflightWinMLExperiment(
+    approved, WIN_FOOTBALL_1X2_LOGISTIC_PLAN, 1000, partitions,
+    { market: "1x2", featureSchemaVersion: "win.football.other.v1" }
+  );
+  assert.ok(wrongSchema.reasons.includes("candidate_feature_schema_mismatch"));
+  const unsupportedPair = preflightWinMLExperiment(
+    approved, { ...WIN_FOOTBALL_1X2_LOGISTIC_PLAN, algorithm: "poisson_attack_defence" },
+    1000, partitions, { market: "1x2", featureSchemaVersion: "win.football.form.v1" }
+  );
+  assert.ok(unsupportedPair.reasons.includes("experiment_market_algorithm_mismatch"));
 });
