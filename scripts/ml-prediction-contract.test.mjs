@@ -77,7 +77,7 @@ test("prediction cannot be emitted after kickoff or before model training", () =
   const afterKickoff = validateWinMLPrediction(manifest, evaluation, prediction({
     generatedAt: "2025-02-05T19:01:00.000Z"
   }));
-  assert.ok(afterKickoff.reasons.includes("prediction_generated_before_cutoff") === false);
+  assert.ok(afterKickoff.reasons.includes("prediction_generated_at_or_after_event_start"));
   const beforeTraining = validateWinMLPrediction(manifest, evaluation, prediction({
     generatedAt: "2025-02-01T18:00:01.000Z"
   }));
