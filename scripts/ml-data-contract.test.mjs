@@ -16,7 +16,7 @@ const example = (overrides = {}) => ({
     prior_home_goals: { value: 1.4, availableAt: "2026-11-04T20:00:00.000Z", sourceId: "results-feed" },
     home_rest_days: { value: 6, availableAt: "2026-11-05T08:00:00.000Z", sourceId: "schedule-feed" }
   },
-  label: { market: "1x2", outcome: "HOME", settlementRuleId: "football-1x2-ft-v1", settledAt: "2026-11-05T21:00:00.000Z" },
+  label: { market: "1x2", outcome: "HOME", settlementRuleId: "win.football.regulation_time_1x2.v1", settledAt: "2026-11-05T21:00:00.000Z" },
   ...overrides
 });
 test("dataset manifest validates immutable provenance and licence fields", () => {
@@ -39,7 +39,7 @@ test("point-in-time contract rejects future features, post-kickoff cutoffs and i
   assert.ok(validateWinMLTrainingExample(manifest(), example({ features: { lineup: { value: "confirmed", availableAt: "2026-11-05T18:00:00.000Z", sourceId: "lineup-feed" } } })).includes("future_feature_leakage:lineup"));
   assert.ok(validateWinMLTrainingExample(manifest(), example({ predictionCutoff: "2026-11-05T19:00:00.000Z" })).includes("prediction_cutoff_must_precede_event"));
   assert.ok(validateWinMLTrainingExample(manifest(), example({ label: { market: "1x2", outcome: "OVER", settlementRuleId: "", settledAt: "invalid" } })).includes("settlement_aware_label_invalid"));
-  assert.ok(validateWinMLTrainingExample(manifest(), example({ label: { market: "1x2", outcome: "HOME", settlementRuleId: "rule", settledAt: "2026-11-05T18:00:00.000Z" } })).includes("label_cannot_settle_before_event_start"));
+  assert.ok(validateWinMLTrainingExample(manifest(), example({ label: { market: "1x2", outcome: "HOME", settlementRuleId: "win.football.regulation_time_1x2.v1", settledAt: "2026-11-05T18:00:00.000Z" } })).includes("label_cannot_settle_before_event_start"));
 });
 test("training examples cannot cross dataset identities or use malformed feature provenance", () => {
   assert.ok(validateWinMLTrainingExample(manifest(), example({ datasetId: "different-dataset" })).includes("example_dataset_mismatch"));
@@ -50,4 +50,16 @@ test("training examples cannot cross dataset identities or use malformed feature
 test("point-in-time data rejects date-only timestamps without timezone precision", () => {
   assert.ok(validateWinMLDatasetManifest(manifest({ retrievedAt: "2026-11-05" })).includes("retrieved_at_invalid"));
   assert.ok(validateWinMLTrainingExample(manifest(), example({ predictionCutoff: "2026-11-05" })).includes("event_and_cutoff_timestamps_required"));
+});
+
+
+test("1X2 labels reject arbitrary caller-supplied settlement identifiers", () => {
+  assert.ok(validateWinMLTrainingExample(manifest(), example({
+    label: {
+      market: "1x2", outcome: "HOME",
+      settlementRuleId: "unverified-caller-rule",
+      settledAt: "2026-11-05T21:00:00.000Z"
+    }
+  })).includes("settlement_aware_label_invalid"));
+  assert.equal(WIN_ML_FOOTBALL_1X2_SETTLEMENT_RULE_ID, "win.football.regulation_time_1x2.v1");
 });
