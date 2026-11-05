@@ -14,6 +14,7 @@ type AgentRunner = (input: {
   apiKey: string;
   webSearch: boolean;
   maxTurns?: number;
+  maxOutputTokens?: number;
   signal?: AbortSignal;
 }) => Promise<WinAgentRun>;
 
