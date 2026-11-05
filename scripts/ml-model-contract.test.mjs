@@ -61,10 +61,11 @@ const evaluation = (overrides = {}) => ({
   ...overrides
 });
 
-test("valid out-of-sample evaluation qualifies only for human shadow review", () => {
+test("strong evaluation remains blocked until trusted owner approval evidence exists", () => {
   const result = evaluateWinMLPromotionReadiness(manifest(), evaluation());
-  assert.equal(result.status, "eligible_for_human_shadow_review");
-  assert.equal(result.promotionEligibleForHumanReview, true);
+  assert.equal(result.status, "blocked");
+  assert.equal(result.promotionEligibleForHumanReview, false);
+  assert.ok(result.reasons.includes("dataset_trusted_owner_approval_evidence_missing"));
   assert.equal(result.automaticPromotionAllowed, false);
   assert.equal(result.productionPromotionAllowed, false);
 });
