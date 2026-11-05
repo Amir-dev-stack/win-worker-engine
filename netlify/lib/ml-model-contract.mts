@@ -16,6 +16,10 @@ export type WinMLModelEvaluationV1 = {
   datasetContentSha256: string;
   featureSchemaVersion: string;
   featureNames: string[];
+  featureBuilderCommitSha: string;
+  trainingConfigSha256: string;
+  splitManifestSha256: string;
+  trainingRunId: string;
   targetDefinition: string;
   trainingWindow: { from: string; to: string };
   validationWindow: { from: string; to: string };
@@ -81,6 +85,7 @@ export function evaluateWinMLPromotionReadiness(
     modelVersion: evaluation?.modelVersion,
     sport: evaluation?.sport,
     featureSchemaVersion: evaluation?.featureSchemaVersion,
+    trainingRunId: evaluation?.trainingRunId,
     targetDefinition: evaluation?.targetDefinition,
     datasetId: evaluation?.datasetId,
     sourceCommitSha: evaluation?.sourceCommitSha
@@ -106,7 +111,10 @@ export function evaluateWinMLPromotionReadiness(
     reasons.push("dataset_content_hash_mismatch");
   }
   if (!sha256(evaluation?.artifactSha256)) reasons.push("model_artifact_hash_invalid");
+  if (!sha256(evaluation?.trainingConfigSha256)) reasons.push("training_config_hash_invalid");
+  if (!sha256(evaluation?.splitManifestSha256)) reasons.push("split_manifest_hash_invalid");
   if (!/^[a-f0-9]{40}$/i.test(evaluation?.sourceCommitSha || "")) reasons.push("source_commit_sha_invalid");
+  if (!/^[a-f0-9]{40}$/i.test(evaluation?.featureBuilderCommitSha || "")) reasons.push("feature_builder_commit_sha_invalid");
 
   const trainFrom = timestamp(evaluation?.trainingWindow?.from);
   const trainTo = timestamp(evaluation?.trainingWindow?.to);
