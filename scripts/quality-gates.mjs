@@ -324,6 +324,19 @@ add("WIN LLM provider execution is bounded, validates responses and never blindl
   llmExecutionTests.includes("invalid provider responses fail closed"),
   "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
 
+const mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
+const mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
+add("WIN owner training approvals require dataset-bound Ed25519 signatures and licence evidence",
+  mlOwnerApproval.includes("verifySignature") &&
+  mlOwnerApproval.includes("datasetContentSha256") &&
+  mlOwnerApproval.includes("licenceEvidenceSha256") &&
+  mlOwnerApproval.includes("trusted_owner_approval_public_key_missing") &&
+  mlOwnerApproval.includes("owner_approval_expired") &&
+  mlOwnerApproval.includes("The public key MUST come from trusted server configuration") &&
+  mlOwnerApprovalTests.includes("tampered payload, wrong signing key and malformed signature fail closed") &&
+  mlOwnerApprovalTests.includes("approval signature cannot be reused for a different dataset"),
+  "The isolated verifier binds signed approval to dataset content, licence evidence, reviewer and validity window; readiness remains separately blocked.");
+
 const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
 const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
 const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
