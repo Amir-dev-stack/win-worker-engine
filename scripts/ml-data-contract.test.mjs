@@ -26,14 +26,23 @@ test("dataset manifest validates immutable provenance and licence fields", () =>
   assert.ok(errors.includes("content_sha256_invalid"));
   assert.ok(errors.includes("required_attribution_missing"));
 });
-test("training readiness blocks research-only, unapproved and date-only sources", () => {
-  assert.equal(evaluateWinMLDatasetReadiness(manifest()).eligible, true);
+test("caller-controlled manifest flags cannot authorize training without trusted owner evidence", () => {
+  const claimedApproved = evaluateWinMLDatasetReadiness(manifest({ approvedForTraining: true, permittedUse: "training" }));
+  assert.equal(claimedApproved.eligible, false);
+  assert.ok(claimedApproved.reasons.includes("trusted_owner_approval_evidence_missing"));
   assert.ok(evaluateWinMLDatasetReadiness(manifest({ permittedUse: "research_only" })).reasons.includes("licence_does_not_permit_training"));
   assert.ok(evaluateWinMLDatasetReadiness(manifest({ approvedForTraining: false })).reasons.includes("owner_training_approval_missing"));
   assert.ok(evaluateWinMLDatasetReadiness(manifest({ eventTimePrecision: "date" })).reasons.includes("exact_event_time_required_for_point_in_time_training"));
 });
-test("point-in-time feature and settlement label contract accepts clean synthetic examples", () => {
-  assert.deepEqual(validateWinMLTrainingExample(manifest(), example()), []);
+
+test("training readiness blocks research-only, unapproved and date-only sources", () => {
+  assert.equal(evaluateWinMLDatasetReadiness(manifest()).eligible, false);
+  assert.ok(evaluateWinMLDatasetReadiness(manifest({ permittedUse: "research_only" })).reasons.includes("licence_does_not_permit_training"));
+  assert.ok(evaluateWinMLDatasetReadiness(manifest({ approvedForTraining: false })).reasons.includes("owner_training_approval_missing"));
+  assert.ok(evaluateWinMLDatasetReadiness(manifest({ eventTimePrecision: "date" })).reasons.includes("exact_event_time_required_for_point_in_time_training"));
+});
+test("clean synthetic examples pass feature validation but remain blocked from training", () => {
+  assert.ok(validateWinMLTrainingExample(manifest(), example()).includes("dataset_not_training_eligible"));
 });
 test("point-in-time contract rejects future features, post-kickoff cutoffs and invalid labels", () => {
   assert.ok(validateWinMLTrainingExample(manifest(), example({ features: { lineup: { value: "confirmed", availableAt: "2026-11-05T18:00:00.000Z", sourceId: "lineup-feed" } } })).includes("future_feature_leakage:lineup"));
