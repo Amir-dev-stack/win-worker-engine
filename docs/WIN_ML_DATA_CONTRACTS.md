@@ -55,3 +55,10 @@ Experiment preflight now requires the realized candidate market and feature-sche
 The normalized football results importer now requires an explicit `scoreBasis: "regulation_time"` declaration. It rejects missing, ambiguous or extra-time-inclusive score semantics rather than assuming that a provider's generic final score matches a 90-minute 1X2 target. The point-in-time feature builder excludes rows that do not carry the regulation-time basis, and the target builder rejects such targets.
 
 The 1X2 training label must use the fixed internal rule ID `win.football.regulation_time_1x2.v1`. This names WIN's score-based 90-minute regulation-time outcome convention; it is not a bookmaker-specific official settlement guarantee. The current normalized importer still requires the source adapter/operator to establish that the supplied score really represents regulation time. No authoritative bookmaker settlement-rule registry exists yet, and abandoned matches, void rules, extra-time-specific markets and bookmaker-specific exceptions are not modeled. Those cases must remain excluded until separately specified and verified.
+
+
+## Result-availability provenance required for point-in-time training
+
+The normalized football import schema now requires a source-recorded `resultAvailableAt` timestamp for every completed match. It must be timezone-qualified, at or after kickoff, and no later than the dataset retrieval timestamp. The importer preserves this value in each normalized row, allowing the point-in-time feature builder to include a historical result only after it was actually available.
+
+This closes a wiring gap between the importer and feature builder: imported rows previously lacked the availability field required by the feature builder, so they could not safely flow directly into candidate generation. Rows without a trustworthy source-recorded availability instant are now rejected rather than assigning kickoff, retrieval time or an inferred timestamp. The timestamp still depends on the upstream source's accuracy and must be covered by source methodology review.
