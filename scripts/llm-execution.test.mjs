@@ -41,6 +41,22 @@ test("provider timeout aborts adapter and is classified as uncertain without ret
   assert.equal(result.retryPermitted, false);
 });
 
+test("abort-aware adapter rejection preserves timeout classification", async () => {
+  const result = await executeWinLLMWithPolicy({
+    request: request({ limits: { maxOutputTokens: 200, maxToolCalls: 0, timeoutMs: 100 } }),
+    providers: [descriptor],
+    adapters: [{ providerId: "fake", execute(_input, signal) {
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => reject(new Error("adapter stopped")), { once: true });
+      });
+    } }]
+  });
+  assert.equal(result.timedOut, true);
+  assert.equal(result.response.error.category, "uncertain");
+  assert.equal(result.response.error.code, "provider_timeout_outcome_uncertain");
+  assert.equal(result.retryPermitted, false);
+});
+
 test("provider exceptions are uncertain and never trigger an automatic replay", async () => {
   const result = await run({ providerId: "fake", async execute() { throw new Error("connection lost after submit"); } });
   assert.equal(result.response.error.category, "uncertain");
@@ -57,10 +73,30 @@ test("invalid provider responses fail closed", async () => {
   assert.equal(result.retryPermitted, false);
 });
 
+test("provider cannot substitute a model outside its approved model list", async () => {
+  const result = await run({ providerId: "fake", async execute(input) {
+    return { ...success(input), model: "unapproved-model" };
+  } });
+  assert.equal(result.response.status, "failed");
+  assert.ok(result.validationErrors.includes("response_model_not_approved"));
+  assert.equal(result.retryPermitted, false);
+});
+
+test("provider cannot exceed the requested output token limit", async () => {
+  const result = await executeWinLLMWithPolicy({
+    request: request({ limits: { maxOutputTokens: 20, maxToolCalls: 0, timeoutMs: 1000 } }),
+    providers: [descriptor],
+    adapters: [{ providerId: "fake", async execute(input) {
+      return { ...success(input), usage: { inputTokens: 10, outputTokens: 21 } };
+    } }]
+  });
+  assert.equal(result.response.status, "failed");
+  assert.ok(result.validationErrors.includes("response_output_token_limit_exceeded"));
+  assert.equal(result.retryPermitted, false);
+});
+
 test("missing approved adapter does not call an arbitrary provider", async () => {
-  let called = false;
   const result = await executeWinLLMWithPolicy({ request: request(), providers: [descriptor], adapters: [] });
-  called = result.response.error.code === "approved_provider_adapter_missing";
-  assert.equal(called, true);
+  assert.equal(result.response.error.code, "approved_provider_adapter_missing");
   assert.equal(result.response.status, "failed");
 });
