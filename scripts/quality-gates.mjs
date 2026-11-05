@@ -352,6 +352,21 @@ add("WIN signed owner approvals and revocations are stored immutably and checked
   mlOwnerApprovalRegistryTests.includes("recording owner approval must not silently unlock model training"),
   "The registry uses immutable conditional writes, trusted signer configuration, dataset/hash/licence matching and explicit revocation status; readiness remains fail-closed.");
 
+const mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
+const mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
+add("WIN owner approval endpoint requires a separate protected token, trusted public key and bounded JSON body",
+  mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
+  mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") &&
+  mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_REVIEWER_ID") &&
+  mlOwnerApprovalEndpoint.includes("timingSafeEqual") &&
+  mlOwnerApprovalEndpoint.includes("MAX_BODY_BYTES") &&
+  mlOwnerApprovalEndpoint.includes('path: "/api/ml-owner-approval"') &&
+  !mlOwnerApprovalEndpoint.includes("body.publicKeyPem") &&
+  !mlOwnerApprovalEndpoint.includes("body.ownerToken") &&
+  mlOwnerApprovalEndpointTests.includes("requires protected configuration and bounded JSON requests") &&
+  mlOwnerApprovalEndpointTests.includes("separately authenticated signed approval"),
+  "The owner control plane fails closed without dedicated server-side secrets, rejects invalid credentials and oversized/non-JSON requests, and never accepts keys or tokens from request data.");
+
 const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
 const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
 const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
