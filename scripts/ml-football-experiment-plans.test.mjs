@@ -90,3 +90,38 @@ test("chronological splitter rejects invalid cutoffs and duplicate event identit
     ...examples.slice(0, 9), { ...examples[9], predictionCutoff: examples[9].eventStart }
   ]), /chronological_split_example_invalid/);
 });
+
+
+test("chronological splitter preserves heavily imbalanced kickoff groups without empty partitions", async () => {
+  const { splitWinMLExamplesChronologically } = await import("../netlify/lib/ml-football-experiment-plans.mts");
+  const sizes = [14, 1, 1, 1];
+  const examples = [];
+  let index = 0;
+  for (const [group, size] of sizes.entries()) {
+    for (let i = 0; i < size; i++) {
+      const day = group + 1;
+      examples.push({
+        eventId: "grouped-" + index++,
+        eventStart: new Date(Date.UTC(2026, 0, day, 12)).toISOString(),
+        predictionCutoff: new Date(Date.UTC(2026, 0, day, 11)).toISOString()
+      });
+    }
+  }
+  const result = splitWinMLExamplesChronologically(examples);
+  assert.ok(result.training.length > 0);
+  assert.ok(result.validation.length > 0);
+  assert.ok(result.test.length > 0);
+  assert.equal(result.training.length + result.validation.length + result.test.length, examples.length);
+  assert.ok(Date.parse(result.boundaries.trainingEndsAt) < Date.parse(result.boundaries.validationStartsAt));
+  assert.ok(Date.parse(result.boundaries.validationEndsAt) < Date.parse(result.boundaries.testStartsAt));
+});
+
+test("chronological splitter requires at least three distinct kickoff groups", async () => {
+  const { splitWinMLExamplesChronologically } = await import("../netlify/lib/ml-football-experiment-plans.mts");
+  const examples = Array.from({ length: 6 }, (_, index) => ({
+    eventId: "same-" + index,
+    eventStart: new Date(Date.UTC(2026, 0, index < 3 ? 1 : 2, 12)).toISOString(),
+    predictionCutoff: new Date(Date.UTC(2026, 0, index < 3 ? 1 : 2, 11)).toISOString()
+  }));
+  assert.throws(() => splitWinMLExamplesChronologically(examples), /chronological_split_requires_three_distinct_time_groups/);
+});
