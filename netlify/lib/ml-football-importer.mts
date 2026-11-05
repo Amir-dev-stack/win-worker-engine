@@ -25,6 +25,8 @@ export type WinFootballResultRow = {
   sourceRecordId: string;
   eventId: string;
   kickoff: string;
+  /** Provider-recorded instant the finished score became available. */
+  resultAvailableAt: string;
   competitionId: string;
   season: string;
   homeTeamId: string;
@@ -116,6 +118,9 @@ export function importWinFootballResultsBytes(
     const required = ["sourceRecordId", "eventId", "competitionId", "season", "homeTeamId", "awayTeamId"];
     for (const field of required) if (!nonEmpty(row[field])) errors.push(prefix + field + "_required");
     if (!validTimestamp(row.kickoff)) errors.push(prefix + "kickoff_invalid");
+    if (!validTimestamp(row.resultAvailableAt)) errors.push(prefix + "result_available_at_invalid");
+    else if (validTimestamp(row.kickoff) && Date.parse(row.resultAvailableAt) < Date.parse(row.kickoff)) errors.push(prefix + "result_available_before_kickoff");
+    if (validTimestamp(row.resultAvailableAt) && validTimestamp(source.retrievedAt) && Date.parse(row.resultAvailableAt) > Date.parse(source.retrievedAt)) errors.push(prefix + "result_available_after_source_retrieval");
     if (!Number.isSafeInteger(row.homeGoals) || row.homeGoals < 0 ||
         !Number.isSafeInteger(row.awayGoals) || row.awayGoals < 0) errors.push(prefix + "score_invalid");
     if (row.status !== "finished") errors.push(prefix + "match_not_finished");
@@ -130,6 +135,8 @@ export function importWinFootballResultsBytes(
       eventIds.add(row.eventId);
     }
     if (required.every(field => nonEmpty(row[field])) && validTimestamp(row.kickoff) &&
+        validTimestamp(row.resultAvailableAt) && Date.parse(row.resultAvailableAt) >= Date.parse(row.kickoff) &&
+        Date.parse(row.resultAvailableAt) <= Date.parse(source.retrievedAt) &&
         Number.isSafeInteger(row.homeGoals) && row.homeGoals >= 0 &&
         Number.isSafeInteger(row.awayGoals) && row.awayGoals >= 0 &&
         row.status === "finished" && row.scoreBasis === "regulation_time" && row.homeTeamId !== row.awayTeamId) {
@@ -137,6 +144,7 @@ export function importWinFootballResultsBytes(
         sourceRecordId: row.sourceRecordId,
         eventId: row.eventId,
         kickoff: row.kickoff,
+        resultAvailableAt: row.resultAvailableAt,
         competitionId: row.competitionId,
         season: row.season,
         homeTeamId: row.homeTeamId,
