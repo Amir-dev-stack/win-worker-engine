@@ -5,7 +5,7 @@ import {
   type WinMLDatasetManifestV1
 } from "./ml-data-contract.mts";
 
-export const WIN_FOOTBALL_RESULTS_SOURCE_SCHEMA = "win.football.results.v1" as const;
+export const WIN_FOOTBALL_RESULTS_SOURCE_SCHEMA = "win.football.results.v2" as const;
 const MAX_RAW_BYTES = 20 * 1024 * 1024;
 const MAX_ROWS = 50_000;
 
