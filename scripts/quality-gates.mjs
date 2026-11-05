@@ -215,12 +215,16 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContract.includes("out_of_sample_log_loss_not_improved") &&
   mlModelContract.includes("calibration_error_above_limit") &&
   mlModelContract.includes("evaluation_rows_exceed_dataset_rows") &&
+  mlModelContract.includes("evaluation_sport_mismatch") &&
+  mlModelContract.includes("evaluation_market_algorithm_mismatch") &&
+  mlModelContract.includes("evaluation_target_definition_market_mismatch") &&
   mlModelContract.includes("automaticPromotionAllowed: false") &&
   mlModelContract.includes("productionPromotionAllowed: false") &&
   mlModelContractTests.includes("valid out-of-sample evaluation qualifies only for human shadow review") &&
   mlModelContractTests.includes("fit-data cutoff after training window is rejected as leakage") &&
   mlModelContractTests.includes("model that does not beat baseline out of sample is blocked") &&
-  mlModelContractTests.includes("small test sample and poor calibration are blocked"),
+  mlModelContractTests.includes("small test sample and poor calibration are blocked") &&
+  mlModelContractTests.includes("evaluation rejects sport, market-algorithm and target-definition mismatches"),
   "A model artifact is blocked without an approved dataset, chronological train/validation/test separation, a fit-data cutoff, minimum sample sizes, baseline improvement and calibration. Passing never auto-promotes to production.");
 
 const llmExecution = await read("netlify/lib/llm-execution.mts");
