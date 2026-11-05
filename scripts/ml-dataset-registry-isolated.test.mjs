@@ -75,6 +75,12 @@ test("ML dataset registry is isolated, immutable, idempotent and keeps approval 
     assert.equal(repeated.registered, false);
     assert.equal(repeated.idempotent, true);
 
+    // Missing optional metadata and explicit null are distinct manifest states.
+    await assert.rejects(
+      registry.registerWinMLDatasetManifest({ ...researchOnly, attributionText: null }),
+      error => error.code === "dataset_manifest_immutable_conflict"
+    );
+
     await assert.rejects(
       registry.registerWinMLDatasetManifest(manifest({ contentSha256: "b".repeat(64) })),
       error => error.code === "dataset_manifest_immutable_conflict"
