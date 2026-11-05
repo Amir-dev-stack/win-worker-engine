@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { executeWinLLMWithPolicy } from "../netlify/lib/llm-execution.mts";
+import { executeWinLLMWithPolicy, executeWithAbortTimeout } from "../netlify/lib/llm-execution.mts";
 import { WIN_LLM_CONTRACT_VERSION } from "../netlify/lib/llm-contract.mts";
 
 const request = (overrides = {}) => ({
@@ -17,6 +17,31 @@ const success = input => ({
   latencyMs: 2, responseId: "response-1"
 });
 const run = adapter => executeWinLLMWithPolicy({ request: request(), providers: [descriptor], adapters: [adapter] });
+
+test("shared bounded executor returns promptly and aborts a timed-out operation", async () => {
+  let observedSignal;
+  const result = await executeWithAbortTimeout(signal => {
+    observedSignal = signal;
+    return new Promise(() => {});
+  }, 100);
+  assert.equal(result.timedOut, true);
+  assert.equal(observedSignal.aborted, true);
+});
+
+test("shared bounded executor returns successful values without timing out", async () => {
+  const result = await executeWithAbortTimeout(async signal => {
+    assert.equal(signal.aborted, false);
+    return "completed";
+  }, 1000);
+  assert.deepEqual(result, { timedOut: false, value: "completed" });
+});
+
+test("shared bounded executor preserves operation errors", async () => {
+  await assert.rejects(
+    executeWithAbortTimeout(async () => { throw new Error("synthetic provider failure"); }, 1000),
+    /synthetic provider failure/
+  );
+});
 
 test("execution selects approved provider and validates its response", async () => {
   const result = await run({ providerId: "fake", async execute(input) { return success(input); } });
