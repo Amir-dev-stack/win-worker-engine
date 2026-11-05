@@ -16,6 +16,7 @@ export async function runWinAgent(input: {
   apiKey: string;
   webSearch: boolean;
   maxTurns?: number;
+  maxOutputTokens?: number;
   signal?: AbortSignal;
 }): Promise<WinAgentRun> {
   // Netlify exposes secrets through Netlify.env rather than relying on process.env.
@@ -31,6 +32,7 @@ export async function runWinAgent(input: {
     name: input.name,
     instructions: input.instructions,
     model: input.model,
+    modelSettings: { store: false, maxTokens: input.maxOutputTokens },
     tools
   });
 
