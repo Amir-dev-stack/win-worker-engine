@@ -1,19 +1,21 @@
 # WIN Stage 2 — isolated contract-test plan (2026-11-05)
 
-Status: first non-production contract test added on the documentation/roadmap branch. The test is wired into the existing `npm test` script because it already runs `scripts/*.test.mjs`. It has **not yet been executed in CI or locally**; do not describe it as passing until a workflow run confirms it.
+Status: the first CI run exposed a branch-boundary mistake in the initial test. PR #11 is based on `main`, while the 23-prefix Blobs-to-Neon mirror/backup/backfill/restore implementation audited in PR #10 is still on a separate, unmerged branch. Those files are therefore not present in this PR #11 checkout. The failing test was corrected to cover only storage ownership that exists on this branch. The 23-prefix cross-file contract test is deferred until the relevant implementation is integrated into a common testable branch; it must not be made to pass by silently skipping missing files.
 
-## 1. First implemented contract test
+## 1. Implemented contract test
 
-File: `scripts/memory-prefix-ownership.test.mjs`
+File: `scripts/storage-namespace-ownership.test.mjs`
 
 It reads source files only and checks:
-- the 23-prefix structured-memory allowlist is identical in `netlify/lib/store.mts`, `neon-memory-backup.mts`, `memory-backfill.mts` and `memory-restore.mts`;
-- there are no duplicate entries;
-- every entry is an explicit `library/*/` collection prefix;
-- the allowlist does not silently expand into excluded model-lab/research or separate AI-budget/OAuth collections;
-- AI budget and OAuth keep their separate direct storage namespace responsibilities.
+- AI budget uses its direct `win-engine` storage namespace and retains lock/ledger responsibilities;
+- OAuth uses its separate direct `win-oauth` namespace;
+- OAuth does not depend on the structured-memory mirror allowlist or general `win-engine` namespace.
 
-This test deliberately does not modify any runtime file, allowlist, storage provider, database or stored record.
+This test deliberately does not modify any runtime file, storage provider, database or stored record.
+
+Deferred until the PR #9/#10 storage implementation is integrated:
+- compare the 23-prefix structured-memory allowlist across `netlify/lib/store.mts`, `neon-memory-backup.mts`, `memory-backfill.mts` and `memory-restore.mts`;
+- assert no duplicates, explicit `library/*/` boundaries, and exclusion of model-lab/research and separate AI-budget/OAuth collections.
 
 ## 2. Next contract tests — priority order
 
@@ -82,21 +84,17 @@ A cron expression in source is not evidence of active production configuration. 
 ## 3. Execution policy
 
 - Run tests in CI or a local isolated environment with no production credentials.
-- Never set `WIN_STORE_TEST_MODE=1` in a production deployment.
-- Test fixtures must use synthetic IDs, synthetic teams/events and fake provider responses.
-- No network request should be made unless explicitly stubbed to a known test host.
-- No production Blobs, Neon, bookmaker, paid AI, or external sports API calls.
-- No automatic deploy, merge, migration, import, schedule modification or secret change.
-- If the isolation boundary cannot be proven, mark the test blocked rather than attempting it.
+- Never set `WIN_STORE_TEST_MODE=1` in a production process.
+- Do not change production storage routing, allowlists, schedules, or data in this stage.
+- Keep PR #11 draft and unmerged; do not merge PR #8, #9 or #10 as part of this work.
+- Record skipped tests and unavailable integration dependencies explicitly; do not report them as passed.
 
-## 4. Stage 2 exit criteria
+## 4. Exit criteria
 
-Stage 2 is complete only when:
-- the memory ownership manifest and tests agree with all current readers/writers;
-- result submission passes concurrency, retry and injected partial-failure tests;
-- storage adapter semantics are protected by deterministic contract tests;
-- backup/restore passes a synthetic round trip and corruption tests;
-- API/job route manifest is complete and authorization is reviewed;
-- CI reports the tests as passed, with skipped checks clearly distinguished from passed checks.
-
-Only then should a storage or result-pipeline refactor be designed. Any production migration or routing change remains a separate approval gate.
+Stage 2 is not complete until:
+- the storage ownership manifest matches the implementation actually present in the integrated branch;
+- results concurrency, retry and partial-failure cases are tested;
+- storage adapter conditional-write and pagination contracts are tested;
+- backup/restore synthetic round trip is tested;
+- API/job route and security inventory is complete;
+- CI passes, with skips and external limitations explicitly identified.
