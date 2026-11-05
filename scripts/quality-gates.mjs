@@ -200,6 +200,9 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   mlDataContract.includes("permittedUse") &&
   mlDataContract.includes("future_feature_leakage") &&
   mlDataContract.includes("settlement_aware_label_invalid") &&
+  mlDataContract.includes("WIN_ML_FOOTBALL_1X2_SETTLEMENT_RULE_ID") &&
+  mlDataContract.includes("settlementRuleValid") &&
+  mlDataContractTests.includes("1X2 labels reject arbitrary caller-supplied settlement identifiers") &&
   mlDataContractTests.includes("research-only, unapproved and date-only sources") &&
   mlDataContractTests.includes("future features, post-kickoff cutoffs and invalid labels"),
   "Synthetic-only tests enforce source/licence provenance, explicit training permission, exact event timing, feature availability cutoffs and settlement-aware labels before any model experiment.");
@@ -322,12 +325,16 @@ const mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs"
 add("WIN football point-in-time features reject duplicate identities and future or unavailable results",
   mlFootballFeatures.includes("historical_row_identity_duplicate_or_invalid") &&
   mlFootballFeatures.includes("resultAvailableAt") &&
+  mlFootballFeatures.includes('row?.scoreBasis === "regulation_time"') &&
+  mlFootballFeaturesTests.includes("point-in-time features exclude results with extra-time score semantics") &&
   mlFootballFeatures.includes("rowKickoff >= cutoff") &&
   mlFootballFeaturesTests.includes("point-in-time feature builder rejects duplicate or missing historical identities"),
   "Historical features require unique source/event identities and source-recorded result availability before the prediction cutoff.");
 add("WIN 1X2 candidate labels preserve settlement and target identity",
   mlFootballTraining.includes("buildWinFootball1X2TrainingCandidates") &&
   mlFootballTraining.includes("resultAvailableAt") &&
+  mlFootballTraining.includes("WIN_ML_FOOTBALL_1X2_SETTLEMENT_RULE_ID") &&
+  mlFootballTraining.includes('target.scoreBasis !== "regulation_time"') &&
   mlFootballTraining.includes("football_training_input_identity_duplicate_or_invalid") &&
   mlFootballTraining.includes('market: "1x2"') &&
   mlFootballTrainingTests.includes("rejects duplicate event and source identities"),
@@ -345,6 +352,8 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImporter.includes("MAX_RAW_BYTES") &&
   mlFootballImporter.includes("MAX_ROWS") &&
   mlFootballImporter.includes("createHash") &&
+  mlFootballImporter.includes('row.scoreBasis !== "regulation_time"') &&
+  mlFootballImportTests.includes("offline importer rejects ambiguous or extra-time score bases") &&
   mlFootballImporter.includes("approvedForTraining: false") &&
   mlFootballImporter.includes('permittedUse: "research_only"') &&
   mlFootballImportTests.includes("permittedUse, \"research_only\""),
