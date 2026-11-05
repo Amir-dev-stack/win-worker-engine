@@ -9,7 +9,7 @@ import {
   verifyWinMLLicenceEvidence,
   type WinMLSignedLicenceEvidenceV1
 } from "./ml-licence-evidence.mts";
-import { evaluateWinMLDatasetReadiness } from "./ml-data-contract.mts";
+import { validateWinMLDatasetManifest } from "./ml-data-contract.mts";
 import { getWinMLDatasetManifest } from "./ml-dataset-registry.mts";
 import { canonicalizeWinMLProvenance } from "./ml-provenance.mts";
 import { get, list, putIfNew } from "./store.mts";
@@ -218,7 +218,55 @@ export async function listWinMLOwnerTrainingApprovalStatuses(
   return { count: statuses.length, limit: boundedLimit, approvals: statuses };
 }
 
-/** Read-only status check; readiness remains blocked until a later explicit integration. */
+/**
+ * Composite, read-only readiness audit. It verifies the registered dataset,
+ * its signed time-bounded licence review, the owner approval and revocation
+ * state as one chain. This is an evidence-readiness result only: it never
+ * enables fitting, artifact promotion, production predictions or betting.
+ */
+export async function evaluateWinMLTrainingReadiness(
+  datasetId: string,
+  approvalId: string,
+  trustedConfig: TrustedOwnerConfig,
+  now = new Date().toISOString()
+) {
+  if (!configValid(trustedConfig)) registryError("trusted_owner_approval_configuration_missing");
+  const reasons: string[] = [];
+  const manifest = await getWinMLDatasetManifest(datasetId);
+  if (!manifest) {
+    reasons.push("dataset_not_registered");
+    return { evidenceReady: false, reasons, datasetId, approvalId, modelFittingAllowed: false as const,
+      productionPromotionAllowed: false as const, automatedBettingAllowed: false as const };
+  }
+  reasons.push(...validateWinMLDatasetManifest(manifest));
+  if (manifest.permittedUse !== "training") reasons.push("licence_does_not_permit_training");
+  if (manifest.eventTimePrecision !== "instant") reasons.push("exact_event_time_required_for_point_in_time_training");
+  if (manifest.rowCount < 1 || manifest.labeledRowCount < 1) reasons.push("dataset_has_no_labeled_rows");
+  if (!validId(approvalId)) reasons.push("owner_approval_id_invalid");
+  else {
+    const status = await getWinMLOwnerTrainingApprovalStatus(approvalId, trustedConfig, now);
+    if (status.status !== "active") reasons.push("owner_approval_not_active:" + status.status);
+    else {
+      if (status.datasetId !== manifest.datasetId) reasons.push("owner_approval_dataset_mismatch");
+      if (status.datasetContentSha256 !== manifest.contentSha256) reasons.push("owner_approval_dataset_hash_mismatch");
+      if (status.licenceId !== manifest.licenceId) reasons.push("owner_approval_licence_mismatch");
+    }
+  }
+  const uniqueReasons = [...new Set(reasons)];
+  return {
+    evidenceReady: uniqueReasons.length === 0,
+    reasons: uniqueReasons,
+    datasetId: manifest.datasetId,
+    approvalId,
+    licenceId: manifest.licenceId,
+    datasetContentSha256: manifest.contentSha256,
+    modelFittingAllowed: false as const,
+    productionPromotionAllowed: false as const,
+    automatedBettingAllowed: false as const
+  };
+}
+
+/** Read-only status check; every owner approval is revalidated against signed licence evidence. */
 export async function getWinMLOwnerTrainingApprovalStatus(
   approvalId: string,
   trustedConfig: TrustedOwnerConfig,
