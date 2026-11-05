@@ -250,6 +250,13 @@ add("WIN ML predictions are provenance-bound to an evaluated model and shadow-on
   "LLM research and market benchmarks cannot be represented as WIN ML output; the 1X2 envelope must match an eligible artifact/dataset and remains shadow-only.");
 const mlProvenance = await read("netlify/lib/ml-provenance.mts");
 const mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
+const mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
+add("Football results v2 imports preserve availability into point-in-time training candidates",
+  mlFootballImportTrainingIntegration.includes("football results v2 flows through availability-aware point-in-time candidate construction") &&
+  mlFootballImportTrainingIntegration.includes("resultAvailableAt") &&
+  mlFootballImportTrainingIntegration.includes("home_last5_points_per_match") &&
+  mlFootballImportTrainingIntegration.includes("owner_training_approval_missing"),
+  "The importer output is exercised end-to-end through point-in-time feature construction while research-only dataset approval continues to block fitting.");
 add("WIN ML training and inference provenance uses deterministic canonical hashes",
   mlProvenance.includes("canonicalizeWinMLProvenance") &&
   mlProvenance.includes("hashWinMLTrainingConfig") &&
