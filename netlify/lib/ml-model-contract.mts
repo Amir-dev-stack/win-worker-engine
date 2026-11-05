@@ -88,6 +88,15 @@ export function evaluateWinMLPromotionReadiness(
 
   if (!["1x2", "total_goals"].includes(evaluation?.market)) reasons.push("market_invalid");
   if (!["logistic_regression", "poisson_attack_defence", "catboost"].includes(evaluation?.algorithm)) reasons.push("algorithm_invalid");
+  if (evaluation?.sport !== manifest?.sport) reasons.push("evaluation_sport_mismatch");
+  if ((evaluation?.market === "1x2" && !["logistic_regression", "catboost"].includes(evaluation?.algorithm)) ||
+      (evaluation?.market === "total_goals" && !["poisson_attack_defence", "catboost"].includes(evaluation?.algorithm))) {
+    reasons.push("evaluation_market_algorithm_mismatch");
+  }
+  if ((evaluation?.market === "1x2" && !/1x2/i.test(evaluation?.targetDefinition || "")) ||
+      (evaluation?.market === "total_goals" && !/total.?goals/i.test(evaluation?.targetDefinition || ""))) {
+    reasons.push("evaluation_target_definition_market_mismatch");
+  }
   if (!Array.isArray(evaluation?.featureNames) || evaluation.featureNames.length === 0 ||
       evaluation.featureNames.some(name => !nonEmpty(name)) ||
       new Set(evaluation.featureNames).size !== evaluation.featureNames.length) reasons.push("feature_names_invalid");
@@ -113,6 +122,7 @@ export function evaluateWinMLPromotionReadiness(
     if (!(trainFrom! <= trainTo! && trainTo! < validationFrom! && validationFrom! <= validationTo! &&
           validationTo! < testFrom! && testFrom! <= testTo!)) reasons.push("chronological_split_invalid_or_overlapping");
     if (trainedAt! < trainTo!) reasons.push("model_training_timestamp_precedes_training_data_end");
+    if (trainedAt! > testFrom!) reasons.push("model_not_frozen_before_test_window");
     if (fitDataCutoff! > trainTo!) reasons.push("fit_data_cutoff_exceeds_training_window");
   }
 
