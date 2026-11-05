@@ -277,6 +277,45 @@ add("WIN LLM provider execution is bounded, validates responses and never blindl
   llmExecutionTests.includes("invalid provider responses fail closed"),
   "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
 
+const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
+const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
+const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
+const mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
+const mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
+const mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
+const mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
+const mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
+add("WIN football point-in-time features reject duplicate identities and future or unavailable results",
+  mlFootballFeatures.includes("historical_row_identity_duplicate_or_invalid") &&
+  mlFootballFeatures.includes("resultAvailableAt") &&
+  mlFootballFeatures.includes("rowKickoff >= cutoff") &&
+  mlFootballFeaturesTests.includes("duplicate historical event and source identities"),
+  "Historical features require unique source/event identities and source-recorded result availability before the prediction cutoff.");
+add("WIN 1X2 candidate labels preserve settlement and target identity",
+  mlFootballTraining.includes("buildWinFootball1X2TrainingCandidates") &&
+  mlFootballTraining.includes("resultAvailableAt") &&
+  mlFootballTraining.includes("football_training_input_identity_duplicate_or_invalid") &&
+  mlFootballTraining.includes('market: "1x2"') &&
+  mlFootballTrainingTests.includes("rejects duplicate event and source identities"),
+  "Candidate labels are built only for explicit 1X2 targets with event-specific cutoffs and settlement timestamps; research-only datasets remain blocked from fitting.");
+add("WIN experiment preflight requires compatible labels, feature schema and adequate chronological partitions",
+  mlFootballExperiments.includes("candidate_market_mismatch") &&
+  mlFootballExperiments.includes("candidate_feature_schema_mismatch") &&
+  mlFootballExperiments.includes("experiment_market_algorithm_mismatch") &&
+  mlFootballExperiments.includes("chronological_partition_counts_required") &&
+  mlFootballExperiments.includes("chronological_partition_total_mismatch") &&
+  mlFootballExperimentTests.includes("preflight rejects candidate labels and feature schemas") &&
+  mlFootballExperimentTests.includes("preflight requires chronological partition counts"),
+  "An experiment cannot proceed on incompatible labels/features or an undersized/mismatched train-validation-test split; fitting remains disabled.");
+add("WIN football results importer is offline, bounded and research-only by default",
+  mlFootballImporter.includes("MAX_RAW_BYTES") &&
+  mlFootballImporter.includes("MAX_ROWS") &&
+  mlFootballImporter.includes("createHash") &&
+  mlFootballImporter.includes("approvedForTraining: false") &&
+  mlFootballImporter.includes('permittedUse: "research_only"') &&
+  mlFootballImportTests.includes("research-only"),
+  "The importer hashes caller-supplied bytes, applies strict row and payload bounds, performs no network fetch, and never grants training permission.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
