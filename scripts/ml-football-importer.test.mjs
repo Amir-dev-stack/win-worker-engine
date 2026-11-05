@@ -20,6 +20,7 @@ const source = {
 const payload = (records = [{
   sourceRecordId: "row-1", eventId: "match-1",
   kickoff: "2026-10-01T18:00:00.000Z",
+  resultAvailableAt: "2026-10-01T20:00:00.000Z",
   competitionId: "synthetic-league", season: "2025-2026",
   homeTeamId: "team-a", awayTeamId: "team-b",
   homeGoals: 2, awayGoals: 1, scoreBasis: "regulation_time", status: "finished"
@@ -29,8 +30,8 @@ const payload = (records = [{
 
 test("offline football importer hashes exact source bytes and sorts normalized results", () => {
   const bytes = payload([
-    { sourceRecordId: "row-b", eventId: "match-b", kickoff: "2026-10-02T18:00:00.000Z", competitionId: "league", season: "2025-2026", homeTeamId: "a", awayTeamId: "b", homeGoals: 0, awayGoals: 0, scoreBasis: "regulation_time", status: "finished" },
-    { sourceRecordId: "row-a", eventId: "match-a", kickoff: "2026-10-01T18:00:00.000Z", competitionId: "league", season: "2025-2026", homeTeamId: "c", awayTeamId: "d", homeGoals: 3, awayGoals: 1, scoreBasis: "regulation_time", status: "finished" }
+    { sourceRecordId: "row-b", eventId: "match-b", kickoff: "2026-10-02T18:00:00.000Z", resultAvailableAt: "2026-10-02T20:00:00.000Z", competitionId: "league", season: "2025-2026", homeTeamId: "a", awayTeamId: "b", homeGoals: 0, awayGoals: 0, scoreBasis: "regulation_time", status: "finished" },
+    { sourceRecordId: "row-a", eventId: "match-a", kickoff: "2026-10-01T18:00:00.000Z", resultAvailableAt: "2026-10-01T20:00:00.000Z", competitionId: "league", season: "2025-2026", homeTeamId: "c", awayTeamId: "d", homeGoals: 3, awayGoals: 1, scoreBasis: "regulation_time", status: "finished" }
   ]);
   const result = importWinFootballResultsBytes(bytes, source);
   assert.equal(result.manifest.contentSha256, createHash("sha256").update(bytes).digest("hex"));
@@ -53,6 +54,7 @@ test("offline importer rejects malformed JSON, unsupported schemas and empty pay
 test("offline importer rejects duplicate IDs, invalid scores, unplayed rows and date-only kickoffs", () => {
   const valid = {
     sourceRecordId: "row-1", eventId: "match-1", kickoff: "2026-10-01T18:00:00.000Z",
+    resultAvailableAt: "2026-10-01T20:00:00.000Z",
     competitionId: "league", season: "2025-2026", homeTeamId: "a", awayTeamId: "b",
     homeGoals: 1, awayGoals: 0, scoreBasis: "regulation_time", status: "finished"
   };
@@ -83,4 +85,22 @@ test("offline importer rejects ambiguous or extra-time score bases", () => {
   assert.throws(() => importWinFootballResultsBytes(payload([valid]), source),
     error => error.code === "football_import_rows_invalid" &&
       error.details.includes("record_0:score_basis_must_be_regulation_time"));
+});
+
+
+test("offline importer requires source-recorded result availability after kickoff and before retrieval", () => {
+  const valid = {
+    sourceRecordId: "row-1", eventId: "match-1", kickoff: "2026-10-01T18:00:00.000Z",
+    resultAvailableAt: "2026-10-01T20:00:00.000Z",
+    competitionId: "league", season: "2025-2026", homeTeamId: "a", awayTeamId: "b",
+    homeGoals: 1, awayGoals: 0, scoreBasis: "regulation_time", status: "finished"
+  };
+  const imported = importWinFootballResultsBytes(payload([valid]), source);
+  assert.equal(imported.rows[0].resultAvailableAt, valid.resultAvailableAt);
+  assert.throws(() => importWinFootballResultsBytes(payload([{ ...valid, resultAvailableAt: undefined }]), source),
+    error => error.details.includes("record_0:result_available_at_invalid"));
+  assert.throws(() => importWinFootballResultsBytes(payload([{ ...valid, resultAvailableAt: "2026-10-01T17:00:00.000Z" }]), source),
+    error => error.details.includes("record_0:result_available_before_kickoff"));
+  assert.throws(() => importWinFootballResultsBytes(payload([{ ...valid, resultAvailableAt: "2026-11-06T00:00:00.000Z" }]), source),
+    error => error.details.includes("record_0:result_available_after_source_retrieval"));
 });
