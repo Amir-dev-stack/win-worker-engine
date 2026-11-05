@@ -213,7 +213,13 @@ add("WIN LLM provider execution is bounded, validates responses and never blindl
   llmExecution.includes("validateWinLLMResponse") &&
   llmExecution.includes("retryPermitted") &&
   llmExecution.includes("controller.abort") &&
+  llmExecution.includes("response_model_not_approved") &&
+  llmExecution.includes("response_output_token_limit_exceeded") &&
+  llmExecution.includes("timedOut ?") &&
   llmExecutionTests.includes("timeout aborts adapter") &&
+  llmExecutionTests.includes("abort-aware adapter rejection preserves timeout classification") &&
+  llmExecutionTests.includes("provider cannot substitute a model") &&
+  llmExecutionTests.includes("provider cannot exceed the requested output token limit") &&
   llmExecutionTests.includes("never trigger an automatic replay") &&
   llmExecutionTests.includes("invalid provider responses fail closed"),
   "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
