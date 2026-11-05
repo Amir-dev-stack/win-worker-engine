@@ -125,7 +125,6 @@ export default async (req: Request) => {
           lastRunId: run.id, lastTaskId: agentTask.id, updatedAt: completedAt, validationStatus: "research_only_unvalidated", promoted: false };
         await put("library/persistent-agent-profiles", agentTask.agentId, profile);
         await put("library/agent-observations", agentTask.id, { id: agentTask.id, agentId: agentTask.agentId, runId: run.id, tier: agentTask.tier, scope: agentTask.scope, facts, unknowns: profile.unknowns, sourceRefs: facts.map((x:any)=>x.sourceUrl), createdAt: completedAt, origin: "independent_entity_agent", validated: false, lab: "research" });
-      }
     }
     const completed = {
       ...run, brief, status: cycleCompleted ? "completed" : "failed",
