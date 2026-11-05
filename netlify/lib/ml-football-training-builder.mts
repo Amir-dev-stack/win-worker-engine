@@ -53,8 +53,19 @@ export function buildWinFootball1X2TrainingCandidates(args: {
       new Set(args.targetEventIds).size !== args.targetEventIds.length)) {
     throw new Error("football_training_target_event_ids_invalid");
   }
+  const seenEvents = new Set<string>();
+  const seenSources = new Set<string>();
+  for (const row of args.rows) {
+    if (!row || typeof row.eventId !== "string" || !row.eventId.trim() ||
+        typeof row.sourceRecordId !== "string" || !row.sourceRecordId.trim() ||
+        seenEvents.has(row.eventId) || seenSources.has(row.sourceRecordId)) {
+      throw new Error("football_training_input_identity_duplicate_or_invalid");
+    }
+    seenEvents.add(row.eventId);
+    seenSources.add(row.sourceRecordId);
+  }
   const targetIds = args.targetEventIds ? new Set(args.targetEventIds) : null;
-  const targetRows = targetIds ? args.rows.filter(row => targetIds.has(row?.eventId)) : args.rows;
+  const targetRows = targetIds ? args.rows.filter(row => targetIds.has(row.eventId)) : args.rows;
   if (targetIds && targetRows.length !== targetIds.size) {
     throw new Error("football_training_target_event_not_found");
   }
