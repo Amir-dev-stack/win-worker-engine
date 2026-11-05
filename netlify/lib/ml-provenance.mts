@@ -17,7 +17,23 @@ export function canonicalizeWinMLProvenance(value: unknown): string {
     if (Array.isArray(item)) {
       if (active.has(item)) throw new Error("ml_provenance_circular_reference");
       active.add(item);
-      const result = "[" + item.map(encode).join(",") + "]";
+      const ownKeys = Reflect.ownKeys(item);
+      if (ownKeys.some(key => typeof key === "symbol" ||
+          (key !== "length" && !/^(0|[1-9]\\d*)$/.test(key)))) {
+        throw new Error("ml_provenance_array_extra_properties");
+      }
+      const values: string[] = [];
+      for (let index = 0; index < item.length; index++) {
+        if (!Object.prototype.hasOwnProperty.call(item, index)) {
+          throw new Error("ml_provenance_sparse_array");
+        }
+        const descriptor = Object.getOwnPropertyDescriptor(item, String(index));
+        if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) {
+          throw new Error("ml_provenance_array_accessors_unsupported");
+        }
+        values.push(encode(descriptor.value));
+      }
+      const result = "[" + values.join(",") + "]";
       active.delete(item);
       return result;
     }
@@ -29,10 +45,19 @@ export function canonicalizeWinMLProvenance(value: unknown): string {
       }
       if (active.has(object)) throw new Error("ml_provenance_circular_reference");
       active.add(object);
-      const keys = Object.keys(object).sort();
+      const ownKeys = Reflect.ownKeys(object);
+      if (ownKeys.some(key => typeof key === "symbol")) {
+        throw new Error("ml_provenance_symbol_key_unsupported");
+      }
+      const keys = (ownKeys as string[]).sort();
       const result = "{" + keys.map(key => {
-        if (object[key] === undefined) throw new Error("ml_provenance_undefined_value");
-        return JSON.stringify(key) + ":" + encode(object[key]);
+        const descriptor = Object.getOwnPropertyDescriptor(object, key);
+        if (!descriptor || !descriptor.enumerable) {
+          throw new Error("ml_provenance_non_enumerable_property");
+        }
+        if (!("value" in descriptor)) throw new Error("ml_provenance_accessors_unsupported");
+        if (descriptor.value === undefined) throw new Error("ml_provenance_undefined_value");
+        return JSON.stringify(key) + ":" + encode(descriptor.value);
       }).join(",") + "}";
       active.delete(object);
       return result;
