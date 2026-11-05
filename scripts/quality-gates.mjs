@@ -207,6 +207,16 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
 
 const llmExecution = await read("netlify/lib/llm-execution.mts");
 const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
+const agentsSdk = await read("netlify/lib/agents-sdk.mts");
+add("WIN production OpenAI agent calls have bounded cooperative cancellation",
+  ai.includes("new AbortController()") &&
+  ai.includes("90_000") &&
+  ai.includes("controller.abort") &&
+  ai.includes("signal: controller.signal") &&
+  ai.includes("settleAIRequest(budgetId, null, 0, true)") &&
+  agentsSdk.includes("signal?: AbortSignal") &&
+  agentsSdk.includes("signal: input.signal"),
+  "The existing production Agents SDK path receives a 90-second abort signal; interrupted calls are settled conservatively as uncertain rather than replayed.");
 add("WIN LLM provider execution is bounded, validates responses and never blindly retries uncertain outcomes",
   llmExecution.includes("AbortController") &&
   llmExecution.includes("provider_timeout_outcome_uncertain") &&
