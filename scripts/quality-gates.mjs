@@ -245,6 +245,18 @@ add("WIN ML predictions are provenance-bound to an evaluated model and shadow-on
   mlPredictionTests.includes("prediction provenance must match the evaluated model and dataset") &&
   mlPredictionTests.includes("invalid or unnormalized probability vectors are rejected"),
   "LLM research and market benchmarks cannot be represented as WIN ML output; the 1X2 envelope must match an eligible artifact/dataset and remains shadow-only.");
+const mlProvenance = await read("netlify/lib/ml-provenance.mts");
+const mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
+add("WIN ML training and inference provenance uses deterministic canonical hashes",
+  mlProvenance.includes("canonicalizeWinMLProvenance") &&
+  mlProvenance.includes("hashWinMLTrainingConfig") &&
+  mlProvenance.includes("hashWinMLSplitManifest") &&
+  mlProvenance.includes("hashWinMLFeatureVector") &&
+  mlProvenance.includes("ml_provenance_non_finite_number") &&
+  mlProvenanceTests.includes("canonical provenance hashes ignore object insertion order") &&
+  mlProvenanceTests.includes("canonical provenance hashes preserve array order") &&
+  mlProvenanceTests.includes("unsupported, undefined, non-finite and cyclic values fail closed"),
+  "Training configuration, exact split membership and feature vectors can be hashed reproducibly; ambiguous values and cyclic structures are rejected.");
 const llmExecution = await read("netlify/lib/llm-execution.mts");
 const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
 const agentsSdk = await read("netlify/lib/agents-sdk.mts");
