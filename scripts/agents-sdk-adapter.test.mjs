@@ -48,6 +48,8 @@ test("OpenAI adapter maps Agents SDK output, citations, usage and cancellation s
   assert.equal(received.signal, controller.signal);
   assert.equal(received.apiKey, "synthetic-test-key");
   assert.equal(received.webSearch, true);
+  assert.equal(received.maxOutputTokens, 200);
+  assert.equal(received.maxTurns, 2);
   assert.equal(response.status, "completed");
   assert.equal(response.providerId, "openai");
   assert.equal(response.model, "approved-model");
