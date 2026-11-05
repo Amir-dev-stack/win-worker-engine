@@ -1,9 +1,8 @@
-import { runWinAgent } from "./agents-sdk.mts";
 import { executeWinLLMWithPolicy } from "./llm-execution.mts";
 import { createOpenAIWinLLMAdapter } from "./agents-sdk-adapter.mts";
 import { WIN_LLM_CONTRACT_VERSION } from "./llm-contract.mts";
 import { WIN_DEPARTMENTS, buildWorkerNetwork } from "./worker-org.mts";
-import { reserveAIRequest, settleAIRequest, releaseAIRequest } from "./ai-budget.mts";
+import { reserveAIRequest, settleAIRequest } from "./ai-budget.mts";
 
 export type Citation = { title?: string; url?: string; snippet?: string };
 export type WorkerReport = {
@@ -197,34 +196,6 @@ function promptJson(value: any, maxChars: number): string {
   const serialized = JSON.stringify(compactPromptValue(value, 0, 1));
   if (serialized.length <= maxChars) return serialized;
   throw new Error("WIN request packet cannot fit its safe size after compaction (" + serialized.length + " characters; target " + maxChars + "). Split the work instead of dropping required evidence.");
-}
-
-function extractText(data: any): string {
-  if (typeof data.output_text === "string") return data.output_text;
-  const chunks: string[] = [];
-  for (const item of data.output ?? []) for (const part of item.content ?? []) {
-    if (part.type === "output_text" && part.text) chunks.push(part.text);
-  }
-  return chunks.join("\n");
-}
-
-function extractCitations(data: any): Citation[] {
-  const found: Citation[] = [];
-  for (const item of data.output ?? []) for (const part of item.content ?? []) {
-    for (const a of part.annotations ?? []) if (a.type === "url_citation" && a.url) {
-      found.push({ title: a.title, url: a.url, snippet: a.snippet });
-    }
-  }
-  for (const item of data.output ?? []) {
-    if (item.type === "web_search_call") {
-      for (const source of item.action?.sources ?? item.results ?? []) {
-        if (source.url || source.source_website_url) {
-          found.push({ title: source.title, url: source.url || source.source_website_url, snippet: source.snippet });
-        }
-      }
-    }
-  }
-  return [...new Map(found.filter(x => x.url).map(x => [x.url, x])).values()];
 }
 
 async function askWorker(
