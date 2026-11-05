@@ -107,11 +107,20 @@ test("AI budget controller enforces isolated reservations, settlement and owner 
     assert.equal(negativeUsageSettlement.source, "reserved_estimate",
       "invalid negative usage must fall back to the conservative reservation estimate");
 
-    const limitTrigger = await budget.reserveAIRequest({
-      id: "trip-operating-stop", model: "gpt-6.1-sol", phase: "test",
-      inputChars: 0, maxOutputTokens: 2_000_000, maxToolCalls: 0, maxInputChars: 1000
-    });
-    assert.equal(limitTrigger.allowed, false, "a request projected beyond the operating stop must be blocked");
+    const [nearLimitA, nearLimitB] = await Promise.all([
+      budget.reserveAIRequest({
+        id: "near-limit-a", model: "gpt-6.1-sol", phase: "test",
+        inputChars: 0, maxOutputTokens: 140_000, maxToolCalls: 0, maxInputChars: 1000
+      }),
+      budget.reserveAIRequest({
+        id: "near-limit-b", model: "gpt-6.1-sol", phase: "test",
+        inputChars: 0, maxOutputTokens: 140_000, maxToolCalls: 0, maxInputChars: 1000
+      })
+    ]);
+    assert.equal([nearLimitA, nearLimitB].filter(item => item.allowed).length, 1,
+      "concurrent reservations must serialize at the operating stop so only one request can be admitted");
+    assert.equal([nearLimitA, nearLimitB].filter(item => !item.allowed).length, 1,
+      "the competing request must be denied once the first reservation consumes the remaining budget");
     const lockedStatus = await budget.getAIbudgetStatus();
     assert.equal(lockedStatus.spendingLocked, true, "crossing the operating stop must persist the spending lock");
 
