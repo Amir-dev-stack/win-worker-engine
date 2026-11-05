@@ -44,3 +44,17 @@ test("unsupported, undefined, non-finite and cyclic values fail closed", () => {
   circular.self = circular;
   assert.throws(() => canonicalizeWinMLProvenance(circular), /ml_provenance_circular_reference/);
 });
+
+
+test("sparse arrays, symbol keys and accessors cannot create ambiguous hashes", () => {
+  const sparse = [];
+  sparse.length = 1;
+  assert.throws(() => canonicalizeWinMLProvenance(sparse), /ml_provenance_sparse_array/);
+  assert.throws(() => canonicalizeWinMLProvenance({ [Symbol("hidden")]: 1 }), /ml_provenance_symbol_key_unsupported/);
+  const accessor = {};
+  Object.defineProperty(accessor, "value", { enumerable: true, get() { throw new Error("getter_must_not_run"); } });
+  assert.throws(() => canonicalizeWinMLProvenance(accessor), /ml_provenance_accessors_unsupported/);
+  const extra = [1];
+  extra.note = "ambiguous";
+  assert.throws(() => canonicalizeWinMLProvenance(extra), /ml_provenance_array_extra_properties/);
+});
