@@ -7,6 +7,7 @@ Status: isolated contract foundation on the Stage 1 development branch; no produ
 
 - Versioned win.ml.dataset.v1 manifest with source/provider, competition/season, HTTPS source, licence, attribution, permitted-use, row-grain, event-time precision, retrieval time, row counts, schema version and SHA-256 content identity.
 - A separate readiness gate: discoverable or importable data is not automatically training-approved. Research-only, benchmark-only, blocked, unapproved, date-only and unlabeled datasets cannot enter point-in-time training.
+- **Additional fail-closed boundary (2026-11-06):** `approvedForTraining: true` and `permittedUse: "training"` inside a caller-supplied manifest are not trusted owner authorization. Until a separate authenticated and auditable owner-approval verifier exists, readiness always returns `trusted_owner_approval_evidence_missing`; training and model-review eligibility remain blocked. This intentionally prevents a caller from self-authorizing by editing manifest booleans.
 - A training-example contract with dataset/source/event identity, event start, prediction cutoff, feature-level availability timestamps and source IDs, plus market-specific settlement rule and settlement time.
 - Leakage checks reject a feature published after the prediction cutoff, a cutoff at/after kickoff, a label settled before kickoff, and incompatible 1X2 vs total-goals outcomes.
 - An immutable dataset-manifest registry stores provenance metadata under `library/ml-dataset-manifests`, uses atomic create-if-absent writes, permits exact idempotent re-registration, and rejects attempts to replace an existing dataset identity with different metadata.
@@ -16,7 +17,7 @@ Status: isolated contract foundation on the Stage 1 development branch; no produ
 
 - The validation functions are pure. The registry persists manifest metadata only when explicitly called; it does not fetch source data, train models, or promote artifacts. The offline football-results importer accepts caller-supplied bytes only; it performs no network request or persistent write. The new registry test uses the isolated test store and does not touch production Blobs.
 - Synthetic fixtures test the contract only; they are not sports evidence.
-- automationAllowed is distinct from approvedForTraining: manual research imports may be allowed without automatic ingestion, but training still requires explicit training approval and a licence use of training.
+- automationAllowed is distinct from approvedForTraining: manual research imports may be allowed without automatic ingestion. Neither manifest boolean is authoritative owner identity proof. Training also requires licence permission and a future separately authenticated, auditable approval record; that verifier is not yet implemented, so training remains blocked.
 - contentSha256 is supplied by the importer and validated as a digest shape; the importer must compute the hash over canonical raw bytes before the manifest can be trusted.
 - The contract does not claim that a valid manifest is legal advice or that a dataset is representative.
 - Real training remains blocked until an owner-approved, rights-cleared historical sample and reproducible importer are available.
@@ -65,3 +66,8 @@ This closes a wiring gap between the importer and feature builder: imported rows
 
 
 A synthetic end-to-end regression test now passes the v2 importer output directly into the point-in-time candidate builder. It checks that the source-recorded availability instant is preserved into feature provenance, the target result is labeled, and the imported research-only manifest still blocks training. This verifies interface compatibility only; it does not validate a real provider's timestamps or data rights.
+
+
+## Owner-approval security boundary (2026-11-06)
+
+The initial manifest design contains caller-supplied `approvedForTraining` and `permittedUse` fields. Those fields are useful provenance assertions but cannot establish that the caller is the dataset owner or an authorized WIN operator. Treating `approvedForTraining: true` as sufficient would allow a caller to self-authorize training. The readiness contract now fails closed with `trusted_owner_approval_evidence_missing`, even when both fields claim training approval. This is deliberate: do not remove the blocker until a separate approval workflow authenticates the owner, binds approval to the immutable dataset content hash and licence evidence, records who approved what and when, and supports revocation/audit. Research import and candidate construction remain available; model fitting and promotion remain disabled.
