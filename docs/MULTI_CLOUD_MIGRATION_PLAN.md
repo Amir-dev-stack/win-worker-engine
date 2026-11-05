@@ -342,3 +342,69 @@ The goal is to reduce operational, deployment and execution burden on Netlify wh
 - No new paid plans, paid APIs, credit purchases or auto-recharge.
 - No production cutover, production data migration, destructive changes or existing PR merges without separate explicit approval.
 - No automated bookmaker bet placement.
+
+
+## WIN persistent memory architecture — required design
+
+Memory is a first-class cross-service capability, not merely an AI chat-history table. Preserve the current implementation and evolve it incrementally behind the existing store contract.
+
+### Memory layers and ownership
+
+1. **Operational/source records:** immutable or append-only source evidence, match snapshots, source payloads, predictions, frozen coupon/prediction records, result/settlement evidence and audit events. Keep the existing authoritative collection/storage ownership until the Blobs inventory proves otherwise. Never overwrite frozen historical predictions with later information.
+2. **Relational entity and event memory (Neon candidate):** canonical IDs and relationships for sports, competitions, seasons, teams, players, matches/events, agents, sources, markets and model versions; structured observations, outcomes and evidence references. Neon is suitable for relational querying, but the audited production tables were empty, so no live cutover or authority claim is made yet.
+3. **Agent episodic memory:** what an agent researched for a specific match/run, evidence considered, FOR/AGAINST arguments, decisions, uncertainty and outcome. Link to immutable run IDs and source evidence rather than copying large payloads unnecessarily.
+4. **Semantic/knowledge retrieval:** embeddings and searchable summaries for relevant prior cases, lessons and source documents. Add a vector index only after measuring retrieval needs and selecting a compatible, affordable implementation; do not introduce a second database by default.
+5. **Validated learning memory:** candidate lessons are not automatically trusted. Store proposed lesson, supporting sample, counterexamples, time range, confidence, validation status, reviewer and version. Promote only after minimum sample size, out-of-sample checks and chronological backtests. Keep rejected/expired lessons with reasons to prevent repeated rediscovery.
+6. **Configuration and policy memory:** versioned agent instructions, sport/market rules, calibration versions, risk limits and source quality policies. Changes must be reviewable and traceable; never silently mutate historical decision context.
+
+### Required memory record envelope
+
+Each record should carry, where applicable: stable record ID; record type; sport/competition/season; entity IDs; match/event/run/coupon IDs; agent and model/provider/version; source ID and source URL/reference; observed-at and ingested-at timestamps in UTC; event-time; schema version; provenance/licence; confidence and uncertainty; validation/review state; content hash; sensitivity/retention class; and links to related records. Store timestamps and provenance consistently. Avoid storing secrets or unnecessary personal data.
+
+### Memory lifecycle
+
+- Ingest raw evidence with provenance and deduplication/content hashes.
+- Normalize entities and link records using stable IDs; keep source-native IDs as aliases.
+- Preserve immutable snapshots for the exact evidence available when each prediction/decision was made.
+- Retrieve relevant prior cases using sport, league, season, teams/entities, market, context and time; do not leak future information into historical simulations.
+- Let agents propose observations and lessons; validate them independently.
+- Evaluate lessons with chronological/out-of-sample backtests and counterexamples before promotion.
+- Record outcomes and settlement as append-only events; update derived summaries without rewriting original evidence.
+- Apply retention, archival, export and restore policies by record class; keep auditability and deletion/legal requirements explicit.
+
+### Retrieval and learning safeguards
+
+- Enforce strict temporal cutoffs in simulations and backtests to prevent look-ahead leakage.
+- Separate factual evidence, agent opinion, model-generated summaries and validated lessons.
+- Return citations/provenance and freshness with retrieved memory; agents must be able to say evidence is missing or stale.
+- Avoid unbounded accumulation: deduplicate, summarize only with source links, expire caches, and retain canonical evidence.
+- Use confidence calibration and minimum sample sizes; track performance by sport, league, market, season and model/agent version.
+- Never let one agent's unverified claim become global truth or let AI override deterministic settlement, quantitative evidence or WIN risk gates.
+- Memory retrieval failure must degrade to explicit limited-evidence analysis / NO BET where mandatory evidence is unavailable, not fabricate remembered facts.
+
+### Cross-service memory access
+
+- All services use one versioned memory API/store contract; no provider should write ad-hoc records directly into another provider.
+- Define operations such as appendEvidence, getRecord, queryEntities, retrieveCases, proposeLesson, validateLesson, recordOutcome and getMemoryHealth.
+- Authenticate service identities and scope writes by record type/agent role. Read/write permissions are least-privilege; research agents cannot modify frozen predictions or promote their own lessons.
+- Use idempotency keys, conditional writes/ETags, schema-version checks, request IDs and audit trails.
+- Use an outbox or durable event mechanism for cross-store projections; retries must not duplicate learning or settlement events.
+- Establish one authoritative owner per record class. If Neon is eventually made authoritative for a class, backfill and compare IDs/counts/hashes first, then require explicit approval before switching reads/writes.
+- Monitor memory health: write/read failures, duplicate rate, orphan references, stale records, query latency, storage growth, backup age and restore-test status.
+
+### Immediate memory work
+
+1. Finish a read-only inventory of all Blobs stores/collections and prefixes, Neon schema/migrations/branches, memory adapter modes and every memory-related read/write path.
+2. Document the source of truth per record class and map all writers/readers (functions, dashboard, MCP tools, background jobs).
+3. Test the existing backup/restore round trip using isolated test data only; do not touch production records.
+4. Add missing contract tests for conditional writes, append/idempotency, pagination, metadata, schema evolution and temporal retrieval.
+5. Design Neon relational tables/indexes and optional semantic retrieval only from observed query patterns; use a dedicated test branch and synthetic fixtures.
+6. Preserve current APIs and records; propose any production migration separately with export, hashes, reconciliation, rollback and owner approval.
+
+### Explicit memory non-goals
+
+- Do not treat the three empty Neon production tables as proof that production memory is empty.
+- Do not delete, compact destructively, rewrite or bulk-migrate existing Blobs data during discovery.
+- Do not make all services independently maintain their own copies of memory.
+- Do not auto-promote AI-generated lessons into trusted knowledge.
+- Do not let local Ollama availability become a prerequisite for memory reads/writes or core WIN operation.
