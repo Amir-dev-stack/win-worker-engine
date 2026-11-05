@@ -122,6 +122,11 @@ export function evaluateWinMLPromotionReadiness(
   ] as const) {
     if (!Number.isSafeInteger(value) || (value as number) < minimum) reasons.push(field + "_below_minimum");
   }
+  const splitRows = Number(evaluation?.trainingRows || 0) +
+    Number(evaluation?.validationRows || 0) + Number(evaluation?.testRows || 0);
+  if (splitRows > Number(manifest?.labeledRowCount || 0) || splitRows > Number(manifest?.rowCount || 0)) {
+    reasons.push("evaluation_rows_exceed_dataset_rows");
+  }
 
   const baselineBrier = evaluation?.baselineMetrics?.brier;
   const modelBrier = evaluation?.modelMetrics?.brier;
