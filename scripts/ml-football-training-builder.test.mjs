@@ -30,7 +30,7 @@ const row = (overrides = {}) => ({
   kickoff: "2026-10-01T12:00:00.000Z",
   competitionId: "league", season: "2025-26",
   homeTeamId: "A", awayTeamId: "B",
-  homeGoals: 2, awayGoals: 1,
+  homeGoals: 2, awayGoals: 1, scoreBasis: "regulation_time",
   resultAvailableAt: "2026-10-01T14:00:00.000Z",
   ...overrides
 });
@@ -46,7 +46,7 @@ test("builds labeled 1X2 candidates but keeps research-only data blocked from fi
     rows,
     predictionCutoffsByEventId: { "target-match": "2026-11-01T17:00:00.000Z" },
     targetEventIds: ["target-match"],
-    settlementRuleId: "official-full-time-1x2-v1"
+    settlementRuleId: "win.football.regulation_time_1x2.v1"
   });
   assert.equal(result.candidates.length, 1);
   assert.equal(result.candidates[0].example.label.outcome, "HOME");
@@ -66,7 +66,7 @@ test("rejects missing prediction cutoffs and unavailable target settlements", ()
     rows,
     predictionCutoffsByEventId: {},
     targetEventIds: ["missing-cutoff", "no-settlement"],
-    settlementRuleId: "official-full-time-1x2-v1"
+    settlementRuleId: "win.football.regulation_time_1x2.v1"
   });
   assert.equal(result.candidates.length, 0);
   assert.ok(result.rejected.some(item => item.reasons.includes("prediction_cutoff_missing")));
@@ -82,7 +82,7 @@ test("explicit targets use the full row set as historical evidence without rejec
   const result = buildWinFootball1X2TrainingCandidates({
     manifest: manifest(), rows,
     predictionCutoffsByEventId: { target: "2026-10-01T11:00:00.000Z" },
-    targetEventIds: ["target"], settlementRuleId: "official-full-time-1x2-v1"
+    targetEventIds: ["target"], settlementRuleId: "win.football.regulation_time_1x2.v1"
   });
   assert.equal(result.candidates.length, 1);
   assert.equal(result.candidates[0].sourceEvidence.historicalMatchesUsedHome, 2);
@@ -98,7 +98,7 @@ test("rejects duplicate event and source identities before candidate creation", 
   assert.throws(() => buildWinFootball1X2TrainingCandidates({
     manifest: manifest(), rows: duplicatedEvent,
     predictionCutoffsByEventId: { duplicate: "2026-09-30T11:00:00.000Z" },
-    settlementRuleId: "official-full-time-1x2-v1"
+    settlementRuleId: "win.football.regulation_time_1x2.v1"
   }), /football_training_input_identity_duplicate_or_invalid/);
 
   const duplicatedSource = [
@@ -108,6 +108,25 @@ test("rejects duplicate event and source identities before candidate creation", 
   assert.throws(() => buildWinFootball1X2TrainingCandidates({
     manifest: manifest(), rows: duplicatedSource,
     predictionCutoffsByEventId: {},
-    settlementRuleId: "official-full-time-1x2-v1"
+    settlementRuleId: "win.football.regulation_time_1x2.v1"
   }), /football_training_input_identity_duplicate_or_invalid/);
+});
+
+
+test("rejects unsupported settlement identifiers and non-regulation-time targets", () => {
+  assert.throws(() => buildWinFootball1X2TrainingCandidates({
+    manifest: manifest(), rows: [row()],
+    predictionCutoffsByEventId: {},
+    settlementRuleId: "arbitrary-caller-supplied-rule"
+  }), /football_training_build_arguments_invalid/);
+
+  const result = buildWinFootball1X2TrainingCandidates({
+    manifest: manifest(),
+    rows: [row({ eventId: "extra-time", scoreBasis: "includes_extra_time" })],
+    predictionCutoffsByEventId: { "extra-time": "2026-10-01T11:00:00.000Z" },
+    settlementRuleId: "win.football.regulation_time_1x2.v1"
+  });
+  assert.equal(result.candidates.length, 0);
+  assert.ok(result.rejected.some(item =>
+    item.reasons.includes("regulation_time_finished_target_and_settlement_timestamp_required")));
 });
