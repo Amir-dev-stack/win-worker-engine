@@ -72,6 +72,8 @@ const required = [
   "netlify/lib/ml-prediction-contract.mts",
   "netlify/lib/ml-provenance.mts",
   "netlify/lib/ml-owner-approval.mts",
+  "netlify/lib/ml-owner-approval-registry.mts",
+  "scripts/ml-owner-approval-registry.test.mjs",
   "scripts/ml-owner-approval.test.mjs",
   "scripts/ml-prediction-contract.test.mjs",
   "scripts/ml-provenance.test.mjs",
