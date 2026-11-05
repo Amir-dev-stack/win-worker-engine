@@ -99,6 +99,6 @@ Added `POST /api/ml-owner-approval` with three actions: `approve`, `revoke` and 
 - `WIN_ML_OWNER_APPROVAL_PUBLIC_KEY`
 - `WIN_ML_OWNER_REVIEWER_ID`
 
-The endpoint does not accept any of those values from the request. It uses constant-time token comparison, requires JSON, caps the body at 64 KiB, disables response caching and fails with service-unavailable when configuration is absent. This is separate from the general `WIN_INTERNAL_TOKEN`; possessing the general internal token does not grant owner approval authority.
+The endpoint does not accept any of those values from the request. It uses constant-time token comparison, requires JSON, caps the body at 64 KiB, disables response caching and fails with service-unavailable when configuration is absent. A bounded `list` action provides an owner-authenticated audit inventory of up to 100 approval records and revalidates each entry against its current dataset, expiry, signature and revocation state. This is separate from the general `WIN_INTERNAL_TOKEN`; possessing the general internal token does not grant owner approval authority.
 
 **Not activated:** no environment variables or private signing key have been configured by this work, no approval has been issued, and no real dataset was approved. Until the dedicated token, public key and reviewer identity are provisioned securely, the endpoint returns `503 owner_approval_control_plane_not_configured`. Training readiness remains independently fail-closed.
