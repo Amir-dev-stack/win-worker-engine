@@ -39,6 +39,8 @@ export function buildWinFootball1X2TrainingCandidates(args: {
   manifest: WinMLDatasetManifestV1;
   rows: WinFootballResultWithAvailability[];
   predictionCutoffsByEventId: Record<string, string>;
+  /** Optional explicit target list; all rows remain available as historical evidence. */
+  targetEventIds?: string[];
   settlementRuleId: string;
 }): WinFootballTrainingBuildResult {
   if (!args?.manifest || !Array.isArray(args.rows) ||
@@ -46,11 +48,21 @@ export function buildWinFootball1X2TrainingCandidates(args: {
       typeof args.settlementRuleId !== "string" || !args.settlementRuleId.trim()) {
     throw new Error("football_training_build_arguments_invalid");
   }
+  if (args.targetEventIds !== undefined && (!Array.isArray(args.targetEventIds) ||
+      args.targetEventIds.some(id => typeof id !== "string" || !id.trim()) ||
+      new Set(args.targetEventIds).size !== args.targetEventIds.length)) {
+    throw new Error("football_training_target_event_ids_invalid");
+  }
+  const targetIds = args.targetEventIds ? new Set(args.targetEventIds) : null;
+  const targetRows = targetIds ? args.rows.filter(row => targetIds.has(row?.eventId)) : args.rows;
+  if (targetIds && targetRows.length !== targetIds.size) {
+    throw new Error("football_training_target_event_not_found");
+  }
   const readiness = evaluateWinMLDatasetReadiness(args.manifest);
   const candidates: WinFootballTrainingCandidate[] = [];
   const rejected: WinFootballTrainingBuildResult["rejected"] = [];
 
-  for (const target of args.rows) {
+  for (const target of targetRows) {
     if (!target || !target.eventId) {
       rejected.push({ eventId: "unknown", reasons: ["target_identity_invalid"] });
       continue;
