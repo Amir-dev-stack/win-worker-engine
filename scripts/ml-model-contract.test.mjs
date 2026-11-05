@@ -128,3 +128,20 @@ test("model evaluation rejects date-only windows without timezone precision", ()
   }));
   assert.ok(result.reasons.includes("evaluation_timestamps_invalid"));
 });
+
+
+test("evaluation rejects a model artifact created after the held-out test window began", () => {
+  const result = evaluateWinMLPromotionReadiness(manifest(), evaluation({
+    trainedAt: "2024-12-01T00:00:00.000Z"
+  }));
+  assert.ok(result.reasons.includes("model_not_frozen_before_test_window"));
+});
+
+test("evaluation rejects sport, market-algorithm and target-definition mismatches", () => {
+  const wrongSport = evaluateWinMLPromotionReadiness(manifest(), evaluation({ sport: "basketball" }));
+  assert.ok(wrongSport.reasons.includes("evaluation_sport_mismatch"));
+  const wrongAlgorithm = evaluateWinMLPromotionReadiness(manifest(), evaluation({ algorithm: "poisson_attack_defence" }));
+  assert.ok(wrongAlgorithm.reasons.includes("evaluation_market_algorithm_mismatch"));
+  const wrongTarget = evaluateWinMLPromotionReadiness(manifest(), evaluation({ targetDefinition: "full_time_total_goals" }));
+  assert.ok(wrongTarget.reasons.includes("evaluation_target_definition_market_mismatch"));
+});
