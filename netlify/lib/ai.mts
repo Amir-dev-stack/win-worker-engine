@@ -1,5 +1,7 @@
 import { runWinAgent } from "./agents-sdk.mts";
-import { executeWithAbortTimeout } from "./llm-execution.mts";
+import { executeWinLLMWithPolicy } from "./llm-execution.mts";
+import { createOpenAIWinLLMAdapter } from "./agents-sdk-adapter.mts";
+import { WIN_LLM_CONTRACT_VERSION } from "./llm-contract.mts";
 import { WIN_DEPARTMENTS, buildWorkerNetwork } from "./worker-org.mts";
 import { reserveAIRequest, settleAIRequest, releaseAIRequest } from "./ai-budget.mts";
 
@@ -309,34 +311,56 @@ async function askWorker(
       maxInputChars
     });
     if (!budget.allowed) throw new Error(budget.reason);
-    const bounded = await executeWithAbortTimeout(
-      signal => runWinAgent({
-        name: "WIN " + role,
-        instructions,
-        prompt: input,
-        model,
-        apiKey,
-        webSearch,
-        maxTurns: 2,
-        signal
-      }),
-      90_000
-    );
-    if (bounded.timedOut) {
+    const execution = await executeWinLLMWithPolicy({
+      request: {
+        contractVersion: WIN_LLM_CONTRACT_VERSION,
+        requestId: requestBudgetId,
+        taskId: phase + ":" + workerId,
+        runId: workerId,
+        agentId: role,
+        providerPolicy: {
+          allowedProviders: ["openai"],
+          preferredProvider: "openai",
+          model,
+          requiredCapabilities: webSearch ? ["text", "web_search"] : ["text"]
+        },
+        prompt: { instructions, input },
+        output: { format: "text" },
+        tools: webSearch ? ["web_search"] : [],
+        limits: { maxOutputTokens, maxToolCalls, timeoutMs: 90_000 },
+        privacy: { classification: "internal", allowProviderRetention: false },
+        budget: { reservationId: requestBudgetId, reservedUsd: budget.reservedUsd }
+      },
+      providers: [{
+        id: "openai",
+        enabled: true,
+        approved: true,
+        pricingVerified: true,
+        capabilities: webSearch ? ["text", "web_search"] : ["text"],
+        allowedClassifications: ["internal"],
+        models: [model],
+        priority: 1
+      }],
+      adapters: [createOpenAIWinLLMAdapter({ apiKey, model })]
+    });
+    if (execution.response.status !== "completed") {
       await settleAIRequest(requestBudgetId, null, 0, true);
       budgetSettled = true;
-      return failed("WIN AI request exceeded its 90-second execution limit. The provider outcome is uncertain; its reservation was conservatively retained and no automatic replay was attempted.");
+      return failed("WIN LLM execution did not complete safely (" +
+        (execution.response.error?.code ?? "unknown_execution_error") +
+        "). Outcome treated as uncertain; no automatic replay was attempted.");
     }
-    const sdkResult = bounded.value;
-    await settleAIRequest(requestBudgetId, sdkResult.usage, sdkResult.webSearchRequests);
+    await settleAIRequest(requestBudgetId, {
+      input_tokens: execution.response.usage.inputTokens,
+      output_tokens: execution.response.usage.outputTokens
+    }, execution.response.usage.billableUnits?.web_search_requests ?? 0);
     budgetSettled = true;
-    const sdkOutput = sdkResult.rawResponses.flatMap((response: any) => response.output ?? []);
     return {
       workerId, role, phase, departmentId: department?.id,
       assignedTeams: department ? WIN_DEPARTMENTS.find(d => d.id === department.id)?.teams : undefined,
-      status: "completed", responseId: sdkResult.responseId,
-      report: sdkResult.finalOutput,
-      citations: extractCitations({ output: sdkOutput }),
+      status: "completed", responseId: execution.response.responseId,
+      report: execution.response.output,
+      citations: execution.response.citations.map(citation => ({ title: citation.title, url: citation.url })),
       startedAt, completedAt: new Date().toISOString()
     };
   } catch (error) {
