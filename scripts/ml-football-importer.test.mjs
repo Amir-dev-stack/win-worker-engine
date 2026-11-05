@@ -49,6 +49,8 @@ test("offline importer rejects malformed JSON, unsupported schemas and empty pay
     error => error.code === "football_import_json_invalid");
   assert.throws(() => importWinFootballResultsBytes(new TextEncoder().encode(JSON.stringify({ schemaVersion: "other", records: [] })), source),
     error => error.code === "football_import_schema_unsupported");
+  assert.throws(() => importWinFootballResultsBytes(new TextEncoder().encode(JSON.stringify({ schemaVersion: "win.football.results.v1", records: [] })), source),
+    error => error.code === "football_import_schema_unsupported");
 });
 
 test("offline importer rejects duplicate IDs, invalid scores, unplayed rows and date-only kickoffs", () => {
