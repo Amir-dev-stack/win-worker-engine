@@ -1,6 +1,32 @@
 import { getStore } from "@netlify/blobs";
 
-const STORE = () => getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" });
+type AIBudgetStore = {
+  get(key: string, options?: any): Promise<any>;
+  getWithMetadata(key: string, options?: any): Promise<any>;
+  setJSON(key: string, value: unknown, options?: any): Promise<any>;
+  delete(key: string): Promise<any>;
+};
+
+let isolatedAIBudgetTestStore: AIBudgetStore | null = null;
+
+/** Test-only adapter. Production always uses the win-engine Netlify Blobs store. */
+export function installIsolatedAIBudgetTestStore(adapter: AIBudgetStore) {
+  if (process.env.WIN_AI_BUDGET_TEST_MODE !== "1") {
+    throw new Error("The isolated AI budget store is available only in WIN_AI_BUDGET_TEST_MODE=1.");
+  }
+  if (!adapter || typeof adapter.get !== "function" ||
+      typeof adapter.getWithMetadata !== "function" ||
+      typeof adapter.setJSON !== "function" || typeof adapter.delete !== "function") {
+    throw new Error("The isolated AI budget store adapter is incomplete.");
+  }
+  if (isolatedAIBudgetTestStore && isolatedAIBudgetTestStore !== adapter) {
+    throw new Error("An isolated AI budget store adapter is already installed in this process.");
+  }
+  isolatedAIBudgetTestStore = adapter;
+}
+
+const STORE = () => isolatedAIBudgetTestStore ??
+  getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" });
 const LOCK_KEY = "ai-budget/controller-lock";
 const SETTINGS_KEY = "ai-budget/settings";
 const LIMIT_USD = 3;
