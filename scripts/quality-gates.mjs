@@ -289,7 +289,7 @@ add("WIN football point-in-time features reject duplicate identities and future 
   mlFootballFeatures.includes("historical_row_identity_duplicate_or_invalid") &&
   mlFootballFeatures.includes("resultAvailableAt") &&
   mlFootballFeatures.includes("rowKickoff >= cutoff") &&
-  mlFootballFeaturesTests.includes("duplicate historical event and source identities"),
+  mlFootballFeaturesTests.includes("point-in-time feature builder rejects duplicate or missing historical identities"),
   "Historical features require unique source/event identities and source-recorded result availability before the prediction cutoff.");
 add("WIN 1X2 candidate labels preserve settlement and target identity",
   mlFootballTraining.includes("buildWinFootball1X2TrainingCandidates") &&
@@ -313,7 +313,7 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImporter.includes("createHash") &&
   mlFootballImporter.includes("approvedForTraining: false") &&
   mlFootballImporter.includes('permittedUse: "research_only"') &&
-  mlFootballImportTests.includes("research-only"),
+  mlFootballImportTests.includes("permittedUse, \"research_only\""),
   "The importer hashes caller-supplied bytes, applies strict row and payload bounds, performs no network fetch, and never grants training permission.");
 
 const failed = checks.filter(x => !x.ok);
