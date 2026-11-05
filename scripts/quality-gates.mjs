@@ -324,6 +324,19 @@ add("WIN LLM provider execution is bounded, validates responses and never blindl
   llmExecutionTests.includes("invalid provider responses fail closed"),
   "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
 
+const mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
+const mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
+add("WIN licence evidence requires a signed, time-bounded reviewer attestation and exact source hash",
+  mlLicenceEvidence.includes("hashWinMLLicenceEvidence") &&
+  mlLicenceEvidence.includes("verifyWinMLLicenceEvidence") &&
+  mlLicenceEvidence.includes("licence_evidence_hash_mismatch") &&
+  mlLicenceEvidence.includes("licence_review_expired") &&
+  mlLicenceEvidence.includes("sourceDocumentSha256") &&
+  mlLicenceEvidenceTests.includes("signed licence review verifies exact source") &&
+  mlLicenceEvidenceTests.includes("cannot be reused for a different licence") &&
+  mlLicenceEvidenceTests.includes("incorrectly signed licence reviews fail closed"),
+  "A trusted reviewer signature binds the licence, source-document hash, training-use attestation and review validity window; it does not replace human legal review.");
+
 const mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
 const mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
 add("WIN owner training approvals require dataset-bound Ed25519 signatures and licence evidence",
