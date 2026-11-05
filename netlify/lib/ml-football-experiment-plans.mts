@@ -54,15 +54,31 @@ export const WIN_FOOTBALL_TOTAL_GOALS_POISSON_PLAN: WinMLExperimentPlan = Object
 export function preflightWinMLExperiment(
   manifest: WinMLDatasetManifestV1,
   plan: WinMLExperimentPlan,
-  candidateRows: number
+  candidateRows: number,
+  partitionRows?: { training: number; validation: number; test: number }
 ) {
   const readiness = evaluateWinMLDatasetReadiness(manifest);
   const reasons = [...readiness.reasons];
-  if (manifest.sport !== plan.sport) reasons.push("experiment_sport_mismatch");
-  if (manifest.rowGrain !== "match") reasons.push("experiment_requires_match_level_rows");
+  if (manifest?.sport !== plan.sport) reasons.push("experiment_sport_mismatch");
+  if (manifest?.rowGrain !== "match") reasons.push("experiment_requires_match_level_rows");
   if (!Number.isSafeInteger(candidateRows) || candidateRows < 1) reasons.push("candidate_rows_missing");
   if (candidateRows < plan.minimumRows.training + plan.minimumRows.validation + plan.minimumRows.test) {
     reasons.push("candidate_rows_below_experiment_minimum");
+  }
+  if (!partitionRows || typeof partitionRows !== "object") {
+    reasons.push("chronological_partition_counts_required");
+  } else {
+    for (const partition of ["training", "validation", "test"] as const) {
+      const count = partitionRows[partition];
+      if (!Number.isSafeInteger(count) || count < plan.minimumRows[partition]) {
+        reasons.push("experiment_" + partition + "_partition_below_minimum");
+      }
+    }
+    if (["training", "validation", "test"].every(key =>
+      Number.isSafeInteger(partitionRows[key as "training" | "validation" | "test"])) &&
+      partitionRows.training + partitionRows.validation + partitionRows.test !== candidateRows) {
+      reasons.push("chronological_partition_total_mismatch");
+    }
   }
   return {
     experimentId: plan.experimentId,
@@ -90,7 +106,7 @@ export function splitWinMLExamplesChronologically<T extends WinMLChronologicalEx
   }
   const strictTimestamp = (value: unknown): number | null => {
     if (typeof value !== "string" ||
-        !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value)) return null;
+        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
     const parsed = Date.parse(value);
     return Number.isFinite(parsed) ? parsed : null;
   };
