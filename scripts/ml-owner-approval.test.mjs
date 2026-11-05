@@ -79,15 +79,15 @@ test("signed revocation is bound to the approval, dataset and content hash", () 
   };
   assert.deepEqual(verifyWinMLOwnerTrainingRevocation(signed, key, {
     approvalId: payload.approvalId, datasetId: payload.datasetId,
-    datasetContentSha256: payload.datasetContentSha256, now: expected.now
+    datasetContentSha256: payload.datasetContentSha256, approvedAt: "2026-11-06T09:00:00.000Z", now: expected.now
   }), { valid: true, reasons: [] });
   assert.ok(verifyWinMLOwnerTrainingRevocation(signed, key, {
     approvalId: "other-approval", datasetId: payload.datasetId,
-    datasetContentSha256: payload.datasetContentSha256, now: expected.now
+    datasetContentSha256: payload.datasetContentSha256, approvedAt: "2026-11-06T09:00:00.000Z", now: expected.now
   }).reasons.includes("owner_revocation_approval_mismatch"));
   assert.ok(verifyWinMLOwnerTrainingRevocation(signed, key, {
     approvalId: payload.approvalId, datasetId: payload.datasetId,
-    datasetContentSha256: "c".repeat(64), now: expected.now
+    datasetContentSha256: "c".repeat(64), approvedAt: "2026-11-06T09:00:00.000Z", now: expected.now
   }).reasons.includes("owner_revocation_dataset_hash_mismatch"));
 });
 
@@ -103,11 +103,15 @@ test("revocation cannot be future-dated or unsigned", () => {
   const signed = { payload, signatureBase64: sign(null, Buffer.from(canonicalizeWinMLProvenance(payload)), privateKey).toString("base64") };
   const result = verifyWinMLOwnerTrainingRevocation(signed, key, {
     approvalId: payload.approvalId, datasetId: payload.datasetId,
-    datasetContentSha256: payload.datasetContentSha256, now: expected.now
+    datasetContentSha256: payload.datasetContentSha256, approvedAt: "2026-11-06T09:00:00.000Z", now: expected.now
   });
   assert.ok(result.reasons.includes("owner_revocation_not_yet_effective"));
   assert.ok(verifyWinMLOwnerTrainingRevocation(signed, key, {
     approvalId: payload.approvalId, datasetId: payload.datasetId,
-    datasetContentSha256: payload.datasetContentSha256, now: expected.now
+    datasetContentSha256: payload.datasetContentSha256, approvedAt: "2026-11-06T09:00:00.000Z", now: expected.now
   }).reasons.includes("owner_revocation_not_yet_effective"));
+  assert.ok(verifyWinMLOwnerTrainingRevocation(signed, key, {
+    approvalId: payload.approvalId, datasetId: payload.datasetId,
+    datasetContentSha256: payload.datasetContentSha256, approvedAt: "2026-11-10T00:00:00.000Z", now: expected.now
+  }).reasons.includes("owner_revocation_predates_approval"));
 });
