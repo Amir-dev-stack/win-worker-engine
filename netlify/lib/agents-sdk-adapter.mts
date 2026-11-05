@@ -89,6 +89,18 @@ export function createOpenAIWinLLMAdapter(input: {
         maxTurns: 2,
         signal
       });
+      const latencyMs = Math.max(0, Date.now() - startedAt);
+      const usage = {
+        inputTokens: result.usage.input_tokens,
+        outputTokens: result.usage.output_tokens,
+        billableUnits: { web_search_requests: result.webSearchRequests }
+      };
+      if (result.webSearchRequests > request.limits.maxToolCalls) {
+        return {
+          ...failed(request, input.model, "openai_adapter_tool_call_limit_exceeded", latencyMs),
+          usage
+        };
+      }
       return {
         contractVersion: WIN_LLM_CONTRACT_VERSION,
         requestId: request.requestId,
@@ -97,12 +109,8 @@ export function createOpenAIWinLLMAdapter(input: {
         status: "completed",
         output: result.finalOutput,
         citations: citationsFromResponses(result.rawResponses),
-        usage: {
-          inputTokens: result.usage.input_tokens,
-          outputTokens: result.usage.output_tokens,
-          billableUnits: { web_search_requests: result.webSearchRequests }
-        },
-        latencyMs: Math.max(0, Date.now() - startedAt),
+        usage,
+        latencyMs,
         responseId: result.responseId
       };
     }
