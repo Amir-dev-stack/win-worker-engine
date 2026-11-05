@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createOpenAIWinLLMAdapter } from "../netlify/lib/agents-sdk-adapter.mts";
 import { WIN_LLM_CONTRACT_VERSION } from "../netlify/lib/llm-contract.mts";
+import { executeWinLLMWithPolicy } from "../netlify/lib/llm-execution.mts";
 
 const request = (overrides = {}) => ({
   contractVersion: WIN_LLM_CONTRACT_VERSION,
@@ -64,6 +65,35 @@ test("OpenAI adapter maps Agents SDK output, citations, usage and cancellation s
     { title: "Source A", url: "https://example.com/a" },
     { title: "Source B", url: "https://example.com/b" }
   ]);
+});
+
+test("governed execution wrapper invokes the approved OpenAI adapter end to end", async () => {
+  const adapter = createOpenAIWinLLMAdapter({
+    apiKey: "synthetic-test-key",
+    model: "approved-model",
+    async runAgent() { return agentResult; }
+  });
+  const result = await executeWinLLMWithPolicy({
+    request: request(),
+    providers: [{
+      id: "openai",
+      enabled: true,
+      approved: true,
+      pricingVerified: true,
+      capabilities: ["text", "web_search"],
+      allowedClassifications: ["internal"],
+      models: ["approved-model"],
+      priority: 1
+    }],
+    adapters: [adapter]
+  });
+  assert.equal(result.providerId, "openai");
+  assert.equal(result.response.status, "completed");
+  assert.equal(result.response.output, "Synthetic research report");
+  assert.equal(result.response.model, "approved-model");
+  assert.equal(result.response.usage.billableUnits.web_search_requests, 1);
+  assert.equal(result.retryPermitted, false);
+  assert.deepEqual(result.validationErrors, []);
 });
 
 test("OpenAI adapter fails closed for unsupported structured output", async () => {
