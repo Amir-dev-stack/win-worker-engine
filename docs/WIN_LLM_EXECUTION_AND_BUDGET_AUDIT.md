@@ -89,3 +89,33 @@ The router must select only an approved model that meets the required capabiliti
 ## 6. Safety boundary
 
 This audit does not authorize setting `WIN_AI_BUDGET_APPROVED`, adding provider credentials, changing provider-side limits, enabling auto-recharge, unlocking the spending ledger, adding a paid provider, changing Netlify settings or making production calls. Those actions remain owner-controlled.
+
+## 7. Implementation progress on this PR branch
+
+The first isolated hardening increment is now implemented:
+
+- netlify/lib/ai-budget.mts has a test-only storage adapter guarded by WIN_AI_BUDGET_TEST_MODE=1; production continues to resolve the win-engine Netlify Blobs store.
+- Netlify Blobs is lazy-loaded only when the production store is actually needed, allowing the budget module to be exercised without installing or contacting the production storage package in isolated tests.
+- Reservation inputs reject missing identifiers, negative/non-finite limits and oversized prompts before provider invocation.
+- Duplicate active reservation IDs are rejected rather than overwriting an existing reserved amount.
+- Negative or invalid provider token usage falls back to the conservative reservation estimate.
+- scripts/ai-budget-isolated.test.mjs exercises unknown pricing, invalid limits, oversize input, concurrent reservations, duplicate IDs, usage settlement, uncertain settlement, the operating stop, locked requests and rejected owner unlock.
+
+A provider-neutral contract foundation is also present:
+
+- netlify/lib/llm-contract.mts defines versioned request/response and provider-adapter contracts.
+- The pure provider selector requires explicit allowlisting, enabled and approved status, verified pricing, required capabilities and compatible data classification. Preferred-provider order applies only among eligible providers.
+- Response validation checks request/provider identity, completion/error classification, usage, billable units, latency and HTTPS citations.
+- scripts/llm-contract.test.mjs uses a fake provider only; it makes no network calls and does not alter the live OpenAI adapter.
+
+Latest verification on the branch: WIN worker engine checks passed; Netlify function validation passed; 36 isolated tests passed, 0 failed. Dashboard login/anonymous-health protection smoke test remains skipped.
+
+These are foundations, not a completed multi-provider runtime. The existing production call path still uses the OpenAI Agents SDK. The new contract is not yet wired into provider execution, and no additional provider has been enabled.
+
+## 8. Remaining work
+
+1. Trace every direct LLM/provider invocation and prove that each path reserves and settles through the central budget controller.
+2. Add end-to-end timeout, cancellation, retry and idempotency tests for provider calls.
+3. Add atomic task claim/lease and stale-worker completion protection tests before changing the scheduled agent queue.
+4. Refactor the existing OpenAI adapter behind the contract only after characterization tests pass.
+5. Keep provider credentials, owner spending approval, provider-side billing controls and production rollout owner-controlled.
