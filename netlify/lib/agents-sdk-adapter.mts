@@ -99,7 +99,8 @@ export function createOpenAIWinLLMAdapter(input: {
         citations: citationsFromResponses(result.rawResponses),
         usage: {
           inputTokens: result.usage.input_tokens,
-          outputTokens: result.usage.output_tokens
+          outputTokens: result.usage.output_tokens,
+          billableUnits: { web_search_requests: result.webSearchRequests }
         },
         latencyMs: Math.max(0, Date.now() - startedAt),
         responseId: result.responseId
