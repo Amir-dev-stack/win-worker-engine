@@ -125,3 +125,22 @@ test("chronological splitter requires at least three distinct kickoff groups", a
   }));
   assert.throws(() => splitWinMLExamplesChronologically(examples), /chronological_split_requires_three_distinct_time_groups/);
 });
+
+
+test("chronological splitter requires full timezone-qualified timestamps", async () => {
+  const { splitWinMLExamplesChronologically } = await import("../netlify/lib/ml-football-experiment-plans.mts");
+  const examples = Array.from({ length: 6 }, (_, index) => ({
+    eventId: "strict-" + index,
+    eventStart: new Date(Date.UTC(2026, 0, index + 1, 12)).toISOString(),
+    predictionCutoff: new Date(Date.UTC(2026, 0, index + 1, 11)).toISOString()
+  }));
+  assert.throws(() => splitWinMLExamplesChronologically([
+    ...examples.slice(0, 5), { ...examples[5], eventStart: "2026-01-06" }
+  ]), /chronological_split_example_invalid/);
+  assert.throws(() => splitWinMLExamplesChronologically([
+    ...examples.slice(0, 5), { ...examples[5], predictionCutoff: "2026-01-06T11:00:00" }
+  ]), /chronological_split_example_invalid/);
+  assert.throws(() => splitWinMLExamplesChronologically([
+    ...examples.slice(0, 5), null
+  ]), /chronological_split_example_invalid/);
+});
