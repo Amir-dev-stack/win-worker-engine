@@ -213,7 +213,9 @@ add("WIN production OpenAI agent calls have bounded cooperative cancellation",
   ai.includes("90_000") &&
   ai.includes("controller.abort") &&
   ai.includes("signal: controller.signal") &&
-  ai.includes("settleAIRequest(budgetId, null, 0, true)") &&
+  ai.includes("Promise.race([sdkExecution, timeout])") &&
+  ai.includes("resolveTimeout(null)") &&
+  ai.includes("settleAIRequest(requestBudgetId, null, 0, true)") &&
   agentsSdk.includes("signal?: AbortSignal") &&
   agentsSdk.includes("signal: input.signal"),
   "The existing production Agents SDK path receives a 90-second abort signal; interrupted calls are settled conservatively as uncertain rather than replayed.");
