@@ -22,15 +22,15 @@ const payload = (records = [{
   kickoff: "2026-10-01T18:00:00.000Z",
   competitionId: "synthetic-league", season: "2025-2026",
   homeTeamId: "team-a", awayTeamId: "team-b",
-  homeGoals: 2, awayGoals: 1, status: "finished"
+  homeGoals: 2, awayGoals: 1, scoreBasis: "regulation_time", status: "finished"
 }]) => new TextEncoder().encode(JSON.stringify({
   schemaVersion: WIN_FOOTBALL_RESULTS_SOURCE_SCHEMA, records
 }));
 
 test("offline football importer hashes exact source bytes and sorts normalized results", () => {
   const bytes = payload([
-    { sourceRecordId: "row-b", eventId: "match-b", kickoff: "2026-10-02T18:00:00.000Z", competitionId: "league", season: "2025-2026", homeTeamId: "a", awayTeamId: "b", homeGoals: 0, awayGoals: 0, status: "finished" },
-    { sourceRecordId: "row-a", eventId: "match-a", kickoff: "2026-10-01T18:00:00.000Z", competitionId: "league", season: "2025-2026", homeTeamId: "c", awayTeamId: "d", homeGoals: 3, awayGoals: 1, status: "finished" }
+    { sourceRecordId: "row-b", eventId: "match-b", kickoff: "2026-10-02T18:00:00.000Z", competitionId: "league", season: "2025-2026", homeTeamId: "a", awayTeamId: "b", homeGoals: 0, awayGoals: 0, scoreBasis: "regulation_time", status: "finished" },
+    { sourceRecordId: "row-a", eventId: "match-a", kickoff: "2026-10-01T18:00:00.000Z", competitionId: "league", season: "2025-2026", homeTeamId: "c", awayTeamId: "d", homeGoals: 3, awayGoals: 1, scoreBasis: "regulation_time", status: "finished" }
   ]);
   const result = importWinFootballResultsBytes(bytes, source);
   assert.equal(result.manifest.contentSha256, createHash("sha256").update(bytes).digest("hex"));
@@ -54,7 +54,7 @@ test("offline importer rejects duplicate IDs, invalid scores, unplayed rows and 
   const valid = {
     sourceRecordId: "row-1", eventId: "match-1", kickoff: "2026-10-01T18:00:00.000Z",
     competitionId: "league", season: "2025-2026", homeTeamId: "a", awayTeamId: "b",
-    homeGoals: 1, awayGoals: 0, status: "finished"
+    homeGoals: 1, awayGoals: 0, scoreBasis: "regulation_time", status: "finished"
   };
   const duplicate = { ...valid, sourceRecordId: "row-2" };
   assert.throws(() => importWinFootballResultsBytes(payload([valid, duplicate]), source),
@@ -71,4 +71,16 @@ test("offline importer requires HTTPS source provenance and attribution when req
     error => error.code === "football_import_source_metadata_invalid" && error.details.includes("source_url_must_be_https"));
   assert.throws(() => importWinFootballResultsBytes(payload(), { ...source, attributionRequired: true }),
     error => error.code === "football_import_source_metadata_invalid" && error.details.includes("required_attribution_missing"));
+});
+
+
+test("offline importer rejects ambiguous or extra-time score bases", () => {
+  const valid = {
+    sourceRecordId: "row-1", eventId: "match-1", kickoff: "2026-10-01T18:00:00.000Z",
+    competitionId: "league", season: "2025-2026", homeTeamId: "a", awayTeamId: "b",
+    homeGoals: 1, awayGoals: 0, scoreBasis: "includes_extra_time", status: "finished"
+  };
+  assert.throws(() => importWinFootballResultsBytes(payload([valid]), source),
+    error => error.code === "football_import_rows_invalid" &&
+      error.details.includes("record_0:score_basis_must_be_regulation_time"));
 });
