@@ -86,6 +86,17 @@ test("ML dataset registry is isolated, immutable, idempotent and keeps approval 
     assert.equal(inventory[0].approvedForTraining, false,
       "cataloguing a research-only dataset must not silently approve training");
 
+
+    const concurrentId = "concurrent-football-2026";
+    const competing = await Promise.allSettled([
+      registry.registerWinMLDatasetManifest(manifest({ datasetId: concurrentId, contentSha256: "c".repeat(64) })),
+      registry.registerWinMLDatasetManifest(manifest({ datasetId: concurrentId, contentSha256: "d".repeat(64) }))
+    ]);
+    assert.equal(competing.filter(result => result.status === "fulfilled").length, 1,
+      "atomic registration must allow only one manifest to win a concurrent ID race");
+    assert.equal(competing.filter(result => result.status === "rejected").length, 1,
+      "the competing different manifest must fail closed");
+
     await assert.rejects(
       registry.registerWinMLDatasetManifest(manifest({ datasetId: "../unsafe" })),
       error => error.code === "dataset_id_invalid"
