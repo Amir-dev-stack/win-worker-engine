@@ -100,23 +100,33 @@ export function splitWinMLExamplesChronologically<T extends WinMLChronologicalEx
     }
     seen.add(item.eventId);
   }
-  const rawTrainEnd = Math.max(1, Math.floor(sorted.length * 0.70));
-  let trainEnd = rawTrainEnd;
-  while (trainEnd < sorted.length &&
-      Date.parse(sorted[trainEnd - 1].eventStart) === Date.parse(sorted[trainEnd].eventStart)) trainEnd++;
-  const rawValidationEnd = Math.max(trainEnd + 1, Math.floor(sorted.length * 0.85));
-  let validationEnd = Math.min(sorted.length - 1, rawValidationEnd);
-  while (validationEnd < sorted.length &&
-      Date.parse(sorted[validationEnd - 1].eventStart) === Date.parse(sorted[validationEnd].eventStart)) validationEnd++;
-  if (trainEnd >= sorted.length || validationEnd >= sorted.length) {
-    throw new Error("chronological_split_has_insufficient_distinct_time_groups");
+  const groups: T[][] = [];
+  for (const item of sorted) {
+    const last = groups[groups.length - 1];
+    if (!last || Date.parse(last[0].eventStart) !== Date.parse(item.eventStart)) groups.push([item]);
+    else last.push(item);
   }
+  if (groups.length < 3) {
+    throw new Error("chronological_split_requires_three_distinct_time_groups");
+  }
+  const prefix: number[] = [0];
+  for (const group of groups) prefix.push(prefix[prefix.length - 1] + group.length);
+  let best: { trainEndGroup: number; validationEndGroup: number; score: number } | null = null;
+  for (let trainEndGroup = 1; trainEndGroup <= groups.length - 2; trainEndGroup++) {
+    for (let validationEndGroup = trainEndGroup + 1; validationEndGroup <= groups.length - 1; validationEndGroup++) {
+      const trainRows = prefix[trainEndGroup];
+      const validationRows = prefix[validationEndGroup];
+      const score = Math.abs(trainRows - sorted.length * 0.70) +
+        Math.abs(validationRows - sorted.length * 0.85);
+      if (!best || score < best.score) best = { trainEndGroup, validationEndGroup, score };
+    }
+  }
+  if (!best) throw new Error("chronological_split_partition_empty");
+  const trainEnd = prefix[best.trainEndGroup];
+  const validationEnd = prefix[best.validationEndGroup];
   const training = sorted.slice(0, trainEnd);
   const validation = sorted.slice(trainEnd, validationEnd);
   const test = sorted.slice(validationEnd);
-  if (!training.length || !validation.length || !test.length) {
-    throw new Error("chronological_split_partition_empty");
-  }
   return {
     training, validation, test,
     eventIds: {
