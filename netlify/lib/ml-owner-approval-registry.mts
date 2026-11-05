@@ -148,6 +148,7 @@ export async function getWinMLOwnerTrainingApprovalStatus(
     return { status: "missing" as const, approvalId };
   }
   const payload = approval.evidence?.payload;
+  if (payload?.approvalId !== approvalId) return { status: "invalid" as const, approvalId, reasons: ["owner_approval_record_id_mismatch"] };
   if (payload?.reviewerId !== trustedConfig.reviewerId) return { status: "invalid" as const, approvalId, reasons: ["owner_approval_reviewer_not_authorized"] };
   const manifest = await getWinMLDatasetManifest(payload.datasetId);
   if (!manifest) return { status: "invalid" as const, approvalId, reasons: ["owner_approval_dataset_not_registered"] };
