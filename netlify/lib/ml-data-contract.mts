@@ -51,7 +51,11 @@ export function validateWinMLDatasetManifest(manifest: WinMLDatasetManifestV1): 
 /** Training permission is separate from source discoverability or import permission. */
 export function evaluateWinMLDatasetReadiness(manifest: WinMLDatasetManifestV1) {
   const reasons = validateWinMLDatasetManifest(manifest);
+  // Manifest permission flags are importer-supplied metadata, not proof of owner authority.
+  // Until a separately authenticated, auditable owner-approval verifier is implemented,
+  // no manifest can authorize model fitting, even if a caller sets approvedForTraining=true.
   if (manifest?.approvedForTraining !== true) reasons.push("owner_training_approval_missing");
+  reasons.push("trusted_owner_approval_evidence_missing");
   if (manifest?.permittedUse !== "training") reasons.push("licence_does_not_permit_training");
   if (manifest?.eventTimePrecision !== "instant") reasons.push("exact_event_time_required_for_point_in_time_training");
   if (manifest?.rowCount < 1 || manifest?.labeledRowCount < 1) reasons.push("dataset_has_no_labeled_rows");
