@@ -297,6 +297,8 @@ async function askWorker(
 
   let budgetId: string | null = null;
   let budgetSettled = false;
+  let timedOut = false;
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   try {
     const maxOutputTokens = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 600 : 1000;
     const maxToolCalls = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 1 : 2;
@@ -308,6 +310,11 @@ async function askWorker(
       maxInputChars
     });
     if (!budget.allowed) throw new Error(budget.reason);
+    const controller = new AbortController();
+    timeoutHandle = setTimeout(() => {
+      timedOut = true;
+      controller.abort(new Error("WIN AI request timed out after 90 seconds"));
+    }, 90_000);
     const sdkResult = await runWinAgent({
       name: "WIN " + role,
       instructions,
@@ -315,8 +322,11 @@ async function askWorker(
       model,
       apiKey,
       webSearch,
-      maxTurns: 2
+      maxTurns: 2,
+      signal: controller.signal
     });
+    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+    timeoutHandle = undefined;
     await settleAIRequest(requestBudgetId, sdkResult.usage, sdkResult.webSearchRequests);
     budgetSettled = true;
     const sdkOutput = sdkResult.rawResponses.flatMap((response: any) => response.output ?? []);
@@ -332,7 +342,11 @@ async function askWorker(
     if (budgetId && !budgetSettled) {
       try { await settleAIRequest(budgetId, null, 0, true); } catch { /* retain reservation if storage is unavailable */ }
     }
-    return failed(String(error));
+    return failed(timedOut
+      ? "WIN AI request exceeded its 90-second execution limit. The provider outcome is treated as uncertain; no automatic replay was attempted."
+      : String(error));
+  } finally {
+    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
   }
 }
 
