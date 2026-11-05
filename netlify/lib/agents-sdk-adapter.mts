@@ -86,7 +86,8 @@ export function createOpenAIWinLLMAdapter(input: {
         model: input.model,
         apiKey: input.apiKey,
         webSearch: request.tools.includes("web_search"),
-        maxTurns: 2,
+        maxTurns: Math.max(1, Math.min(2, request.limits.maxToolCalls + 1)),
+        maxOutputTokens: request.limits.maxOutputTokens,
         signal
       });
       const latencyMs = Math.max(0, Date.now() - startedAt);
