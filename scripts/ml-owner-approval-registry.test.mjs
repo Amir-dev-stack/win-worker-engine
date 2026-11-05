@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { WIN_ML_DATASET_MANIFEST_VERSION, evaluateWinMLDatasetReadiness } from "../netlify/lib/ml-data-contract.mts";
 import { canonicalizeWinMLProvenance } from "../netlify/lib/ml-provenance.mts";
+import { hashWinMLLicenceEvidence } from "../netlify/lib/ml-licence-evidence.mts";
 
 function clone(value) { return value === undefined ? undefined : JSON.parse(JSON.stringify(value)); }
 function createMemoryStore() {
@@ -35,8 +36,16 @@ test("owner approval registry records signed evidence once, reports it active, a
   const trustedConfig = { publicKeyPem, reviewerId: "owner:amir" };
   const datasetId = "registry-test-football";
   const datasetHash = "a".repeat(64);
-  const licenceEvidenceHash = "b".repeat(64);
   const signPayload = payload => sign(null, Buffer.from(canonicalizeWinMLProvenance(payload)), privateKey).toString("base64");
+  const licencePayload = {
+    evidenceVersion: "win.ml.licence-review.v1", evidenceId: "licence-review-registry-1",
+    licenceId: "CC0-1.0", sourceUrl: "https://example.test/licence",
+    sourceDocumentSha256: "c".repeat(64), reviewedUse: "training", reviewerId: "owner:amir",
+    reviewedAt: "2026-11-06T08:00:00.000Z", reviewExpiresAt: "2027-11-06T08:00:00.000Z",
+    rationale: "Reviewed source terms and confirmed training permission."
+  };
+  const licenceEvidence = { payload: licencePayload, signatureBase64: signPayload(licencePayload) };
+  const licenceEvidenceHash = hashWinMLLicenceEvidence(licencePayload);
   try {
     const store = await import("../netlify/lib/store.mts");
     store.installIsolatedTestStore(memoryStore);
@@ -52,6 +61,12 @@ test("owner approval registry records signed evidence once, reports it active, a
       schemaVersion: "football.match.v2", contentSha256: datasetHash
     };
     await datasets.registerWinMLDatasetManifest(manifest);
+    assert.deepEqual(await registry.registerWinMLLicenceReviewEvidence(
+      licenceEvidence, trustedConfig, "2026-11-10T12:00:00.000Z"
+    ), { recorded: true, idempotent: false, evidenceId: licencePayload.evidenceId, evidenceSha256: licenceEvidenceHash });
+    assert.deepEqual(await registry.registerWinMLLicenceReviewEvidence(
+      licenceEvidence, trustedConfig, "2026-11-10T12:00:00.000Z"
+    ), { recorded: false, idempotent: true, evidenceId: licencePayload.evidenceId, evidenceSha256: licenceEvidenceHash });
     const approvalPayload = {
       approvalVersion: "win.ml.owner-training-approval.v1",
       approvalId: "owner-registry-approval-1", datasetId, datasetContentSha256: datasetHash,
@@ -68,10 +83,16 @@ test("owner approval registry records signed evidence once, reports it active, a
       { recorded: false, idempotent: true, approvalId: approvalPayload.approvalId },
       "resubmitting identical signed evidence later must not conflict because the registry recording timestamp differs");
     assert.equal((await registry.getWinMLOwnerTrainingApprovalStatus(approvalPayload.approvalId, trustedConfig, "2026-11-10T12:00:00.000Z")).status, "active");
+    const readiness = await registry.evaluateWinMLTrainingReadiness(datasetId, approvalPayload.approvalId, trustedConfig, "2026-11-10T12:00:00.000Z");
+    assert.equal(readiness.evidenceReady, true);
+    assert.equal(readiness.modelFittingAllowed, false);
+    assert.equal(readiness.productionPromotionAllowed, false);
+    assert.equal(readiness.automatedBettingAllowed, false);
     await assert.rejects(registry.registerWinMLOwnerTrainingApproval(approval, { ...trustedConfig, reviewerId: "someone-else" }, "2026-11-10T12:00:00.000Z"),
       error => error.code === "owner_approval_reviewer_not_authorized");
 
-    const changed = { payload: { ...approvalPayload, licenceEvidenceSha256: "c".repeat(64) }, signatureBase64: signPayload({ ...approvalPayload, licenceEvidenceSha256: "c".repeat(64) }) };
+    const changedPayload = { ...approvalPayload, expiresAt: "2027-01-06T09:00:00.000Z" };
+    const changed = { payload: changedPayload, signatureBase64: signPayload(changedPayload) };
     await assert.rejects(registry.registerWinMLOwnerTrainingApproval(changed, trustedConfig, "2026-11-10T12:00:00.000Z"),
       error => error.code === "owner_approval_id_immutable_conflict");
 
@@ -87,6 +108,9 @@ test("owner approval registry records signed evidence once, reports it active, a
     assert.deepEqual(await registry.registerWinMLOwnerTrainingRevocation(revocation, trustedConfig, "2026-11-12T12:00:00.000Z"),
       { recorded: true, idempotent: false, approvalId: approvalPayload.approvalId });
     assert.equal((await registry.getWinMLOwnerTrainingApprovalStatus(approvalPayload.approvalId, trustedConfig, "2026-11-12T12:00:00.000Z")).status, "revoked");
+    const revokedReadiness = await registry.evaluateWinMLTrainingReadiness(datasetId, approvalPayload.approvalId, trustedConfig, "2026-11-12T12:00:00.000Z");
+    assert.equal(revokedReadiness.evidenceReady, false);
+    assert.ok(revokedReadiness.reasons.some(reason => reason.startsWith("owner_approval_not_active:revoked")));
     assert.deepEqual(await registry.registerWinMLOwnerTrainingRevocation(revocation, trustedConfig, "2026-11-12T12:00:00.000Z"),
       { recorded: false, idempotent: true, approvalId: approvalPayload.approvalId });
     assert.deepEqual(await registry.registerWinMLOwnerTrainingRevocation(revocation, trustedConfig, "2026-11-12T13:00:00.000Z"),
@@ -97,6 +121,7 @@ test("owner approval registry records signed evidence once, reports it active, a
       "recording owner approval must not silently unlock model training before explicit readiness integration");
     assert.ok([...memoryStore.records.keys()].every(key =>
       key.startsWith("library/ml-dataset-manifests/") ||
+      key.startsWith("library/ml-licence-review-evidence/") ||
       key.startsWith("library/ml-owner-training-approvals/") ||
       key.startsWith("library/ml-owner-training-revocations/")));
   } finally {
