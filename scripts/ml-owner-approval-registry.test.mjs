@@ -65,6 +65,8 @@ test("owner approval registry records signed evidence once, reports it active, a
     assert.deepEqual(await registry.registerWinMLOwnerTrainingApproval(approval, trustedConfig, "2026-11-10T12:00:00.000Z"),
       { recorded: false, idempotent: true, approvalId: approvalPayload.approvalId });
     assert.equal((await registry.getWinMLOwnerTrainingApprovalStatus(approvalPayload.approvalId, trustedConfig, "2026-11-10T12:00:00.000Z")).status, "active");
+    await assert.rejects(registry.registerWinMLOwnerTrainingApproval(approval, { ...trustedConfig, reviewerId: "someone-else" }, "2026-11-10T12:00:00.000Z"),
+      error => error.code === "owner_approval_reviewer_not_authorized");
 
     const changed = { payload: { ...approvalPayload, licenceEvidenceSha256: "c".repeat(64) }, signatureBase64: signPayload({ ...approvalPayload, licenceEvidenceSha256: "c".repeat(64) }) };
     await assert.rejects(registry.registerWinMLOwnerTrainingApproval(changed, trustedConfig, "2026-11-10T12:00:00.000Z"),
