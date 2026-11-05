@@ -121,3 +121,10 @@ test("dataset hash mismatch and invalid artifact identity are rejected", () => {
   assert.ok(result.reasons.includes("model_artifact_hash_invalid"));
   assert.ok(result.reasons.includes("source_commit_sha_invalid"));
 });
+
+test("model evaluation rejects date-only windows without timezone precision", () => {
+  const result = evaluateWinMLPromotionReadiness(manifest(), evaluation({
+    testWindow: { from: "2024-11-01", to: "2025-01-31T23:59:59.000Z" }
+  }));
+  assert.ok(result.reasons.includes("evaluation_timestamps_invalid"));
+});
