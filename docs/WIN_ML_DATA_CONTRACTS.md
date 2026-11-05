@@ -71,3 +71,12 @@ A synthetic end-to-end regression test now passes the v2 importer output directl
 ## Owner-approval security boundary (2026-11-06)
 
 The initial manifest design contains caller-supplied `approvedForTraining` and `permittedUse` fields. Those fields are useful provenance assertions but cannot establish that the caller is the dataset owner or an authorized WIN operator. Treating `approvedForTraining: true` as sufficient would allow a caller to self-authorize training. The readiness contract now fails closed with `trusted_owner_approval_evidence_missing`, even when both fields claim training approval. This is deliberate: do not remove the blocker until a separate approval workflow authenticates the owner, binds approval to the immutable dataset content hash and licence evidence, records who approved what and when, and supports revocation/audit. Research import and candidate construction remain available; model fitting and promotion remain disabled.
+
+
+## Signed owner-approval evidence foundation (2026-11-06)
+
+Added an isolated Ed25519 approval-evidence verifier. A signed approval payload binds a unique approval ID and reviewer identity to the exact dataset ID and immutable content SHA-256, the licence identifier and SHA-256 of reviewed licence evidence, the explicit training scope, and approval/expiry timestamps.
+
+The verifier rejects missing trusted public keys, malformed signatures, altered payloads, mismatched dataset/hash/licence, future approvals and expired approvals. The signing key must remain outside the repository; the verifier accepts a public key from trusted server configuration, never request data.
+
+**This is not an active approval route.** It is a tested cryptographic building block only. Dataset readiness still unconditionally blocks training because the verifier is not connected to an authenticated owner-only approval/revocation registry. No approval key was configured, no approval was issued, and no training permission was granted. A subsequent stage must implement protected key configuration, append-only approval/revocation records, owner identity authentication, replay protection and audit retrieval before readiness can consume evidence.
