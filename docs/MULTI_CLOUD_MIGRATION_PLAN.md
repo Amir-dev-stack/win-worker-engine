@@ -203,6 +203,15 @@ This is a functional inventory by entrypoint name, not yet the final route contr
 - MCP uses the Streamable HTTP transport from the MCP SDK and exposes both read-only/audit and research capabilities according to OAuth scopes. Keep the transport and scope boundaries intact.
 - The live MCP server and OAuth endpoints are externally connected contracts; changing hostnames may require client reauthorization. Keep the old issuer operational during any transition until the owner approves a compatibility plan.
 
+
+### Build and deployment trigger findings
+
+- netlify.toml defines npm run build, publishes public/, points Netlify at netlify/functions, and selects Node.js 22. It does not define a separate deploy command or deploy-context policy.
+- The inspected GitHub Actions workflows validate/build/test the repository. They do not invoke Netlify deployment commands or the Netlify CLI deploy command.
+- The main-branch and pull-request workflows therefore should not be mistaken for the source of the 224 production deploys. Netlify's Git-connected deployment trigger/history and repository production-branch configuration need a separate read-only inspection to establish the exact cause; do not claim the cause is proven yet.
+- Target deployment policy: one production deployment only from an approved main-branch commit; preview deployments limited to migration branches/PRs; CI validation should not itself publish; avoid repeated production pushes for documentation or experiments; use explicit concurrency/cancellation and build-path filters where safe.
+- Track deployment count, build duration, request usage, compute, bandwidth and storage against each provider's free allowance. No automatic paid plan, credit purchase or billing fallback.
+
 ### Function-by-function target classification — preliminary
 
 - Cloudflare Workers candidates: short request/response APIs, read-only dashboard endpoints, health/coverage/status, lightweight routing, authentication middleware, and bounded sports-data proxy endpoints. Each candidate still requires compatibility tests for runtime APIs, Node imports, request limits and data-store calls.
