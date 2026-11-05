@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { WIN_ML_DATASET_MANIFEST_VERSION } from "../netlify/lib/ml-data-contract.mts";
 import { canonicalizeWinMLProvenance } from "../netlify/lib/ml-provenance.mts";
+import { hashWinMLLicenceEvidence } from "../netlify/lib/ml-licence-evidence.mts";
 
 function clone(value) { return value === undefined ? undefined : JSON.parse(JSON.stringify(value)); }
 function createMemoryStore() {
@@ -63,10 +64,28 @@ test("owner approval endpoint fails closed and accepts only a separately authent
     }));
     assert.equal(unauthorized.status, 401);
 
+    const licencePayload = {
+      evidenceVersion: "win.ml.licence-review.v1", evidenceId: "endpoint-licence-review-1",
+      licenceId: "CC0-1.0", sourceUrl: "https://example.test/licence",
+      sourceDocumentSha256: "f".repeat(64), reviewedUse: "training", reviewerId: "owner:amir",
+      reviewedAt: "2026-11-06T08:00:00.000Z", reviewExpiresAt: "2027-11-06T08:00:00.000Z",
+      rationale: "Reviewed source terms and confirmed training permission."
+    };
+    const licenceEvidence = {
+      payload: licencePayload,
+      signatureBase64: sign(null, Buffer.from(canonicalizeWinMLProvenance(licencePayload)), privateKey).toString("base64")
+    };
+    const licenceRegistered = await endpoint(new Request("https://win.test/api/ml-owner-approval", {
+      method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + token },
+      body: JSON.stringify({ action: "licence_evidence", evidence: licenceEvidence })
+    }));
+    assert.equal(licenceRegistered.status, 200);
+    const licenceEvidenceSha256 = hashWinMLLicenceEvidence(licencePayload);
+
     const payload = {
       approvalVersion: "win.ml.owner-training-approval.v1", approvalId: "endpoint-approval-1",
       datasetId, datasetContentSha256: datasetHash, licenceId: "CC0-1.0",
-      licenceEvidenceSha256: "e".repeat(64), scope: "training", reviewerId: "owner:amir",
+      licenceEvidenceSha256, scope: "training", reviewerId: "owner:amir",
       approvedAt: "2020-01-01T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z"
     };
     const evidence = {
@@ -87,6 +106,15 @@ test("owner approval endpoint fails closed and accepts only a separately authent
     assert.equal(status.status, 200);
     assert.equal((await status.json()).status, "active");
 
+    const readiness = await endpoint(new Request("https://win.test/api/ml-owner-approval", {
+      method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + token },
+      body: JSON.stringify({ action: "readiness", datasetId, approvalId: payload.approvalId })
+    }));
+    assert.equal(readiness.status, 200);
+    const readinessBody = await readiness.json();
+    assert.equal(readinessBody.evidenceReady, true);
+    assert.equal(readinessBody.modelFittingAllowed, false);
+
     const inventory = await endpoint(new Request("https://win.test/api/ml-owner-approval", {
       method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + token },
       body: JSON.stringify({ action: "list", limit: 10 })
@@ -98,6 +126,7 @@ test("owner approval endpoint fails closed and accepts only a separately authent
 
     assert.ok([...memoryStore.records.keys()].every(key =>
       key.startsWith("library/ml-dataset-manifests/") ||
+      key.startsWith("library/ml-licence-review-evidence/") ||
       key.startsWith("library/ml-owner-training-approvals/")));
   } finally {
     if (previousFlag === undefined) delete process.env.WIN_STORE_TEST_MODE;
