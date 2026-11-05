@@ -190,6 +190,20 @@ add("Consensus calibration evaluates binary moneyline datasets without inventing
   (await read("scripts/market-calibration.test.mjs")).includes("tennis player-one probabilities"),
   "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
 
+
+const mlDataContract = await read("netlify/lib/ml-data-contract.mts");
+const mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
+add("WIN ML training requires immutable licensed dataset provenance and point-in-time feature validation",
+  mlDataContract.includes("WIN_ML_DATASET_MANIFEST_VERSION") &&
+  mlDataContract.includes("contentSha256") &&
+  mlDataContract.includes("approvedForTraining") &&
+  mlDataContract.includes("permittedUse") &&
+  mlDataContract.includes("future_feature_leakage") &&
+  mlDataContract.includes("settlement_aware_label_invalid") &&
+  mlDataContractTests.includes("research-only, unapproved and date-only sources") &&
+  mlDataContractTests.includes("future features, post-kickoff cutoffs and invalid labels"),
+  "Synthetic-only tests enforce source/licence provenance, explicit training permission, exact event timing, feature availability cutoffs and settlement-aware labels before any model experiment.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
