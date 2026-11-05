@@ -6,7 +6,7 @@ import {
 } from "./ml-owner-approval.mts";
 import { getWinMLDatasetManifest } from "./ml-dataset-registry.mts";
 import { canonicalizeWinMLProvenance } from "./ml-provenance.mts";
-import { get, putIfNew } from "./store.mts";
+import { get, list, putIfNew } from "./store.mts";
 
 const APPROVAL_COLLECTION = "library/ml-owner-training-approvals";
 const REVOCATION_COLLECTION = "library/ml-owner-training-revocations";
@@ -134,6 +134,26 @@ export async function registerWinMLOwnerTrainingRevocation(
     return { recorded: false, idempotent: true, approvalId: payload.approvalId };
   }
   registryError("owner_revocation_already_recorded");
+}
+
+/** Bounded owner-only audit inventory. Each entry is revalidated against current dataset, key and revocation state. */
+export async function listWinMLOwnerTrainingApprovalStatuses(
+  trustedConfig: TrustedOwnerConfig,
+  limit = 50,
+  now = new Date().toISOString()
+) {
+  if (!configValid(trustedConfig)) registryError("trusted_owner_approval_configuration_missing");
+  const boundedLimit = Number.isFinite(limit) ? Math.max(1, Math.min(100, Math.floor(limit))) : 50;
+  const records = await list<StoredApproval>(APPROVAL_COLLECTION, boundedLimit);
+  const ids = records
+    .filter(record => record?.recordVersion === "win.ml.owner-training-approval-record.v1")
+    .map(record => record.evidence?.payload?.approvalId)
+    .filter((id): id is string => validId(id));
+  const uniqueIds = [...new Set(ids)];
+  const statuses = await Promise.all(uniqueIds.map(id =>
+    getWinMLOwnerTrainingApprovalStatus(id, trustedConfig, now)
+  ));
+  return { count: statuses.length, limit: boundedLimit, approvals: statuses };
 }
 
 /** Read-only status check; readiness remains blocked until a later explicit integration. */
