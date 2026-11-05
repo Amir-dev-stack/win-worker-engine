@@ -116,6 +116,21 @@ These are foundations, not a completed multi-provider runtime. The existing prod
 
 1. Trace every direct LLM/provider invocation and prove that each path reserves and settles through the central budget controller.
 2. Add end-to-end timeout, cancellation, retry and idempotency tests for provider calls.
-3. Add atomic task claim/lease and stale-worker completion protection tests before changing the scheduled agent queue.
+3. Extend task-queue tests to cover provider-call timeouts, uncertain outcomes and idempotent recovery; the atomic claim/lease and stale-worker protection foundation is now implemented.
 4. Refactor the existing OpenAI adapter behind the contract only after characterization tests pass.
 5. Keep provider credentials, owner spending approval, provider-side billing controls and production rollout owner-controlled.
+
+
+## 9. Persistent agent task reliability progress
+
+The scheduled entity-agent queue now has a separate atomic lease implementation:
+
+- netlify/lib/agent-task-queue.mts claims the oldest queued or stale task using a strong metadata read and conditional ETag write.
+- Each claim receives a fresh lease ID and expiry; concurrent workers cannot both claim the same task version.
+- Completion and retry updates are accepted only from the current unexpired lease owner. A stale worker cannot overwrite a task after another worker reclaims it.
+- Retry counters are normalized safely, and tasks at the three-attempt ceiling are marked failed rather than repeatedly executed.
+- scheduled-scout-runner.mts now uses the lease helper for claim, completion and error recovery. Lease tokens are not included in the prompt sent to the LLM, and persistent profile writes are suppressed if the lease is lost.
+- scripts/agent-task-queue-isolated.test.mjs verifies competing claims, current-owner completion, stale-task reclaim, stale-owner rejection, retry exhaustion and malformed retry counters.
+- The repository quality gate now checks that scheduled learning uses the lease helper and conditional writes.
+
+This protects the task record against duplicate claims and stale completion writes. It does not yet prove exactly-once external provider execution: a worker can time out after a provider request has started, so provider-call idempotency and uncertain-outcome recovery remain separate work.
