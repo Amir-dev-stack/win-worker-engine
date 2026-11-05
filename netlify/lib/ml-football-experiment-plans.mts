@@ -88,18 +88,25 @@ export function splitWinMLExamplesChronologically<T extends WinMLChronologicalEx
   if (!Array.isArray(examples) || examples.length < 3) {
     throw new Error("chronological_split_requires_at_least_three_examples");
   }
+  const strictTimestamp = (value: unknown): number | null => {
+    if (typeof value !== "string" ||
+        !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value)) return null;
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
   const seen = new Set<string>();
-  const sorted = [...examples].sort((a, b) =>
-    Date.parse(a.eventStart) - Date.parse(b.eventStart) || a.eventId.localeCompare(b.eventId));
-  for (const item of sorted) {
+  for (const item of examples) {
+    const eventStart = strictTimestamp(item?.eventStart);
+    const predictionCutoff = strictTimestamp(item?.predictionCutoff);
     if (!item || typeof item.eventId !== "string" || !item.eventId.trim() ||
-        seen.has(item.eventId) || !Number.isFinite(Date.parse(item.eventStart)) ||
-        !Number.isFinite(Date.parse(item.predictionCutoff)) ||
-        Date.parse(item.predictionCutoff) >= Date.parse(item.eventStart)) {
+        seen.has(item.eventId) || eventStart === null || predictionCutoff === null ||
+        predictionCutoff >= eventStart) {
       throw new Error("chronological_split_example_invalid");
     }
     seen.add(item.eventId);
   }
+  const sorted = [...examples].sort((a, b) =>
+    Date.parse(a.eventStart) - Date.parse(b.eventStart) || a.eventId.localeCompare(b.eventId));
   const groups: T[][] = [];
   for (const item of sorted) {
     const last = groups[groups.length - 1];
