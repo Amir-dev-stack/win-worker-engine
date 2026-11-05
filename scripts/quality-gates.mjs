@@ -205,6 +205,23 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   "Synthetic-only tests enforce source/licence provenance, explicit training permission, exact event timing, feature availability cutoffs and settlement-aware labels before any model experiment.");
 
 
+const mlModelContract = await read("netlify/lib/ml-model-contract.mts");
+const mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
+add("WIN ML artifacts require point-in-time, out-of-sample evidence before human shadow review",
+  mlModelContract.includes("evaluateWinMLDatasetReadiness") &&
+  mlModelContract.includes("fit_data_cutoff_exceeds_training_window") &&
+  mlModelContract.includes("chronological_split_invalid_or_overlapping") &&
+  mlModelContract.includes("out_of_sample_brier_improvement_insufficient") &&
+  mlModelContract.includes("out_of_sample_log_loss_not_improved") &&
+  mlModelContract.includes("calibration_error_above_limit") &&
+  mlModelContract.includes("automaticPromotionAllowed: false") &&
+  mlModelContract.includes("productionPromotionAllowed: false") &&
+  mlModelContractTests.includes("valid out-of-sample evaluation qualifies only for human shadow review") &&
+  mlModelContractTests.includes("fit-data cutoff after training window is rejected as leakage") &&
+  mlModelContractTests.includes("model that does not beat baseline out of sample is blocked") &&
+  mlModelContractTests.includes("small test sample and poor calibration are blocked"),
+  "A model artifact is blocked without an approved dataset, chronological train/validation/test separation, a fit-data cutoff, minimum sample sizes, baseline improvement and calibration. Passing never auto-promotes to production.");
+
 const llmExecution = await read("netlify/lib/llm-execution.mts");
 const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
 const agentsSdk = await read("netlify/lib/agents-sdk.mts");
