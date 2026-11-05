@@ -98,6 +98,7 @@ export function validateWinMLPrediction(
   } else {
     if (cutoff! >= eventStart!) reasons.push("prediction_cutoff_must_precede_event");
     if (generatedAt! < cutoff!) reasons.push("prediction_generated_before_cutoff");
+    if (generatedAt! >= eventStart!) reasons.push("prediction_generated_at_or_after_event_start");
     if (generatedAt! < trainedAt!) reasons.push("prediction_generated_before_model_training");
   }
 
