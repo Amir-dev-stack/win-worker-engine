@@ -48,3 +48,10 @@ The chronological splitter validates timezone-qualified ISO timestamps before so
 ## Experiment-to-candidate compatibility gate
 
 Experiment preflight now requires the realized candidate market and feature-schema version in addition to chronological partition counts. It rejects 1X2 labels supplied to the total-goals Poisson plan, total-goals labels supplied to the 1X2 Logistic Regression plan, and feature-schema mismatches. The current candidate builder emits only 1X2 examples; therefore the total-goals plan remains intentionally unusable until a separate, settlement-line-aware total-goals candidate builder exists. Both experiment plans continue to have fitting disabled.
+
+
+## Football score-basis and 1X2 settlement boundary
+
+The normalized football results importer now requires an explicit `scoreBasis: "regulation_time"` declaration. It rejects missing, ambiguous or extra-time-inclusive score semantics rather than assuming that a provider's generic final score matches a 90-minute 1X2 target. The point-in-time feature builder excludes rows that do not carry the regulation-time basis, and the target builder rejects such targets.
+
+The 1X2 training label must use the fixed internal rule ID `win.football.regulation_time_1x2.v1`. This names WIN's score-based 90-minute regulation-time outcome convention; it is not a bookmaker-specific official settlement guarantee. The current normalized importer still requires the source adapter/operator to establish that the supplied score really represents regulation time. No authoritative bookmaker settlement-rule registry exists yet, and abandoned matches, void rules, extra-time-specific markets and bookmaker-specific exceptions are not modeled. Those cases must remain excluded until separately specified and verified.
