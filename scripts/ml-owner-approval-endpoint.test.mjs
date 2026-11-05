@@ -87,6 +87,15 @@ test("owner approval endpoint fails closed and accepts only a separately authent
     assert.equal(status.status, 200);
     assert.equal((await status.json()).status, "active");
 
+    const inventory = await endpoint(new Request("https://win.test/api/ml-owner-approval", {
+      method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + token },
+      body: JSON.stringify({ action: "list", limit: 10 })
+    }));
+    assert.equal(inventory.status, 200);
+    const inventoryBody = await inventory.json();
+    assert.equal(inventoryBody.count, 1);
+    assert.equal(inventoryBody.approvals[0].status, "active");
+
     assert.ok([...memoryStore.records.keys()].every(key =>
       key.startsWith("library/ml-dataset-manifests/") ||
       key.startsWith("library/ml-owner-training-approvals/")));
