@@ -72,3 +72,19 @@ test("missing result availability is never inferred from kickoff", () => {
   assert.equal(result.evidence.excludedFutureOrUnavailableRows, 1);
   assert.deepEqual(result.features, {});
 });
+
+
+test("point-in-time feature builder rejects duplicate or missing historical identities", () => {
+  assert.throws(() => buildWinFootballPointInTimeFeatures({
+    datasetId: "fixture",
+    historicalRows: [match(), match({ eventId: "event-2" })],
+    target,
+    predictionCutoff: "2026-11-01T17:00:00.000Z"
+  }), error => error.code === "historical_row_identity_duplicate_or_invalid");
+  assert.throws(() => buildWinFootballPointInTimeFeatures({
+    datasetId: "fixture",
+    historicalRows: [match({ sourceRecordId: "" })],
+    target,
+    predictionCutoff: "2026-11-01T17:00:00.000Z"
+  }), error => error.code === "historical_row_identity_duplicate_or_invalid");
+});
