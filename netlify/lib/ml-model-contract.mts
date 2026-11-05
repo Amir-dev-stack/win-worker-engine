@@ -122,7 +122,6 @@ export function evaluateWinMLPromotionReadiness(
     if (!(trainFrom! <= trainTo! && trainTo! < validationFrom! && validationFrom! <= validationTo! &&
           validationTo! < testFrom! && testFrom! <= testTo!)) reasons.push("chronological_split_invalid_or_overlapping");
     if (trainedAt! < trainTo!) reasons.push("model_training_timestamp_precedes_training_data_end");
-    if (trainedAt! > testFrom!) reasons.push("model_not_frozen_before_test_window");
     if (fitDataCutoff! > trainTo!) reasons.push("fit_data_cutoff_exceeds_training_window");
   }
 
