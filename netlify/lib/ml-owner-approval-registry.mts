@@ -117,6 +117,7 @@ export async function registerWinMLOwnerTrainingRevocation(
     approvalId: approvalPayload.approvalId,
     datasetId: approvalPayload.datasetId,
     datasetContentSha256: approvalPayload.datasetContentSha256,
+    approvedAt: approvalPayload.approvedAt,
     now
   });
   if (!verification.valid) registryError("owner_revocation_evidence_invalid", verification.reasons);
@@ -168,6 +169,7 @@ export async function getWinMLOwnerTrainingApprovalStatus(
       approvalId,
       datasetId: payload.datasetId,
       datasetContentSha256: payload.datasetContentSha256,
+      approvedAt: payload.approvedAt,
       now
     });
     if (!revoked.valid) return { status: "invalid" as const, approvalId, reasons: revoked.reasons };
