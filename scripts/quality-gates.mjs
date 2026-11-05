@@ -204,6 +204,20 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   mlDataContractTests.includes("future features, post-kickoff cutoffs and invalid labels"),
   "Synthetic-only tests enforce source/licence provenance, explicit training permission, exact event timing, feature availability cutoffs and settlement-aware labels before any model experiment.");
 
+
+const llmExecution = await read("netlify/lib/llm-execution.mts");
+const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
+add("WIN LLM provider execution is bounded, validates responses and never blindly retries uncertain outcomes",
+  llmExecution.includes("AbortController") &&
+  llmExecution.includes("provider_timeout_outcome_uncertain") &&
+  llmExecution.includes("validateWinLLMResponse") &&
+  llmExecution.includes("retryPermitted") &&
+  llmExecution.includes("controller.abort") &&
+  llmExecutionTests.includes("timeout aborts adapter") &&
+  llmExecutionTests.includes("never trigger an automatic replay") &&
+  llmExecutionTests.includes("invalid provider responses fail closed"),
+  "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
