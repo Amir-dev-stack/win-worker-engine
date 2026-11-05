@@ -332,6 +332,9 @@ add("WIN owner training approvals require dataset-bound Ed25519 signatures and l
   mlOwnerApproval.includes("licenceEvidenceSha256") &&
   mlOwnerApproval.includes("trusted_owner_approval_public_key_missing") &&
   mlOwnerApproval.includes("owner_approval_expired") &&
+  mlOwnerApproval.includes("verifyWinMLOwnerTrainingRevocation") &&
+  mlOwnerApproval.includes("owner_revocation_not_yet_effective") &&
+  mlOwnerApprovalTests.includes("signed revocation is bound to the approval, dataset and content hash") &&
   mlOwnerApproval.includes("The public key MUST come from trusted server configuration") &&
   mlOwnerApprovalTests.includes("tampered payload, wrong signing key and malformed signature fail closed") &&
   mlOwnerApprovalTests.includes("approval signature cannot be reused for a different dataset"),
