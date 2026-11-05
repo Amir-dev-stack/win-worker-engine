@@ -214,6 +214,7 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContract.includes("out_of_sample_brier_improvement_insufficient") &&
   mlModelContract.includes("out_of_sample_log_loss_not_improved") &&
   mlModelContract.includes("calibration_error_above_limit") &&
+  mlModelContract.includes("evaluation_rows_exceed_dataset_rows") &&
   mlModelContract.includes("automaticPromotionAllowed: false") &&
   mlModelContract.includes("productionPromotionAllowed: false") &&
   mlModelContractTests.includes("valid out-of-sample evaluation qualifies only for human shadow review") &&
