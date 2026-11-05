@@ -53,3 +53,40 @@ test("preflight blocks undersized datasets even if training permission is approv
   }), WIN_FOOTBALL_TOTAL_GOALS_POISSON_PLAN, 500);
   assert.ok(result.reasons.includes("candidate_rows_below_experiment_minimum"));
 });
+
+test("chronological splitter is stable and keeps equal kickoff times in one partition", async () => {
+  const { splitWinMLExamplesChronologically } = await import("../netlify/lib/ml-football-experiment-plans.mts");
+  const examples = Array.from({ length: 20 }, (_, index) => ({
+    eventId: "event-" + index,
+    eventStart: new Date(Date.UTC(2026, 0, Math.floor(index / 2) + 1, 12)).toISOString(),
+    predictionCutoff: new Date(Date.UTC(2026, 0, Math.floor(index / 2) + 1, 11)).toISOString()
+  })).reverse();
+  const first = splitWinMLExamplesChronologically(examples);
+  const second = splitWinMLExamplesChronologically(examples);
+  assert.deepEqual(first.eventIds, second.eventIds);
+  assert.ok(Date.parse(first.boundaries.trainingEndsAt) < Date.parse(first.boundaries.validationStartsAt));
+  assert.ok(Date.parse(first.boundaries.validationEndsAt) < Date.parse(first.boundaries.testStartsAt));
+  const partitionByTime = new Map();
+  for (const [name, rows] of [["training", first.training], ["validation", first.validation], ["test", first.test]]) {
+    for (const row of rows) {
+      const previous = partitionByTime.get(row.eventStart);
+      assert.ok(!previous || previous === name, "same kickoff timestamp must not cross partitions");
+      partitionByTime.set(row.eventStart, name);
+    }
+  }
+});
+
+test("chronological splitter rejects invalid cutoffs and duplicate event identities", async () => {
+  const { splitWinMLExamplesChronologically } = await import("../netlify/lib/ml-football-experiment-plans.mts");
+  const examples = Array.from({ length: 10 }, (_, index) => ({
+    eventId: "event-" + index,
+    eventStart: new Date(Date.UTC(2026, 0, index + 1, 12)).toISOString(),
+    predictionCutoff: new Date(Date.UTC(2026, 0, index + 1, 11)).toISOString()
+  }));
+  assert.throws(() => splitWinMLExamplesChronologically([
+    ...examples.slice(0, 9), { ...examples[9], eventId: "event-0" }
+  ]), /chronological_split_example_invalid/);
+  assert.throws(() => splitWinMLExamplesChronologically([
+    ...examples.slice(0, 9), { ...examples[9], predictionCutoff: examples[9].eventStart }
+  ]), /chronological_split_example_invalid/);
+});
