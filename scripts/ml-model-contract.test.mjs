@@ -142,3 +142,17 @@ test("evaluation rejects sport, market-algorithm and target-definition mismatche
   const wrongTarget = evaluateWinMLPromotionReadiness(manifest(), evaluation({ targetDefinition: "full_time_total_goals" }));
   assert.ok(wrongTarget.reasons.includes("evaluation_target_definition_market_mismatch"));
 });
+
+
+test("evaluation requires a training run, configuration hash, split hash and feature-builder commit", () => {
+  const result = evaluateWinMLPromotionReadiness(manifest(), evaluation({
+    trainingRunId: "",
+    trainingConfigSha256: "not-a-hash",
+    splitManifestSha256: "",
+    featureBuilderCommitSha: "bad"
+  }));
+  assert.ok(result.reasons.includes("trainingRunId_required"));
+  assert.ok(result.reasons.includes("training_config_hash_invalid"));
+  assert.ok(result.reasons.includes("split_manifest_hash_invalid"));
+  assert.ok(result.reasons.includes("feature_builder_commit_sha_invalid"));
+});
