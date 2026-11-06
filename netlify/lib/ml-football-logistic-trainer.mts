@@ -8,6 +8,7 @@ export type WinMLFootballOutcome = typeof WIN_ML_FOOTBALL_1X2_CLASSES[number];
 export type WinMLFootballNumericRow = {
   eventId: string;
   eventStart: string;
+  labelAvailableAt: string;
   features: Record<string, number>;
   outcome: WinMLFootballOutcome;
 };
@@ -31,6 +32,7 @@ export type WinMLFootballLogisticArtifactV1 = {
   trainingRows: number;
   trainingWindow: { from: string; to: string };
   validationWindow: { from: string; to: string };
+  fitDataCutoff: string;
   trainingConfig: WinMLFootballLogisticConfig;
   trainingConfigSha256: string;
   splitManifestSha256: string;
@@ -56,7 +58,11 @@ function validateRows(rows: WinMLFootballNumericRow[], featureNames: string[], s
       continue;
     }
     seen.add(row.eventId);
-    if (timestamp(row.eventStart) === null) errors.push("training_event_timestamp_invalid:" + row.eventId);
+    const eventStart = timestamp(row.eventStart);
+    const labelAvailableAt = timestamp(row.labelAvailableAt);
+    if (eventStart === null || labelAvailableAt === null || labelAvailableAt < eventStart) {
+      errors.push("training_label_availability_invalid:" + row.eventId);
+    }
     if (!WIN_ML_FOOTBALL_1X2_CLASSES.includes(row.outcome)) errors.push("training_outcome_invalid:" + row.eventId);
     if (!row.features || typeof row.features !== "object" || Array.isArray(row.features)) {
       errors.push("training_features_invalid:" + row.eventId);
@@ -158,9 +164,12 @@ export function trainWinMLFootball1X2LogisticModel(args: {
 
   const trainingSorted = [...trainingRows].sort((a, b) => Date.parse(a.eventStart) - Date.parse(b.eventStart));
   const validationSorted = [...validationRows].sort((a, b) => Date.parse(a.eventStart) - Date.parse(b.eventStart));
-  const trainingEnd = Date.parse(trainingSorted[trainingSorted.length - 1].eventStart);
+  const trainingAvailabilitySorted = [...trainingRows].sort((a, b) =>
+    Date.parse(a.labelAvailableAt) - Date.parse(b.labelAvailableAt));
   const validationStart = Date.parse(validationSorted[0].eventStart);
-  if (trainingEnd >= validationStart) throw new Error("training_validation_chronology_invalid");
+  const trainingAvailabilityEndAt = trainingAvailabilitySorted[trainingAvailabilitySorted.length - 1].labelAvailableAt;
+  const trainingAvailabilityEnd = Date.parse(trainingAvailabilityEndAt);
+  if (trainingAvailabilityEnd >= validationStart) throw new Error("training_validation_chronology_invalid");
 
   const means = featureNames.map(name =>
     trainingRows.reduce((sum, row) => sum + row.features[name], 0) / trainingRows.length
@@ -205,19 +214,22 @@ export function trainWinMLFootball1X2LogisticModel(args: {
     trainingRows.filter(row => row.outcome === outcome).length / trainingRows.length
   );
   const baselineMetrics = metrics(validationRows, () => classCounts);
+  const validationAvailabilitySorted = [...validationRows].sort((a, b) =>
+    Date.parse(a.labelAvailableAt) - Date.parse(b.labelAvailableAt));
   const trainingWindow = {
     from: trainingSorted[0].eventStart,
-    to: trainingSorted[trainingSorted.length - 1].eventStart
+    to: trainingAvailabilityEndAt
   };
   const validationWindow = {
     from: validationSorted[0].eventStart,
-    to: validationSorted[validationSorted.length - 1].eventStart
+    to: validationAvailabilitySorted[validationAvailabilitySorted.length - 1].labelAvailableAt
   };
+  const fitDataCutoff = trainingAvailabilityEndAt;
   const trainingConfigSha256 = sha256(canonicalizeWinMLProvenance(config));
   const splitManifestSha256 = sha256(canonicalizeWinMLProvenance({
     trainingEventIds: trainingSorted.map(row => row.eventId),
     validationEventIds: validationSorted.map(row => row.eventId),
-    trainingWindow, validationWindow
+    trainingWindow, validationWindow, fitDataCutoff
   }));
   const artifactPayload = {
     artifactVersion: WIN_ML_FOOTBALL_LOGISTIC_ARTIFACT_VERSION,
@@ -232,6 +244,7 @@ export function trainWinMLFootball1X2LogisticModel(args: {
     trainingRows: trainingRows.length,
     trainingWindow,
     validationWindow,
+    fitDataCutoff,
     trainingConfig: { ...config },
     trainingConfigSha256,
     splitManifestSha256
@@ -261,8 +274,10 @@ export function predictWinMLFootball1X2(
       artifact.weights.length !== WIN_ML_FOOTBALL_1X2_CLASSES.length ||
       !Array.isArray(artifact.classes) ||
       artifact.classes.some((value, index) => value !== WIN_ML_FOOTBALL_1X2_CLASSES[index]) ||
-      artifact.normalization?.means?.length !== artifact.featureNames.length ||
-      artifact.normalization?.scales?.length !== artifact.featureNames.length ||
+      !Array.isArray(artifact.normalization?.means) ||
+      !Array.isArray(artifact.normalization?.scales) ||
+      artifact.normalization.means.length !== artifact.featureNames.length ||
+      artifact.normalization.scales.length !== artifact.featureNames.length ||
       artifact.weights.some(row => !Array.isArray(row) || row.length !== artifact.featureNames.length + 1 ||
         row.some(value => typeof value !== "number" || !Number.isFinite(value))) ||
       artifact.normalization.means.some(value => typeof value !== "number" || !Number.isFinite(value)) ||
@@ -275,7 +290,8 @@ export function predictWinMLFootball1X2(
     throw new Error("model_artifact_hash_mismatch");
   }
   const sortedFeatureNames = [...artifact.featureNames].sort();
-  if (artifact.featureNames.some((name, index) => name !== sortedFeatureNames[index])) {
+  if (artifact.featureNames.some((name, index) => typeof name !== "string" || !name.trim() ||
+      name !== sortedFeatureNames[index]) || new Set(artifact.featureNames).size !== artifact.featureNames.length) {
     throw new Error("model_artifact_feature_schema_invalid");
   }
   const keys = Object.keys(features || {}).sort();
