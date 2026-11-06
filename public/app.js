@@ -86,7 +86,13 @@ function renderCouponBoardCard(item, mode) {
  const date=item.settledAt||item.createdAt||item.archivedAt||item.updatedAt;
  const odds=item.combinedOdds===null||item.combinedOdds===undefined?"Not verified":Number(item.combinedOdds).toFixed(2);
  const indicativeOdds=item.theoreticalOddsProduct===null||item.theoreticalOddsProduct===undefined?null:Number(item.theoreticalOddsProduct).toFixed(2);
- const probabilityStatus=item.jointProbabilityAvailable===true?"Single-leg probability available":"Whole-coupon probability: not reliably quantifiable";
+ const wholeProbability=typeof item.wholeCouponWinProbabilityPercent==="number"
+  ?Number(item.wholeCouponWinProbabilityPercent).toFixed(1)+"%" : "Not reliably quantifiable";
+ const probabilityStatus=item.jointProbabilityAvailable===true
+  ?"Single-leg estimate: "+wholeProbability+" (uncalibrated unless separately validated)"
+  :"Whole-coupon probability: "+wholeProbability;
+ const riskDisplay=typeof item.riskPercent==="number"
+  ?'<p class="detail-meta">Heuristic risk score: <b>'+Number(item.riskPercent).toFixed(0)+'%</b> · not a calibrated loss probability.</p>':"";
  const probabilityWarnings=Array.isArray(item.probabilityWarnings)&&item.probabilityWarnings.length
   ?'<p class="detail-meta"><b>Probability warning:</b> '+escapeHtml(item.probabilityWarnings.join(" · "))+'</p>':"";
  const dataQuality=item.dataQualityStatus==="incomplete"?'<p class="report-error"><b>Incomplete evidence:</b> some leg details still need verification.</p>':"";
@@ -96,13 +102,17 @@ function renderCouponBoardCard(item, mode) {
   const market=escapeHtml(selection.market||selection.selectionType||"Market not specified");
   const pick=escapeHtml(selection.selection||selection.pick||selection.outcome||"Pick not specified");
   const price=selection.odds===null||selection.odds===undefined?"—":Number(selection.odds).toFixed(2);
+  const probability=typeof selection.estimatedWinProbabilityPercent==="number"
+   ?Number(selection.estimatedWinProbabilityPercent).toFixed(1)+"%": "—";
+  const probabilityBasis=selection.probabilityType==="agent_heuristic_unverified"?"Uncalibrated agent estimate"
+   :selection.probabilityType==="unverified_claim"?"Unverified model/market claim":"Not available";
   const result=escapeHtml(selection.result||selection.settlement||"—");
   const url=safeUrl(selection.sourceUrl||selection.url||selection.reference||"");
   const source=url?'<a href="'+escapeHtml(url)+'" target="_blank" rel="noopener noreferrer">Evidence ↗</a>':"Not supplied";
   const observed=selection.observedAt?'<small>'+escapeHtml(selection.observedAt)+'</small>':"";
-  return '<tr><td>'+(index+1)+'</td><td>'+event+'</td><td>'+market+'<br><b>'+pick+'</b></td><td>'+price+'</td><td>'+result+'</td><td>'+source+observed+'</td></tr>';
+  return '<tr><td>'+(index+1)+'</td><td>'+event+'</td><td>'+market+'<br><b>'+pick+'</b></td><td>'+price+'</td><td>'+probability+'<br><small>'+escapeHtml(probabilityBasis)+'</small></td><td>'+result+'</td><td>'+source+observed+'</td></tr>';
  }).join("");
- const table=rows?'<div class="table-wrap"><table><thead><tr><th>#</th><th>Event</th><th>Market / pick</th><th>Odds</th><th>Result</th><th>Source</th></tr></thead><tbody>'+rows+'</tbody></table></div>':"";
+ const table=rows?'<div class="table-wrap"><table><thead><tr><th>#</th><th>Event</th><th>Market / pick</th><th>Odds</th><th>Estimated leg win %</th><th>Result</th><th>Source</th></tr></thead><tbody>'+rows+'</tbody></table></div>':"";
  const text=item.couponText?'<pre>'+escapeHtml(item.couponText)+'</pre>':"";
  const blockers=Array.isArray(item.blockers)&&item.blockers.length?'<p class="report-error"><b>Blockers:</b> '+escapeHtml(item.blockers.join(" · "))+'</p>':"";
  const note=item.executionDisclosure||item.notes||item.settlementReviewStatus||"";
@@ -110,7 +120,7 @@ function renderCouponBoardCard(item, mode) {
   ?'<p class="detail-meta">Research candidate only · not placed by WIN</p>':"";
  const details=table||text||blockers?'<details><summary>View full coupon ('+selections.length+' selections)</summary>'+table+text+blockers+'</details>':'<p class="detail-meta">No structured selections were stored for this record.</p>';
  const priceNote=indicativeOdds!==null?'<p class="detail-meta">Theoretical leg-price product: <b>'+indicativeOdds+'</b> · not a bookmaker-quoted accumulator price.</p>':"";
- return '<article class="coupon-board-card"><div class="report-title"><b>'+title+'</b><span class="decision">'+state+'</span></div><small>'+origin+' · '+escapeHtml(item.sport||"Sport unspecified")+' · '+escapeHtml(item.competition||"Competition unspecified")+(date?' · '+escapeHtml(new Date(date).toLocaleString()):"")+'</small><p>Combined odds: <b>'+odds+'</b> · '+selections.length+' selections</p>'+priceNote+'<p class="detail-meta">'+escapeHtml(probabilityStatus)+'</p>'+probabilityWarnings+dataQuality+placement+(note?'<p class="detail-meta">'+escapeHtml(note)+'</p>':"")+details+'</article>';
+ return '<article class="coupon-board-card"><div class="report-title"><b>'+title+'</b><span class="decision">'+state+'</span></div><small>'+origin+' · '+escapeHtml(item.sport||"Sport unspecified")+' · '+escapeHtml(item.competition||"Competition unspecified")+(date?' · '+escapeHtml(new Date(date).toLocaleString()):"")+'</small><p>Combined odds: <b>'+odds+'</b> · '+selections.length+' selections</p>'+priceNote+'<p class="detail-meta">'+escapeHtml(probabilityStatus)+'</p>'+riskDisplay+probabilityWarnings+dataQuality+placement+(note?'<p class="detail-meta">'+escapeHtml(note)+'</p>':"")+details+'</article>';
 }
 async function refreshCouponBoards(){
  const status=$("#couponBoardStatus");
