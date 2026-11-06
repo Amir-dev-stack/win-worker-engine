@@ -187,3 +187,28 @@ test("rejects tiny apparent gains that may be noise on the held-out cohort", () 
   assert.ok(result.reasons.includes("market_improvement_below_minimum_threshold"));
   assert.equal(result.probabilities, null);
 });
+
+test("accepts valid offset timestamps and rejects impossible calendar dates in every event clock", () => {
+  const validOffset = calculateWinMLMarketAnchoredBlend(input({
+    event: {
+      eventId: "fixture-001",
+      kickoff: "2026-11-08T19:00:00.000+01:00",
+      predictionCutoff: "2026-11-08T18:00:00.000+01:00"
+    },
+    market: { ...input().market, at: "2026-11-08T17:30:00.000+01:00" },
+    model: { ...input().model, at: "2026-11-08T17:45:00.000+01:00" }
+  }));
+  assert.equal(validOffset.status, "research_only");
+
+  const impossibleMarketTime = calculateWinMLMarketAnchoredBlend(input({
+    market: { ...input().market, at: "2026-02-30T16:30:00.000Z" }
+  }));
+  assert.equal(impossibleMarketTime.status, "blocked");
+  assert.ok(impossibleMarketTime.reasons.includes("market_snapshot_missing_stale_or_after_cutoff"));
+
+  const impossibleModelTime = calculateWinMLMarketAnchoredBlend(input({
+    model: { ...input().model, at: "2026-11-08T25:45:00.000Z" }
+  }));
+  assert.equal(impossibleModelTime.status, "blocked");
+  assert.ok(impossibleModelTime.reasons.includes("model_prediction_after_cutoff"));
+});
