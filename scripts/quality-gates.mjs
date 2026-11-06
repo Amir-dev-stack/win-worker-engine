@@ -626,6 +626,19 @@ add("WIN model fitting is blocked by a server-side execution gate and immutable 
  
 const winMarketEvaluationRegistry = await read("netlify/lib/win-market-evaluation-registry.mts");
 const winMarketEvaluationRegistryTests = await read("scripts/win-market-evaluation-registry.test.mjs");
+const mlMarketBlendEvidence = await read("netlify/lib/ml-market-blend-evidence.mts");
+const mlMarketBlendEvidenceTests = await read("scripts/ml-market-blend-evidence.test.mjs");
+add("WIN market blend evidence is composed only from matching immutable model and market evaluation records",
+  mlMarketBlendEvidence.includes("getWinMLModelArtifact(modelId, modelVersion)") &&
+  mlMarketBlendEvidence.includes("getWinMarketEvaluation(marketEvaluationId)") &&
+  mlMarketBlendEvidence.includes("verifyWinMarketEvaluationRecord(market)") &&
+  mlMarketBlendEvidence.includes("market_blend_evidence_binding_mismatch") &&
+  mlMarketBlendEvidence.includes("market_blend_evidence_chronology_invalid") &&
+  mlMarketBlendEvidenceTests.includes("matching immutable model and market records") &&
+  mlMarketBlendEvidenceTests.includes("another held-out cohort") &&
+  mlMarketBlendEvidenceTests.includes("before all held-out labels are available"),
+  "The market-anchored blend receives metrics only after the model artifact, market report, dataset hash, held-out cohort and evaluation chronology have been checked against immutable registries.");
+
 add("WIN market benchmark is bound to the registered ML artifact's exact held-out events and event-level cutoffs",
   winMarketEvaluationRegistry.includes("getWinMLModelArtifact(modelId, modelVersion)") &&
   winMarketEvaluationRegistry.includes("assertWinMarketCohortMatchesModel(testRows, evaluation)") &&
