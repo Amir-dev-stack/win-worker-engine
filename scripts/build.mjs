@@ -99,6 +99,8 @@ const required = [
   "netlify/lib/ml-football-odds-quality.mts",
   "scripts/ml-football-odds-quality.test.mjs",
   "netlify/lib/ml-football-observed-odds-quality.mts",
+  "netlify/lib/win-coupon-archive-policy.mts",
+  "scripts/win-coupon-archive-policy.test.mjs",
   "netlify/lib/ml-leg-probability-calibration.mts",
   "scripts/ml-leg-probability-calibration.test.mjs",
   "scripts/ml-football-observed-odds-quality.test.mjs",
