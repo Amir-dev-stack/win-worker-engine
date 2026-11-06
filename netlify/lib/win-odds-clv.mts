@@ -69,11 +69,12 @@ function validateQuote(quote: WinCLVQuote, kickoffAt: string) {
       !isStrictIsoTimestamp(quote.sourceObservedAt) ||
       !isStrictIsoTimestamp(quote.ingestedAt) ||
       !isStrictIsoTimestamp(quote.eventStartAt) ||
-      quote.eventStartAt !== kickoffAt ||
+      Date.parse(quote.eventStartAt) !== Date.parse(kickoffAt) ||
       !["open","suspended","closed","unknown"].includes(quote.availabilityStatus) ||
       quote.live !== false) {
     throw new WinCLVError("clv_quote_invalid");
   }
+  if (Date.parse(quote.ingestedAt) < Date.parse(quote.sourceObservedAt)) throw new WinCLVError("clv_ingestion_precedes_source_observation");
   if (quote.availabilityStatus !== "open") throw new WinCLVError("clv_quote_not_open");
   if (Date.parse(quote.sourceObservedAt) >= Date.parse(kickoffAt)) {
     throw new WinCLVError("clv_quote_not_pre_kickoff");
@@ -83,7 +84,8 @@ function validateQuote(quote: WinCLVQuote, kickoffAt: string) {
 function identity(quote: WinCLVQuote) {
   return JSON.stringify([
     quote.sourceId, quote.eventId, quote.marketId, quote.selectionId,
-    quote.period, quote.line ?? null, quote.bookmakerId, quote.venueType, quote.priceType
+    quote.period, quote.line ?? null, quote.bookmakerId, quote.venueType, quote.priceType,
+    quote.sourceRevision, quote.licenceId
   ]);
 }
 
