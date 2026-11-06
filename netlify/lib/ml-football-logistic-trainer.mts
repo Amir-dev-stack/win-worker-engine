@@ -141,6 +141,7 @@ export function trainWinMLFootball1X2LogisticModel(args: {
     errors.push("training_config_invalid");
   }
   if (errors.length) throw new Error(errors.join(","));
+  if (!config) throw new Error("training_config_invalid");
 
   const trainingRows = args.trainingRows;
   const validationRows = args.validationRows;
