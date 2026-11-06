@@ -115,3 +115,7 @@ This corrects the earlier worker behavior that merged correlation blockers into 
 ### Coupon-board presentation
 
 The coupon board now displays `DRAFTABLE` candidates, separates the confirmed `combinedOdds` field from the theoretical product of leg prices, and labels the latter as not a bookmaker-quoted accumulator price. It also shows when whole-coupon probability is not reliably quantifiable, displays dependence warnings separately from data blockers, and calls out incomplete leg evidence. This preserves proposal visibility while preventing a draft from being mistaken for a probability-qualified or executable bet.
+
+### Leg-level percentage provenance
+
+D6's structured leg output now asks for an estimated win percentage (0–100), probability basis, confidence, rationale and evidence references. The worker retains valid numeric estimates but marks every free-text LLM estimate as unverified and uncalibrated; even a model/market label supplied by the LLM is not accepted as registry verification. A single-leg estimate may be shown as the coupon estimate with that caveat. Multi-leg whole-coupon probability remains null until a validated joint model is available. The dashboard displays the estimate, its confidence and rationale separately from the heuristic risk score.
