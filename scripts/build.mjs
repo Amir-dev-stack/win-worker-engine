@@ -98,6 +98,8 @@ const required = [
   "scripts/ml-football-season-coverage.test.mjs",
   "netlify/lib/ml-football-odds-quality.mts",
   "netlify/lib/win-odds-clv.mts",
+  "database/migrations/20261107_win_odds_evidence.sql",
+  "scripts/win-odds-evidence-schema.test.mjs",
   "scripts/win-odds-clv.test.mjs",
   "scripts/ml-football-odds-quality.test.mjs",
   "netlify/lib/ml-football-observed-odds-quality.mts",
