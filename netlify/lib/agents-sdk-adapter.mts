@@ -15,6 +15,7 @@ type AgentRunner = (input: {
   webSearch: boolean;
   maxTurns?: number;
   maxOutputTokens: number;
+  maxToolCallsPerResponse: number;
   signal?: AbortSignal;
 }) => Promise<WinAgentRun>;
 
@@ -89,6 +90,7 @@ export function createOpenAIWinLLMAdapter(input: {
         webSearch: request.tools.includes("web_search"),
         maxTurns: Math.max(1, Math.min(2, request.limits.maxToolCalls + 1)),
         maxOutputTokens: request.limits.maxOutputTokens,
+        maxToolCallsPerResponse: Math.ceil(request.limits.maxToolCalls / 2),
         signal
       });
       const latencyMs = Math.max(0, Date.now() - startedAt);
