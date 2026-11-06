@@ -159,3 +159,41 @@ export async function recordWinMLShadowPrediction(prediction: WinMLPredictionV1)
   }
   throw new WinMLShadowPredictionError("shadow_prediction_immutable_conflict");
 }
+
+
+/** Loads and revalidates one immutable shadow inference record by prediction-run ID. */
+export async function getWinMLShadowPredictionRecord(predictionRunId: string) {
+  if (!validId(predictionRunId)) {
+    throw new WinMLShadowPredictionError("shadow_prediction_record_id_invalid");
+  }
+  const record = await get<any>(COLLECTION, predictionRunId);
+  if (!record) return null;
+  const { recordSha256, ...payload } = record;
+  const prediction = record.prediction as WinMLPredictionV1;
+  if (record.recordVersion !== RECORD_VERSION ||
+      record.productionUseAllowed !== false || record.automatedBettingAllowed !== false ||
+      record.prediction?.predictionRunId !== predictionRunId ||
+      !isStrictRecordTimestamp(record.recordedAt) ||
+      !/^[a-f0-9]{64}$/i.test(String(record.predictionSha256 || "")) ||
+      record.predictionSha256 !== hashWinMLProvenance(prediction).sha256 ||
+      !/^[a-f0-9]{64}$/i.test(String(recordSha256 || "")) ||
+      recordSha256 !== hashWinMLProvenance(payload).sha256) {
+    throw new WinMLShadowPredictionError("shadow_prediction_record_tampered");
+  }
+  const registered = await getWinMLModelArtifact(prediction.modelId, prediction.modelVersion);
+  if (!registered) throw new WinMLShadowPredictionError("shadow_prediction_model_not_registered");
+  const manifest = await getWinMLDatasetManifest(registered.artifact.datasetId);
+  if (!manifest || manifest.contentSha256 !== registered.artifact.datasetContentSha256) {
+    throw new WinMLShadowPredictionError("shadow_prediction_dataset_binding_invalid");
+  }
+  const validation = validateWinMLPrediction(manifest, registered.evaluation, prediction);
+  if (validation.status !== "eligible_for_shadow_only") {
+    throw new WinMLShadowPredictionError("shadow_prediction_record_contract_blocked:" +
+      validation.reasons.join("|"));
+  }
+  return { prediction, recordSha256, recordedAt: record.recordedAt };
+}
+
+function isStrictRecordTimestamp(value: unknown): boolean {
+  return instant(value) !== null;
+}
