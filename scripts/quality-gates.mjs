@@ -1074,6 +1074,18 @@ add("WIN source identity requires server-curated publisher ownership, pinned rev
   sourceIdentityTests.includes("never treats caller-declared provider groups as verified"),
   "Provider independence can only be resolved from server-curated, reviewed source metadata; an empty catalogue fails closed, and shared upstream owners cannot count as independent.");
 
+const sourceReviewQueue = await read("netlify/lib/ml-source-review-queue.mts");
+const sourceReviewQueueTests = await read("scripts/ml-source-review-queue.test.mjs");
+add("Football-first source identity review queue covers every result provider without guessing ownership",
+  sourceReviewQueue.includes("DATA_PROVIDER_REGISTRY") &&
+  sourceReviewQueue.includes('reviewStatus: "unreviewed"') &&
+  sourceReviewQueue.includes("upstreamOwnerId: null") &&
+  sourceReviewQueue.includes("independenceGroup: null") &&
+  sourceReviewQueueTests.includes("includes every registered provider with result data") &&
+  sourceReviewQueueTests.includes("never invent source ownership or independence") &&
+  sourceReviewQueueTests.includes("football result candidates are the first review track"),
+  "Every registered results provider is visible for review; football is prioritised, later sports remain queued, and no publisher identity or independence group is inferred.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
