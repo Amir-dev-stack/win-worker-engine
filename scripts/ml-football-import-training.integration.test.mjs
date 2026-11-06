@@ -14,6 +14,7 @@ test("football results v2 flows through availability-aware point-in-time candida
     competition: "Synthetic League",
     season: "2025-2026",
     sourceUrl: "https://example.test/football-results.json",
+    sourceRevision: "synthetic-fixture-rev-1",
     licenceId: "UNVERIFIED-TEST-FIXTURE",
     attributionRequired: false,
     retrievedAt: "2026-11-06T00:00:00.000Z"

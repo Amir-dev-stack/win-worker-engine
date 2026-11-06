@@ -31,6 +31,7 @@ const source = {
   competition: "Synthetic League",
   season: "2025-26",
   sourceUrl: "https://example.test/results",
+  sourceRevision: "synthetic-fixture-rev-1",
   licenceId: "TEST-ONLY-NOT-LEGAL-APPROVAL",
   attributionRequired: false,
   retrievedAt: "2026-11-05T12:00:00.000Z"
