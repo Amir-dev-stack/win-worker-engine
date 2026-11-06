@@ -162,7 +162,9 @@ test("preflight requires chronological partition counts and enforces each minimu
   const ready = preflightWinMLExperiment(approved, WIN_FOOTBALL_1X2_LOGISTIC_PLAN, 1000, {
     training: 700, validation: 150, test: 150
   }, { market: "1x2", featureSchemaVersion: "win.football.form.v1" });
-  assert.equal(ready.status, "eligible_for_separate_owner_approved_fit");
+  assert.equal(ready.status, "blocked");
+  assert.ok(ready.reasons.includes("owner_training_approval_missing"));
+  assert.ok(ready.reasons.includes("licence_does_not_permit_training"));
   assert.equal(ready.fittingAllowed, false);
 });
 
