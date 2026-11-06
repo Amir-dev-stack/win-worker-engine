@@ -35,3 +35,31 @@ test("football result candidates are the first review track; other sports remain
   assert.ok(queue.filter(entry => entry.sportIds.includes("football"))
     .every(entry => entry.rolloutTrack === "football_first"));
 });
+
+import { getWinFootballSourceInventory } from "../netlify/lib/ml-source-review-queue.mts";
+
+test("football source inventory covers all registered football providers and their declared domains", () => {
+  const expected = DATA_PROVIDER_REGISTRY.filter(provider => provider.sports.includes("football"))
+    .map(provider => provider.id).sort();
+  const inventory = getWinFootballSourceInventory();
+  assert.deepEqual(inventory.map(entry => entry.providerId).sort(), expected);
+  for (const entry of inventory) {
+    const provider = DATA_PROVIDER_REGISTRY.find(item => item.id === entry.providerId);
+    assert.deepEqual(entry.dataDomains, [...provider.dataDomains].sort());
+    assert.equal(entry.connectionStatus, "registry_only_not_connected");
+    assert.equal(entry.trainingStatus, "not_approved");
+  }
+});
+
+test("football inventory separates odds, results, context and prediction data without asserting readiness", () => {
+  const inventory = getWinFootballSourceInventory();
+  const allAreas = new Set(inventory.flatMap(entry => entry.coverageAreas));
+  assert.ok(allAreas.has("fixtures_and_results"));
+  assert.ok(allAreas.has("odds_and_markets"));
+  assert.ok(allAreas.has("team_and_player_statistics"));
+  assert.ok(allAreas.has("predictions_and_probabilities"));
+  const locked = inventory.find(entry => entry.providerId === "football-data-co-uk");
+  assert.equal(locked.licenceReview, "required");
+  assert.equal(locked.automationAllowed, false);
+  assert.ok(locked.coverageAreas.includes("odds_and_markets"));
+});
