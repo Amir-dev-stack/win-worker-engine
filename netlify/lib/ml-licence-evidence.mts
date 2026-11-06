@@ -32,16 +32,22 @@ export function verifyWinMLLicenceEvidence(
   const reasons: string[] = [], payload = evidence?.payload;
   if (!payload || payload.evidenceVersion !== WIN_ML_LICENCE_EVIDENCE_VERSION) reasons.push("licence_evidence_version_invalid");
   if (typeof payload?.evidenceId !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(payload.evidenceId)) reasons.push("licence_evidence_id_invalid");
+  if (typeof payload?.licenceId !== "string" || !payload.licenceId.trim()) reasons.push("licence_evidence_licence_id_invalid");
   if (payload?.licenceId !== expected?.licenceId) reasons.push("licence_evidence_licence_mismatch");
   if (payload?.reviewedUse !== "training") reasons.push("licence_training_permission_not_attested");
-  if (payload?.reviewerId !== expected?.reviewerId || !payload?.reviewerId?.trim()) reasons.push("licence_evidence_reviewer_mismatch");
+  if (typeof payload?.reviewerId !== "string" || payload.reviewerId !== expected?.reviewerId || !payload.reviewerId.trim()) {
+    reasons.push("licence_evidence_reviewer_mismatch");
+  }
   try {
-    const source = new URL(payload?.sourceUrl || "");
+    if (typeof payload?.sourceUrl !== "string") throw new Error("source_url_not_string");
+    const source = new URL(payload.sourceUrl);
     if (source.protocol !== "https:" || !source.hostname || source.username || source.password) {
       reasons.push("licence_evidence_source_url_invalid");
     }
   } catch { reasons.push("licence_evidence_source_url_invalid"); }
-  if (!/^[a-f0-9]{64}$/i.test(payload?.sourceDocumentSha256 || "")) reasons.push("licence_source_document_hash_invalid");
+  if (typeof payload?.sourceDocumentSha256 !== "string" || !/^[a-f0-9]{64}$/i.test(payload.sourceDocumentSha256)) {
+    reasons.push("licence_source_document_hash_invalid");
+  }
   if (typeof payload?.rationale !== "string" || payload.rationale.trim().length < 12) reasons.push("licence_review_rationale_required");
   const reviewedAt = timestamp(payload?.reviewedAt), expiresAt = timestamp(payload?.reviewExpiresAt);
   const now = timestamp(expected?.now ?? new Date().toISOString());
