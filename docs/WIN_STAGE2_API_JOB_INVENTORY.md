@@ -220,3 +220,10 @@ These are source changes and synthetic tests; no current-head CI execution is cl
 
 
 - The follow-on shared parser pass also moved `/api/runs`, `/api/library`, `/api/learning-data-jobs`, `/api/human-coupon-settlements` and `/api/human-sources` to strict bounded JSON reads after their existing bearer-authentication and method checks. Per-route caps are documented above in the Stage 2 request-boundary audit.
+
+
+### Extended bounded JSON coverage for worker and diagnostics APIs (2026-11-06)
+- Extended the shared strict JSON parser to 11 more authenticated write routes: AI budget approval, department smoke test, OpenAI key diagnostics, tipster source import, tip submission, research evidence submission, research-source candidate review, post-match check, simulation execution, simulation creation and worker execution.
+- Added route-specific byte caps: AI budget 8 KiB; department smoke test 8 KiB; OpenAI key diagnostics 8 KiB; source import 64 KiB; tips 16 KiB; research evidence 128 KiB; source-candidate review 8 KiB; post-match check 8 KiB; simulation runner 8 KiB; simulation creation 64 KiB; worker runner 16 KiB.
+- The internal simulation and worker runners now require POST in addition to their existing internal bearer token. All 16 covered routes authenticate before parsing request bodies.
+- Extended the architecture gate to enumerate all 16 routes, verify their configured caps and authentication ordering, and require POST on the internal runners.
