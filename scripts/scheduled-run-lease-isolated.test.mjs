@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import test from "node:test";
 import assert from "node:assert/strict";
 
@@ -62,6 +63,16 @@ test("scheduled learning run lease elects one concurrent owner and blocks duplic
     assert.notEqual(reclaimed.leaseId, expired.leaseId);
     assert.equal(await releaseWinScheduledRunLease("synthetic-run-2", expired.leaseId, now + 1002), false,
       "a stale worker must not release the reclaimed lease");
+
+    const corruptRunId = "synthetic-run-corrupt";
+    const corruptKey = createHash("sha256").update(corruptRunId, "utf8").digest("hex");
+    await store.put("library/scheduled-run-leases", corruptKey, {
+      version: "win.scheduled-run-lease.v1", runId: corruptRunId,
+      leaseId: "active-but-malformed", claimedAt: new Date(now).toISOString(),
+      leaseExpiresAt: "not-a-timestamp"
+    });
+    assert.equal((await claimWinScheduledRunLease(corruptRunId, now)).reason, "contention",
+      "a malformed active lease must fail closed instead of being treated as expired");
 
     assert.equal((await claimWinScheduledRunLease("", now)).reason, "invalid_run_id");
     assert.ok([...memory.records.keys()].every(key => key.startsWith("library/scheduled-run-leases/")),
