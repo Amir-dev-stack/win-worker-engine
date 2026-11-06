@@ -35,9 +35,22 @@ The isolated `scripts/win-store.test.mjs` contract fixture now exercises simulta
 
 Important limitation: these are isolated adapter-contract tests. They validate WIN's wrapper behavior against the expected atomic semantics of the adapter fixture; they do not independently prove Netlify Blobs' provider-side atomicity or Neon transaction behavior. Provider integration verification remains open and must be done with non-production test resources only after an explicitly approved test environment exists.
 
-## 3. Known result-submission gap
+## 3. Result-submission claim and recovery
 
-The handler still uses a read-before-write duplicate check and does not atomically claim a prediction result. The new test covers sequential retry after a partial write; it does **not** prove safety under simultaneous submissions. Concurrent same-prediction submissions, including a possible duplicate canonical result, remain unverified and are a required next test before any idempotency refactor. No lock/claim protocol should be introduced until the storage conditional-write semantics and existing correction workflow are covered.
+The `/api/results` handler now uses an immutable per-prediction claim in `library/result-submission-claims/`:
+- the claim key is a SHA-256 digest of the prediction ID, avoiding caller-controlled storage path characters;
+- `putIfNew` elects one first-writer payload and canonical result ID for that prediction;
+- the claim stores the complete normalized result payload, so a retry can recover if the process stops after claiming but before writing the canonical result;
+- concurrent same-outcome submissions converge on the same result ID;
+- a different outcome receives HTTP 409 and is not allowed to overwrite the accepted claim;
+- legacy canonical results are adopted into a claim on the next same-outcome retry; multiple legacy results are rejected for manual reconciliation.
+
+The isolated result test now covers same-outcome concurrency, conflicting-outcome concurrency, a crash after claim creation but before canonical result persistence, and the existing downstream projection failure/retry.
+
+Important limitations:
+- The race tests use the in-memory adapter fixture. They do not independently prove that Netlify Blobs `onlyIfNew` has the required provider-side atomicity under real concurrent requests.
+- The existing independent-review endpoint handles lesson and coupon review cases; it is not a correction endpoint for `/api/results` prediction settlements. A governed correction path for a claimed prediction result remains unimplemented and must be designed before any manual result correction is attempted. Do not edit or delete claim records to bypass a 409.
+- The claim protocol is not evidence that a user-submitted result is true. Settlement records remain pending independent review, and WIN must not use them as verified model labels without separate provenance and review.
 
 ## 4. Next contract tests — priority order
 
@@ -50,7 +63,7 @@ Required cases:
 3. conflicting second outcome after an accepted result;
 4. failure after result record write and before each downstream learning projection;
 5. retry after partial failure resumes missing projections without duplicate lesson/settlement records;
-6. independent review/correction remains possible under its existing authorization rules.
+6. a governed prediction-result correction path is designed and tested separately; the current independent coupon/lesson reviewer is not treated as that path.
 
 Expected properties:
 - at most one canonical result claim wins;
@@ -60,7 +73,7 @@ Expected properties:
 - partial completion is visible and recoverable;
 - no production Blobs or Neon adapter is reachable during the test.
 
-Do not implement a new lock/claim protocol until the exact conditional-write behavior and existing correction workflow are covered by tests.
+The claim protocol is implemented against the isolated adapter fixture. Provider-side atomicity and a separate prediction-result correction workflow remain open; do not enable production reliance until both are verified.
 
 ### B. Storage adapter contract
 Extend the existing isolated `win-store.test.mjs` adapter checks to cover:
