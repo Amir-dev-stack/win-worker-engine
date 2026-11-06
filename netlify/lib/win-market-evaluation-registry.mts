@@ -111,9 +111,10 @@ function validateSourceRecordBindings(
     }
     used.add(row.sourceRecordId);
     const source = sourceById.get(row.sourceRecordId);
-    if (!source || source.providerId !== providerId || source.marketDataType !== "consensus_market_lines" ||
-        source.status !== "completed" || source.eventStart !== row.kickoffAt ||
-        source.closing?.marketSnapshotAt !== row.marketSnapshotAt) {
+    if (!source || source.providerId !== providerId || source.sport !== "football" ||
+        source.marketDataType !== "consensus_market_lines" || source.status !== "completed" ||
+        source.eventStart !== row.kickoffAt || source.closing?.marketSnapshotAt !== row.marketSnapshotAt ||
+        source.closing?.marketSnapshotTimestampStatus !== "source_timestamp") {
       throw new WinMarketEvaluationError("market_evaluation_source_record_binding_mismatch");
     }
     const sourceProbabilities = [
@@ -280,6 +281,7 @@ export async function getWinMarketEvaluation(evaluationId: string) {
       sourceDataset.providerId !== record.sourceId ||
       sourceDataset.sourceRevision !== record.sourceRevision ||
       sourceDataset.rawChecksum !== record.sourceDatasetSha256 ||
+      sourceDataset.marketDataType !== "consensus_market_lines" || sourceDataset.origin !== "provider_historical_data" ||
       sourceDataset.recordsSha256 !== record.sourceDatasetRecordsSha256 ||
       !Array.isArray(sourceDataset.records) || sourceDataset.totalRows !== sourceDataset.records.length ||
       hashWinMLProvenance(sourceDataset.records).sha256 !== record.sourceDatasetRecordsSha256) {
