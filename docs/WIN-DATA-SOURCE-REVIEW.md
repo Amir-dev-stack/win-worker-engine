@@ -94,3 +94,11 @@ A second-level evaluator now partitions a supplied football fixture universe by 
 Opening, intermediate and closing odds coverage is reported separately only when the incoming snapshot explicitly carries one of those phase labels. A snapshot must still have a valid decimal price and a capture timestamp strictly before kickoff to count. WIN does not infer that a price is an opening or closing price merely because it is the earliest or latest record in an incomplete sample. Phase coverage is a separate descriptive view; it does not establish bookmaker identity, a complete market history, or predictive value.
 
 The report remains `completeForResearch: false` and `trainingApprovalGranted: false`. It is not evidence that any provider is connected, licensed, independent or ready for model fitting.
+
+## Football odds quality diagnostics (2026-11-06)
+
+A deterministic offline odds-quality assessor now checks each observation against an explicit fixture, expected market/outcome definition, bookmaker ID, source ID and snapshot ID. It reports invalid and duplicate snapshots, post-kickoff observations, stale prices when a caller supplies a maximum age, incomplete outcome sets for each event/market/bookmaker/source/line group, and implied-probability overround outside the configured or conservative default bounds.
+
+Price movements are compared only within the same event, market, bookmaker, source, line and outcome, in timestamp order. Large relative movements are flagged for review and retained; they are not silently deleted or treated as errors. Missing time-series intervals are reported only when the caller supplies an expected capture cadence. A freshness threshold is likewise applied only when explicitly supplied; the evaluator does not invent a provider refresh schedule.
+
+Bookmaker and source identifiers are preserved as labels only. Separate IDs do not establish independent publishers or feeds; `bookmakerIndependenceVerified` remains false. The report always remains `completeForResearch: false` and `trainingApprovalGranted: false`. These diagnostics do not connect feeds, validate licences, prove source ownership, or produce coupon probabilities.
