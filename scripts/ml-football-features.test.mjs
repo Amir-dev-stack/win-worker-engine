@@ -134,3 +134,25 @@ test("same-day matches require an earlier kickoff and a result available by the 
   assert.equal(result.evidence.excludedFutureOrUnavailableRows, 2);
   assert.deepEqual(result.features.home_last5_wins.sourceId, "same-day-before");
 });
+
+test("point-in-time features reject impossible calendar dates instead of normalizing them", () => {
+  assert.throws(() => buildWinFootballPointInTimeFeatures({
+    datasetId: "fixture",
+    historicalRows: [],
+    target,
+    predictionCutoff: "2026-02-31T17:00:00.000Z"
+  }), error => error.code === "prediction_cutoff_must_precede_target_kickoff");
+
+  const result = buildWinFootballPointInTimeFeatures({
+    datasetId: "fixture",
+    historicalRows: [match({
+      kickoff: "2026-02-31T12:00:00.000Z",
+      resultAvailableAt: "2026-02-31T14:00:00.000Z"
+    })],
+    target,
+    predictionCutoff: "2026-11-01T17:00:00.000Z"
+  });
+  assert.equal(result.evidence.homeMatchesUsed, 0);
+  assert.equal(result.evidence.awayMatchesUsed, 0);
+  assert.equal(result.evidence.excludedFutureOrUnavailableRows, 1);
+});
