@@ -8,15 +8,21 @@ import {
 function rows(offset, count) {
   return Array.from({ length: count }, (_, index) => {
     const outcome = ["HOME", "DRAW", "AWAY"][index % 3];
+    const eventStart = new Date(Date.UTC(2026, 0, 1 + offset + index)).toISOString();
+    const predictionCutoff = new Date(Date.parse(eventStart) - 60 * 60 * 1000).toISOString();
+    const availableAt = new Date(Date.parse(eventStart) - 2 * 60 * 60 * 1000).toISOString();
+    const source = "synthetic-source-" + (offset + index);
+    const feature = value => ({ value, availableAt, sourceId: source });
     return {
       eventId: "synthetic-" + (offset + index),
-      eventStart: new Date(Date.UTC(2026, 0, 1 + offset + index)).toISOString(),
-      labelAvailableAt: new Date(Date.UTC(2026, 0, 1 + offset + index, 6)).toISOString(),
+      eventStart,
+      predictionCutoff,
+      labelAvailableAt: new Date(Date.parse(eventStart) + 6 * 60 * 60 * 1000).toISOString(),
       outcome,
       features: {
-        home_signal: outcome === "HOME" ? 1 : 0,
-        draw_signal: outcome === "DRAW" ? 1 : 0,
-        away_signal: outcome === "AWAY" ? 1 : 0
+        home_signal: feature(outcome === "HOME" ? 1 : 0),
+        draw_signal: feature(outcome === "DRAW" ? 1 : 0),
+        away_signal: feature(outcome === "AWAY" ? 1 : 0)
       }
     };
   });
@@ -76,7 +82,7 @@ test("trainer rejects overlapping chronology, duplicate identities and feature s
 
 test("trainer rejects non-finite features and unsafe numerical configuration", () => {
   const invalid = rows(0, 60);
-  invalid[0].features.home_signal = Number.NaN;
+  invalid[0].features.home_signal.value = Number.NaN;
   assert.throws(() => train({ trainingRows: invalid }), /training_feature_not_finite_numeric/);
   assert.throws(() => train({ config: { learningRate: 2, epochs: 500, l2: 0.001 } }), /training_config_invalid/);
   const unsettled = rows(0, 60);
