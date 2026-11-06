@@ -4,6 +4,7 @@ export const WIN_ML_MARKET_BLEND_VERSION = "win.ml.market-anchored-blend.v1" as 
 const MAX_MODEL_WEIGHT = 0.20;
 const MAX_MARKET_SNAPSHOT_AGE_MS = 6 * 60 * 60 * 1000;
 const MIN_HELD_OUT_ROWS = 100;
+const MIN_RELATIVE_MARKET_IMPROVEMENT = 0.01;
 const MAX_ECE = 0.05;
 
 type Triple = { home: number; draw: number; away: number };
@@ -152,6 +153,12 @@ export function calculateWinMLMarketAnchoredBlend(input: WinMLMarketBlendInput) 
         evaluation.modelBrier <= 0 || evaluation.marketBrier <= 0) reasons.push("held_out_evaluation_metrics_invalid");
     if (evaluation.modelLogLoss >= evaluation.marketLogLoss ||
         evaluation.modelBrier >= evaluation.marketBrier) reasons.push("model_does_not_beat_market_on_both_metrics");
+    const relativeLogLossImprovement = (evaluation.marketLogLoss - evaluation.modelLogLoss) / evaluation.marketLogLoss;
+    const relativeBrierImprovement = (evaluation.marketBrier - evaluation.modelBrier) / evaluation.marketBrier;
+    if (relativeLogLossImprovement < MIN_RELATIVE_MARKET_IMPROVEMENT ||
+        relativeBrierImprovement < MIN_RELATIVE_MARKET_IMPROVEMENT) {
+      reasons.push("market_improvement_below_minimum_threshold");
+    }
     if (evaluation.expectedCalibrationError > MAX_ECE) reasons.push("model_calibration_gate_failed");
   }
   if (labelsAt === null || evaluatedAt === null || (labelsAt !== null && evaluatedAt !== null && evaluatedAt < labelsAt)) {
