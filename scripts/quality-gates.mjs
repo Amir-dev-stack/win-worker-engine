@@ -230,13 +230,13 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContract.includes("feature_builder_commit_sha_invalid") &&
   mlModelContract.includes("automaticPromotionAllowed: false") &&
   mlModelContract.includes("productionPromotionAllowed: false") &&
-  mlModelContractTests.includes("valid out-of-sample evaluation qualifies only for human shadow review") &&
+  mlModelContractTests.includes("strong evaluation remains blocked until trusted owner approval evidence exists") &&
   mlModelContractTests.includes("fit-data cutoff after training window is rejected as leakage") &&
   mlModelContractTests.includes("model that does not beat baseline out of sample is blocked") &&
   mlModelContractTests.includes("small test sample and poor calibration are blocked") &&
   mlModelContractTests.includes("evaluation rejects sport, market-algorithm and target-definition mismatches") &&
   mlModelContractTests.includes("evaluation requires a training run, configuration hash, split hash and feature-builder commit"),
-  "A model artifact is blocked without an approved dataset, chronological train/validation/test separation, a fit-data cutoff, minimum sample sizes, baseline improvement and calibration. Passing never auto-promotes to production.");
+  "A model artifact remains blocked until trusted owner evidence is available, even when chronology, sample size, baseline improvement and calibration pass. No automatic or production promotion is allowed.");
 
 const mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
 const mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
