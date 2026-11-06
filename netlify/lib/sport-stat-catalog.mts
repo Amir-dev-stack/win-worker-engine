@@ -42,16 +42,18 @@ export const SPORT_STAT_CATALOG={
   group("passing","Passing",["pass_attempts","completions","passing_yards","passing_touchdowns","interceptions","sacks","passer_rating"]),
   group("rushing","Rushing",["rush_attempts","rushing_yards","rushing_touchdowns","yards_per_carry"]),
   group("receiving","Receiving",["targets","receptions","receiving_yards","receiving_touchdowns","yards_after_catch"]),
-  group("defense","Defense",["total_tackles","solo_tackles","assisted_tackles","sacks","tackles_for_loss","forced_fumbles","fumble_recoveries","passes_defended"]),
+  group("defense","Defense",["total_tackles","solo_tackles","assisted_tackles","sacks","tackles_for_loss","forced_fumbles","fumble_recoveries","passes_defended","interceptions"]),
   group("special_teams","Special teams",["kickoffs","kickoff_yards","touchbacks","punts","punt_yards","field_goals","extra_points","kick_returns","punt_returns"]),
-  group("team_context","Game context",["first_downs","third_down_conversions","fourth_down_conversions","red_zone_attempts","turnovers","time_of_possession","penalties","penalty_yards"])
+  group("team_context","Game context",["offensive_plays","total_yards","first_downs","third_down_attempts","third_down_conversions","fourth_down_attempts","fourth_down_conversions","red_zone_attempts","turnovers","sacks_allowed","penalties","penalty_yards"]),
+  group("advanced","Advanced play metrics",[metric("epa_total","Total EPA",["epa_total"]),metric("epa_per_play","EPA per play",["epa_per_play"]),metric("success_rate","Success rate",["success_rate"]),metric("air_yards_per_attempt","Air yards per pass attempt",["air_yards_per_attempt"]),metric("yards_after_catch_per_completion","Yards after catch per completion",["yards_after_catch_per_completion"]),metric("win_probability_added","Win probability added",["win_probability_added"])])
  ],[
-  group("passing","Quarterback",["pass_attempts","completions","passing_yards","passing_touchdowns","interceptions","sacks","passer_rating"]),
-  group("rushing","Rushing",["rush_attempts","rushing_yards","rushing_touchdowns"]),
-  group("receiving","Receiving",["targets","receptions","receiving_yards","receiving_touchdowns"]),
-  group("defense","Defense",["total_tackles","sacks","interceptions","forced_fumbles","passes_defended"]),
-  group("special_teams","Special teams",["kickoffs","punts","field_goals","extra_points","kick_returns","punt_returns"])
- ],["kickoff","kickoff_return","punt","punt_return","snap","pass_attempt","completion","incompletion","rush","tackle","sack","interception","fumble","touchdown","field_goal","extra_point","penalty","timeout","quarter_start","quarter_end"]),
+  group("appearance","Appearance and role",["minutes","starter","position"]),
+  group("passing","Quarterback",["pass_attempts","completions","passing_yards","passing_touchdowns","interceptions","sacks_taken","passer_rating","qb_epa_per_play","cpoe_average","air_yards_per_attempt","win_probability_added"]),
+  group("rushing","Rushing",["rush_attempts","rushing_yards","rushing_touchdowns","fumbles_lost","epa_per_rush"]),
+  group("receiving","Receiving",["targets","receptions","receiving_yards","receiving_touchdowns","yards_after_catch_per_reception","expected_yac_epa_per_completion","expected_yac_yards_per_completion","expected_yac_success_rate","expected_yac_first_down_rate"]),
+  group("defense","Defense",["solo_tackles","assisted_tackles","sacks","half_sacks","interceptions","fumble_recoveries","tackles_for_loss","qb_hits","passes_defended","forced_fumbles","blocks"]),
+  group("special_teams","Special teams",["field_goal_attempts","field_goals_made","extra_point_attempts","extra_points_made","kickoffs","punts","punt_yards","kickoff_returns","punt_returns"])
+ ],["kickoff","kickoff_return","punt","punt_return","snap","pass_attempt","completion","incompletion","rush","tackle","sack","interception","fumble","touchdown","field_goal","extra_point","penalty","timeout","safety","quarter_start","quarter_end"]),
  ice_hockey:spec("Ice hockey",[
   group("scoring","Scoring",["goals","assists","points","plus_minus"]),
   group("shooting","Shots",["shots_on_goal","shots","missed_shots","blocked_shots","shooting_pct"]),
@@ -235,7 +237,103 @@ export const SPORT_STAT_CATALOG={
  ],[
   group("performance","Performance",["power_watts","normalized_power","average_speed","distance","climbing_meters","heart_rate","cadence"]),
   group("race","Race position",["position","time_gap","points"])
- ],["start","intermediate_sprint","climb","crash","breakaway","peloton_split","finish"])
+ ],["start","intermediate_sprint","climb","crash","breakaway","peloton_split","finish"]),
+ water_sports:spec("Water sports",[
+  group("race","Race and result",["finish_time","finish_position","splits","distance","reaction_time","disqualification"]),
+  group("technique","Technique and movement",["stroke_rate","stroke_count","distance_per_stroke","starts","turns","underwater_distance"]),
+  group("conditions","Course and conditions",["lane","pool_length","water_conditions","wind_speed"])
+ ],[
+  group("performance","Athlete performance",["finish_time","finish_position","splits","stroke_rate","stroke_count","distance_per_stroke","reaction_time"]),
+  group("technique","Starts, turns and technique",["starts","turns","underwater_distance"])
+ ],["race_start","false_start","lap","split","turn","relay_exchange","finish","disqualification","record"]),
+ athletics:spec("Athletics and track & field",[
+  group("result","Event result",["finish_time","finish_position","distance","height","attempts","wind_assistance"]),
+  group("pace","Splits and pace",["splits","lap_times","reaction_time","intermediate_positions"]),
+  group("technical","Technical attempts",["fouls","valid_attempts","best_attempt","throw_distance","jump_height"])
+ ],[
+  group("result","Athlete result",["finish_time","finish_position","distance","height","wind_assistance"]),
+  group("pace","Pace and splits",["splits","lap_times","reaction_time"]),
+  group("technical","Attempts",["attempts","fouls","valid_attempts","best_attempt"])
+ ],["call_room","start","false_start","lap","split","attempt","foul","valid_attempt","finish","disqualification"]),
+ greyhound_racing:spec("Greyhound racing",[
+  group("race","Race result",["trap_draw","finish_position","finish_time","starting_price","distance","going"]),
+  group("sectionals","Sectionals and pace",["split_time","sectional_time","early_pace","speed_figure"]),
+  group("race_context","Race context",["grade","field_size","track","weather","stewards_inquiry"])
+ ],[
+  group("runner","Greyhound performance",["trap_draw","finish_position","finish_time","split_time","sectional_time","early_pace","speed_figure"]),
+  group("runner_context","Runner context",["weight","trainer","days_since_last_run"])
+ ],["race_start","trap_open","break","sectional","position_change","interference","finish","result_confirmed","stewards_inquiry"]),
+ field_hockey:spec("Field hockey",[
+  group("scoring","Scoring",["goals","penalty_strokes","field_goals","shots","shots_on_target"]),
+  group("possession","Possession and territory",["possession","circle_entries","attacking_third_entries","turnovers","counterattacks"]),
+  group("set_pieces","Set pieces",["penalty_corners","penalty_corner_goals","free_hits","long_corners"]),
+  group("defending","Defending",["tackles","interceptions","blocks","clearances","recoveries"]),
+  group("discipline","Discipline",["green_cards","yellow_cards","red_cards","suspensions"]),
+  group("goalkeeping","Goalkeeping",["saves","goals_conceded","save_percentage"])
+ ],[
+  group("appearance","Appearance and role",["minutes","starter","position"]),
+  group("scoring","Attacking output",["goals","assists","shots","shots_on_target","penalty_corner_goals"]),
+  group("possession","Possession and creation",["circle_entries","key_passes","turnovers","recoveries"]),
+  group("defending","Defending",["tackles","interceptions","blocks","clearances"]),
+  group("discipline","Discipline",["green_cards","yellow_cards","red_cards","fouls_committed"]),
+  group("goalkeeping","Goalkeeping",["saves","goals_conceded","save_percentage"])
+ ],["push_back","match_start","goal","penalty_corner","penalty_stroke","shot","save","turnover","tackle","green_card","yellow_card","red_card","period_start","period_end","match_end"]),
+ water_polo:spec("Water polo",[
+  group("scoring","Scoring",["goals","shots","shots_on_target","shooting_pct","man_up_goals","penalty_goals"]),
+  group("possession","Possession and attack",["exclusions_drawn","turnovers","steals","assists","counterattacks"]),
+  group("defending","Defending",["blocks","field_blocks","exclusions","steals"]),
+  group("goalkeeping","Goalkeeping",["saves","shots_faced","save_pct","goals_conceded"])
+ ],[
+  group("appearance","Appearance and role",["minutes","starter","position"]),
+  group("scoring","Attacking output",["goals","shots","shots_on_target","assists","man_up_goals","penalty_goals"]),
+  group("defending","Defending",["blocks","steals","exclusions","exclusions_drawn"]),
+  group("goalkeeping","Goalkeeping",["saves","shots_faced","save_pct","goals_conceded"])
+ ],["swim_off","period_start","period_end","possession_change","goal","exclusion","penalty_throw","shot","save","timeout","substitution","match_end"]),
+ lacrosse:spec("Lacrosse",[
+  group("scoring","Scoring",["goals","assists","points","shots","shots_on_goal","shooting_pct"]),
+  group("possession","Possession and transition",["faceoffs_won","faceoffs_lost","ground_balls","turnovers","clear_attempts","clear_successes"]),
+  group("defending","Defending",["caused_turnovers","checks","blocked_shots","penalties"]),
+  group("goalkeeping","Goalkeeping",["saves","shots_faced","save_pct","goals_allowed"])
+ ],[
+  group("appearance","Appearance and role",["minutes","starter","position"]),
+  group("scoring","Scoring",["goals","assists","points","shots","shots_on_goal"]),
+  group("possession","Possession",["faceoffs_won","faceoffs_lost","ground_balls","turnovers"]),
+  group("defending","Defending",["caused_turnovers","checks","blocked_shots","penalties"]),
+  group("goalkeeping","Goalkeeping",["saves","shots_faced","save_pct","goals_allowed"])
+ ],["faceoff","period_start","period_end","goal","assist","shot","save","ground_ball","check","turnover","penalty","timeout","substitution","match_end"]),
+ floorball:spec("Floorball",[
+  group("scoring","Scoring",["goals","assists","points","shots","shots_on_goal","shooting_pct"]),
+  group("possession","Possession",["ball_recoveries","turnovers","takeaways","passes"]),
+  group("defending","Defending",["blocks","interceptions","penalty_minutes","fouls"]),
+  group("goalkeeping","Goalkeeping",["saves","shots_faced","save_pct","goals_conceded"])
+ ],[
+  group("appearance","Appearance and role",["minutes","starter","position"]),
+  group("scoring","Scoring",["goals","assists","points","shots","shots_on_goal"]),
+  group("possession","Possession",["ball_recoveries","turnovers","takeaways","passes"]),
+  group("defending","Defending",["blocks","interceptions","penalty_minutes","fouls"]),
+  group("goalkeeping","Goalkeeping",["saves","shots_faced","save_pct","goals_conceded"])
+ ],["faceoff","period_start","period_end","goal","assist","shot","save","block","turnover","penalty","timeout","substitution","match_end"]),
+ squash_padel:spec("Squash and padel",[
+  group("scoring","Scoring",["points_won","games_won","sets_won","matches_won"]),
+  group("serve","Serve and return",["aces","double_faults","first_serve_pct","service_points_won","return_points_won","break_points"]),
+  group("rally","Rally quality",["winners","unforced_errors","forced_errors","net_points_won","smashes","volley_winners"]),
+  group("movement","Movement",["distance_covered","sprint_count","rally_duration"])
+ ],[
+  group("scoring","Scoring",["points_won","games_won","sets_won"]),
+  group("serve","Serve and return",["aces","double_faults","first_serve_pct","service_points_won","return_points_won","break_points"]),
+  group("rally","Rally quality",["winners","unforced_errors","forced_errors","net_points_won","smashes","volley_winners"]),
+  group("movement","Movement",["distance_covered","sprint_count","rally_duration"])
+ ],["match_start","set_start","set_end","game_start","game_end","serve","point_start","point_end","ace","double_fault","winner","unforced_error","break_point","medical_timeout","match_end"]),
+ winter_sports:spec("Winter sports",[
+  group("result","Event result",["finish_time","finish_position","time_gap","points","distance","speed"]),
+  group("technical","Technical performance",["shooting_accuracy","shooting_misses","jumps","jump_distance","style_points","penalty_seconds"]),
+  group("splits","Splits and pace",["splits","sectional_times","intermediate_positions"]),
+  group("conditions","Conditions",["snow_conditions","wind_speed","temperature","course_profile"])
+ ],[
+  group("result","Athlete result",["finish_time","finish_position","time_gap","points","distance","speed"]),
+  group("technical","Technical performance",["shooting_accuracy","shooting_misses","jumps","jump_distance","style_points","penalty_seconds"]),
+  group("splits","Splits and pace",["splits","sectional_times","intermediate_positions"])
+ ],["start","split","shooting_stage","miss","penalty_loop","jump","landing","crash","intermediate_position","finish","disqualification"])
 };
 
 const aliases={
@@ -247,7 +345,12 @@ export function normalizeSportId(value){
 }
 export function getSportStatSpec(sport){
  const id=normalizeSportId(sport);
- return {sportId:id,...(SPORT_STAT_CATALOG[id]||{label:"Sport-specific coverage not catalogued",team:[],player:[],events:[]})};
+ const base=SPORT_STAT_CATALOG[id]||{label:"Sport-specific coverage not catalogued",team:[],player:[],events:[]};
+ const ratingGroup=group("rating","Provider-defined player rating",[
+  metric("rating","Rating",["rating","player_rating","performance_score","performance_rating"])
+ ]);
+ const player=Array.isArray(base.player)?base.player:[];
+ return {sportId:id,...base,player:player.some(item=>item.id==="rating")?player:[ratingGroup,...player]};
 }
 function normalizeKey(value){return String(value??"").replace(/([a-z])([A-Z])/g,"$1 $2").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
 export function flattenStatisticKeys(value,maxDepth=8){
@@ -262,7 +365,7 @@ export function flattenStatisticKeys(value,maxDepth=8){
 }
 export function collectEventTypeValues(value,maxDepth=8){
  const found=new Set();
- const visit=(node,depth)=>{if(depth>maxDepth||node===null||node===undefined)return;if(Array.isArray(node)){for(const x of node)visit(x,depth+1);return;}if(typeof node!=="object")return;for(const [key,child] of Object.entries(node)){if(["type","eventtype","event_type","kind","eventname","event_name"].includes(key.toLowerCase())&&typeof child==="string")found.add(normalizeKey(child));visit(child,depth+1);}};
+ const visit=(node,depth)=>{if(depth>maxDepth||node===null||node===undefined)return;if(Array.isArray(node)){for(const x of node)visit(x,depth+1);return;}if(typeof node!=="object")return;for(const [key,child] of Object.entries(node)){if(["type","eventtype","event_type","kind","eventname","event_name"].includes(key.toLowerCase())&&typeof child==="string")found.add(normalizeKey(child));if(["eventtypes","event_types"].includes(key.toLowerCase())&&Array.isArray(child))for(const value of child)if(typeof value==="string")found.add(normalizeKey(value));visit(child,depth+1);}};
  visit(value,0);return [...found];
 }
 export function inspectStatisticCoverage(sport,details={}){

@@ -9,7 +9,7 @@
 <div class="shell">
 <aside class="sidebar">
 <div class="brand"><div class="mark">W</div><div><b>WIN</b><small>WORKER ENGINE</small></div></div>
-<nav><a class="active" href="#overview">Overview</a><a href="#learning">Learning monitor</a><a href="#aiBudget">AI budget</a><a href="#connections">Connections</a><a href="#simulations">Simulation lab</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#coverage">Evidence coverage</a><a href="#researchEngine">Data & agent engine</a><a href="#library">Knowledge library</a><a href="#ledger">Prediction ledger</a></nav>
+<nav><a class="active" href="#overview">Overview</a><a href="#learning">Learning monitor</a><a href="#aiBudget">AI budget</a><a href="#memoryCapacity">Memory capacity</a><a href="#connections">Connections</a><a href="#simulations">Simulation lab</a><a href="#runs">Research runs</a><a href="#tips">Human tips</a><a href="#coverage">Evidence coverage</a><a href="#researchEngine">Data & agent engine</a><a href="#library">Knowledge library</a><a href="#ledger">Prediction ledger</a></nav>
 <div class="side-bottom"><span class="pulse"></span> Engine console <small>On-demand research · no automatic betting</small></div>
 </aside>
 <main>
@@ -65,6 +65,17 @@
 <h3 class="budget-history-title">Recent budget alerts</h3>
 <div id="budgetAlertHistory" class="mini-list"><div class="empty">Budget alert history will appear here.</div></div>
 </section>
+<section class="panel" id="memoryCapacity">
+<div class="panel-head"><div><div class="eyebrow">PERSISTENT STORAGE / CAPACITY GUARD</div><h2>WIN Memory Capacity</h2><p>Live Neon database usage, growth and early warnings. WIN never deletes historical memory automatically.</p></div><div class="form-foot"><span id="memoryCapacityChecked">Not checked yet</span><button type="button" class="subtle" id="refreshMemoryCapacity">Refresh ↻</button></div></div>
+<div class="budget-grid">
+<article class="budget-metric"><small>Neon database used</small><strong id="memoryNeonUsed">—</strong><span id="memoryNeonRemaining">Remaining capacity —</span></article>
+<article class="budget-metric"><small>Monitoring threshold</small><strong id="memoryNeonLimit">—</strong><span id="memoryNeonLimitSource">Configured threshold</span></article>
+<article class="budget-metric"><small>Capacity status</small><strong id="memoryCapacityState">—</strong><span id="memoryCapacityGrowth">Growth —</span></article>
+<article class="budget-metric"><small>Netlify Blobs objects</small><strong id="memoryBlobsCount">—</strong><span id="memoryBlobsNote">Byte usage not available from object listing</span></article>
+</div>
+<div class="budget-alert empty" id="memoryCapacityAlert" role="status">Connect to WIN to check memory capacity.</div>
+<div class="budget-policy">Warning at 75%; critical at 90%. The initial 1 GiB figure is a planning baseline unless replaced with your actual Neon quota. Netlify Blobs byte usage must be checked separately in Netlify usage. This monitor only warns; it never removes or archives records.</div>
+</section>
 <section class="panel" id="connections">
 <div class="panel-head"><div><div class="eyebrow">SYSTEM CONNECTIONS</div><h2>Connected workflow</h2><p>Services run only when you ask WIN to research or inspect a record.</p></div><span class="tag">ON DEMAND</span></div>
 <div class="connection-grid">
@@ -100,6 +111,7 @@
 </div>
 <h3 class="budget-history-title">Public result and historical data sources</h3>
 <div class="form-foot"><span id="learningJobsStatus">Public metadata discovery and historical imports run without paid AI. New source candidates remain inactive until licence and schema review.</span><button type="button" class="subtle" id="runSourceDiscovery">Discover open datasets now ↻</button><button type="button" class="subtle" id="runHistoricalSync">Import historical datasets now ↻</button></div>
+<div class="form-foot"><label for="apiFootballDate">Fixture date <input id="apiFootballDate" type="date"></label><button type="button" class="subtle" id="searchApiFootballFixtures">Find fixtures</button><label for="apiFootballFixtureId">API-Football fixture ID <input id="apiFootballFixtureId" type="number" min="1" step="1" placeholder="Enter fixture ID"></label><button type="button" class="subtle" id="testApiFootballConnection">Test API-Football connection</button><button type="button" class="subtle" id="syncApiFootballFixture">Import match dossier ↻</button><span id="apiFootballStatus">Blocked until API key, rights approval and enabled domains are configured.</span></div><div id="apiFootballFixtureResults" class="mini-list"></div>
 <div id="learningDataSources" class="observatory-dataset-grid"></div>
 <div class="observatory-note">Automatic match-result checks are currently enabled for supported football fixtures through OpenLigaDB. Other sports and unsupported markets remain unresolved until a verified result adapter is approved. Worldwide metadata discovery is not the same as live result coverage.</div>
 <h3 class="budget-history-title">Department routing checks already recorded (no new AI tests)</h3>

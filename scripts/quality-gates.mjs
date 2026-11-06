@@ -188,6 +188,55 @@ add("Consensus calibration evaluates binary moneyline datasets without inventing
   (await read("scripts/market-calibration.test.mjs")).includes("tennis player-one probabilities"),
   "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
 
+add("NFL play-by-play adapter is source-attributed, sport-scoped and provenance-preserving",
+  (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("parseNflverseCsv") &&
+  (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("buildNflverseMatchRecords") &&
+  (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("rawChecksum") &&
+  providers.includes('id:"nflverse-pbp-data"') &&
+  providers.includes("historical_match_play_by_play") &&
+  providers.includes("CC BY 4.0") &&
+  (await read("netlify/functions/learning-data-jobs.mts")).includes("nflverse_american_football_play_by_play") &&
+  (await read("netlify/functions/research-status.mts")).includes("getNflversePlayByPlaySyncStatus") &&
+  (await read("scripts/nflverse-pbp-adapter.test.mjs")).includes("performances.ratingsAvailable, 0"),
+  "The licensed feed contributes American-football play timelines and derived player/team box-score counts; ratings and absent fields remain explicitly unavailable.");
+add("API-Football dossier ingestion is authenticated, provenance-preserving and rights-gated",
+  providers.includes('id:"api-sports"') &&
+  providers.includes('licenceReview:"required"') &&
+  providers.includes('automationAllowed:false') &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("getApiFootballReadiness") &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("providerMayRunAutomatically") &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("buildApiFootballMatchDossier") &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("rawPayloadSha256") &&
+  (await read("netlify/functions/api-football-sync.mts")).includes("requireAuth") &&
+  (await read("netlify/functions/research-status.mts")).includes("getApiFootballSyncStatus") &&
+  (await read("scripts/api-football-adapter.test.mjs")).includes("coverage false is not converted into zero"),
+  "The API-Football adapter cannot request data until the provider registry, terms approval, API key and explicitly enabled domains pass; fixture identity, player ratings, raw payloads and gaps are stored with source provenance.");
+add("API-Football metric availability is not overstated as full tracking data",
+  providers.includes("Standard event feed is goals, cards, substitutions and VAR") &&
+  providers.includes("shot-coordinate maps and advanced pressure/field-tilt metrics") &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("not_in_competition_coverage"),
+  "The connector records documented standard stats and provider events while retaining a blocker for unsupported tracking/shot-map fields and competition-specific gaps.");
+add("Football source references remain review-only until access and reuse terms are verified",
+  providers.includes('id:"uefa-match-center"') &&
+  providers.includes('id:"fotmob-match-profiles"') &&
+  providers.includes('id:"espn-match-center"') &&
+  providers.includes('id:"footystats-h2h"') &&
+  providers.includes("automationAllowed:false"),
+  "UEFA, FotMob, ESPN and FootyStats are registered as discovery references, not scraped or treated as connected data feeds.");
+
+add("Every registered sport has a sport-specific statistics catalogue",
+  statCatalog.includes("water_sports:spec") &&
+  statCatalog.includes("athletics:spec") &&
+  statCatalog.includes("greyhound_racing:spec") &&
+  statCatalog.includes("field_hockey:spec") &&
+  statCatalog.includes("water_polo:spec") &&
+  statCatalog.includes("lacrosse:spec") &&
+  statCatalog.includes("floorball:spec") &&
+  statCatalog.includes("squash_padel:spec") &&
+  statCatalog.includes("winter_sports:spec") &&
+  statCatalog.includes("Provider-defined player rating") &&
+  (await read("scripts/match-evidence.test.mjs")).includes("every registered sport has its own team/participant statistics"),
+  "Every sport in WIN's sport capability registry has sport-specific team/athlete metric groups, event types and an explicit provider-rating availability field.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;

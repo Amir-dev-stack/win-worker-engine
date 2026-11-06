@@ -1,0 +1,39 @@
+name: WIN read-only NFL source audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "netlify/lib/nflverse-pbp-adapter.mts"
+      - "scripts/nflverse-pbp-adapter.test.mjs"
+      - "scripts/nflverse-readonly-audit.mjs"
+      - ".github/workflows/nflverse-readonly-audit.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: nflverse-readonly-audit-${{ github.event.pull_request.number || github.ref }}
+  # Let a read-only source download finish once started; newer PR pushes may queue a replacement run.
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        season: [2025, 2026]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run read-only source and payload audit
+        env:
+          NFLVERSE_AUDIT_SEASON: ${{ matrix.season }}
+        run: node --experimental-strip-types scripts/nflverse-readonly-audit.mjs

@@ -3,9 +3,38 @@ let token=sessionStorage.getItem("win-token")||"";
 let reviewerToken=sessionStorage.getItem("win-reviewer-token")||"";
 let selectedRunId=null;
 let knownBudgetAlertIds=new Set();
+let knownMemoryAlertState="";
 const dialog=$("#tokenDialog");
 function headers(){return {"content-type":"application/json","authorization":"Bearer "+token}}
 async function api(path,options={}){const r=await fetch(path,{...options,headers:{...headers(),...(options.headers||{})}});if(r.status===401){if(!dialog.open)dialog.showModal();throw new Error("Connect using your WIN internal token.");}const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||"Request failed ("+r.status+")");return data}
+function formatMemoryBytes(value){
+ const n=Number(value||0);if(!Number.isFinite(n))return "Unknown";
+ if(n<1024)return n+" B";const units=["KB","MB","GB","TB"];let v=n/1024,i=0;while(v>=1024&&i<units.length-1){v/=1024;i++}return v.toFixed(2)+" "+units[i];
+}
+async function refreshMemoryCapacity(){
+ const status=$("#memoryCapacityAlert");if(!status)return;
+ try{
+  const data=await api("/api/memory-capacity");
+  const neon=data.neon||{},blobs=data.netlifyBlobs||{};
+  $("#memoryNeonUsed").textContent=neon.usedBytes===null?"Not connected":formatMemoryBytes(neon.usedBytes);
+  $("#memoryNeonRemaining").textContent=neon.remainingBytes===undefined?"Remaining capacity unavailable":formatMemoryBytes(neon.remainingBytes)+" remaining";
+  $("#memoryNeonLimit").textContent=neon.limitBytes?formatMemoryBytes(neon.limitBytes):"Unknown";
+  $("#memoryNeonLimitSource").textContent=neon.limitSource==="configured"?"Owner-configured limit":"1 GiB planning baseline — verify actual Neon quota";
+  $("#memoryCapacityState").textContent=String(data.overallStatus||"unknown").toUpperCase();
+  $("#memoryCapacityGrowth").textContent="Daily growth "+(data.growthBytes===null||data.growthBytes===undefined?"not measured":(data.growthBytes>=0?"+":"")+formatMemoryBytes(Math.abs(data.growthBytes)));
+  $("#memoryBlobsCount").textContent=blobs.objectCount===undefined?"—":(blobs.objectCountTruncated?blobs.objectCount+"+":blobs.objectCount);
+  $("#memoryBlobsNote").textContent="Object count only · byte usage checked in Netlify";
+  $("#memoryCapacityChecked").textContent="Checked "+new Date(data.checkedAt).toLocaleString();
+  if(data.overallStatus!==knownMemoryAlertState){
+   if(["warning","critical"].includes(data.overallStatus)&&"Notification" in window&&Notification.permission==="granted"){
+    try{new Notification("WIN memory capacity "+data.overallStatus,{body:(data.actions||[]).join(" "),tag:"win-memory-capacity"});}catch{}
+   }
+   knownMemoryAlertState=data.overallStatus||"";
+  }
+  status.className="budget-alert "+(data.overallStatus==="critical"?"danger":data.overallStatus==="warning"?"warning":"empty");
+  status.textContent=(data.actions||[]).join(" ");
+ }catch(error){status.className="budget-alert empty";status.textContent="Capacity check unavailable: "+error.message;}
+}
 async function reviewerApi(path,options={}){const r=await fetch(path,{...options,headers:{"content-type":"application/json","authorization":"Bearer "+reviewerToken,...(options.headers||{})}});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||"Reviewer request failed ("+r.status+")");return data}
 function escapeHtml(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function decisionClass(text=""){const t=String(text).toUpperCase();return t.includes("NO BET")?"no":t.includes("BET")?"bet":"wait"}
@@ -250,10 +279,12 @@ async function refreshResearch(){
  try{
   const d=await api("/api/research-status");
   const providers=(d.providers||[]).map(p=>'<article class="mini-row"><div><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.status||"unknown")+' · '+escapeHtml(p.accessMode||"")+' · licence '+escapeHtml(p.licenceReview||"unverified")+'</small></div></article>').join("");
-  const open=d.openfootball||{},worldCup=d.openfootballWorldCup||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{},evolution=d.agentEvolution||{};
+  const open=d.openfootball||{},nfl=d.nflverse||{},worldCup=d.openfootballWorldCup||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{},evolution=d.agentEvolution||{};
   const couponSims=(cal.reports||[]).flatMap(r=>r.couponSimulation?.results||[]);
   const candidateRows=renderSourceCandidates(discovery.topCandidates||[]);
   const sections=[
+   '<article class="mini-row"><div><b>NFL play-by-play and player box scores</b><small>'+escapeHtml(nfl.status||"not yet run")+' · '+Number(nfl.totals?.matchesImported||0).toLocaleString()+' matches · '+Number(nfl.totals?.playsImported||0).toLocaleString()+' play events · '+Number(nfl.totals?.playerLinesImported||0).toLocaleString()+' player lines · '+escapeHtml(nfl.lastCheck||"not yet synced")+'</small></div></article>',
+   '<article class="mini-row"><div><b>API-Football detailed match dossiers</b><small>'+escapeHtml(footballApi.status||"blocked")+' · '+Number(footballApi.totals?.matchesImported||0).toLocaleString()+' matches imported · '+Number(footballApi.totals?.availableSections||0)+' latest fixture sections available · '+(footballApi.blockers||[]).map(escapeHtml).join(", ")+'</small></div></article>',
    '<article class="mini-row"><div><b>OpenFootball historical results</b><small>'+escapeHtml(open.status||"not yet run")+' · '+Number(open.totals?.matchesImported||0).toLocaleString()+' matches imported · last check '+escapeHtml(open.lastCheck||"not yet")+'</small></div></article>',
    '<article class="mini-row"><div><b>World Cup history and player events</b><small>'+escapeHtml(worldCup.status||"not yet run")+' · '+Number(lab.worldCupMatchCount||0).toLocaleString()+' matches · '+Number(lab.playerEventRows||0).toLocaleString()+' player events · '+Number(lab.worldCupDatasetCount||0)+' tournament datasets</small></div></article>',
    '<article class="mini-row"><div><b>Consensus market history</b><small>'+escapeHtml(cons.status||"not yet run")+' · '+Number(lab.consensusMarketRows||0).toLocaleString()+' rows · '+Number(lab.consensusSettledRows||0).toLocaleString()+' settled events</small></div></article>',
@@ -441,6 +472,48 @@ async function runLearningDataJob(action,buttonId,label){
 }
 $("#runSourceDiscovery").addEventListener("click",()=>runLearningDataJob("discover_sources","#runSourceDiscovery","Worldwide public-source discovery"));
 $("#runHistoricalSync").addEventListener("click",()=>runLearningDataJob("sync_historical_data","#runHistoricalSync","Historical dataset import"));
+async function runApiFootballAction(action,buttonId,label,extra={}){
+ const button=$(buttonId),status=$("#apiFootballStatus");
+ button.disabled=true;
+ status.textContent=label+"…";
+ try{
+  const result=await api("/api/football-data",{method:"POST",body:JSON.stringify({action,...extra})});
+  if(action==="sync_fixture") {
+   status.textContent="Imported fixture "+result.result.fixtureId+" · "+result.result.playerCount+" player lines · "+result.result.eventCount+" timeline events · "+result.result.availableSections+" dossier sections available.";
+  } else if(action==="find_fixtures") {
+   const fixtures=result.result.results||[];
+   $("#apiFootballFixtureResults").innerHTML=fixtures.length?fixtures.map(item=>{
+    const fx=item.fixture||{},teams=item.teams||{},league=item.league||{},score=item.goals||{};
+    const label=(teams.home?.name||"Home")+" vs "+(teams.away?.name||"Away");
+    const scoreText=score.home!==null&&score.away!==null&&score.home!==undefined&&score.away!==undefined?" · "+score.home+"–"+score.away:"";
+    return '<article class="mini-row"><div><b>'+escapeHtml(label)+'</b><small>'+escapeHtml(league.name||"Competition")+' · '+escapeHtml(fx.date||"Date unknown")+' · fixture '+Number(fx.id||0)+escapeHtml(scoreText)+'</small></div><button type="button" class="subtle" data-api-football-fixture="'+Number(fx.id||0)+'">Select fixture</button></article>';
+   }).join(""):'<div class="empty">No fixtures returned for this date and filter.</div>';
+   $("#apiFootballFixtureResults").querySelectorAll("[data-api-football-fixture]").forEach(select=>{
+    select.addEventListener("click",()=>{
+     $("#apiFootballFixtureId").value=select.dataset.apiFootballFixture;
+     status.textContent="Selected fixture "+select.dataset.apiFootballFixture+". Import it after checking its identity.";
+    });
+   });
+   status.textContent="Found "+fixtures.length+" fixture(s) from API-Football. Select the exact match before importing.";
+  } else {
+   status.textContent="API-Football connection successful · quota remaining "+(result.result.quota?.dailyRemaining??"not reported");
+  }
+  await refreshResearch();
+ }catch(error){
+  status.textContent="API-Football "+label.toLowerCase()+" blocked or failed: "+error.message;
+ }finally{button.disabled=false;}
+}
+$("#testApiFootballConnection").addEventListener("click",()=>runApiFootballAction("test_connection","#testApiFootballConnection","Testing connection"));
+$("#searchApiFootballFixtures").addEventListener("click",()=>{
+ const date=$("#apiFootballDate").value;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){$("#apiFootballStatus").textContent="Select a valid fixture date.";return;}
+ runApiFootballAction("find_fixtures","#searchApiFootballFixtures","Finding fixtures",{date});
+});
+$("#syncApiFootballFixture").addEventListener("click",()=>{
+ const fixtureId=Number($("#apiFootballFixtureId").value);
+ if(!Number.isSafeInteger(fixtureId)||fixtureId<=0){$("#apiFootballStatus").textContent="Enter a valid positive API-Football fixture ID.";return;}
+ runApiFootballAction("sync_fixture","#syncApiFootballFixture","Importing match dossier",{fixtureId,includeContext:true,includeHalfTime:true});
+});
 
 $("#runPostMatchCheck").addEventListener("click",async()=>{
  const button=$("#runPostMatchCheck");
@@ -566,7 +639,7 @@ $("#budgetNotifications").addEventListener("click",async()=>{
  if(permission==="granted")alert("WIN desktop budget alerts are enabled. Keep the dashboard open to receive limit notifications.");
  else alert("Desktop notifications were not enabled. You will still see budget alarms inside the WIN dashboard.");
 });
-$("#saveToken").addEventListener("click",e=>{e.preventDefault();token=$("#tokenInput").value.trim();if(token){sessionStorage.setItem("win-token",token);dialog.close();refresh();refreshSources();refreshResearch()}});
+$("#saveToken").addEventListener("click",e=>{e.preventDefault();token=$("#tokenInput").value.trim();if(token){sessionStorage.setItem("win-token",token);dialog.close();refresh();refreshMemoryCapacity();refreshSources();refreshResearch()}});
 $("#runForm").addEventListener("submit",async e=>{
  e.preventDefault();
  const form=e.currentTarget;
@@ -599,6 +672,7 @@ $("#runForm").addEventListener("submit",async e=>{
 $("#tipForm").addEventListener("submit",async e=>{e.preventDefault();const form=e.currentTarget;const f=new FormData(form);try{await api("/api/tips",{method:"POST",body:JSON.stringify({tip:f.get("tip"),sourceUrl:f.get("sourceUrl"),tipster:f.get("tipster")})});form.reset();await refresh()}catch(err){alert(err.message)}});
 $("#runsList").addEventListener("click",e=>{const b=e.target.closest("[data-run-id]");if(b)openRun(b.dataset.runId)});
 $("#refresh").addEventListener("click",refresh);
+$("#refreshMemoryCapacity").addEventListener("click",refreshMemoryCapacity);
 $("#refreshCoverage").addEventListener("click",refreshCoverage);
 $("#refreshResearch").addEventListener("click",refreshResearch);
 
@@ -732,9 +806,10 @@ $("#libraryList").addEventListener("click",async e=>{
  }catch(err){alert(err.message);button.disabled=false}
 });
 
-if(!token)dialog.showModal();else {refresh();refreshSources();refreshCoverage();refreshResearch();refreshCouponBoards();refreshLearning();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
+if(!token)dialog.showModal();else {refresh();refreshMemoryCapacity();refreshSources();refreshCoverage();refreshResearch();refreshCouponBoards();refreshLearning();if(reviewerToken){$("#reviewerTokenInput").value=reviewerToken;refreshReviewerQueue();}}
 setInterval(()=>{if(token&&!document.hidden)refresh()},20000);
 setInterval(()=>{if(token&&!document.hidden)refreshLearning()},60000);
+setInterval(()=>{if(token&&!document.hidden)refreshMemoryCapacity()},300000);
 
 $("#simulationForm").addEventListener("submit",async e=>{
  e.preventDefault();const form=e.currentTarget,f=new FormData(form),button=form.querySelector('button[type="submit"]');

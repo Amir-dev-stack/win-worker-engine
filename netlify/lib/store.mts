@@ -1,6 +1,8 @@
-// Netlify Blobs remains the production store. The optional adapter is only
-// installable in an explicitly flagged test process and keeps integration
-// fixtures away from every production collection.
+import { getRuntimeEnv } from "./runtime-env.mts";
+
+// WIN keeps Netlify Blobs as the default durable store. Set WIN_MEMORY_BACKEND=mirror
+// to dual-write curated memory to Neon during validation, then "neon" only after
+// a complete backfill and reconciliation. Large raw match/event datasets stay in Blobs.
 type StoreAdapter = {
   setJSON(key: string, value: unknown, options?: any): Promise<any>;
   get(key: string, options?: any): Promise<any>;
@@ -26,66 +28,188 @@ export function installIsolatedTestStore(adapter: StoreAdapter) {
   isolatedTestStore = adapter;
 }
 
-async function store(): Promise<StoreAdapter> {
-  if (isolatedTestStore) return isolatedTestStore;
+const memoryMode = () => {
+  const mode = getRuntimeEnv("WIN_MEMORY_BACKEND")?.trim().toLowerCase() || "blobs";
+  if (!["blobs", "mirror", "neon"].includes(mode)) {
+    throw new Error("WIN_MEMORY_BACKEND must be blobs, mirror, or neon.");
+  }
+  return mode;
+};
+
+async function blobsStore(): Promise<StoreAdapter> {
   const { getStore } = await import("@netlify/blobs");
   return getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" }) as unknown as StoreAdapter;
+}
+
+async function neonStore(): Promise<StoreAdapter> {
+  const { getNeonStore } = await import("./neon-store.mts");
+  return getNeonStore() as unknown as StoreAdapter;
+}
+
+const MIRRORED_MEMORY_PREFIXES = [
+  "library/agent-profiles/",
+  "library/persistent-agent-profiles/",
+  "library/agent-observations/",
+  "library/agent-notes/",
+  "library/agent-task-queue/",
+  "library/agent-proposals/",
+  "library/agent-sandbox-evaluations/",
+  "library/entity-profiles/",
+  "library/lessons/",
+  "library/lesson-review-cases/",
+  "library/settlement-learning/",
+  "library/settlement-learning-cases/",
+  "library/settled-results/",
+  "library/frozen-predictions/",
+  "library/research-runs/",
+  "library/coupons/",
+  "library/winning-coupons/",
+  "library/losing-coupons/",
+  "library/pending-coupons/",
+  "library/coupon-history/",
+  "library/coupon-research-cases/",
+  "library/win-coupon-candidates/",
+  "library/learning-cycles/"
+];
+
+function isStructuredMemoryKey(recordKey: string) {
+  return MIRRORED_MEMORY_PREFIXES.some(prefix => recordKey.startsWith(prefix));
+}
+
+async function stores(recordKey?: string): Promise<{ primary: StoreAdapter; secondary: StoreAdapter | null }> {
+  if (isolatedTestStore) return { primary: isolatedTestStore, secondary: null };
+  const mode = memoryMode();
+  const mirrorable = recordKey ? isStructuredMemoryKey(recordKey) : false;
+
+  // Raw event datasets, source payloads and other non-memory collections remain
+  // exclusively in Blobs even after the structured-memory cutover.
+  if (mode === "blobs" || (mode === "neon" && !mirrorable)) {
+    return { primary: await blobsStore(), secondary: null };
+  }
+  if (mode === "mirror") {
+    return { primary: await blobsStore(), secondary: mirrorable ? await neonStore() : null };
+  }
+  return { primary: await neonStore(), secondary: await blobsStore() };
 }
 
 const key = (kind: string, id: string) => kind + "/" + id;
 
 export async function put(kind: string, id: string, value: unknown) {
-  await (await store()).setJSON(key(kind, id), value);
+  const recordKey = key(kind, id);
+  const { primary, secondary } = await stores(recordKey);
+  await primary.setJSON(recordKey, value);
+  if (secondary) await secondary.setJSON(recordKey, value);
   return value;
 }
+
 export async function get<T>(kind: string, id: string): Promise<T | null> {
-  return await (await store()).get(key(kind, id), { type: "json" }) as T | null;
+  const recordKey = key(kind, id);
+  const { primary, secondary } = await stores(recordKey);
+  try {
+    const primaryValue = await primary.get(recordKey, { type: "json" }) as T | null;
+    if (primaryValue !== null && primaryValue !== undefined) return primaryValue;
+  } catch (error) {
+    if (!secondary) throw error;
+  }
+  return secondary ? await secondary.get(recordKey, { type: "json" }) as T | null : null;
 }
+
 export async function list<T>(kind: string, limit = 100): Promise<T[]> {
-  // Netlify Blobs list() fetches every page by default. Ask for an iterator
-  // and stop after the requested sample so large collections cannot turn a
-  // small dashboard read into an unbounded metadata scan.
   const maxItems = Math.max(0, Math.floor(limit));
   if (maxItems === 0) return [];
-  const backend = await store();
+  const { primary, secondary } = await stores(kind + "/");
   const selected: Array<{ key: string }> = [];
-  for await (const page of backend.list({ prefix: kind + "/", paginate: true })) {
-    for (const item of page.blobs) {
-      selected.push(item);
-      if (selected.length >= maxItems) break;
+  const seen = new Set<string>();
+  const collect = async (backend: StoreAdapter) => {
+    for await (const page of backend.list({ prefix: kind + "/", paginate: true })) {
+      for (const item of page.blobs) {
+        if (!seen.has(item.key)) {
+          seen.add(item.key);
+          selected.push(item);
+        }
+        if (selected.length >= maxItems) return;
+      }
     }
-    if (selected.length >= maxItems) break;
+  };
+  try {
+    await collect(primary);
+  } catch (error) {
+    if (!secondary) throw error;
+    selected.length = 0;
+    seen.clear();
   }
+  // In mirror/neon mode, consult the replica when the primary has fewer
+  // records than requested; de-duplicate by stable record key.
+  if (secondary && selected.length < maxItems) await collect(secondary);
   selected.reverse();
+
   const rows: T[] = [];
-  // Bounded parallel reads keep each requested sample responsive without
-  // flooding Blobs or downloading records that the caller did not request.
   const batchSize = 16;
   for (let offset = 0; offset < selected.length; offset += batchSize) {
     const batch = selected.slice(offset, offset + batchSize);
-    const values = await Promise.all(batch.map(item =>
-      backend.get(item.key, { type: "json" }) as Promise<T | null>
-    ));
+    const values = await Promise.all(batch.map(async item => {
+      try {
+        const primaryValue = await primary.get(item.key, { type: "json" }) as T | null;
+        if (primaryValue !== null && primaryValue !== undefined) return primaryValue;
+      } catch (error) {
+        if (!secondary) throw error;
+      }
+      return secondary ? await secondary.get(item.key, { type: "json" }) as T | null : null;
+    }));
     for (const value of values) if (value !== null) rows.push(value);
   }
   return rows;
 }
+
 export async function append(kind: string, id: string, value: unknown) {
   return put(kind, id, value);
 }
+
 export async function remove(kind: string, id: string) {
-  await (await store()).delete(key(kind, id));
+  const recordKey = key(kind, id);
+  const { primary, secondary } = await stores(recordKey);
+  await primary.delete(recordKey);
+  if (secondary) await secondary.delete(recordKey);
 }
 
 /** Atomic, single-key conditional helpers for review-operation claims. */
 export async function putIfNew(kind: string, id: string, value: unknown) {
-  return await (await store()).setJSON(key(kind, id), value, { onlyIfNew: true });
+  const recordKey = key(kind, id);
+  const { primary, secondary } = await stores(recordKey);
+  const result = await primary.setJSON(recordKey, value, { onlyIfNew: true });
+  if (secondary) {
+    const current = result?.modified ? value : await primary.get(recordKey, { type: "json" });
+    if (current !== null && current !== undefined) await secondary.setJSON(recordKey, current);
+  }
+  return result;
 }
+
 export async function putIfMatch(kind: string, id: string, value: unknown, etag: string) {
-  return await (await store()).setJSON(key(kind, id), value, { onlyIfMatch: etag });
+  const recordKey = key(kind, id);
+  const { primary, secondary } = await stores(recordKey);
+  const result = await primary.setJSON(recordKey, value, { onlyIfMatch: etag });
+  if (secondary) {
+    const current = result?.modified ? value : await primary.get(recordKey, { type: "json" });
+    if (current !== null && current !== undefined) await secondary.setJSON(recordKey, current);
+  }
+  return result;
 }
+
 export async function getWithMetadata<T>(kind: string, id: string): Promise<{ value: T; etag: string } | null> {
-  const result = await (await store()).getWithMetadata(key(kind, id), { type: "json", consistency: "strong" });
-  if (!result) return null;
-  return { value: result.data as T, etag: result.etag };
+  const recordKey = key(kind, id);
+  const { primary, secondary } = await stores(recordKey);
+  try {
+    const result = await primary.getWithMetadata(recordKey, { type: "json", consistency: "strong" });
+    if (result) return { value: result.data as T, etag: result.etag };
+  } catch (error) {
+    if (!secondary) throw error;
+  }
+  if (!secondary) return null;
+  const fallback = await secondary.getWithMetadata(recordKey, { type: "json", consistency: "strong" });
+  return fallback ? { value: fallback.data as T, etag: fallback.etag } : null;
+}
+
+/** Diagnostic metadata only; never returns a connection string or credential. */
+export function getMemoryBackendMode() {
+  return memoryMode();
 }

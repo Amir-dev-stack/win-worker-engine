@@ -25,7 +25,7 @@ function rowSides(row){
   return {one:clean(row?.homeTeam||row?.participant1||row?.team1||row?.teamOne),two:clean(row?.awayTeam||row?.participant2||row?.team2||row?.teamTwo)};
 }
 function rowDetails(row){
-  const keys=["fullTimeScore","halfTimeScore","extraTimeScore","penaltyShootoutScore","resultBasis","attendance","venue","round","group","referee","referees","playerEvents","playerStats","playerStatistics","player_stats","player_performances","teamStats","teamStatistics","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","boxScore","boxscore","goals","cards","lineups","lineup","substitutions","scoreBreakdown","sets","periodScores","innings","sourceRecordId"];
+  const keys=["fullTimeScore","halfTimeScore","extraTimeScore","penaltyShootoutScore","resultBasis","attendance","venue","round","group","referee","referees","playerEvents","playerStats","playerStatistics","playerRatings","player_stats","player_performances","teamStats","teamStatistics","halfTimeTeamStatistics","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","boxScore","boxscore","goals","cards","lineups","lineup","substitutions","scoreBreakdown","sets","periodScores","innings","coverage","sourceRecordId"];
   const out=row?.details&&typeof row.details==="object"?{...row.details}:{};
   for(const key of keys)if(row?.[key]!==undefined&&row?.[key]!==null)out[key]=row[key];
   return out;
@@ -186,7 +186,7 @@ function matchPostReport(record,nowMs,sport){
   if(record.eventMs>nowMs)return {status:"not_started"};
   if(!record.score)return {status:"awaiting_source_result"};
   const details=record.details||{};
-  const actualStatsKeys=["playerEvents","playerStats","playerStatistics","teamStats","teamStatistics","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","goals","cards","lineups","lineup","substitutions"].filter(k=>details[k]!==undefined);
+  const actualStatsKeys=["playerEvents","playerStats","playerStatistics","playerRatings","teamStats","teamStatistics","halfTimeTeamStatistics","coverage","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","goals","cards","lineups","lineup","substitutions"].filter(k=>details[k]!==undefined);
   const statCoverage=inspectStatisticCoverage(sport,details);
   const sourceDetails=record.sourceDetails?.length?record.sourceDetails:[{providerId:record.providerId,sourceUrl:record.sourceUrl,details,sourceLicence:record.sourceLicence,retrievedAt:record.retrievedAt}];
   const playerPerformanceByProvider=sourceDetails.map(source=>({providerId:source.providerId,sourceUrl:source.sourceUrl,...extractPlayerPerformances(source.details,source.providerId)}));
