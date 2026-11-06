@@ -31,6 +31,7 @@ export type WinFootballOddsQualityReport = {
   incoherentMarketTimestampGroups: string[];
   suspiciousPriceMoves: Array<{ quoteId: string; fromSnapshotId: string; toSnapshotId: string; relativeMove: number }>;
   cadenceGaps: Array<{ quoteId: string; from: string; to: string; gapMinutes: number }>;
+  conflictingTimestampQuotes: Array<{ quoteId: string; outcomeId: string; capturedAt: string; decimalOdds: number[] }>;
   marketGroupDiagnostics: Array<{ eventId: string; marketId: string; bookmakerId: string; sourceId: string; line: string | number | null; expectedOutcomeCount: number; observedOutcomeCount: number; missingOutcomeIds: string[]; earliestCapturedAt: string; latestCapturedAt: string; overround: number | null; overroundSkippedForTimestampSkew: boolean }>;
   bookmakerIds: string[];
   sourceIds: string[];
@@ -139,12 +140,28 @@ export function assessWinFootballOddsQuality(args: {
   const suspiciousPriceMoves: WinFootballOddsQualityReport["suspiciousPriceMoves"] = [];
   const cadenceGaps: WinFootballOddsQualityReport["cadenceGaps"] = [];
   const marketGroupDiagnostics: WinFootballOddsQualityReport["marketGroupDiagnostics"] = [];
+  const conflictingTimestampQuotes: WinFootballOddsQualityReport["conflictingTimestampQuotes"] = [];
   for (const [quoteId, rows] of groups) {
     rows.sort((a, b) => Date.parse(a.capturedAt) - Date.parse(b.capturedAt) ||
       a.snapshotId.localeCompare(b.snapshotId));
     const latestByOutcome = new Map<string, WinFootballOddsQualitySnapshot>();
     for (const row of rows) latestByOutcome.set(row.outcomeId, row);
     const market = expectedMarkets.get(rows[0].marketId)!;
+    const sameTime = new Map<string, WinFootballOddsQualitySnapshot[]>();
+    for (const row of rows) {
+      const key = identity(row.outcomeId, row.capturedAt);
+      if (!sameTime.has(key)) sameTime.set(key, []);
+      sameTime.get(key)!.push(row);
+    }
+    const conflictingOutcomes = new Set<string>();
+    for (const [key, sameTimeRows] of sameTime) {
+      const prices = [...new Set(sameTimeRows.map(row => row.decimalOdds))].sort((a, b) => a - b);
+      if (prices.length > 1) {
+        const [outcomeId, capturedAt] = JSON.parse(key) as [string, string];
+        conflictingOutcomes.add(outcomeId);
+        conflictingTimestampQuotes.push({ quoteId, outcomeId, capturedAt, decimalOdds: prices });
+      }
+    }
     const missing = market.outcomeIds.filter(id => !latestByOutcome.has(id));
     const latestRows = [...latestByOutcome.values()];
     const allTimes = rows.map(row => Date.parse(row.capturedAt));
@@ -154,10 +171,13 @@ export function assessWinFootballOddsQuality(args: {
     const skewMinutes = times.length ? (Math.max(...times) - Math.min(...times)) / 60000 : 0;
     const overroundSkippedForTimestampSkew = missing.length === 0 &&
       outcomeSkewValid && maxOutcomeSkew !== undefined && skewMinutes > maxOutcomeSkew;
+    const overroundSkippedForConflictingTimestamp = conflictingOutcomes.size > 0;
     let overround: number | null = null;
     if (missing.length) missingMarketOutcomeGroups.push(quoteId + ":" + missing.join(","));
     else if (overroundSkippedForTimestampSkew) {
       incoherentMarketTimestampGroups.push(quoteId);
+    } else if (overroundSkippedForConflictingTimestamp) {
+      // Do not choose an arbitrary price when one source reports conflicting quotes at the same instant.
     } else {
       overround = latestRows.reduce((sum, row) => sum + 1 / row.decimalOdds, 0);
       const min = market.minOverround ?? 0.8;
@@ -173,7 +193,7 @@ export function assessWinFootballOddsQuality(args: {
       missingOutcomeIds: missing,
       earliestCapturedAt, latestCapturedAt,
       overround,
-      overroundSkippedForTimestampSkew
+      overroundSkippedForTimestampSkew: overroundSkippedForTimestampSkew || overroundSkippedForConflictingTimestamp
     });
     const timelines = new Map<string, WinFootballOddsQualitySnapshot[]>();
     for (const row of rows) {
@@ -204,6 +224,7 @@ export function assessWinFootballOddsQuality(args: {
   if (missingMarketOutcomeGroups.length) reasons.push("incomplete_market_outcome_groups");
   if (overroundOutOfBounds.length) reasons.push("market_overround_out_of_bounds");
   if (incoherentMarketTimestampGroups.length) reasons.push("market_outcome_timestamp_skew_exceeds_limit");
+  if (conflictingTimestampQuotes.length) reasons.push("conflicting_same_timestamp_quotes_flagged");
   if (suspiciousPriceMoves.length) reasons.push("suspicious_price_moves_flagged_for_review");
   if (cadenceGaps.length) reasons.push("expected_cadence_gaps");
   return {
@@ -212,6 +233,7 @@ export function assessWinFootballOddsQuality(args: {
     invalidSnapshotCount, duplicateSnapshotCount, staleSnapshotCount, postKickoffSnapshotCount,
     missingMarketOutcomeGroups, incompleteMarketGroupCount: missingMarketOutcomeGroups.length,
     overroundOutOfBounds, incoherentMarketTimestampGroups, suspiciousPriceMoves, cadenceGaps,
+    conflictingTimestampQuotes,
     marketGroupDiagnostics: marketGroupDiagnostics.sort((a, b) => a.eventId.localeCompare(b.eventId) || a.marketId.localeCompare(b.marketId) || a.bookmakerId.localeCompare(b.bookmakerId) || a.sourceId.localeCompare(b.sourceId)),
     bookmakerIds: [...new Set(valid.map(s => s.bookmakerId))].sort(),
     sourceIds: [...new Set(valid.map(s => s.sourceId))].sort(),
