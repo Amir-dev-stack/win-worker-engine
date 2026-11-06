@@ -32,7 +32,7 @@ export type WinFootballOddsQualityReport = {
   suspiciousPriceMoves: Array<{ quoteId: string; fromSnapshotId: string; toSnapshotId: string; relativeMove: number }>;
   cadenceGaps: Array<{ quoteId: string; from: string; to: string; gapMinutes: number }>;
   conflictingTimestampQuotes: Array<{ quoteId: string; outcomeId: string; capturedAt: string; decimalOdds: number[] }>;
-  marketGroupDiagnostics: Array<{ eventId: string; marketId: string; bookmakerId: string; sourceId: string; line: string | number | null; expectedOutcomeCount: number; observedOutcomeCount: number; missingOutcomeIds: string[]; earliestCapturedAt: string; latestCapturedAt: string; overround: number | null; overroundSkippedForTimestampSkew: boolean }>;
+  marketGroupDiagnostics: Array<{ eventId: string; marketId: string; bookmakerId: string; sourceId: string; line: string | number | null; expectedOutcomeCount: number; observedOutcomeCount: number; missingOutcomeIds: string[]; earliestCapturedAt: string; latestCapturedAt: string; overround: number | null; overroundSkippedForTimestampSkew: boolean; overroundSkippedForConflictingTimestamp: boolean }>;
   bookmakerIds: string[];
   sourceIds: string[];
   bookmakerIndependenceVerified: false;
@@ -193,7 +193,8 @@ export function assessWinFootballOddsQuality(args: {
       missingOutcomeIds: missing,
       earliestCapturedAt, latestCapturedAt,
       overround,
-      overroundSkippedForTimestampSkew: overroundSkippedForTimestampSkew || overroundSkippedForConflictingTimestamp
+      overroundSkippedForTimestampSkew,
+      overroundSkippedForConflictingTimestamp
     });
     const timelines = new Map<string, WinFootballOddsQualitySnapshot[]>();
     for (const row of rows) {
