@@ -206,3 +206,8 @@ These are source changes and synthetic tests; no current-head CI execution is cl
 - It now checks GET/POST method first, authenticates the caller before reading the POST body, then accepts only `application/json` and reads at most 64 KiB incrementally. Declared length, actual streamed bytes, strict UTF-8, JSON syntax and object shape are validated.
 - Owner credentials may create/rotate the separate reviewer credential, but cannot submit review decisions. Review decisions still require the separate reviewer credential.
 - Added isolated parser tests, build requirements and a quality gate for auth-before-body ordering. No reviewer credential was created or rotated by this change.
+
+
+### Health route method boundary (2026-11-06)
+- `/api/health` already required the internal bearer token and did not mutate state, but accepted every HTTP method. It now explicitly permits GET only and returns 405 with `no-store` for other methods.
+- Added an architecture gate requiring both authentication and GET-only routing.
