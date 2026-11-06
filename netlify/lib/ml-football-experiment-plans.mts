@@ -1,3 +1,4 @@
+import { parseStrictIsoTimestamp } from "./strict-timestamp.mts";
 import {
   evaluateWinMLDatasetReadiness,
   type WinMLDatasetManifestV1
@@ -117,12 +118,7 @@ export function splitWinMLExamplesChronologically<T extends WinMLChronologicalEx
   if (!Array.isArray(examples) || examples.length < 3) {
     throw new Error("chronological_split_requires_at_least_three_examples");
   }
-  const strictTimestamp = (value: unknown): number | null => {
-    if (typeof value !== "string" ||
-        !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
-    const parsed = Date.parse(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  };
+  const strictTimestamp = (value: unknown): number | null => parseStrictIsoTimestamp(value);
   const seen = new Set<string>();
   for (const item of examples) {
     const eventStart = strictTimestamp(item?.eventStart);
