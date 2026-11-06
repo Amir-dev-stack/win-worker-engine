@@ -1086,6 +1086,18 @@ add("Football-first source identity review queue covers every result provider wi
   sourceReviewQueueTests.includes("football result candidates are the first review track"),
   "Every registered results provider is visible for review; football is prioritised, later sports remain queued, and no publisher identity or independence group is inferred.");
 
+const footballSourceInventory = await read("netlify/lib/ml-source-review-queue.mts");
+const footballSourceInventoryTests = await read("scripts/ml-source-review-queue.test.mjs");
+add("Football-first source inventory separates results, odds, statistics and predictions without granting readiness",
+  footballSourceInventory.includes("getWinFootballSourceInventory") &&
+  footballSourceInventory.includes('"odds_and_markets"') &&
+  footballSourceInventory.includes('"team_and_player_statistics"') &&
+  footballSourceInventory.includes('"predictions_and_probabilities"') &&
+  footballSourceInventory.includes('connectionStatus: "registry_only_not_connected"') &&
+  footballSourceInventoryTests.includes("covers all registered football providers") &&
+  footballSourceInventoryTests.includes("without asserting readiness"),
+  "The football research plan sees all registered football providers and their data coverage, while every source remains disconnected and unapproved for training.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
