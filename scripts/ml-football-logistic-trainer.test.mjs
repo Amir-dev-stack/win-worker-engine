@@ -74,7 +74,10 @@ test("frozen logistic artifact evaluates only a later held-out test partition", 
   assert.ok(evaluation.modelMetrics.logLoss < evaluation.baselineMetrics.logLoss);
   assert.equal(evaluation.productionPromotionAllowed, false);
   assert.equal(evaluation.automatedBettingAllowed, false);
-  assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, rows(89, 30), "2027-01-01T00:00:00.000Z"),
+  const beforeValidationLabel = rows(90, 30);
+  beforeValidationLabel[0].eventStart = "2026-03-31T03:00:00.000Z";
+  beforeValidationLabel[0].predictionCutoff = "2026-03-31T02:00:00.000Z";
+  assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, beforeValidationLabel, "2027-01-01T00:00:00.000Z"),
     /held_out_test_not_after_validation_label_availability/);
   assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, rows(91, 30), "2026-04-02T05:00:00.000Z"),
     /held_out_test_labels_not_available_as_of_evaluation/);
@@ -129,6 +132,8 @@ test("trainer rejects overlapping chronology, duplicate identities and feature s
   const overlapping = rows(60, 30);
   overlapping[0].eventStart = rows(0, 60).at(-1).eventStart;
   overlapping[0].predictionCutoff = new Date(Date.parse(overlapping[0].eventStart) - 60 * 60 * 1000).toISOString();
+  const availableAt = new Date(Date.parse(overlapping[0].predictionCutoff) - 60 * 60 * 1000).toISOString();
+  for (const feature of Object.values(overlapping[0].features)) feature.availableAt = availableAt;
   assert.throws(() => train({ validationRows: overlapping }), /training_validation_chronology_invalid/);
   const duplicated = rows(60, 30);
   duplicated[0].eventId = "synthetic-0";
