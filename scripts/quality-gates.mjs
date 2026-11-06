@@ -684,6 +684,17 @@ add("Result submissions enforce bounded JSON request parsing before settlement p
   resultRequestTests.includes("JSON-like but invalid media types"),
   "The result endpoint must require JSON, enforce a streaming 64 KiB cap, reject invalid UTF-8/non-object JSON, and cover those boundaries with regression tests.");
 
+const humanSettlementApi = await read("netlify/functions/human-coupon-settlements.mts");
+const humanSettlementIdentityTests = await read("scripts/human-settlement-idempotency.test.mjs");
+add("Human settlement evidence submissions use deterministic identity and atomic create-once semantics",
+  humanSettlementApi.includes("humanSettlementSubmissionId") &&
+  humanSettlementApi.includes("putIfNew(\"library/human-settlement-cases\"") &&
+  humanSettlementApi.includes("getWithMetadata<any>(\"library/human-settlement-cases\"") &&
+  !humanSettlementApi.includes("list<any>(\"library/human-settlement-cases\", 2000)") &&
+  humanSettlementIdentityTests.includes("identity is deterministic") &&
+  humanSettlementIdentityTests.includes("separates coupon, evidence and outcome"),
+  "Concurrent retries of the same coupon/evidence/outcome tuple must converge on one immutable settlement claim instead of racing a list-then-write duplicate check.");
+
 const packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
