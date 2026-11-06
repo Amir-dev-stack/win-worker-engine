@@ -171,3 +171,6 @@ These are source changes and synthetic tests; no current-head CI execution is cl
 - Applied the same exact media-type check to `/api/results`.
 - Added endpoint and parser regressions for streamed oversize requests, invalid UTF-8, malformed/non-object JSON and misleading media types.
 - No approval credentials, signed approvals, training execution or provider activation were changed.
+
+
+- Follow-up audit tightened the scheduled-scout runner's JSON media-type check to reject misleading values such as `application/jsonp` and `application/json-evil`; regression coverage and architecture gate added.
