@@ -545,6 +545,15 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch"),
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
+const resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
+add("Prediction-result corrections remain append-only, independently reviewed and fail closed",
+  resultCorrectionDesign.includes("The original submission and its claim remain immutable forever.") &&
+  resultCorrectionDesign.includes("submitter credential and reviewer credential must differ") &&
+  resultCorrectionDesign.includes("A correction is an additional, append-only, independently reviewed record") &&
+  resultCorrectionDesign.includes("No automatic corrections") &&
+  resultCorrectionDesign.includes("unreviewed or rejected correction never enters model training data"),
+  "A governed correction path must preserve the original claim, require a separate reviewer and keep unreviewed corrections out of training.");
+
 const packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
