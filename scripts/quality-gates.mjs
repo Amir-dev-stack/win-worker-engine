@@ -597,6 +597,7 @@ add("Scheduled learning runs use atomic owner leases, bounded request validation
   scheduledRunLeaseTests.includes("expired run lease must be reclaimable") &&
   scheduledRunLeaseTests.includes("malformed active lease must fail closed") &&
   scheduledRequestTests.includes("rejects oversized bodies") &&
+  scheduledRequestTests.includes("rejects invalid UTF-8 bodies") &&
   scheduledRequestTests.includes("rejects non-POST methods"),
   "A scheduled runner must reject malformed/oversized requests, serialize duplicate run execution with conditional leases, and permit stale-lease recovery without allowing stale workers to release a newer lease.");
 
