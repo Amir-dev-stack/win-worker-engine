@@ -89,6 +89,8 @@ const required = [
   "netlify/lib/ml-football-import-workflow.mts",
   "netlify/lib/ml-source-identity-registry.mts",
   "scripts/ml-source-identity-registry.test.mjs",
+  "netlify/lib/ml-source-review-queue.mts",
+  "scripts/ml-source-review-queue.test.mjs",
   "netlify/lib/ml-football-result-reconciliation.mts",
   "scripts/ml-football-result-reconciliation.test.mjs",
   "netlify/lib/ml-football-result-evidence-registry.mts",
