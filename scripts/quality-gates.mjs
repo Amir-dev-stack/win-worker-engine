@@ -1098,6 +1098,20 @@ add("Football-first source inventory separates results, odds, statistics and pre
   footballSourceInventoryTests.includes("without asserting readiness"),
   "The football research plan sees all registered football providers and their data coverage, while every source remains disconnected and unapproved for training.");
 
+const footballCoverage = await read("netlify/lib/ml-football-coverage-assessment.mts");
+const footballCoverageTests = await read("scripts/ml-football-coverage-assessment.test.mjs");
+add("Football historical coverage measures result and pre-kickoff odds completeness without granting readiness",
+  footballCoverage.includes("assessWinFootballHistoricalCoverage") &&
+  footballCoverage.includes("resultCoveragePct") &&
+  footballCoverage.includes("preKickoffOddsCoveragePct") &&
+  footballCoverage.includes("postKickoffSnapshotCount") &&
+  footballCoverage.includes('completeForResearch: false') &&
+  footballCoverage.includes('trainingApprovalGranted: false') &&
+  footballCoverageTests.includes("excludes post-kickoff odds") &&
+  footballCoverageTests.includes("identifies missing results") &&
+  footballCoverageTests.includes("impossible timestamps"),
+  "The assessment quantifies results and per-market pre-kickoff odds coverage, reports missing records and excludes post-kickoff prices. It is descriptive only and never unlocks training.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
