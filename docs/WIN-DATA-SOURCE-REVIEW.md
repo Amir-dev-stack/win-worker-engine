@@ -42,3 +42,8 @@ The gate is an operational safeguard, not a legal opinion or independent proof o
 The current consensus-market adapter contains 12 Hugging Face datasets spanning American football, basketball, ice hockey, baseball, football and tennis. Each item now declares its own required registry data domains. Tests validate all 12 source IDs and their permissions. The dataset cards describe consensus probabilities/closing lines; most do **not** preserve each bookmaker's individual price identity. These records must remain classified as consensus benchmarks, not raw bookmaker offers.
 
 Current-season datasets are partial snapshots and can have small sample sizes. They must not be presented as completed season coverage, and any calibration or strategy assessment must preserve the source's exact season, capture window and field definitions.
+
+
+## Importer provenance hardening (2026-11-06)
+
+The offline football-results importer now requires a pinned immutable `sourceRevision`; mutable aliases such as `main`, `master`, `latest`, `head` and `current` are rejected. The imported manifest records that revision and the SHA-256 of the exact input bytes, requires timezone-qualified strict timestamps, rejects impossible calendar dates, and prevents one manifest from mixing seasons or competition IDs. Credential-bearing source URLs are rejected. These controls improve reproducibility and fail-closed data quality; they do not approve this candidate, establish third-party rights, or independently verify source-reported results.
