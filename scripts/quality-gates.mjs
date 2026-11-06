@@ -343,15 +343,14 @@ add("WIN shadow inference loads only registered artifacts and enforces point-in-
   mlShadowPrediction.includes("assertShadowInferenceMatches") &&
   mlShadowPrediction.includes("shadow_prediction_inference_mismatch") &&
   mlShadowPrediction.includes("shadow_prediction_record_tampered") &&
+  mlShadowPrediction.includes("assertShadowInferenceMatches(registered, prediction, features)") &&
+  mlShadowPrediction.includes("assertShadowInferenceMatches(registered, prediction, record.features)") &&
   mlShadowPrediction.includes("productionUseAllowed: false") &&
   mlShadowPrediction.includes("automatedBettingAllowed: false") &&
   mlShadowPredictionTests.includes("rejects kickoff-time and post-kickoff cutoffs") &&
   mlShadowPredictionTests.includes("rejects features unavailable at the declared cutoff") &&
-  mlShadowPredictionTests.includes("never a caller-supplied artifact") &&
-  winMarketEvaluationRegistryTests.includes("getWinMLShadowPredictionRecord") &&
-  winMarketEvaluationRegistryTests.includes("shadow_prediction_record_tampered") &&
-  winMarketEvaluationRegistryTests.includes("shadow_prediction_inference_mismatch"),
-  "The inference boundary retrieves a hash-verified registered artifact, validates exact feature schema and availability timestamps, and records immutable shadow-only outputs; no production route or betting action is exposed.");
+  mlShadowPredictionTests.includes("never a caller-supplied artifact"),
+  "The inference boundary retrieves a hash-verified registered artifact, recomputes probabilities from the persisted point-in-time feature payload before both write and read, and records immutable shadow-only outputs; no production route or betting action is exposed.");
 
 add("WIN ML predictions are provenance-bound to an evaluated model and shadow-only",
   mlPredictionContract.includes('origin: "trained_model"') &&
@@ -681,17 +680,19 @@ add("WIN market benchmark is bound to the registered ML artifact's exact held-ou
   "Market metrics are accepted only for the exact registered model test cohort, event cutoffs and unique hashed source records whose kickoff, snapshot, probabilities and outcome match; evidence remains immutable and shadow-only.");
 
 const verifiedMarketBlend = await read("netlify/lib/ml-market-anchored-blend-verified.mts");
-add("WIN market blend runtime obtains metrics only from registered immutable evidence",
+const verifiedMarketBlendTests = await read("scripts/ml-market-anchored-blend-verified.test.mjs");
+add("WIN market blend runtime obtains metrics and event probabilities only from registered evidence",
   verifiedMarketBlend.includes("getWinMLMarketBlendEvaluationEvidence") &&
   verifiedMarketBlend.includes("getWinMLModelArtifact") &&
   verifiedMarketBlend.includes("getWinMLShadowPredictionRecord(predictionRunId)") &&
-  verifiedMarketBlend.includes("market_blend_registered_shadow_prediction_binding_mismatch") &&
+  verifiedMarketBlend.includes("bindWinMLShadowPredictionToBlendInput") &&
+  verifiedMarketBlend.includes("market_blend_registered_shadow_prediction_missing") &&
   verifiedMarketBlend.includes("probabilities: prediction.probabilities") &&
   verifiedMarketBlend.includes("prediction.featureVectorSha256 !== input.model.featureVectorSha256") &&
-  !verifiedMarketBlend.includes("probability vector is still caller-supplied") &&
-  winMarketEvaluationRegistryTests.includes("Deliberately forged caller metrics must be overwritten by registry evidence") &&
-  winMarketEvaluationRegistryTests.includes("trustedProbabilityBlend"),
-  "The verified wrapper loads the immutable model, market evidence and exact registered shadow prediction; caller probabilities are overwritten and event/model/cutoff/feature hashes must match.");
+  verifiedMarketBlendTests.includes("replaces caller probabilities with the registered shadow prediction") &&
+  verifiedMarketBlendTests.includes("rejects event, cutoff, model and feature provenance drift") &&
+  winMarketEvaluationRegistryTests.includes("market_blend_registered_shadow_prediction_missing"),
+  "The verified wrapper loads immutable model/evaluation evidence and the exact registered shadow inference; caller probabilities are overwritten and event/model/cutoff/feature hashes must match.");
 
 const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
 const mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
