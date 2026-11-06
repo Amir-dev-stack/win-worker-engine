@@ -7,6 +7,8 @@ const required = [
   "netlify/functions/health.mts",
   "netlify/functions/runs.mts",
   "netlify/functions/library.mts",
+  "netlify/lib/lesson-review-submission.mts",
+  "scripts/lesson-review-submission.test.mjs",
   "netlify/functions/mcp.mts",
   "netlify/functions/oauth-authorize.mts",
   "netlify/lib/oauth-request.mts",
