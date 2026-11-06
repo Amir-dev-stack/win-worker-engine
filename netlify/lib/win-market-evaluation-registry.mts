@@ -15,6 +15,7 @@ export type WinMarketEvaluationRow = {
   predictionCutoff: string;
   marketSnapshotAt: string;
   resultAvailableAt: string;
+  sourceRecordId: string;
   probabilities: [number, number, number];
   outcome: "home" | "draw" | "away";
 };
@@ -32,6 +33,7 @@ export type WinMarketEvaluationRecord = {
   sourceRevision: string;
   sourceDatasetId: string;
   sourceDatasetSha256: string;
+  sourceDatasetRecordsSha256: string;
   evaluatedAt: string;
   testEventIdsSha256: string;
   testRowsSha256: string;
@@ -81,6 +83,56 @@ export function assertWinMarketCohortMatchesModel(
   for (const row of rows) {
     if (modelCutoffs.get(row.eventId) !== row.predictionCutoff) {
       throw new WinMarketEvaluationError("market_evaluation_prediction_cutoff_mismatch");
+    }
+  }
+}
+
+function validateSourceRecordBindings(
+  rows: WinMarketEvaluationRow[],
+  sourceDataset: { records: any[]; recordsSha256: string },
+  providerId: string
+) {
+  if (!Array.isArray(sourceDataset?.records) ||
+      !validHash(sourceDataset.recordsSha256) ||
+      hashWinMLProvenance(sourceDataset.records).sha256 !== sourceDataset.recordsSha256) {
+    throw new WinMarketEvaluationError("market_evaluation_source_records_hash_invalid");
+  }
+  const sourceById = new Map<string, any>();
+  for (const source of sourceDataset.records) {
+    if (!source || !validId(source.id) || sourceById.has(source.id)) {
+      throw new WinMarketEvaluationError("market_evaluation_source_record_identity_invalid");
+    }
+    sourceById.set(source.id, source);
+  }
+  const used = new Set<string>();
+  for (const row of rows) {
+    if (!validId(row?.sourceRecordId) || used.has(row.sourceRecordId)) {
+      throw new WinMarketEvaluationError("market_evaluation_source_record_reference_invalid");
+    }
+    used.add(row.sourceRecordId);
+    const source = sourceById.get(row.sourceRecordId);
+    if (!source || source.providerId !== providerId || source.marketDataType !== "consensus_market_lines" ||
+        source.status !== "completed" || source.eventStart !== row.kickoffAt ||
+        source.closing?.marketSnapshotAt !== row.marketSnapshotAt) {
+      throw new WinMarketEvaluationError("market_evaluation_source_record_binding_mismatch");
+    }
+    const sourceProbabilities = [
+      source.closing?.homeWinProbability,
+      source.closing?.drawProbability,
+      source.closing?.awayWinProbability
+    ];
+    if (sourceProbabilities.some(value => typeof value !== "number" || !Number.isFinite(value)) ||
+        sourceProbabilities.some((value, index) => Math.abs(value - row.probabilities[index]) > 1e-9)) {
+      throw new WinMarketEvaluationError("market_evaluation_source_record_probabilities_mismatch");
+    }
+    const homeScore = source.homeScore, awayScore = source.awayScore;
+    if (!Number.isSafeInteger(homeScore) || !Number.isSafeInteger(awayScore) ||
+        homeScore < 0 || awayScore < 0) {
+      throw new WinMarketEvaluationError("market_evaluation_source_record_result_invalid");
+    }
+    const sourceOutcome = homeScore > awayScore ? "home" : homeScore < awayScore ? "away" : "draw";
+    if (sourceOutcome !== row.outcome) {
+      throw new WinMarketEvaluationError("market_evaluation_source_record_outcome_mismatch");
     }
   }
 }
@@ -158,6 +210,8 @@ export async function registerWinMarketEvaluation(args: {
       !validHash(sourceDataset.rawChecksum) ||
       !Array.isArray(sourceDataset.records) ||
       sourceDataset.totalRows !== sourceDataset.records.length ||
+      !validHash(sourceDataset.recordsSha256) ||
+      hashWinMLProvenance(sourceDataset.records).sha256 !== sourceDataset.recordsSha256 ||
       sourceDataset.marketDataType !== "consensus_market_lines" ||
       sourceDataset.origin !== "provider_historical_data") {
     throw new WinMarketEvaluationError("market_evaluation_source_dataset_binding_invalid");
@@ -166,6 +220,7 @@ export async function registerWinMarketEvaluation(args: {
   if (!model) throw new WinMarketEvaluationError("market_evaluation_model_artifact_missing");
   const evaluation = model.evaluation;
   assertWinMarketCohortMatchesModel(testRows, evaluation);
+  validateSourceRecordBindings(testRows, sourceDataset, provider.id);
   const computed = validateRows(testRows, evaluatedAt);
   const payload = {
     version: WIN_MARKET_EVALUATION_VERSION,
@@ -175,7 +230,8 @@ export async function registerWinMarketEvaluation(args: {
     datasetId: evaluation.datasetId,
     datasetContentSha256: evaluation.datasetContentSha256,
     sourceId: provider.id, sourceRevision, sourceDatasetId,
-    sourceDatasetSha256: sourceDataset.rawChecksum, evaluatedAt,
+    sourceDatasetSha256: sourceDataset.rawChecksum,
+    sourceDatasetRecordsSha256: sourceDataset.recordsSha256, evaluatedAt,
     testEventIdsSha256: hashWinMLProvenance(computed.eventIds).sha256,
     testRowsSha256: computed.testRowsSha256,
     testRows: testRows.length,
@@ -198,6 +254,7 @@ export function verifyWinMarketEvaluationRecord(record: WinMarketEvaluationRecor
       !validId(record.datasetId) || !validId(record.sourceId) ||
       !validHash(record.datasetContentSha256) || !/^[a-f0-9]{40}$/i.test(record.sourceRevision || "") ||
       record.sourceDatasetId !== "consensus-" + record.sourceId || !validHash(record.sourceDatasetSha256) ||
+      !validHash(record.sourceDatasetRecordsSha256) ||
       !isStrictIsoTimestamp(record.evaluatedAt) || !validHash(record.testEventIdsSha256) ||
       !validHash(record.testRowsSha256) || !Number.isSafeInteger(record.testRows) || record.testRows < 100 ||
       !record.metrics || ![record.metrics.brier, record.metrics.logLoss, record.metrics.expectedCalibrationError]
@@ -223,7 +280,9 @@ export async function getWinMarketEvaluation(evaluationId: string) {
       sourceDataset.providerId !== record.sourceId ||
       sourceDataset.sourceRevision !== record.sourceRevision ||
       sourceDataset.rawChecksum !== record.sourceDatasetSha256 ||
-      !Array.isArray(sourceDataset.records) || sourceDataset.totalRows !== sourceDataset.records.length) {
+      sourceDataset.recordsSha256 !== record.sourceDatasetRecordsSha256 ||
+      !Array.isArray(sourceDataset.records) || sourceDataset.totalRows !== sourceDataset.records.length ||
+      hashWinMLProvenance(sourceDataset.records).sha256 !== record.sourceDatasetRecordsSha256) {
     throw new WinMarketEvaluationError("market_evaluation_source_dataset_binding_mismatch");
   }
   const model = await getWinMLModelArtifact(record.modelId, record.modelVersion);
