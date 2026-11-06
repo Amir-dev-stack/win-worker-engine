@@ -1186,6 +1186,19 @@ add("Football odds quality checks freshness, market completeness, price integrit
   footballOddsQualityTests.includes("suspicious moves without deleting observations") &&
   footballOddsQualityTests.includes("only when an expected cadence is supplied"),
   "Odds diagnostics require explicit bookmaker/source/outcome identity, only apply freshness/cadence rules when configured, flag overround and suspicious movements for review, and never infer bookmaker independence or training readiness.");
+const legProbabilityCalibration = await read("netlify/lib/ml-leg-probability-calibration.mts");
+const legProbabilityCalibrationTests = await read("scripts/ml-leg-probability-calibration.test.mjs");
+add("Leg probability calibration is chronological, holdout-only and cannot grant production approval",
+  legProbabilityCalibration.includes("evaluateWinLegProbabilityCalibration") &&
+  legProbabilityCalibration.includes("MINIMUM_SETTLED_OBSERVATIONS = 100") &&
+  legProbabilityCalibration.includes("chronologicalHoldout !== true") &&
+  legProbabilityCalibration.includes("probabilityCalibrationGranted: false") &&
+  legProbabilityCalibration.includes("productionApprovalGranted: false") &&
+  legProbabilityCalibrationTests.includes("100 chronological holdout leg estimates") &&
+  legProbabilityCalibrationTests.includes("below 100 settled observations") &&
+  legProbabilityCalibrationTests.includes("rejects time leakage") &&
+  legProbabilityCalibrationTests.includes("does not permit a lower sample threshold"),
+  "Agent and model probability estimates must be evaluated on chronological holdout outcomes with at least 100 settled observations; this evaluator must never calibrate, train or approve a model automatically.");
 const observedFootballOddsBridge = await read("netlify/lib/ml-football-observed-odds-quality.mts");
 const observedFootballOddsBridgeTests = await read("scripts/ml-football-observed-odds-quality.test.mjs");
 add("Normalized observed football odds map into quality diagnostics without admitting live or non-football rows",
