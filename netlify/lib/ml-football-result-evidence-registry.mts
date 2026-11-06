@@ -5,6 +5,7 @@ import {
   type WinFootballResultEvidenceRecordV1,
   type WinFootballResultReconciliationStatus
 } from "./ml-football-result-reconciliation.mts";
+import { validateWinFootballSourcePairIdentity } from "./ml-source-identity-registry.mts";
 
 const COLLECTION = "library/ml-football-result-evidence";
 const VERSION = "win.football.result-evidence-record.v1";
@@ -39,6 +40,8 @@ function verifyStored(record: StoredEvidence) {
       !Array.isArray(record.reasons)) {
     throw new WinFootballResultEvidenceRegistryError("result_evidence_record_invalid");
   }
+  const identity = validateWinFootballSourcePairIdentity(record.primary, record.corroborating, new Date().toISOString());
+  if (!identity.verified) throw new WinFootballResultEvidenceRegistryError("result_evidence_source_identity_unverified");
   const reconciled = reconcileWinFootballResultEvidence(record.primary, record.corroborating);
   if (reconciled.status === "unverifiable" ||
       reconciled.status !== record.reconciliationStatus ||
@@ -68,6 +71,8 @@ export async function registerWinFootballResultEvidence(args: {
       new Date(createdAt).toISOString() !== createdAt) {
     throw new WinFootballResultEvidenceRegistryError("result_evidence_created_at_invalid");
   }
+  const identity = validateWinFootballSourcePairIdentity(primary, corroborating, new Date().toISOString());
+  if (!identity.verified) throw new WinFootballResultEvidenceRegistryError("result_evidence_source_identity_unverified");
   const reconciliation = reconcileWinFootballResultEvidence(primary, corroborating);
   if (reconciliation.status === "unverifiable" || !reconciliation.evidenceSha256) {
     throw new WinFootballResultEvidenceRegistryError("result_evidence_unverifiable");
