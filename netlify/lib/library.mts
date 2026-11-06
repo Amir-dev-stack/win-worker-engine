@@ -926,14 +926,13 @@ export async function archiveRunToLibrary(run: any) {
 
 
 
-  // Save D6's structured candidates with stable IDs. Only fully qualified
-  // candidates enter the pending tracker; WIN does not place any bet.
+  // Persist every D6 proposal as a visible research candidate. Only fully
+  // evidenced, single-leg-qualified candidates enter the separate pending tracker.
   let winCouponCandidatesSaved = 0;
   let qualifiedWinCouponsTracked = 0;
   const runResearchPassed = run.status === "completed" &&
     run.workerNetwork?.libraryReviewGate?.status === "passed" &&
-    run.workerNetwork?.riskAssessmentGate?.status === "passed" &&
-    /^\s*FINAL DECISION:\s*BET\b/im.test(run.master?.report || "");
+    run.workerNetwork?.riskAssessmentGate?.status === "passed";
   for (const [index, candidate] of safeArray(run.coupons, 100).entries()) {
     const candidateId = "win-candidate-" + slug(run.id + "-" + (candidate?.id || index));
     const legs = safeArray(candidate?.legs, 100).map((leg: any) => ({
@@ -941,6 +940,15 @@ export async function archiveRunToLibrary(run: any) {
       market: clean(leg?.market, 180) || "Unspecified market",
       selection: clean(leg?.selection, 180) || "Unspecified selection",
       odds: Number.isFinite(leg?.odds) && leg.odds > 1 ? leg.odds : null,
+      estimatedWinProbabilityPercent: Number.isFinite(leg?.estimatedWinProbabilityPercent) &&
+        leg.estimatedWinProbabilityPercent >= 0 && leg.estimatedWinProbabilityPercent <= 100
+        ? leg.estimatedWinProbabilityPercent : null,
+      probabilityType: clean(leg?.probabilityType, 80) || "unavailable",
+      probabilityConfidence: clean(leg?.probabilityConfidence, 20) || "unrated",
+      probabilityRationale: clean(leg?.probabilityRationale, 600) || null,
+      probabilityEvidenceRefs: safeArray(leg?.probabilityEvidenceRefs || leg?.evidenceRefs, 10)
+        .map((value: any) => clean(value, 1500)).filter(Boolean),
+      probabilityCalibrated: false,
       sourceUrl: clean(leg?.sourceUrl, 1500) || null,
       observedAt: clean(leg?.observedAt, 100) || null,
       eventStart: clean(leg?.startTime || leg?.eventStart || leg?.kickoff || leg?.matchDateTimeUTC, 100) || null,
@@ -953,8 +961,8 @@ export async function archiveRunToLibrary(run: any) {
       blockers: safeArray(leg?.blockers, 20)
     }));
     const blockers = safeArray(candidate?.blockers, 200).map((item: any) => clean(item, 300)).filter(Boolean);
-    if (!runResearchPassed) blockers.push("Global Master did not approve the coupon or the full research, library and risk gates did not pass.");
-    const fullyQualified = runResearchPassed && candidate?.status === "QUALIFIED" && legs.length > 0 && blockers.length === 0 &&
+    if (!runResearchPassed) blockers.push("Full research, independent review or risk-assessment gate did not complete; retain as draft-only.");
+    const fullyQualified = runResearchPassed && candidate?.status === "QUALIFIED" && legs.length === 1 && blockers.length === 0 &&
       legs.every((leg: any) =>
         leg.event !== "Unspecified event" && leg.market !== "Unspecified market" &&
         leg.selection !== "Unspecified selection" && leg.odds !== null && Boolean(leg.sourceUrl) &&
@@ -969,13 +977,28 @@ export async function archiveRunToLibrary(run: any) {
       sport: clean(run.brief?.sport, 100) || null,
       country: clean(run.brief?.country, 100) || null,
       competition: clean(run.brief?.competition, 200) || null,
-      status: fullyQualified ? "QUALIFIED" : "BLOCKED",
+      status: fullyQualified ? "QUALIFIED" : legs.length > 0 ? "DRAFTABLE" : "BLOCKED",
+      couponDraftAllowed: legs.length > 0,
+      dataQualityStatus: blockers.length === 0 ? "complete" : "incomplete",
       combinedOdds: fullyQualified && Number.isFinite(candidate?.combinedOdds) ? candidate.combinedOdds : null,
-      legs, blockers: fullyQualified ? [] : blockers.length ? blockers : ["Candidate did not pass all structured D6 qualification checks."],
+      theoreticalOddsProduct: Number.isFinite(candidate?.theoreticalOddsProduct) ? candidate.theoreticalOddsProduct : null,
+      wholeCouponWinProbabilityPercent: legs.length === 1 ? legs[0].estimatedWinProbabilityPercent : null,
+      wholeCouponProbabilityMethod: legs.length === 1
+        ? "single_leg_probability_equals_leg_probability" : "unvalidated_joint_probability_not_estimated",
+      jointProbabilityAvailable: legs.length === 1 && legs[0].estimatedWinProbabilityPercent !== null,
+      probabilityStatus: legs.length === 1
+        ? (legs[0].estimatedWinProbabilityPercent === null ? "single_leg_probability_unavailable" : "single_leg_agent_estimate_unverified")
+        : "marginal_only_joint_unavailable",
+      probabilityWarnings: safeArray(candidate?.probabilityWarnings, 50),
+      riskPercent: Number.isFinite(candidate?.riskPercent) && candidate.riskPercent >= 0 && candidate.riskPercent <= 100
+        ? candidate.riskPercent : null,
+      riskMethod: clean(candidate?.riskMethod, 300) || "unverified_agent_risk_estimate",
+      riskCalibrated: false,
+      blockers,
       riskFactors: safeArray(candidate?.riskFactors, 30),
       correlationNotes: safeArray(candidate?.correlationNotes, 30),
       placementStatus: "not_placed_by_WIN",
-      executionDisclosure: "This is a research candidate. WIN did not place a bet or verify a bookmaker ticket.",
+      executionDisclosure: "Research candidate only. WIN did not place a bet or verify a bookmaker ticket.",
       createdAt: run.createdAt || savedAt, archivedAt: savedAt
     };
     await put("library/win-coupon-candidates", candidateId, candidateRecord);
@@ -989,7 +1012,13 @@ export async function archiveRunToLibrary(run: any) {
         eventStart: leg.eventStart, eventId: leg.eventId,
         leagueShortcut: leg.leagueShortcut,
         leagueSeason: leg.leagueSeason, homeTeam: leg.homeTeam, awayTeam: leg.awayTeam,
-        settlementRule: leg.settlementRule, result: "pending"
+        settlementRule: leg.settlementRule, result: "pending",
+        estimatedWinProbabilityPercent: leg.estimatedWinProbabilityPercent,
+        probabilityType: leg.probabilityType,
+        probabilityConfidence: leg.probabilityConfidence,
+        probabilityRationale: leg.probabilityRationale,
+        probabilityEvidenceRefs: leg.probabilityEvidenceRefs,
+        probabilityCalibrated: false
       }));
       const couponText = [
         candidateRecord.label,
