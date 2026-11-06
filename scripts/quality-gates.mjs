@@ -410,6 +410,8 @@ const mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.
 add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer with frozen shadow-only artifacts",
   mlFootballTrainer.includes("trainWinMLFootball1X2LogisticModel") &&
   mlFootballTrainer.includes("evaluateWinMLFootball1X2LogisticModel") &&
+  mlFootballTrainer.includes("buildWinMLFootball1X2EvaluationRecord") &&
+  mlFootballTrainer.includes("model_evaluation_artifact_binding_invalid") &&
   mlFootballTrainer.includes("held_out_test_not_after_validation_label_availability") &&
   mlFootballTrainer.includes("held_out_test_labels_not_available_as_of_evaluation") &&
   mlFootballTrainer.includes("baselineProbabilities") &&
@@ -430,6 +432,7 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainerTests.includes("learns a synthetic 1X2 pattern") &&
   mlFootballTrainerTests.includes("trainer is deterministic") &&
   mlFootballTrainerTests.includes("later held-out test partition") &&
+  mlFootballTrainerTests.includes("versioned evaluation contract") &&
   mlFootballTrainerTests.includes("held_out_test_labels_not_available_as_of_evaluation") &&
   mlFootballTrainerTests.includes("prediction rejects modified artifacts") &&
   mlFootballTrainerTests.includes("model_artifact_split_manifest_hash_mismatch") &&
