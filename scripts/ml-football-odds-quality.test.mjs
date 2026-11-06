@@ -27,6 +27,7 @@ test("flags incomplete outcomes, duplicate IDs, stale and post-kickoff observati
     snapshots: [
       ...snapshots.slice(0, 2),
       { ...snapshots[2], snapshotId: "duplicate", capturedAt: "2026-11-10T17:30:00.000Z" },
+      { ...snapshots[0], snapshotId: "other-book-home", bookmakerId: "book-b", sourceId: "feed-b" },
       { ...snapshots[2], snapshotId: "duplicate", capturedAt: "2026-11-10T17:35:00.000Z" },
       { ...snapshots[2], snapshotId: "stale", capturedAt: "2026-11-10T10:00:00.000Z" },
       { ...snapshots[2], snapshotId: "after", capturedAt: "2026-11-10T18:00:00.000Z" }
