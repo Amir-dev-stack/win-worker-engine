@@ -801,6 +801,15 @@ add("Lesson review submissions are idempotent per lesson revision and recover th
   lessonReviewIdentityTests.includes("rejected or otherwise revised lesson"),
   "Identical submissions against one lesson revision must converge on one review case; rejected/revised lessons must receive a distinct identity, with lesson linkage updated using ETag compare-and-swap.");
 
+const mlProtectedApprovalAdapterTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
+add("Protected owner approval adapter revalidates signed evidence without enabling fitting or betting",
+  mlOwnerApprovalRegistry.includes("evaluateWinMLTrainingReadinessFromProtectedConfig") &&
+  mlProtectedApprovalAdapterTests.includes("evaluateWinMLTrainingReadinessFromProtectedConfig") &&
+  mlProtectedApprovalAdapterTests.includes("protectedReadiness.evidenceReady, true") &&
+  mlProtectedApprovalAdapterTests.includes("protectedReadiness.modelFittingAllowed, false") &&
+  mlProtectedApprovalAdapterTests.includes("protectedReadiness.automatedBettingAllowed, false"),
+  "The model artifact path can use only the protected server-side approval adapter; even a valid signed approval remains evidence readiness and does not unlock fitting, production promotion or betting.");
+
 const mlOwnerGatedPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
 const mlOwnerGatedShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
 add("WIN shadow inference revalidates signed owner approval from protected config on every artifact read",

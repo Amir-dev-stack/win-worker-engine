@@ -116,6 +116,15 @@ test("owner approval endpoint fails closed and accepts only a separately authent
     assert.equal(readinessBody.evidenceReady, true);
     assert.equal(readinessBody.modelFittingAllowed, false);
 
+    const ownerRegistry = await import("../netlify/lib/ml-owner-approval-registry.mts");
+    const protectedReadiness = await ownerRegistry.evaluateWinMLTrainingReadinessFromProtectedConfig(
+      datasetId, payload.approvalId
+    );
+    assert.equal(protectedReadiness.evidenceReady, true);
+    assert.equal(protectedReadiness.modelFittingAllowed, false);
+    assert.equal(protectedReadiness.productionPromotionAllowed, false);
+    assert.equal(protectedReadiness.automatedBettingAllowed, false);
+
     const inventory = await endpoint(new Request("https://win.test/api/ml-owner-approval", {
       method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + token },
       body: JSON.stringify({ action: "list", limit: 10 })
