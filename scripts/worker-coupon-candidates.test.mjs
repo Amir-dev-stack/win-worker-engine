@@ -6,7 +6,7 @@ const leg = (eventId, odds, market = "1X2", selection = "Home") => ({
   eventId, event: "Home vs Away", market, selection, odds,
   estimatedWinProbabilityPercent: eventId === "event-1" ? 72 : 65,
   probabilityType: "agent_heuristic", probabilityConfidence: "medium",
-  probabilityRationale: "Synthetic test-only estimate.", probabilityEvidenceRefs: [],
+  probabilityRationale: "Synthetic test-only estimate.", evidenceRefs: ["https://example.com/probability-evidence"],
   sourceUrl: "https://example.com/odds", observedAt: "2026-11-06T10:00:00.000Z",
   startTime: "2026-11-06T18:00:00.000Z", settlementRule: "full_time_1x2"
 });
@@ -26,6 +26,8 @@ test("multi-event coupon is retained as draftable without claiming joint probabi
   assert.equal(result.legs[0].estimatedWinProbabilityPercent, 72);
   assert.equal(result.legs[0].probabilityType, "agent_heuristic_unverified");
   assert.equal(result.legs[0].probabilityCalibrated, false);
+  assert.equal(result.legs[0].probabilityRationale, "Synthetic test-only estimate.");
+  assert.deepEqual(result.legs[0].probabilityEvidenceRefs, ["https://example.com/probability-evidence"]);
   assert.equal(result.combinedOdds, null);
   assert.equal(result.theoreticalOddsProduct, 3.6);
   assert.ok(result.probabilityWarnings.includes("cross_event_dependence_not_modelled"));
