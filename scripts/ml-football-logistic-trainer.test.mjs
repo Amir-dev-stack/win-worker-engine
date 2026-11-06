@@ -114,7 +114,7 @@ test("held-out results create the existing versioned evaluation contract without
   assert.throws(() => buildWinMLFootball1X2EvaluationRecord(result.artifact, heldOut, {
     modelVersion: "0.1.0", trainingRunId: "synthetic-run-001",
     featureBuilderCommitSha: "d".repeat(40), sourceCommitSha: "e".repeat(40),
-    trainedAt: "2026-03-02T00:00:00.000Z"
+    trainedAt: "2026-02-01T00:00:00.000Z"
   }), /model_evaluation_chronology_invalid/);
 });
 
@@ -171,4 +171,16 @@ test("prediction rejects modified artifacts and incompatible feature vectors", (
   assert.throws(() => predictWinMLFootball1X2(changedConfig, {
     home_signal: 1, draw_signal: 0, away_signal: 0
   }), /model_artifact_training_config_hash_mismatch/);
+});
+
+test("retrospective offline evaluation may be assembled after historical validation events", () => {
+  const result = train();
+  const heldOut = evaluateWinMLFootball1X2LogisticModel(result.artifact, rows(91, 30), "2027-01-01T00:00:00.000Z");
+  const evaluation = buildWinMLFootball1X2EvaluationRecord(result.artifact, heldOut, {
+    modelVersion: "0.1.1", trainingRunId: "synthetic-retrospective-run",
+    featureBuilderCommitSha: "d".repeat(40), sourceCommitSha: "e".repeat(40),
+    trainedAt: "2026-04-01T00:00:00.000Z"
+  });
+  assert.equal(evaluation.trainedAt, "2026-04-01T00:00:00.000Z");
+  assert.equal(evaluation.testRows, 30);
 });
