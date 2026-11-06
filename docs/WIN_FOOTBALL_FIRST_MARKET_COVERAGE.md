@@ -19,7 +19,7 @@ WIN is intended to support all sports in its registered sport catalogue. Footbal
 - Analyse singles, multiples/accumulators, system bets, Bet Builders and live/in-play markets where source data and settlement definitions support them.
 - Evaluate individual odds, combined odds, price movement, market coverage and odds bands. Odds bands are analytical cohorts, not eligibility floors or ceilings.
 - A market may be supported for probability estimation but unavailable for recommendation when current price, evidence, sample size or settlement data is missing.
-- Return explicit NO BET / unavailable when evidence, model support, price or risk gates do not justify a selection. Never manufacture a pick to fill a coupon.
+- Do not automatically return NO BET or suppress a requested coupon. Generate the requested proposal and clearly disclose weak evidence, missing prices or risk. Never fabricate facts or odds; when risk cannot be quantified, say so.
 
 ## Football market taxonomy
 
@@ -93,9 +93,22 @@ Predictions bind to the exact canonical market version, target, event, participa
 6. Backtests use chronological holdouts, authentic prices and independently reviewed outcomes; report coverage and uncertainty.
 7. Odds-band reporting includes low and high price ranges without a blanket minimum or maximum odds filter.
 8. Singles, multiples, systems, Bet Builders and in-play tickets have separate ticket/dependence/settlement tests.
-9. Missing data, unsupported market versions, weak calibration or failed risk checks result in NO BET / unavailable.
+9. Missing data, unsupported market versions, weak calibration or failed risk checks must be disclosed as warnings in the requested coupon; they do not automatically suppress coupon generation or decide the user's bet/no-bet choice.
 10. Passing tests do not authorize bookmaker placement, production model promotion or risk-policy changes.
 
 ## Current implementation gap confirmed during PR #11 inspection
 
 The current model evaluation contract only accepts 1x2 and total_goals, and the market evaluation registry validates a three-class HOME/DRAW/AWAY vector and football consensus-market source records. These are a useful first football 1X2 vertical, not the universal market architecture. Keep them stable for existing artifacts; build the generalized, versioned contract alongside them, then migrate market by market with compatibility tests.
+
+## Human-owned final betting decision (2026-11-06)
+
+This section supersedes any wording elsewhere that implies WIN or its agents automatically reject a requested coupon, enforce a NO BET decision, or make the final betting decision.
+
+- When the user requests a coupon, WIN must generate and present a coupon proposal. Agents must not suppress the requested coupon merely because evidence is incomplete, model confidence is low, odds are unusual, or a risk threshold is exceeded.
+- The coupon proposal must distinguish verified evidence, model estimates, assumptions, missing data and unsupported markets. Never fabricate odds, probabilities, event facts, source coverage or settlement terms to make a coupon appear complete.
+- For every selection and for the coupon as a whole, agents report an estimated risk percentage only when a defensible calculation is possible, explain the method and uncertainty, and give clear advice. If a defensible percentage cannot be calculated, state 'risk not reliably quantifiable' and explain what is missing; do not invent a number.
+- Agents may recommend avoiding a selection or the entire coupon, explain downside scenarios, flag correlation and identify weak evidence. These are recommendations, not execution gates or final decisions.
+- The user alone decides whether to place a bet. WIN does not place bets, stake funds or submit bookmaker orders as part of this advisory workflow.
+- Keep analytical states separate: model/data eligibility, risk estimate, agent recommendation, coupon proposal status and user decision are distinct fields. A low-confidence or incomplete-evidence proposal remains visible with explicit warnings.
+- If a market cannot be verified or priced, show it as unverified/unpriced in the requested proposal and offer a clearly marked alternative where possible. Do not silently omit it or pretend it is supported.
+- Coupon generation is mandatory for a requested coupon; automatic bet placement is not authorized.

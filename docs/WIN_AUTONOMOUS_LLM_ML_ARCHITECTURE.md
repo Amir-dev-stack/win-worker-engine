@@ -215,6 +215,19 @@ All sports in WIN's registered catalogue remain in scope. Football is the first 
 
 Football scope is not limited to 1X2 and total goals. It includes result/handicap markets, score and goal derivatives, periods, corners, cards, team/player props, Bet Builders, singles, multiples, system products and live/in-play markets where verified source coverage and settlement rules exist. See docs/WIN_FOOTBALL_FIRST_MARKET_COVERAGE.md.
 
-Do not impose a minimum combined odds threshold (2.50 or otherwise), a maximum odds threshold, or a forced accumulator format. Analyse individual and combined ticket odds across ranges; use odds bands for calibration and performance reporting only. Model confidence, data support, price availability, dependence and risk determine recommendations. Otherwise return NO BET / unavailable.
+Do not impose a minimum combined odds threshold (2.50 or otherwise), a maximum odds threshold, or a forced accumulator format. Analyse individual and combined ticket odds across ranges; use odds bands for calibration and performance reporting only. Model confidence, data support, price availability, dependence and risk determine recommendations. Otherwise disclose the uncertainty and recommend caution; the user makes the final bet/no-bet decision.
 
 The existing 1X2 and total-goals model contract is a narrow initial implementation. Keep v1 immutable for stored artifacts; add a generalized versioned sport/market/target contract and migrate incrementally. Do not weaken chronological, provenance, sample-size, licence, owner-approval or shadow-only gates.
+
+## Human-owned final betting decision (2026-11-06)
+
+This section supersedes any wording elsewhere that implies WIN or its agents automatically reject a requested coupon, enforce a NO BET decision, or make the final betting decision.
+
+- When the user requests a coupon, WIN must generate and present a coupon proposal. Agents must not suppress the requested coupon merely because evidence is incomplete, model confidence is low, odds are unusual, or a risk threshold is exceeded.
+- The coupon proposal must distinguish verified evidence, model estimates, assumptions, missing data and unsupported markets. Never fabricate odds, probabilities, event facts, source coverage or settlement terms to make a coupon appear complete.
+- For every selection and for the coupon as a whole, agents report an estimated risk percentage only when a defensible calculation is possible, explain the method and uncertainty, and give clear advice. If a defensible percentage cannot be calculated, state 'risk not reliably quantifiable' and explain what is missing; do not invent a number.
+- Agents may recommend avoiding a selection or the entire coupon, explain downside scenarios, flag correlation and identify weak evidence. These are recommendations, not execution gates or final decisions.
+- The user alone decides whether to place a bet. WIN does not place bets, stake funds or submit bookmaker orders as part of this advisory workflow.
+- Keep analytical states separate: model/data eligibility, risk estimate, agent recommendation, coupon proposal status and user decision are distinct fields. A low-confidence or incomplete-evidence proposal remains visible with explicit warnings.
+- If a market cannot be verified or priced, show it as unverified/unpriced in the requested proposal and offer a clearly marked alternative where possible. Do not silently omit it or pretend it is supported.
+- Coupon generation is mandatory for a requested coupon; automatic bet placement is not authorized.
