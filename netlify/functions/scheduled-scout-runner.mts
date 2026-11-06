@@ -13,7 +13,7 @@ const MAX_REQUEST_BODY_BYTES = 16 * 1024;
 
 export async function readScheduledScoutRunId(req: Request): Promise<{ runId: string } | Response> {
   if (req.method !== "POST") return Response.json({ error: "method_not_allowed" }, { status: 405 });
-  if (!req.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+  if (req.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {
     return Response.json({ error: "application_json_required" }, { status: 415 });
   }
   const declaredLength = Number(req.headers.get("content-length") || 0);
