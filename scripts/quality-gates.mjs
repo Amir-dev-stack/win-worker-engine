@@ -353,6 +353,14 @@ add("WIN owner training approvals require dataset-bound Ed25519 signatures and l
   mlOwnerApprovalTests.includes("approval signature cannot be reused for a different dataset"),
   "The isolated verifier binds signed approval to dataset content, licence evidence, reviewer and validity window; readiness remains separately blocked.");
 
+const mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
+add("WIN documents the signed licence-to-training-readiness evidence chain",
+  mlTrainingReadinessDocs.includes('action: "licence_evidence"') &&
+  mlTrainingReadinessDocs.includes('action: "readiness"') &&
+  mlTrainingReadinessDocs.includes("modelFittingAllowed") &&
+  mlTrainingReadinessDocs.includes("does not prove that the source document is authentic"),
+  "The operator guide describes immutable signed evidence, endpoint actions, evidence-only readiness semantics and the legal-review limitation.");
+
 const mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
 const mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
 add("WIN signed owner approvals and revocations are stored immutably and checked against the registered dataset",
