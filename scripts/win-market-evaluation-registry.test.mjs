@@ -57,3 +57,118 @@ test("market benchmark rejects duplicate model cutoff identities and malformed c
   ) };
   assert.throws(() => assertWinMarketCohortMatchesModel(rows, malformed), /market_evaluation_model_cutoffs_invalid/);
 });
+
+import { installIsolatedTestStore, remove } from "../netlify/lib/store.mts";
+import { registerWinMLDatasetManifest } from "../netlify/lib/ml-dataset-registry.mts";
+import { registerWinMLModelArtifact } from "../netlify/lib/ml-model-artifact-registry.mts";
+import {
+  registerWinMarketEvaluation,
+  getWinMarketEvaluation
+} from "../netlify/lib/win-market-evaluation-registry.mts";
+import {
+  trainWinMLFootball1X2LogisticModel,
+  evaluateWinMLFootball1X2LogisticModel,
+  buildWinMLFootball1X2EvaluationRecord
+} from "../netlify/lib/ml-football-logistic-trainer.mts";
+
+const storeValues = new Map();
+const testStore = {
+  async setJSON(key, value, options = {}) {
+    if (options.onlyIfNew && storeValues.has(key)) return { modified: false };
+    storeValues.set(key, structuredClone(value));
+    return { modified: true };
+  },
+  async get(key) { return storeValues.has(key) ? structuredClone(storeValues.get(key)) : null; },
+  async *list() { yield { blobs: [] }; },
+  async delete(key) { storeValues.delete(key); },
+  async getWithMetadata(key) { return storeValues.has(key) ? { data: structuredClone(storeValues.get(key)), etag: "market-test-etag" } : null; }
+};
+process.env.WIN_STORE_TEST_MODE = "1";
+installIsolatedTestStore(testStore);
+
+function trainingRows(offset, count) {
+  return Array.from({ length: count }, (_, index) => {
+    const outcome = ["HOME", "DRAW", "AWAY"][index % 3];
+    const eventStart = new Date(Date.UTC(2026, 0, 1 + offset + index)).toISOString();
+    const predictionCutoff = new Date(Date.parse(eventStart) - 60 * 60 * 1000).toISOString();
+    const availableAt = new Date(Date.parse(eventStart) - 2 * 60 * 60 * 1000).toISOString();
+    const feature = value => ({ value, availableAt, sourceId: "market-synthetic-source-" + (offset + index) });
+    return {
+      eventId: "market-synthetic-event-" + (offset + index),
+      eventStart, predictionCutoff,
+      labelAvailableAt: new Date(Date.parse(eventStart) + 6 * 60 * 60 * 1000).toISOString(),
+      outcome,
+      features: {
+        home_signal: feature(outcome === "HOME" ? 1 : 0),
+        draw_signal: feature(outcome === "DRAW" ? 1 : 0),
+        away_signal: feature(outcome === "AWAY" ? 1 : 0)
+      }
+    };
+  });
+}
+
+test("market evaluation registry binds immutable market scores to the registered ML artifact and exact held-out cohort", async () => {
+  const modelId = "market-registry-model";
+  const modelVersion = "0.1.0";
+  const datasetId = "market-registry-dataset";
+  const evaluationId = "market-registry-evaluation";
+  await remove("library/ml-model-artifacts", modelId + "::" + modelVersion);
+  await remove("library/ml-dataset-manifests", datasetId);
+  await remove("library/win-market-evaluations", evaluationId);
+
+  const train = trainWinMLFootball1X2LogisticModel({
+    modelId, datasetId, datasetContentSha256: "a".repeat(64),
+    featureSchemaVersion: "win.football.form.v1",
+    trainingRows: trainingRows(0, 60),
+    validationRows: trainingRows(60, 30),
+    config: { learningRate: 0.1, epochs: 500, l2: 0.001 }
+  });
+  const testRows = trainingRows(91, 100);
+  const evaluatedAt = "2027-01-03T00:00:00.000Z";
+  const heldOut = evaluateWinMLFootball1X2LogisticModel(train.artifact, testRows, evaluatedAt);
+  const evaluation = buildWinMLFootball1X2EvaluationRecord(train.artifact, heldOut, {
+    modelVersion, trainingRunId: "market-synthetic-run",
+    featureBuilderCommitSha: "d".repeat(40), sourceCommitSha: "e".repeat(40),
+    trainedAt: "2026-03-01T07:00:00.000Z"
+  });
+  await registerWinMLDatasetManifest({
+    manifestVersion: "win.ml.dataset.v1", datasetId, providerId: "synthetic",
+    sport: "association_football", competition: "synthetic", season: "2026",
+    sourceUrl: "https://example.test/synthetic", licenceId: "synthetic-research",
+    attributionRequired: false, automationAllowed: false, approvedForTraining: false,
+    permittedUse: "research_only", rowGrain: "match", eventTimePrecision: "instant",
+    retrievedAt: "2027-01-02T00:00:00.000Z", rowCount: 190, labeledRowCount: 190,
+    schemaVersion: "synthetic.v1", contentSha256: "a".repeat(64)
+  });
+  await registerWinMLModelArtifact({
+    artifact: train.artifact, evaluation, testRows, evaluatedAt,
+    registeredAt: "2027-01-03T00:00:00.000Z"
+  });
+
+  const marketRows = testRows.map(row => ({
+    eventId: row.eventId,
+    kickoffAt: row.eventStart,
+    predictionCutoff: row.predictionCutoff,
+    marketSnapshotAt: new Date(Date.parse(row.predictionCutoff) - 5 * 60 * 1000).toISOString(),
+    resultAvailableAt: row.labelAvailableAt,
+    probabilities: [0.5, 0.25, 0.25],
+    outcome: row.outcome.toLowerCase()
+  }));
+  const args = {
+    evaluationId, modelId, modelVersion,
+    sourceId: "synthetic-market-source",
+    sourceRevision: "f".repeat(40),
+    evaluatedAt,
+    testRows: marketRows
+  };
+  const first = await registerWinMarketEvaluation(args);
+  assert.equal(first.registered, true);
+  assert.equal(first.record.modelArtifactSha256, train.artifact.artifactSha256);
+  assert.equal(first.record.modelEvaluationSha256, hashWinMLProvenance(evaluation).sha256);
+  assert.equal(first.record.testRows, 100);
+  const retry = await registerWinMarketEvaluation(args);
+  assert.equal(retry.idempotent, true);
+  const loaded = await getWinMarketEvaluation(evaluationId);
+  assert.equal(loaded.recordSha256, first.record.recordSha256);
+  assert.equal(loaded.datasetContentSha256, train.artifact.datasetContentSha256);
+});
