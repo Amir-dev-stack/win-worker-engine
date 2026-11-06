@@ -18,8 +18,8 @@ function validId(value: unknown): value is string {
 }
 function instant(value: unknown): number | null {
   if (typeof value !== "string" ||
-      !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value)) return null;
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T/.exec(value);
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T/.exec(value);
   if (!match) return null;
   const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
   const calendar = new Date(Date.UTC(year, month - 1, day));
