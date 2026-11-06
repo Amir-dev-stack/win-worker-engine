@@ -113,6 +113,6 @@ test("revocation cannot be future-dated or unsigned", () => {
   }).reasons.includes("owner_revocation_not_yet_effective"));
   assert.ok(verifyWinMLOwnerTrainingRevocation(signed, key, {
     approvalId: payload.approvalId, datasetId: payload.datasetId,
-    datasetContentSha256: payload.datasetContentSha256, approvedAt: "2026-11-10T00:00:00.000Z", now: expected.now
+    datasetContentSha256: payload.datasetContentSha256, approvedAt: "2026-11-12T00:00:00.000Z", now: expected.now
   }).reasons.includes("owner_revocation_predates_approval"));
 });
