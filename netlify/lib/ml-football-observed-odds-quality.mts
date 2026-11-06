@@ -35,7 +35,8 @@ export function assessWinObservedFootballOddsQuality(args: {
     sourceId: row.providerId,
     capturedAt: row.observedAt,
     decimalOdds: row.oddsDecimal,
-    line: row.line ?? null
+    line: row.line ?? null,
+    availabilityStatus: row.availabilityStatus || "unknown"
   }));
   const expectedMarkets = (Array.isArray(args?.expectedMarkets) ? args.expectedMarkets : []).map(m => ({
     ...m,
