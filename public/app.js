@@ -104,13 +104,16 @@ function renderCouponBoardCard(item, mode) {
   const price=selection.odds===null||selection.odds===undefined?"—":Number(selection.odds).toFixed(2);
   const probability=typeof selection.estimatedWinProbabilityPercent==="number"
    ?Number(selection.estimatedWinProbabilityPercent).toFixed(1)+"%": "—";
-  const probabilityBasis=selection.probabilityType==="agent_heuristic_unverified"?"Uncalibrated agent estimate"
-   :selection.probabilityType==="unverified_claim"?"Unverified model/market claim":"Not available";
+  const probabilityBasis=(selection.probabilityType==="agent_heuristic_unverified"?"Uncalibrated agent estimate"
+   :selection.probabilityType==="unverified_claim"?"Unverified model/market claim":"Not available")
+   +(selection.probabilityConfidence?" · "+escapeHtml(selection.probabilityConfidence)+" confidence":"");
+  const probabilityRationale=selection.probabilityRationale
+   ?'<small>'+escapeHtml(selection.probabilityRationale)+'</small>':"";
   const result=escapeHtml(selection.result||selection.settlement||"—");
   const url=safeUrl(selection.sourceUrl||selection.url||selection.reference||"");
   const source=url?'<a href="'+escapeHtml(url)+'" target="_blank" rel="noopener noreferrer">Evidence ↗</a>':"Not supplied";
   const observed=selection.observedAt?'<small>'+escapeHtml(selection.observedAt)+'</small>':"";
-  return '<tr><td>'+(index+1)+'</td><td>'+event+'</td><td>'+market+'<br><b>'+pick+'</b></td><td>'+price+'</td><td>'+probability+'<br><small>'+escapeHtml(probabilityBasis)+'</small></td><td>'+result+'</td><td>'+source+observed+'</td></tr>';
+  return '<tr><td>'+(index+1)+'</td><td>'+event+'</td><td>'+market+'<br><b>'+pick+'</b></td><td>'+price+'</td><td>'+probability+'<br><small>'+escapeHtml(probabilityBasis)+'</small>'+probabilityRationale+'</td><td>'+result+'</td><td>'+source+observed+'</td></tr>';
  }).join("");
  const table=rows?'<div class="table-wrap"><table><thead><tr><th>#</th><th>Event</th><th>Market / pick</th><th>Odds</th><th>Estimated leg win %</th><th>Result</th><th>Source</th></tr></thead><tbody>'+rows+'</tbody></table></div>':"";
  const text=item.couponText?'<pre>'+escapeHtml(item.couponText)+'</pre>':"";
