@@ -646,6 +646,11 @@ add("WIN market benchmark is bound to the registered ML artifact's exact held-ou
   winMarketEvaluationRegistry.includes("modelEvaluationSha256") &&
   winMarketEvaluationRegistry.includes("putIfNew(COLLECTION, evaluationId, record)") &&
   winMarketEvaluationRegistry.includes("market_evaluation_model_binding_mismatch") &&
+  winMarketEvaluationRegistry.includes("assertProviderImportAllowed(sourceId") &&
+  winMarketEvaluationRegistry.includes("market_evaluation_source_dataset_binding_invalid") &&
+  winMarketEvaluationRegistry.includes("sourceDatasetSha256: sourceDataset.rawChecksum") &&
+  winMarketEvaluationRegistry.includes("market_evaluation_source_dataset_binding_mismatch") &&
+  winMarketEvaluationRegistryTests.includes("market_evaluation_source_dataset_binding_invalid") &&
   winMarketEvaluationRegistryTests.includes("requires exact registered held-out event identities and cutoffs") &&
   winMarketEvaluationRegistryTests.includes("rejects a different event cohort") &&
   winMarketEvaluationRegistryTests.includes("rejects per-event prediction cutoff drift") &&
