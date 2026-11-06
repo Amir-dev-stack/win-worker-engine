@@ -1,15 +1,14 @@
 import { getWinMLMarketBlendEvaluationEvidence } from "./ml-market-blend-evidence.mts";
+import { getWinMLModelArtifact } from "./ml-model-artifact-registry.mts";
 import {
   calculateWinMLMarketAnchoredBlend,
   type WinMLMarketBlendInput
 } from "./ml-market-anchored-blend.mts";
 
 /**
- * The production-facing research composition path loads immutable evaluation
- * evidence itself. Callers cannot provide or override evaluation metrics.
- *
- * The event's model probability vector remains an input and is NOT independently
- * proven to be the output of registered shadow inference by this wrapper.
+ * Loads immutable evaluation evidence itself; callers cannot provide metrics.
+ * The event probability vector is still caller-supplied and is not independently
+ * proven here to be the output of registered shadow inference.
  */
 export async function calculateWinMLMarketAnchoredBlendWithRegisteredEvidence(args: {
   input: Omit<WinMLMarketBlendInput, "evaluation">;
@@ -21,14 +20,12 @@ export async function calculateWinMLMarketAnchoredBlendWithRegisteredEvidence(ar
   if (!input || !modelId || !modelVersion || !marketEvaluationId) {
     throw new Error("market_blend_registered_evidence_arguments_invalid");
   }
-  const evidence = await getWinMLMarketBlendEvaluationEvidence({
-    modelId,
-    modelVersion,
-    marketEvaluationId
-  });
-  if (input.model?.modelId !== modelId ||
-      input.model?.artifactSha256 !== (await import("./ml-model-artifact-registry.mts"))
-        .getWinMLModelArtifact(modelId, modelVersion).then(model => model?.artifact.artifactSha256) ||
+  const [evidence, model] = await Promise.all([
+    getWinMLMarketBlendEvaluationEvidence({ modelId, modelVersion, marketEvaluationId }),
+    getWinMLModelArtifact(modelId, modelVersion)
+  ]);
+  if (!model || input.model?.modelId !== modelId ||
+      input.model?.artifactSha256 !== model.artifact.artifactSha256 ||
       input.model?.datasetContentSha256 !== evidence.datasetContentSha256) {
     throw new Error("market_blend_registered_model_binding_mismatch");
   }
