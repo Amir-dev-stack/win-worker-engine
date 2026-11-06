@@ -260,7 +260,7 @@ export default async (req: Request) => {
     return Response.json({ error: "valid_run_id_required" }, { status: 400 });
   }
   const run = await get<any>("runs", runId);
-  if (!run) return new Response("Run not found", { status: 404 });
+  if (!run || run.id !== runId) return new Response("Run not found", { status: 404 });
   if (run.status === "completed") {
     return Response.json({ error: "run_already_completed" }, { status: 409 });
   }
