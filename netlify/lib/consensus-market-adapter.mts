@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { get, put, list } from "./store.mts";
 import { assertProviderImportAllowed } from "./data-provider-registry.mts";
+import { isStrictIsoTimestamp } from "./strict-timestamp.mts";
 
 export const CONSENSUS_SOURCES = [
  {id:"hf-minmaxxxer-nfl-2026",requiredDomains:["historical_consensus_market_lines","results"],repo:"minmaxxxer/nfl-odds-2026",sport:"american_football"},
@@ -34,6 +35,27 @@ const number=(v:unknown)=>{if(v===null||v===undefined||v==="")return null;const 
 
 export function isPinnedDatasetRevision(value: unknown): value is string {
  return typeof value === "string" && /^[a-f0-9]{40}$/i.test(value);
+}
+
+const MARKET_SNAPSHOT_TIMESTAMP_FIELDS = [
+ "market_snapshot_at", "closing_snapshot_at", "close_time_utc",
+ "odds_timestamp_utc", "snapshot_time_utc", "last_updated_utc"
+] as const;
+
+/** Uses only a timestamp explicitly present in the source row; never substitutes retrieval or kickoff time. */
+export function readSourceMarketSnapshotTimestamp(row: Record<string, unknown>) {
+ let invalidField: string | null = null;
+ for (const field of MARKET_SNAPSHOT_TIMESTAMP_FIELDS) {
+  const value = row?.[field];
+  if (value === undefined || value === null || value === "") continue;
+  if (typeof value === "string" && isStrictIsoTimestamp(value)) {
+   return { at: value, sourceField: field, status: "source_timestamp" as const };
+  }
+  invalidField ??= field;
+ }
+ return invalidField
+  ? { at: null, sourceField: invalidField, status: "invalid_source_timestamp" as const }
+  : { at: null, sourceField: null, status: "source_timestamp_not_provided" as const };
 }
 
 async function syncOne(source:typeof CONSENSUS_SOURCES[number]){
@@ -80,6 +102,7 @@ async function syncOne(source:typeof CONSENSUS_SOURCES[number]){
   const closeAway=tennis?(closeHome===null?null:1-closeHome):number(r.close_away_prob??(closeHome!==null&&!football?1-closeHome:null));
   const moneylineWinner=tennis?(Number(r.winner)===1?"home":Number(r.winner)===2?"away":""):String(r.moneyline_winner||r.result||"");
   const completed=tennis?String(r.status).toLowerCase()==="finished"&&(Number(r.winner)===1||Number(r.winner)===2):homeScore!==null&&awayScore!==null;
+  const marketSnapshot = readSourceMarketSnapshotTimestamp(r);
   return {
    id,providerId:source.id,sport:source.sport,season:String(r.season||""),
    competition:String(r.league||r.tournament||r.tour||""),
@@ -94,6 +117,9 @@ async function syncOne(source:typeof CONSENSUS_SOURCES[number]){
     awayWinProbability:tennis?(number(r.open_prob1)===null?null:1-number(r.open_prob1)):number(r.open_away_prob??(number(r.open_home_win_prob)!==null&&!football?1-number(r.open_home_win_prob):null))
    },
    closing:{
+    marketSnapshotAt:marketSnapshot.at,
+    marketSnapshotTimestampSourceField:marketSnapshot.sourceField,
+    marketSnapshotTimestampStatus:marketSnapshot.status,
     homeWinProbability:closeHome,
     drawProbability:football?number(r.close_draw_prob):null,
     awayWinProbability:closeAway,
