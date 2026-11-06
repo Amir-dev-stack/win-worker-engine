@@ -35,6 +35,8 @@ function fixture() {
     datasetContentSha256: "c".repeat(64),
     sourceId: "fixture-market-source",
     sourceRevision: "e".repeat(40),
+    sourceDatasetId: "consensus-fixture-market-source",
+    sourceDatasetSha256: "b".repeat(64),
     evaluatedAt: "2026-06-02T00:00:00.000Z",
     testEventIdsSha256: "d".repeat(64),
     testRowsSha256: "f".repeat(64),
