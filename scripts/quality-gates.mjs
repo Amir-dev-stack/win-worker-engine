@@ -371,6 +371,7 @@ add("WIN signed owner approvals and revocations are stored immutably and checked
   mlOwnerApprovalRegistry.includes("owner_revocation_already_recorded") &&
   mlOwnerApprovalRegistry.includes("getWinMLOwnerTrainingApprovalStatus") &&
   mlOwnerApprovalRegistry.includes("registerWinMLLicenceReviewEvidence") &&
+  mlOwnerApprovalRegistry.includes("LICENCE_ID_COLLECTION") &&
   mlOwnerApprovalRegistry.includes("verifyRegisteredLicenceEvidence") &&
   mlOwnerApprovalRegistry.includes("evaluateWinMLTrainingReadiness") &&
   mlOwnerApprovalRegistry.includes("modelFittingAllowed: false") &&
@@ -380,7 +381,8 @@ add("WIN signed owner approvals and revocations are stored immutably and checked
   mlOwnerApprovalRegistryTests.includes("expiredLicenceReadiness.evidenceReady, false") &&
   mlOwnerApprovalRegistryTests.includes("licence_review_expired") &&
   mlOwnerApprovalRegistryTests.includes("revokedReadiness.evidenceReady, false") &&
-  mlOwnerApprovalRegistryTests.includes("registered_licence_evidence_missing"),
+  mlOwnerApprovalRegistryTests.includes("registered_licence_evidence_missing") &&
+  mlOwnerApprovalRegistryTests.includes("licence_evidence_id_immutable_conflict"),
   "Signed licence evidence is immutably registered by canonical hash and rechecked during approval status; the composite readiness audit validates dataset, licence, owner approval and revocation while keeping fitting disabled.");
 
 const mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
