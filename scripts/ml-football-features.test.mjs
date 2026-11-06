@@ -102,3 +102,35 @@ test("point-in-time features exclude results with extra-time score semantics", (
   assert.equal(result.evidence.awayMatchesUsed, 0);
   assert.equal(result.evidence.excludedFutureOrUnavailableRows, 1);
 });
+
+test("same-day matches require an earlier kickoff and a result available by the prediction cutoff", () => {
+  const result = buildWinFootballPointInTimeFeatures({
+    datasetId: "fixture",
+    historicalRows: [
+      match({
+        sourceRecordId: "same-day-before",
+        eventId: "same-day-before",
+        kickoff: "2026-10-31T12:00:00.000Z",
+        resultAvailableAt: "2026-10-31T14:00:00.000Z"
+      }),
+      match({
+        sourceRecordId: "same-day-after",
+        eventId: "same-day-after",
+        kickoff: "2026-11-01T16:45:00.000Z",
+        resultAvailableAt: "2026-11-01T17:30:00.000Z"
+      }),
+      match({
+        sourceRecordId: "impossible-availability",
+        eventId: "impossible-availability",
+        kickoff: "2026-10-30T12:00:00.000Z",
+        resultAvailableAt: "2026-10-30T11:59:00.000Z"
+      })
+    ],
+    target: { ...target, kickoff: "2026-11-01T18:00:00.000Z" },
+    predictionCutoff: "2026-11-01T17:00:00.000Z"
+  });
+  assert.equal(result.evidence.homeMatchesUsed, 1);
+  assert.equal(result.evidence.awayMatchesUsed, 1);
+  assert.equal(result.evidence.excludedFutureOrUnavailableRows, 2);
+  assert.deepEqual(result.features.home_last5_wins.sourceId, "same-day-before");
+});
