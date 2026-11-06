@@ -174,3 +174,13 @@ These are source changes and synthetic tests; no current-head CI execution is cl
 
 
 - Follow-up audit tightened the scheduled-scout runner's JSON media-type check to reject misleading values such as `application/jsonp` and `application/json-evil`; regression coverage and architecture gate added.
+
+
+## 10. OAuth endpoint request-boundary review (2026-11-06)
+
+- Added a shared bounded OAuth request parser for URL-encoded form and JSON payloads. It incrementally reads the request stream, checks declared and actual byte counts, decodes strict UTF-8 and rejects unsupported media types.
+- Authorization POST accepts only URL-encoded form data with an 8 KiB cap. Token POST accepts only URL-encoded form data with a 16 KiB cap. Dynamic client registration accepts only JSON objects with a 16 KiB cap.
+- Duplicate form parameter names, excessive parameter counts, overlong keys/values, malformed JSON, non-object JSON and invalid UTF-8 are rejected.
+- Authorization state/client/redirect/scope fields and token client/code/redirect/verifier/refresh-token fields receive explicit bounds.
+- Dynamic registration now rejects malformed optional grant/response-type declarations rather than silently accepting non-array values or arrays that omit the authorization-code grant.
+- These are source-level and isolated parser-contract changes. OAuth provider round-trip, browser UX, deployed callback compatibility and rate-limit enforcement still require separate verification.
