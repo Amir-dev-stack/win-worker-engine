@@ -934,16 +934,23 @@ add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and re
 const couponCorrelationGate = await read("netlify/lib/coupon-correlation-gate.mts");
 const couponCorrelationTests = await read("scripts/coupon-correlation-gate.test.mjs");
 const couponRunner = await read("netlify/functions/worker-runner.mts");
-add("Multi-leg coupon qualification fails closed until independently validated joint-probability evidence exists",
-  couponRunner.includes("evaluateCouponCorrelation(legChecks)") && couponRunner.includes("correlationAssessment.approved") &&
-  couponRunner.includes("correlationAssessment,") &&
-  couponCorrelationGate.includes("same_event_joint_probability_not_modelled") &&
+const couponCandidateTests = await read("scripts/worker-coupon-candidates.test.mjs");
+add("Multi-leg coupon drafts remain available while unvalidated joint probabilities are clearly withheld",
+  couponRunner.includes("evaluateCouponCorrelation(legChecks)") &&
+  couponRunner.includes("couponDraftAllowed: legs.length > 0") &&
+  couponRunner.includes('status, legs: legChecks') &&
+  couponRunner.includes("probabilityWarnings: correlationAssessment.warnings") &&
+  couponRunner.includes("theoreticalOddsProduct") &&
+  couponCorrelationGate.includes("couponDraftAllowed: true") &&
+  couponCorrelationGate.includes("marginal_only_joint_unavailable") &&
+  couponCorrelationGate.includes("jointProbabilityAvailable: false") &&
   couponCorrelationGate.includes("cross_event_dependence_not_modelled") &&
-  couponCorrelationGate.includes("LLM notes and multiplying marginal probabilities are not accepted") &&
-  couponCorrelationTests.includes("same-event multi-leg candidates are blocked") &&
-  couponCorrelationTests.includes("different-event accumulators are blocked") &&
-  couponCorrelationTests.includes("missing event identity cannot be hidden"),
-  "Free-text correlation notes or multiplying individual probabilities must not qualify an accumulator. Single-leg candidates remain eligible; multi-leg candidates stay blocked until a separately validated joint-probability model is implemented.");
+  couponCorrelationTests.includes("different-event accumulator remains draftable") &&
+  couponCandidateTests.includes("multi-event coupon is retained as draftable") &&
+  couponCandidateTests.includes("same-event multi-market coupon remains draftable") &&
+  couponCandidateTests.includes("does not multiply leg prices") &&
+  couponCandidateTests.includes("incomplete multi-leg evidence is still retained as an incomplete draft"),
+  "Coupon candidates with one or more legs must remain draftable for the user's decision. Missing joint-probability evidence is a probability warning, not a coupon-generation veto; multi-leg probability is withheld, same-event prices are not multiplied, and incomplete drafts retain visible blockers.");
 
 const consensusRevisionTests = await read("scripts/public-data-source-policy.test.mjs");
 add("Consensus market imports pin immutable upstream revisions and avoid re-downloading unchanged datasets",
