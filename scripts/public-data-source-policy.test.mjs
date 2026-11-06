@@ -86,7 +86,7 @@ test("each adapter checks registry policy before its first upstream operation", 
 
   const footballGate = football.indexOf('assertProviderImportAllowed("openfootball-football-json"');
   const footballStart = football.indexOf("export async function syncOpenFootballHistoricalData()");
-  const footballFetch = football.indexOf("const root = await getJson(API)");
+  const footballFetch = football.indexOf('const root = await getJson(API + "?ref=" + sourceRevision)');
   assert.ok(footballGate > footballStart && footballGate < footballFetch);
 
   const worldCupStart = worldCup.indexOf("export async function syncOpenFootballWorldCupData()");
