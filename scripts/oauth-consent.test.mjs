@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { describeOAuthScopes } from "../netlify/functions/oauth-authorize.mts";
+import { describeOAuthScopes } from "../netlify/lib/oauth-consent.mts";
 
 test("OAuth consent does not overstate research access for read-only scopes", () => {
   const readOnly = describeOAuthScopes("win:read offline_access");
