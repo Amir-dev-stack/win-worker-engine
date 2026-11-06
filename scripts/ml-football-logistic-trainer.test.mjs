@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   trainWinMLFootball1X2LogisticModel,
   evaluateWinMLFootball1X2LogisticModel,
+  buildWinMLFootball1X2EvaluationRecord,
   predictWinMLFootball1X2
 } from "../netlify/lib/ml-football-logistic-trainer.mts";
 
@@ -81,6 +82,40 @@ test("frozen logistic artifact evaluates only a later held-out test partition", 
   duplicated[0].eventId = "synthetic-0";
   assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, duplicated, "2027-01-01T00:00:00.000Z"),
     /training_event_identity_missing_or_duplicate/);
+});
+
+test("held-out results create the existing versioned evaluation contract without granting promotion", () => {
+  const result = train();
+  const heldOut = evaluateWinMLFootball1X2LogisticModel(
+    result.artifact, rows(91, 30), "2027-01-01T00:00:00.000Z"
+  );
+  const evaluation = buildWinMLFootball1X2EvaluationRecord(result.artifact, heldOut, {
+    modelVersion: "0.1.0",
+    trainingRunId: "synthetic-run-001",
+    featureBuilderCommitSha: "d".repeat(40),
+    sourceCommitSha: "e".repeat(40),
+    trainedAt: "2026-03-01T07:00:00.000Z"
+  });
+  assert.equal(evaluation.evaluationVersion, "win.ml.model.evaluation.v1");
+  assert.equal(evaluation.algorithm, "logistic_regression");
+  assert.equal(evaluation.market, "1x2");
+  assert.equal(evaluation.trainingRows, 60);
+  assert.equal(evaluation.validationRows, 30);
+  assert.equal(evaluation.testRows, 30);
+  assert.equal(evaluation.artifactSha256, result.artifact.artifactSha256);
+  assert.equal(evaluation.fitDataCutoff, result.artifact.fitDataCutoff);
+  assert.throws(() => buildWinMLFootball1X2EvaluationRecord(result.artifact, {
+    ...heldOut, artifactSha256: "f".repeat(64)
+  }, {
+    modelVersion: "0.1.0", trainingRunId: "synthetic-run-001",
+    featureBuilderCommitSha: "d".repeat(40), sourceCommitSha: "e".repeat(40),
+    trainedAt: "2026-03-01T07:00:00.000Z"
+  }), /model_evaluation_artifact_binding_invalid/);
+  assert.throws(() => buildWinMLFootball1X2EvaluationRecord(result.artifact, heldOut, {
+    modelVersion: "0.1.0", trainingRunId: "synthetic-run-001",
+    featureBuilderCommitSha: "d".repeat(40), sourceCommitSha: "e".repeat(40),
+    trainedAt: "2026-03-02T00:00:00.000Z"
+  }), /model_evaluation_chronology_invalid/);
 });
 
 test("trainer is deterministic for identical rows and configuration", () => {
