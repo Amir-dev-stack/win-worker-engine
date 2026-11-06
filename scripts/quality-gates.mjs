@@ -414,6 +414,8 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainer.includes("model_evaluation_artifact_binding_invalid") &&
   mlFootballTrainer.includes("held_out_test_not_after_validation_label_availability") &&
   mlFootballTrainer.includes("held_out_test_labels_not_available_as_of_evaluation") &&
+  mlFootballTrainer.includes("trainedAt > testStart") &&
+  mlFootballTrainerTests.includes("retrospective offline evaluation may be assembled after historical validation events") &&
   mlFootballTrainer.includes("baselineProbabilities") &&
   mlFootballTrainer.includes("training_validation_chronology_invalid") &&
   mlFootballTrainer.includes("labelAvailableAt") &&
@@ -521,7 +523,9 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   mlModelArtifactRegistry.includes("automatedBettingAllowed: false") &&
   mlModelArtifactRegistryTests.includes("immutably binds artifact, evaluation and registered dataset") &&
   mlModelArtifactRegistryTests.includes("rejects dataset hash drift and immutable version conflicts") &&
-  mlModelArtifactRegistryTests.includes("fails closed after stored record tampering"),
+  mlModelArtifactRegistryTests.includes("fails closed after stored record tampering") &&
+  mlModelArtifactRegistry.includes("testRowsSha256") &&
+  mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch"),
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
 const winCiWorkflow = await read(".github/workflows/win-quality.yml");
