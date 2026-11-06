@@ -35,6 +35,8 @@ const required = [
   "netlify/lib/simulation.mts",
   "netlify/lib/backtest.mts",
   "netlify/lib/ai.mts",
+  "netlify/lib/async-concurrency.mts",
+  "scripts/async-concurrency.test.mjs",
   "netlify/lib/agents-sdk.mts",
   "scripts/agents-sdk.test.mjs",
   "netlify/lib/worker-org.mts",
