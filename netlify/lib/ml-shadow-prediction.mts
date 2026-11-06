@@ -7,7 +7,7 @@ import { hashWinMLProvenance } from "./ml-provenance.mts";
 import { parseStrictIsoTimestamp } from "./strict-timestamp.mts";
 
 const COLLECTION = "library/ml-shadow-predictions";
-const RECORD_VERSION = "win.ml.shadow-prediction-record.v1";
+const RECORD_VERSION = "win.ml.shadow-prediction-record.v2";
 function assertShadowInferenceMatches(
   registered: Awaited<ReturnType<typeof getWinMLModelArtifact>>,
   prediction: WinMLPredictionV1,
