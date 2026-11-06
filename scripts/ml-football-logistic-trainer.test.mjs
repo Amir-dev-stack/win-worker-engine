@@ -11,6 +11,7 @@ function rows(offset, count) {
     return {
       eventId: "synthetic-" + (offset + index),
       eventStart: new Date(Date.UTC(2026, 0, 1 + offset + index)).toISOString(),
+      labelAvailableAt: new Date(Date.UTC(2026, 0, 1 + offset + index, 6)).toISOString(),
       outcome,
       features: {
         home_signal: outcome === "HOME" ? 1 : 0,
@@ -78,6 +79,9 @@ test("trainer rejects non-finite features and unsafe numerical configuration", (
   invalid[0].features.home_signal = Number.NaN;
   assert.throws(() => train({ trainingRows: invalid }), /training_feature_not_finite_numeric/);
   assert.throws(() => train({ config: { learningRate: 2, epochs: 500, l2: 0.001 } }), /training_config_invalid/);
+  const unsettled = rows(0, 60);
+  unsettled[0].labelAvailableAt = "2025-12-31T23:00:00.000Z";
+  assert.throws(() => train({ trainingRows: unsettled }), /training_label_availability_invalid/);
 });
 
 test("prediction rejects modified artifacts and incompatible feature vectors", () => {
