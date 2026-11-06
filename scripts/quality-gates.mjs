@@ -545,6 +545,12 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch"),
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
+const packageManifest = JSON.parse(await read("package.json"));
+add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
+  packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
+  packageManifest.engines?.node === ">=22.12.0",
+  "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
+
 const winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
