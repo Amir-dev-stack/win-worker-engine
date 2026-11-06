@@ -153,7 +153,6 @@ test("market evaluation registry binds immutable market scores to the registered
     kickoffAt: row.eventStart,
     predictionCutoff: row.predictionCutoff,
     marketSnapshotAt: new Date(Date.parse(row.predictionCutoff) - 5 * 60 * 1000).toISOString(),
-    resultAvailableAt: row.labelAvailableAt,
     sourceRecordId: "source-row-" + index,
     probabilities: [0.5, 0.25, 0.25],
     outcome: row.outcome.toLowerCase()
@@ -230,6 +229,13 @@ test("market evaluation registry binds immutable market scores to the registered
   await rejectSourceMutation("outcome", (row, index) => index === 0
     ? { ...row, outcome: "away" } : row,
     "market_evaluation_source_record_outcome_mismatch");
+  await rejectSourceMutation("caller-result-time", (row, index) => index === 0
+    ? { ...row, resultAvailableAt: "2026-06-01T18:01:00.000Z" } : row,
+    "market_evaluation_row_invalid");
+  await assert.rejects(() => registerWinMarketEvaluation({
+    ...args, evaluationId: "market-registry-labels-too-early",
+    evaluatedAt: "2026-12-31T00:00:00.000Z"
+  }), /market_evaluation_labels_not_yet_available/);
   const blendEvidence = await getWinMLMarketBlendEvaluationEvidence({
     modelId, modelVersion, marketEvaluationId: evaluationId
   });
