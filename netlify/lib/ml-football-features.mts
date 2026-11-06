@@ -1,4 +1,5 @@
 import type { WinFootballResultRow } from "./ml-football-importer.mts";
+import { parseStrictIsoTimestamp } from "./strict-timestamp.mts";
 
 export type WinFootballResultWithAvailability = WinFootballResultRow & {
   /** Source-recorded instant when the final score became available to WIN. */
@@ -29,10 +30,7 @@ export class WinFootballFeatureError extends Error {
 }
 
 function timestamp(value: unknown): number | null {
-  if (typeof value !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  return parseStrictIsoTimestamp(value);
 }
 
 function teamMatchStats(rows: WinFootballResultWithAvailability[], teamId: string) {
