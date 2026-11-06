@@ -38,7 +38,7 @@ function validateEvidence(record: WinFootballResultEvidenceRecordV1, label: stri
   for (const field of ["providerId", "independenceGroup", "sourceRecordId", "eventId", "competitionId", "homeTeamId", "awayTeamId"] as const) {
     if (!nonEmpty(record?.[field])) errors.push(label + "_" + field + "_required");
   }
-  if (!isPinnedWinMLSourceRevision(record?.sourceRevision)) errors.push(label + "_source_revision_invalid");
+  if (!isPinnedWinMLSourceRevision(record?.sourceRevision) || !/^[a-f0-9]{40,64}$/i.test(record.sourceRevision)) errors.push(label + "_source_revision_invalid");
   if (!validHash(record?.recordSha256)) errors.push(label + "_record_hash_invalid");
   for (const field of ["retrievedAt", "resultAvailableAt", "kickoff"] as const) {
     if (!isStrictIsoTimestamp(record?.[field])) errors.push(label + "_" + field + "_invalid");
