@@ -28,6 +28,7 @@ export type WinFootballOddsQualityReport = {
   missingMarketOutcomeGroups: string[];
   incompleteMarketGroupCount: number;
   overroundOutOfBounds: Array<{ groupId: string; overround: number }>;
+  incoherentMarketTimestampGroups: string[];
   suspiciousPriceMoves: Array<{ quoteId: string; fromSnapshotId: string; toSnapshotId: string; relativeMove: number }>;
   cadenceGaps: Array<{ quoteId: string; from: string; to: string; gapMinutes: number }>;
   bookmakerIds: string[];
@@ -53,6 +54,7 @@ export function assessWinFootballOddsQuality(args: {
   maxSnapshotAgeMinutes?: number;
   expectedCadenceMinutes?: number;
   suspiciousRelativeMoveThreshold?: number;
+  maxOutcomeTimestampSkewMinutes?: number;
 }): WinFootballOddsQualityReport {
   const reasons: string[] = [];
   const fixtures = new Map<string, WinFootballOddsQualityFixture>();
@@ -76,12 +78,15 @@ export function assessWinFootballOddsQuality(args: {
   const maxAge = args?.maxSnapshotAgeMinutes;
   const cadence = args?.expectedCadenceMinutes;
   const jumpThreshold = args?.suspiciousRelativeMoveThreshold ?? 0.25;
+  const maxOutcomeSkew = args?.maxOutcomeTimestampSkewMinutes;
   const maxAgeValid = maxAge === undefined || (Number.isFinite(maxAge) && maxAge > 0);
   const cadenceValid = cadence === undefined || (Number.isFinite(cadence) && cadence > 0);
   const jumpValid = Number.isFinite(jumpThreshold) && jumpThreshold > 0 && jumpThreshold <= 10;
+  const outcomeSkewValid = maxOutcomeSkew === undefined || (Number.isFinite(maxOutcomeSkew) && maxOutcomeSkew >= 0);
   if (!maxAgeValid) reasons.push("max_snapshot_age_invalid");
   if (!cadenceValid) reasons.push("expected_cadence_invalid");
   if (!jumpValid) reasons.push("suspicious_move_threshold_invalid");
+  if (!outcomeSkewValid) reasons.push("outcome_timestamp_skew_invalid");
 
   let invalidSnapshotCount = 0;
   let duplicateSnapshotCount = 0;
@@ -129,6 +134,7 @@ export function assessWinFootballOddsQuality(args: {
   }
   const missingMarketOutcomeGroups: string[] = [];
   const overroundOutOfBounds: Array<{ groupId: string; overround: number }> = [];
+  const incoherentMarketTimestampGroups: string[] = [];
   const suspiciousPriceMoves: WinFootballOddsQualityReport["suspiciousPriceMoves"] = [];
   const cadenceGaps: WinFootballOddsQualityReport["cadenceGaps"] = [];
   for (const [quoteId, rows] of groups) {
@@ -140,11 +146,18 @@ export function assessWinFootballOddsQuality(args: {
     const missing = market.outcomeIds.filter(id => !latestByOutcome.has(id));
     if (missing.length) missingMarketOutcomeGroups.push(quoteId + ":" + missing.join(","));
     else {
-      const overround = [...latestByOutcome.values()].reduce((sum, row) => sum + 1 / row.decimalOdds, 0);
-      const min = market.minOverround ?? 0.8;
-      const max = market.maxOverround ?? 1.5;
-      if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= min ||
-          overround < min || overround > max) overroundOutOfBounds.push({ groupId: quoteId, overround });
+      const latestRows = [...latestByOutcome.values()];
+      const times = latestRows.map(row => Date.parse(row.capturedAt));
+      const skewMinutes = (Math.max(...times) - Math.min(...times)) / 60000;
+      if (outcomeSkewValid && maxOutcomeSkew !== undefined && skewMinutes > maxOutcomeSkew) {
+        incoherentMarketTimestampGroups.push(quoteId);
+      } else {
+        const overround = latestRows.reduce((sum, row) => sum + 1 / row.decimalOdds, 0);
+        const min = market.minOverround ?? 0.8;
+        const max = market.maxOverround ?? 1.5;
+        if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= min ||
+            overround < min || overround > max) overroundOutOfBounds.push({ groupId: quoteId, overround });
+      }
     }
     for (let i = 1; i < rows.length; i++) {
       const previous = rows[i - 1];
@@ -167,6 +180,7 @@ export function assessWinFootballOddsQuality(args: {
   if (postKickoffSnapshotCount) reasons.push("post_kickoff_snapshots_excluded");
   if (missingMarketOutcomeGroups.length) reasons.push("incomplete_market_outcome_groups");
   if (overroundOutOfBounds.length) reasons.push("market_overround_out_of_bounds");
+  if (incoherentMarketTimestampGroups.length) reasons.push("market_outcome_timestamp_skew_exceeds_limit");
   if (suspiciousPriceMoves.length) reasons.push("suspicious_price_moves_flagged_for_review");
   if (cadenceGaps.length) reasons.push("expected_cadence_gaps");
   return {
@@ -174,7 +188,7 @@ export function assessWinFootballOddsQuality(args: {
     validPreKickoffSnapshotCount: valid.length,
     invalidSnapshotCount, duplicateSnapshotCount, staleSnapshotCount, postKickoffSnapshotCount,
     missingMarketOutcomeGroups, incompleteMarketGroupCount: missingMarketOutcomeGroups.length,
-    overroundOutOfBounds, suspiciousPriceMoves, cadenceGaps,
+    overroundOutOfBounds, incoherentMarketTimestampGroups, suspiciousPriceMoves, cadenceGaps,
     bookmakerIds: [...new Set(valid.map(s => s.bookmakerId))].sort(),
     sourceIds: [...new Set(valid.map(s => s.sourceId))].sort(),
     bookmakerIndependenceVerified: false,
