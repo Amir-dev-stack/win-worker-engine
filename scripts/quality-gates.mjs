@@ -82,12 +82,11 @@ const boundedJsonRoutes = await Promise.all([
 ]);
 add("High-impact authenticated JSON write routes enforce bounded streaming request bodies",
   boundedJsonHelper.includes("reader.read()") &&
-  boundedJsonHelper.includes("MAX") === false &&
   boundedJsonHelper.includes("DEFAULT_MAX_JSON_BODY_BYTES = 128 * 1024") &&
   boundedJsonHelper.includes("new TextDecoder(\"utf-8\", { fatal: true })") &&
   boundedJsonTests.includes("enforces declared and streamed byte limits") &&
   boundedJsonTests.includes("rejects invalid UTF-8, malformed JSON and non-object JSON") &&
-  boundedJsonRoutes.every(route => route.includes("readBoundedJsonObject(req")),
+  boundedJsonRoutes.every(route => route.includes("readBoundedJsonObject(req") && route.indexOf("requireAuth(req)") < route.indexOf("readBoundedJsonObject(req")),
   "Runs (64 KiB), library writes (128 KiB), learning-data jobs (8 KiB), human settlement claims (16 KiB) and human-source imports (64 KiB) use the same bounded strict-JSON parser after authentication.");
 
 const healthEndpoint = await read("netlify/functions/health.mts");
