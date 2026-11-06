@@ -112,3 +112,5 @@ A read-only bridge now maps WIN's normalized `ObservedMarket` records into the f
 ### Structured market-group diagnostics
 
 The odds-quality report now includes one structured diagnostic per event/market/bookmaker/source/line group: expected and observed outcome counts, missing outcome identifiers, earliest/latest capture timestamps, calculated overround where valid, and whether overround was withheld for configured timestamp skew. These rows make coverage gaps attributable to a specific source and bookmaker without aggregating unlike lines or claiming source independence. The diagnostic is descriptive; it does not establish that a bookmaker offered every market at the same time unless the configured timestamp-skew rule is satisfied.
+
+Same-source observations for the same outcome and exact capture timestamp are also checked for conflicting prices. When one timestamp has more than one distinct decimal price, WIN flags the conflict and withholds that market group's overround instead of selecting an arbitrary row. This is separate from duplicate snapshot IDs and from cross-outcome timestamp skew.
