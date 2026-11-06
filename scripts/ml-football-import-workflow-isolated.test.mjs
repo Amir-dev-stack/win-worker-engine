@@ -40,6 +40,7 @@ const bytes = new TextEncoder().encode(JSON.stringify({
   records: [{
     sourceRecordId: "row-1", eventId: "match-1",
     kickoff: "2026-10-01T18:00:00.000Z",
+    resultAvailableAt: "2026-10-01T20:00:00.000Z",
     competitionId: "synthetic", season: "2025-26",
     homeTeamId: "home", awayTeamId: "away",
     homeGoals: 2, awayGoals: 0, status: "finished"
@@ -71,26 +72,13 @@ test("research import workflow registers only manifest metadata and is idempoten
     assert.deepEqual([...memoryStore.records.keys()], [
       "library/ml-dataset-manifests/workflow-football-research"
     ], "the workflow must persist manifest metadata only, never raw bytes or match rows");
-  } finally {
-    if (previousFlag === undefined) delete process.env.WIN_STORE_TEST_MODE;
-    else process.env.WIN_STORE_TEST_MODE = previousFlag;
-  }
-});
 
-test("research import workflow rejects conflicting immutable dataset identities", async () => {
-  const previousFlag = process.env.WIN_STORE_TEST_MODE;
-  process.env.WIN_STORE_TEST_MODE = "1";
-  const memoryStore = createMemoryStore();
-  try {
-    const store = await import("../netlify/lib/store.mts");
-    store.installIsolatedTestStore(memoryStore);
-    const { ingestWinFootballResultsResearchSample } = await import("../netlify/lib/ml-football-import-workflow.mts");
-    await ingestWinFootballResultsResearchSample(bytes, source);
     const changedBytes = new TextEncoder().encode(JSON.stringify({
       schemaVersion: WIN_FOOTBALL_RESULTS_SOURCE_SCHEMA,
       records: [{
         sourceRecordId: "row-1", eventId: "match-1",
         kickoff: "2026-10-01T18:00:00.000Z",
+        resultAvailableAt: "2026-10-01T20:00:00.000Z",
         competitionId: "synthetic", season: "2025-26",
         homeTeamId: "home", awayTeamId: "away",
         homeGoals: 3, awayGoals: 0, status: "finished"
