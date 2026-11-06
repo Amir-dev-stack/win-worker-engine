@@ -631,7 +631,10 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   mlModelArtifactRegistryTests.includes("rejects dataset hash drift and immutable version conflicts") &&
   mlModelArtifactRegistryTests.includes("fails closed after stored record tampering") &&
   mlModelArtifactRegistry.includes("testRowsSha256") &&
-  mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch"),
+  mlModelArtifactRegistry.includes("testCohortSha256") &&
+  mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch") &&
+  mlFootballTrainer.includes("testEventIds: sorted.map(row => row.eventId)") &&
+  mlFootballTrainer.includes("testCohortSha256: sha256(canonicalizeWinMLProvenance(sorted.map(row => row.eventId)))"),
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
 const resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
