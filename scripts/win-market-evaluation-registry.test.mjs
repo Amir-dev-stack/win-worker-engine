@@ -62,6 +62,7 @@ import { installIsolatedTestStore, remove } from "../netlify/lib/store.mts";
 import { registerWinMLDatasetManifest } from "../netlify/lib/ml-dataset-registry.mts";
 import { registerWinMLModelArtifact } from "../netlify/lib/ml-model-artifact-registry.mts";
 import { getWinMLMarketBlendEvaluationEvidence } from "../netlify/lib/ml-market-blend-evidence.mts";
+import { calculateWinMLMarketAnchoredBlendWithRegisteredEvidence } from "../netlify/lib/ml-market-anchored-blend-verified.mts";
 import {
   registerWinMarketEvaluation,
   getWinMarketEvaluation
@@ -178,4 +179,58 @@ test("market evaluation registry binds immutable market scores to the registered
   assert.equal(blendEvidence.testRows, 100);
   assert.equal(blendEvidence.testCohortSha256, blendEvidence.marketTestCohortSha256);
   assert.equal(blendEvidence.marketEvaluationId, evaluationId);
+
+  const sample = testRows[0];
+  const verifiedBlend = await calculateWinMLMarketAnchoredBlendWithRegisteredEvidence({
+    modelId, modelVersion, marketEvaluationId: evaluationId,
+    input: {
+      event: {
+        eventId: sample.eventId,
+        kickoff: sample.eventStart,
+        predictionCutoff: sample.predictionCutoff
+      },
+      market: {
+        eventId: sample.eventId,
+        at: new Date(Date.parse(sample.predictionCutoff) - 5 * 60 * 1000).toISOString(),
+        sourceId: "synthetic-market-source",
+        snapshotId: "synthetic-snapshot-001",
+        decimalOdds: { home: 2.1, draw: 3.4, away: 3.8 }
+      },
+      model: {
+        eventId: sample.eventId,
+        at: new Date(Date.parse(sample.predictionCutoff) - 2 * 60 * 1000).toISOString(),
+        modelId,
+        trainedAt: "2026-03-01T07:00:00.000Z",
+        artifactSha256: train.artifact.artifactSha256,
+        datasetContentSha256: train.artifact.datasetContentSha256,
+        featureVectorSha256: "c".repeat(64),
+        probabilities: { home: 0.52, draw: 0.25, away: 0.23 }
+      },
+      // Deliberately forged caller metrics must be overwritten by registry evidence.
+      evaluation: {
+        modelEvaluationId: "forged-caller-evaluation",
+        marketEvaluationId: "forged-caller-market",
+        testCohortSha256: "0".repeat(64),
+        marketTestCohortSha256: "0".repeat(64),
+        datasetContentSha256: "0".repeat(64),
+        marketDataSha256: "0".repeat(64),
+        testRows: 100,
+        modelLogLoss: 0.01,
+        marketLogLoss: 10,
+        modelBrier: 0.01,
+        marketBrier: 1,
+        expectedCalibrationError: 0,
+        testLabelsAvailableAt: "2026-01-01T00:00:00.000Z",
+        evaluationAsOf: "2027-01-03T00:00:00.000Z"
+      }
+    }
+  });
+  if (verifiedBlend.status === "research_only") {
+    assert.notEqual(verifiedBlend.evidence.modelEvaluationId, "forged-caller-evaluation");
+    assert.equal(verifiedBlend.evidence.marketEvaluationId, evaluationId);
+    assert.equal(verifiedBlend.evidence.testRows, blendEvidence.testRows);
+  } else {
+    assert.equal(verifiedBlend.status, "blocked");
+    assert.equal(verifiedBlend.probabilities, null);
+  }
 });
