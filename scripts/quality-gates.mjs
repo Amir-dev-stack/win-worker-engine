@@ -789,8 +789,9 @@ add("Lesson review submissions are idempotent per lesson revision and recover th
 const packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
-  packageManifest.engines?.node === ">=22.12.0",
-  "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
+  packageManifest.engines?.node === ">=22.12.0" &&
+  packageManifest.overrides?.["import-in-the-middle"] === "3.5.3",
+  "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer. The telemetry hook override avoids resolving an unavailable registry tarball and remains pinned to the published compatible release.");
 
 const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
