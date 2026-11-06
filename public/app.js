@@ -25,7 +25,10 @@ function couponPanel(coupons=[]){
   const warnings=(c.probabilityWarnings||[]).length?'<p class="detail-meta"><b>Probability warnings:</b> '+escapeHtml(c.probabilityWarnings.join(' · '))+'</p>':'';
   const riskFactors=(c.riskFactors||[]).length?'<p><b>Risk factors:</b> '+escapeHtml(c.riskFactors.join(' · '))+'</p>':'';
   const wholeProbability=typeof c.wholeCouponWinProbabilityPercent==="number"?Number(c.wholeCouponWinProbabilityPercent).toFixed(1)+"%":"Not reliably quantifiable";
-  const probability='<p class="detail-meta">Whole-coupon probability: <b>'+wholeProbability+'</b></p>';
+  const probabilityLabel=c.jointProbabilityAvailable===true
+   ?"Single-leg estimate: "+wholeProbability+" (uncalibrated unless separately validated)"
+   :"Whole-coupon probability: "+wholeProbability;
+  const probability='<p class="detail-meta">'+escapeHtml(probabilityLabel)+'</p>';
   const risk=typeof c.riskPercent==="number"?'<p class="detail-meta">Heuristic risk score: <b>'+Number(c.riskPercent).toFixed(0)+'%</b> · not a calibrated loss probability.</p>':"";
   const theoretical=c.theoreticalOddsProduct===null||c.theoreticalOddsProduct===undefined?"":'<p class="detail-meta">Theoretical leg-price product: <b>'+Number(c.theoreticalOddsProduct).toFixed(2)+'</b> · not a bookmaker-quoted accumulator price.</p>';
   const dataQuality=c.dataQualityStatus==="incomplete"?'<p class="report-error">Some leg evidence is incomplete; review the blockers before using this draft.</p>':"";
