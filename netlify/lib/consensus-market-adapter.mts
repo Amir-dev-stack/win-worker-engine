@@ -70,10 +70,10 @@ async function syncOne(source:typeof CONSENSUS_SOURCES[number]){
  const existing=await get<any>("library/model-lab/market-consensus-datasets",datasetId);
  if(existing?.sourceRevision===sourceRevision&&/^[a-f0-9]{64}$/i.test(String(existing.rawChecksum||""))&&Array.isArray(existing.records)){
   const recordsSha256=hashWinMLProvenance(existing.records).sha256;
-  if(existing.recordsSha256!==recordsSha256){
-   await put("library/model-lab/market-consensus-datasets",datasetId,{...existing,recordsSha256});
+  if(existing.recordsSha256===recordsSha256){
+   return {providerId:source.id,repository:source.repo,rows:existing.records.length,settledRows:Number(existing.settledRows||0),rawChecksum:existing.rawChecksum,sourceRevision,status:"unchanged"};
   }
-  return {providerId:source.id,repository:source.repo,rows:existing.records.length,settledRows:Number(existing.settledRows||0),rawChecksum:existing.rawChecksum,sourceRevision,status:"unchanged",integrityHashUpdated:existing.recordsSha256!==recordsSha256};
+  // Legacy or drifted normalized records are never blessed in place; re-fetch and rebuild from the pinned raw revision below.
  }
  const treeRes=await fetch("https://huggingface.co/api/datasets/"+source.repo+"/tree/"+sourceRevision+"?recursive=true&expand=false",{headers:{"user-agent":"WIN-ResearchEngine/1.0"}});
  if(!treeRes.ok)throw Error("huggingface_tree_http_"+treeRes.status);
