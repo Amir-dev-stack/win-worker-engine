@@ -16,6 +16,14 @@ test("result submission requires JSON content type", async () => {
   assert.equal(result.status, 415);
 });
 
+test("result submission rejects JSON-like but invalid media types", async () => {
+  for (const contentType of ["application/jsonp", "application/json-evil", "text/plain; profile=application/json"]) {
+    const result = await readResultSubmissionBody(request("{}", { "content-type": contentType }));
+    assert.ok(result instanceof Response);
+    assert.equal(result.status, 415);
+  }
+});
+
 test("result submission rejects malformed JSON and non-object JSON", async () => {
   for (const raw of ["{", "null", "[]", '"string"', "42"]) {
     const result = await readResultSubmissionBody(request(raw));
