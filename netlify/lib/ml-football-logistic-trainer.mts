@@ -428,6 +428,7 @@ export function evaluateWinMLFootball1X2LogisticModel(
     modelMetrics,
     baselineMetrics,
     testEventIds: sorted.map(row => row.eventId),
+    testEventCutoffs: [...testRows].map(row => ({ eventId: row.eventId, predictionCutoff: row.predictionCutoff })).sort((a, b) => a.eventId.localeCompare(b.eventId)),
     testCohortSha256: sha256(canonicalizeWinMLProvenance(sorted.map(row => row.eventId).sort())),
     testRowsSha256: sha256(canonicalizeWinMLProvenance(testRows)),
     heldOutTest: true as const,
@@ -505,6 +506,7 @@ export function buildWinMLFootball1X2EvaluationRecord(
     testRows: testEvaluation.testRows,
     testCohortSha256: testEvaluation.testCohortSha256,
     testEventIds: [...testEvaluation.testEventIds],
+    testEventCutoffs: testEvaluation.testEventCutoffs.map(item => ({ ...item })),
     testRowsSha256: testEvaluation.testRowsSha256,
     baselineMetrics: {
       brier: testEvaluation.baselineMetrics.brier,
