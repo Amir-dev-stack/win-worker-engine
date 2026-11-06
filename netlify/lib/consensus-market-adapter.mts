@@ -32,14 +32,28 @@ function parseCsv(text:string):string[][] {
 }
 const number=(v:unknown)=>{if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null;};
 
+export function isPinnedDatasetRevision(value: unknown): value is string {
+ return typeof value === "string" && /^[a-f0-9]{40}$/i.test(value);
+}
+
 async function syncOne(source:typeof CONSENSUS_SOURCES[number]){
  assertProviderImportAllowed(source.id,source.requiredDomains);
- const treeRes=await fetch("https://huggingface.co/api/datasets/"+source.repo+"/tree/main?recursive=true&expand=false",{headers:{"user-agent":"WIN-ResearchEngine/1.0"}});
+ const revisionResponse=await fetch("https://huggingface.co/api/datasets/"+source.repo+"/revision/main",{headers:{"user-agent":"WIN-ResearchEngine/1.0"}});
+ if(!revisionResponse.ok)throw Error("huggingface_revision_http_"+revisionResponse.status);
+ const revisionPayload:any=await revisionResponse.json();
+ const sourceRevision=revisionPayload?.sha;
+ if(!isPinnedDatasetRevision(sourceRevision))throw Error("dataset_revision_not_pinned");
+ const datasetId="consensus-"+source.id;
+ const existing=await get<any>("library/model-lab/market-consensus-datasets",datasetId);
+ if(existing?.sourceRevision===sourceRevision&&/^[a-f0-9]{64}$/i.test(String(existing.rawChecksum||""))&&Array.isArray(existing.records)){
+  return {providerId:source.id,repository:source.repo,rows:existing.records.length,settledRows:Number(existing.settledRows||0),rawChecksum:existing.rawChecksum,sourceRevision,status:"unchanged"};
+ }
+ const treeRes=await fetch("https://huggingface.co/api/datasets/"+source.repo+"/tree/"+sourceRevision+"?recursive=true&expand=false",{headers:{"user-agent":"WIN-ResearchEngine/1.0"}});
  if(!treeRes.ok)throw Error("huggingface_tree_http_"+treeRes.status);
  const tree:any[]=await treeRes.json();
  const csvs=tree.filter(x=>x.type==="file"&&String(x.path).toLowerCase().endsWith(".csv")&&!String(x.path).includes("/"));
  if(csvs.length!==1)throw Error("expected_one_root_csv_found_"+csvs.length);
- const path=String(csvs[0].path),url="https://huggingface.co/datasets/"+source.repo+"/resolve/main/"+encodeURIComponent(path);
+ const path=String(csvs[0].path),url="https://huggingface.co/datasets/"+source.repo+"/resolve/"+sourceRevision+"/"+encodeURIComponent(path);
  const response=await fetch(url,{headers:{"user-agent":"WIN-ResearchEngine/1.0"}});
  if(!response.ok)throw Error("dataset_http_"+response.status);
  const raw=await response.text();if(raw.length>8_000_000)throw Error("dataset_exceeds_8mb_guard");
@@ -108,7 +122,7 @@ async function syncOne(source:typeof CONSENSUS_SOURCES[number]){
  const checksum=createHash("sha256").update(raw).digest("hex");
  const datasetId="consensus-"+source.id;
  const dataset={
-  id:datasetId,providerId:source.id,repository:source.repo,sport:source.sport,
+  id:datasetId,providerId:source.id,repository:source.repo,sourceRevision,sourceCommitUrl:"https://huggingface.co/datasets/"+source.repo+"/commit/"+sourceRevision,sport:source.sport,
   sourceUrl:url,sourceLicence:"CC-BY-4.0",licenceReference:"https://creativecommons.org/licenses/by/4.0/",
   retrievedAt:new Date().toISOString(),rawChecksum:checksum,
   totalRows:records.length,settledRows:records.filter(x=>x.status==="completed").length,
@@ -126,7 +140,8 @@ export async function syncConsensusMarketDatasets(){
   const batch=await Promise.all(CONSENSUS_SOURCES.slice(i,i+3).map(async source=>{try{return {ok:true,value:await syncOne(source)};}catch(e){return {ok:false,providerId:source.id,error:String(e).slice(0,400)};}}));
   for(const item of batch){if(item.ok)results.push(item.value);else failures.push(item);}
  }
- const summary={id:"consensus-market-sync-"+startedAt.slice(0,10),startedAt,completedAt:new Date().toISOString(),status:results.length===CONSENSUS_SOURCES.length?"completed":results.length?"partial":"failed",datasetsImported:results.length,rowsImported:results.reduce((n,x)=>n+x.rows,0),settledRows:results.reduce((n,x)=>n+x.settledRows,0),results,failures,origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false};
+ const imported=results.filter(x=>x.status==="imported"),unchanged=results.filter(x=>x.status==="unchanged");
+  const summary={id:"consensus-market-sync-"+startedAt.slice(0,10),startedAt,completedAt:new Date().toISOString(),status:results.length===CONSENSUS_SOURCES.length?"completed":results.length?"partial":"failed",datasetsChecked:results.length,datasetsImported:imported.length,datasetsUnchanged:unchanged.length,rowsImported:imported.reduce((n,x)=>n+x.rows,0),rowsAvailable:results.reduce((n,x)=>n+x.rows,0),settledRows:results.reduce((n,x)=>n+x.settledRows,0),results,failures,origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false};
  await put("library/model-lab/provider-sync-runs",summary.id,summary);
  await put("scheduler-state","consensus-market-daily-sync",{lastCheck:summary.completedAt,status:summary.status,datasetsImported:summary.datasetsImported,rowsImported:summary.rowsImported,settledRows:summary.settledRows,failures:failures.length});
  return summary;
@@ -136,7 +151,7 @@ export async function getConsensusMarketSyncStatus(){
  const [datasets,runs]=await Promise.all([list<any>("library/model-lab/market-consensus-datasets",100),list<any>("library/model-lab/provider-sync-runs",30)]);
  const latest=runs.filter(x=>String(x.id||"").startsWith("consensus-market-sync-")).sort((a,b)=>String(b.startedAt).localeCompare(String(a.startedAt)))[0]||null;
  const sourceStatuses:Record<string,string>={};
- for(const x of latest?.results||[])sourceStatuses[x.providerId]="imported";
+ for(const x of latest?.results||[])sourceStatuses[x.providerId]=x.status||"imported";
  for(const x of latest?.failures||[])sourceStatuses[x.providerId]="failed";
  return {status:state?.status||"not_yet_run",lastCheck:state?.lastCheck||null,totals:state||null,datasetCount:datasets.length,rowCount:datasets.reduce((n,d)=>n+Number(d.totalRows||0),0),settledRows:datasets.reduce((n,d)=>n+Number(d.settledRows||0),0),sourceStatuses,latestRun:latest?{id:latest.id,status:latest.status,startedAt:latest.startedAt,datasetsImported:latest.datasetsImported,rowsImported:latest.rowsImported,failures:latest.failures}:null};
 }

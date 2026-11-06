@@ -827,6 +827,19 @@ add("Multi-leg coupon qualification fails closed until independently validated j
   couponCorrelationTests.includes("missing event identity cannot be hidden"),
   "Free-text correlation notes or multiplying individual probabilities must not qualify an accumulator. Single-leg candidates remain eligible; multi-leg candidates stay blocked until a separately validated joint-probability model is implemented.");
 
+const consensusRevisionTests = await read("scripts/public-data-source-policy.test.mjs");
+add("Consensus market imports pin immutable upstream revisions and avoid re-downloading unchanged datasets",
+  consensusAdapter.includes("isPinnedDatasetRevision") &&
+  consensusAdapter.includes("/revision/main") &&
+  consensusAdapter.includes("/tree/"+'"+sourceRevision+"') &&
+  consensusAdapter.includes("/resolve/"+'"+sourceRevision+"') &&
+  consensusAdapter.includes("existing?.sourceRevision===sourceRevision") &&
+  consensusAdapter.includes('status:"unchanged"') &&
+  consensusAdapter.includes("sourceCommitUrl") &&
+  consensusRevisionTests.includes("Hugging Face consensus imports require immutable 40-character revisions") &&
+  consensusRevisionTests.includes("pins both tree and raw downloads"),
+  "Consensus datasets must be tied to an immutable Hugging Face commit and unchanged revisions must reuse the verified local snapshot instead of downloading and rewriting the full dataset each run.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;

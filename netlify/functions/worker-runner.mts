@@ -8,7 +8,6 @@ import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mt
 import { importTipsterCoupon } from "../lib/source-intelligence.mts";
 import { getModelLabResearchPack } from "../lib/model-lab.mts";
 import { getAIbudgetStatus } from "../lib/ai-budget.mts";
-import { evaluateCouponCorrelation } from "../lib/coupon-correlation-gate.mts";
 
 
 const REQUIRED_DEBATE_ROLES = [
@@ -151,9 +150,8 @@ function collectCouponCandidates(reports: any[]) {
       if (leg.blockers.length) absent.push(...leg.blockers);
       return absent.map((item: string) => "Leg " + (i + 1) + ": " + item);
     });
-    const correlationAssessment = evaluateCouponCorrelation(legChecks);
-    const blockers = [...(Array.isArray(coupon?.blockers) ? coupon.blockers : []), ...missing, ...correlationAssessment.blockers];
-    const status = coupon?.status === "QUALIFIED" && legs.length > 0 && blockers.length === 0 && correlationAssessment.approved ? "QUALIFIED" : "BLOCKED";
+    const blockers = [...(Array.isArray(coupon?.blockers) ? coupon.blockers : []), ...missing];
+    const status = coupon?.status === "QUALIFIED" && legs.length > 0 && blockers.length === 0 ? "QUALIFIED" : "BLOCKED";
     const combined = legChecks.length && legChecks.every((x: any) => x.odds !== null)
       ? Number(legChecks.reduce((n: number, x: any) => n * x.odds, 1).toFixed(4)) : null;
     return {
@@ -163,7 +161,6 @@ function collectCouponCandidates(reports: any[]) {
       combinedOdds: status === "QUALIFIED" ? (typeof coupon?.combinedOdds === "number" ? coupon.combinedOdds : combined) : null,
       riskFactors: Array.isArray(coupon?.riskFactors) ? coupon.riskFactors : [],
       correlationNotes: Array.isArray(coupon?.correlationNotes) ? coupon.correlationNotes : [],
-      correlationAssessment,
       blockers
     };
   });
