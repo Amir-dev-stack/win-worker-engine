@@ -504,6 +504,7 @@ export function buildWinMLFootball1X2EvaluationRecord(
     validationRows: artifact.validationRows,
     testRows: testEvaluation.testRows,
     testCohortSha256: testEvaluation.testCohortSha256,
+    testEventIds: [...testEvaluation.testEventIds],
     testRowsSha256: testEvaluation.testRowsSha256,
     baselineMetrics: {
       brier: testEvaluation.baselineMetrics.brier,
