@@ -104,3 +104,7 @@ Price movements are compared only within the same event, market, bookmaker, sour
 Bookmaker and source identifiers are preserved as labels only. Separate IDs do not establish independent publishers or feeds; `bookmakerIndependenceVerified` remains false. The report always remains `completeForResearch: false` and `trainingApprovalGranted: false`. These diagnostics do not connect feeds, validate licences, prove source ownership, or produce coupon probabilities.
 
 Snapshot identifiers are checked for duplication within each declared source, so two different feeds may legitimately use the same local ID without being conflated. This is an identifier-scoping rule only; it does not establish that the feeds are independent.
+
+### Normalized observed-market bridge
+
+A read-only bridge now maps WIN's normalized `ObservedMarket` records into the football odds-quality assessor. It retains provider ID as the source label, bookmaker ID, event, canonical market plus period, selection identity, line, source-record ID, observation timestamp and decimal price. Only records explicitly marked as football, non-live and scheduled-event-start are included; live, non-football and non-scheduled market rows are counted as excluded context. Expected market outcomes must be supplied explicitly by the caller, including exact selection identifiers. The bridge does not infer market outcomes from market names, rewrite provider records, connect feeds, or approve source independence/training.
