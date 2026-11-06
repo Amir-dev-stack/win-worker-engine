@@ -102,6 +102,8 @@ const required = [
   "netlify/lib/ml-football-experiment-plans.mts",
   "netlify/lib/ml-model-contract.mts",
   "netlify/lib/ml-prediction-contract.mts",
+  "netlify/lib/ml-market-blend-evidence.mts",
+  "scripts/ml-market-blend-evidence.test.mjs",
   "netlify/lib/ml-market-anchored-blend.mts",
   "netlify/lib/coupon-correlation-gate.mts",
   "scripts/coupon-correlation-gate.test.mjs",
