@@ -179,6 +179,7 @@ test("market evaluation registry binds immutable market scores to the registered
     awayScore: row.outcome === "away" ? 2 : row.outcome === "draw" ? 1 : 0,
     closing: {
       marketSnapshotAt: row.marketSnapshotAt,
+      marketSnapshotTimestampStatus: "source_timestamp",
       homeWinProbability: row.probabilities[0],
       drawProbability: row.probabilities[1],
       awayWinProbability: row.probabilities[2]
