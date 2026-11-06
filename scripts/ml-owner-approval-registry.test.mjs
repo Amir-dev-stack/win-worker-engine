@@ -91,6 +91,19 @@ test("owner approval registry records signed evidence once, reports it active, a
     await assert.rejects(registry.registerWinMLOwnerTrainingApproval(approval, { ...trustedConfig, reviewerId: "someone-else" }, "2026-11-10T12:00:00.000Z"),
       error => error.code === "owner_approval_reviewer_not_authorized");
 
+    const unregisteredLicencePayload = {
+      ...approvalPayload, approvalId: "owner-registry-unregistered-licence",
+      licenceEvidenceSha256: "d".repeat(64)
+    };
+    const unregisteredLicence = {
+      payload: unregisteredLicencePayload, signatureBase64: signPayload(unregisteredLicencePayload)
+    };
+    await assert.rejects(
+      registry.registerWinMLOwnerTrainingApproval(unregisteredLicence, trustedConfig, "2026-11-10T12:00:00.000Z"),
+      error => error.code === "owner_approval_licence_evidence_invalid" &&
+        error.details.includes("registered_licence_evidence_missing")
+    );
+
     const changedPayload = { ...approvalPayload, expiresAt: "2027-01-06T09:00:00.000Z" };
     const changed = { payload: changedPayload, signatureBase64: signPayload(changedPayload) };
     await assert.rejects(registry.registerWinMLOwnerTrainingApproval(changed, trustedConfig, "2026-11-10T12:00:00.000Z"),
