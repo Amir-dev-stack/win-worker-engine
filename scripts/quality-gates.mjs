@@ -1255,6 +1255,7 @@ add("WIN CLV requires source-timestamped decimal prices for the exact same bookm
   winOddsClv.includes("licenceId: string") &&
   winOddsClv.includes("snapshotRole: \"decision\" | \"closing\"") &&
   winOddsClv.includes("clv_snapshot_role_invalid") &&
+  winOddsClv.includes("clv_ingestion_precedes_source_observation") &&
   winOddsClv.includes("clv_decision_quote_not_available_at_cutoff") &&
   winOddsClv.includes("clv_closing_quote_not_after_decision") &&
   winOddsClv.includes("clv_live_close_ingested_after_kickoff") &&
