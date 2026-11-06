@@ -58,6 +58,7 @@ test("expired, future and missing-key approvals are rejected", () => {
   assert.ok(verifyWinMLOwnerTrainingApproval(evidence({ expiresAt: "2026-11-07T00:00:00.000Z" }), key, expected).reasons.includes("owner_approval_expired"));
   assert.ok(verifyWinMLOwnerTrainingApproval(evidence({ approvedAt: "2026-11-11T00:00:00.000Z" }), key, expected).reasons.includes("owner_approval_not_yet_valid"));
   assert.ok(verifyWinMLOwnerTrainingApproval(evidence(), "", expected).reasons.includes("trusted_owner_approval_public_key_missing"));
+  assert.ok(verifyWinMLOwnerTrainingApproval(evidence({ approvedAt: "2026-02-30T09:00:00.000Z" }), key, expected).reasons.includes("owner_approval_time_window_invalid"));
 });
 
 
