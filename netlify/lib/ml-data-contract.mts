@@ -1,3 +1,4 @@
+import { isStrictIsoTimestamp } from "./strict-timestamp.mts";
 export const WIN_ML_DATASET_MANIFEST_VERSION = "win.ml.dataset.v1" as const;
 export const WIN_ML_FOOTBALL_1X2_SETTLEMENT_RULE_ID = "win.football.regulation_time_1x2.v1" as const;
 export type WinMLPermittedUse = "training" | "research_only" | "benchmark_only" | "blocked";
@@ -19,7 +20,7 @@ export type WinMLTrainingExampleV1 = {
 };
 function nonEmpty(value: unknown): value is string { return typeof value === "string" && value.trim().length > 0; }
 function validTimestamp(value: unknown): value is string {
-  return nonEmpty(value) && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
+  return isStrictIsoTimestamp(value);
 }
 function validSha256(value: unknown): value is string { return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value); }
 
