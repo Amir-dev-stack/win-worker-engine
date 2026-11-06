@@ -1,11 +1,14 @@
 import { requireAuth } from "../lib/auth.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 import { get, put } from "../lib/store.mts";
 import { getPublicResearchSourceDiscoveryStatus } from "../lib/public-source-discovery.mts";
 export default async (req:Request)=>{
  const denied=requireAuth(req);if(denied)return denied;
  if(req.method==="GET")return Response.json(await getPublicResearchSourceDiscoveryStatus(),{headers:{"cache-control":"no-store"}});
  if(req.method!=="POST")return new Response("Method not allowed",{status:405});
- let body:any;try{body=await req.json();}catch{return Response.json({error:"invalid_json"},{status:400});}
+ const parsedRequest = await readBoundedJsonObject(req, 8 * 1024);
+ if (parsedRequest instanceof Response) return parsedRequest;
+ const body = parsedRequest.body;
  const candidateId=typeof body?.candidateId==="string"?body.candidateId.trim():"";
  const decision=body?.decision;
  if(!candidateId||!["approve_for_adapter_review","reject","defer"].includes(decision))return Response.json({error:"candidateId and a valid review decision are required."},{status:400});
