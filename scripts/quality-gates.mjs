@@ -389,6 +389,7 @@ const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
 const agentsSdk = await read("netlify/lib/agents-sdk.mts");
 const agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
 const agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
+const agentsSdkTests = await read("scripts/agents-sdk.test.mjs");
 add("WIN production OpenAI agent calls use the governed LLM execution layer",
   ai.includes("executeWinLLMWithPolicy") &&
   ai.includes("createOpenAIWinLLMAdapter") &&
@@ -417,8 +418,10 @@ add("WIN production OpenAI agent calls have bounded cooperative cancellation",
   llmExecutionTests.includes("shared bounded executor preserves operation errors") &&
   agentsSdk.includes("signal?: AbortSignal") &&
   agentsSdk.includes("signal: input.signal") &&
+  agentsSdk.includes("buildWinAgentModelSettings(input.maxOutputTokens, input.maxToolCallsPerResponse)") &&
   agentsSdk.includes("parallelToolCalls: false") &&
-  agentsSdk.includes("providerData: { max_tool_calls: input.maxToolCallsPerResponse }") &&
+  agentsSdk.includes("providerData: { max_tool_calls: maxToolCallsPerResponse }") &&
+  agentsSdkTests.includes("bounded provider tool cap per turn") &&
   agentsSdkAdapter.includes("maxToolCallsPerResponse: Math.ceil(request.limits.maxToolCalls / 2)") &&
   agentsSdkAdapterTests.includes("bounded per-response tool cap") &&
   ai.includes("? 2 : 4") &&
