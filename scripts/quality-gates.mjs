@@ -625,6 +625,7 @@ add("WIN model fitting is blocked by a server-side execution gate and immutable 
   "Training requires protected server flags, the server-owned plan identity and the signed dataset/licence/owner readiness chain. The current plan remains disabled; the gate cannot authorize promotion or betting.");
  
 const winMarketEvaluationRegistry = await read("netlify/lib/win-market-evaluation-registry.mts");
+const consensusMarketAdapter = await read("netlify/lib/consensus-market-adapter.mts");
 const winMarketEvaluationRegistryTests = await read("scripts/win-market-evaluation-registry.test.mjs");
 const mlMarketBlendEvidence = await read("netlify/lib/ml-market-blend-evidence.mts");
 const mlMarketBlendEvidenceTests = await read("scripts/ml-market-blend-evidence.test.mjs");
@@ -649,13 +650,23 @@ add("WIN market benchmark is bound to the registered ML artifact's exact held-ou
   winMarketEvaluationRegistry.includes("assertProviderImportAllowed(sourceId") &&
   winMarketEvaluationRegistry.includes("market_evaluation_source_dataset_binding_invalid") &&
   winMarketEvaluationRegistry.includes("sourceDatasetSha256: sourceDataset.rawChecksum") &&
+  winMarketEvaluationRegistry.includes("sourceDatasetRecordsSha256: sourceDataset.recordsSha256") &&
+  winMarketEvaluationRegistry.includes("validateSourceRecordBindings(testRows, sourceDataset, provider.id)") &&
+  winMarketEvaluationRegistry.includes("market_evaluation_source_record_probabilities_mismatch") &&
+  winMarketEvaluationRegistry.includes("market_evaluation_source_record_outcome_mismatch") &&
+  winMarketEvaluationRegistry.includes("hashWinMLProvenance(sourceDataset.records).sha256 !== record.sourceDatasetRecordsSha256") &&
+  consensusMarketAdapter.includes("recordsSha256:hashWinMLProvenance(records).sha256") &&
   winMarketEvaluationRegistry.includes("market_evaluation_source_dataset_binding_mismatch") &&
   winMarketEvaluationRegistryTests.includes("market_evaluation_source_dataset_binding_invalid") &&
   winMarketEvaluationRegistryTests.includes("requires exact registered held-out event identities and cutoffs") &&
   winMarketEvaluationRegistryTests.includes("rejects a different event cohort") &&
   winMarketEvaluationRegistryTests.includes("rejects per-event prediction cutoff drift") &&
-  winMarketEvaluationRegistryTests.includes("rejects duplicate model cutoff identities"),
-  "Market metrics are accepted only for the exact registered model test cohort and each event's frozen prediction cutoff; market evidence remains immutable and shadow-only.");
+  winMarketEvaluationRegistryTests.includes("rejects duplicate model cutoff identities") &&
+  winMarketEvaluationRegistryTests.includes("market_evaluation_source_record_reference_invalid") &&
+  winMarketEvaluationRegistryTests.includes("market_evaluation_source_record_binding_mismatch") &&
+  winMarketEvaluationRegistryTests.includes("market_evaluation_source_record_probabilities_mismatch") &&
+  winMarketEvaluationRegistryTests.includes("market_evaluation_source_record_outcome_mismatch"),
+  "Market metrics are accepted only for the exact registered model test cohort, event cutoffs and unique hashed source records whose kickoff, snapshot, probabilities and outcome match; evidence remains immutable and shadow-only.");
 
 const verifiedMarketBlend = await read("netlify/lib/ml-market-anchored-blend-verified.mts");
 add("WIN market blend runtime obtains metrics only from registered immutable evidence",
