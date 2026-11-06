@@ -656,8 +656,8 @@ add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate
   oauthRequestHelper.includes("request_body_too_large") &&
   oauthRequestHelper.includes("new TextDecoder(\"utf-8\", { fatal: true })") &&
   oauthRequestHelper.includes("seen.has(key)") &&
-  oauthRequestTests.includes("rejects oversized streamed bodies") &&
-  oauthRequestTests.includes("rejects duplicate form keys") &&
+  oauthRequestTests.includes("rejects oversized streamed and declared bodies") &&
+  oauthRequestTests.includes("rejects unsupported media types and duplicate keys") &&
   oauthRequestTests.includes("rejects misleading media types"),
   "Authorization and token form requests are capped at 16 KiB (8 KiB for owner authorization); dynamic registration JSON is capped at 16 KiB. Invalid UTF-8, malformed/non-object JSON, duplicate form keys and unsupported media types fail closed.");
 
