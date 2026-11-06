@@ -1,7 +1,7 @@
 # WIN Stage 2 — API and scheduled-job inventory (first pass)
 
 Audit branch: `docs/win-staged-build-roadmap`
-Audited tree: `0713ccd0174a08f2944225368aae4c8d2e16e015`
+Source snapshot for the request-boundary follow-up: `ac85a6bc3af3170941f8816f0bc1e9ea10806d98` (the document update itself creates a later commit).
 Base: `main` at `61aa7112f0e5be08e52cfd507b4bac00137ab727`
 
 Status: source-level inventory only. This is not a complete authorization review, live deployment inventory, or proof that scheduled functions are active. The current audited tree contains 43 `netlify/functions/*.mts` files. PR #8, #9 and #10 remain separate and unmerged; their additional routes and memory/backup handlers are not counted here.
@@ -230,3 +230,38 @@ These are source changes and synthetic tests; no current-head CI execution is cl
 
 
 - A further pass extended the shared bounded parser to AI-budget unlock, department smoke test, OpenAI key diagnostics, source imports, tips, research evidence, source-candidate review, post-match check, simulation runner, simulation creation and worker runner. The architecture gate now enumerates all 16 routes and checks their exact per-route limits plus authentication-before-body ordering.
+
+
+## 11. Follow-up request-boundary audit — OAuth, owner controls and remaining write routes (2026-11-06)
+
+A focused source review of the current PR tree checked the OAuth handlers, owner-approval control plane, result submission, scheduled scout runner and the 16 routes using the shared bounded JSON parser.
+
+### OAuth endpoints
+
+- `/oauth/register` is POST-only and uses the shared OAuth JSON reader before processing dynamic client registration. Redirect URIs are bounded and restricted to the supported ChatGPT HTTPS callback patterns or native loopback callback patterns; optional grant/response-type declarations are validated.
+- `/oauth/authorize` accepts GET for the authorization request and POST for the owner-consent form. The POST form contains the owner token, so it must be read before token validation; it is URL-encoded and capped by the OAuth form parser. The transaction is then checked, the owner token is validated, and the request record is consumed with its stored ETag. Concurrent submissions return only the winning committed authorization code.
+- `/oauth/token` is POST-only and accepts bounded URL-encoded form data. Authorization-code and refresh-token records are validated and consumed with compare-and-swap before a token pair is issued.
+- These routes declare per-IP Netlify rate limits in source. This audit does not prove deployed rate-limit enforcement or a live OAuth round-trip.
+
+### Other bounded control-plane handlers
+
+- `/api/ml-owner-approval` checks POST and its dedicated owner bearer credential before reading the bounded JSON body. The trusted public key and reviewer identity come only from protected environment configuration; request JSON cannot supply them.
+- `/api/results` checks its method and owner authorization before using its dedicated bounded JSON parser. The endpoint remains subject to the separate immutable-claim/correction design documented above.
+- `scheduled-scout-runner.mts` authenticates the internal bearer token before parsing its bounded POST body. The per-run execution lease is acquired only after the run exists and the completion check has passed.
+- The shared parser validates the declared and streamed byte limits, strict UTF-8, exact JSON media type, JSON syntax and object shape. Its configured maximum is itself bounded to 1 byte–1 MiB.
+
+### 16 shared-parser route coverage
+
+The 16 authenticated write routes are: `/api/runs`, `/api/library`, `/api/learning-data-jobs`, `/api/human-coupon-settlements`, `/api/human-sources`, `/api/ai-budget`, `/api/department-smoke-test`, `/api/openai-key-check`, `/api/sources`, `/api/tips`, `/api/research-data`, `/api/research-source-candidates`, `/api/post-match-check`, `/api/simulation-runner`, `/api/simulations` and `/api/worker-runner`.
+
+For each route, the existing authentication check precedes body parsing. The internal simulation and worker runners additionally require POST. Route-specific byte limits are enforced by the shared helper and asserted by the architecture quality gate. The source review does not establish that every business-level operation is race-free or that every endpoint has received a complete authorization, CORS, schema and side-effect review.
+
+### Open issues retained
+
+- Provider-side atomicity for Netlify Blobs conditional writes remains unverified; current race tests use isolated in-memory adapters.
+- The scheduled-run lease has no heartbeat. A run exceeding its lease could require renewal before heavier workloads are allowed.
+- OAuth provider compatibility, callback behavior and deployed rate-limit enforcement remain unverified.
+- Duplicate-submission races in human settlement and lesson-review submission paths deserve a separate idempotency review; bounded request parsing does not make those multi-write workflows atomic.
+- The source inventory is not a live deployment or schedule-health report. No production function, OAuth flow, scheduled job or provider was invoked during this pass.
+
+This follow-up is a source review and documentation update only. It does not claim tests or build execution for the current PR head.
