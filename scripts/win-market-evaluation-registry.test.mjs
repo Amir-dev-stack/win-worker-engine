@@ -58,7 +58,7 @@ test("market benchmark rejects duplicate model cutoff identities and malformed c
   assert.throws(() => assertWinMarketCohortMatchesModel(rows, malformed), /market_evaluation_model_cutoffs_invalid/);
 });
 
-import { installIsolatedTestStore, remove } from "../netlify/lib/store.mts";
+import { installIsolatedTestStore, remove, put } from "../netlify/lib/store.mts";
 import { registerWinMLDatasetManifest } from "../netlify/lib/ml-dataset-registry.mts";
 import { registerWinMLModelArtifact } from "../netlify/lib/ml-model-artifact-registry.mts";
 import { getWinMLMarketBlendEvaluationEvidence } from "../netlify/lib/ml-market-blend-evidence.mts";
@@ -158,11 +158,24 @@ test("market evaluation registry binds immutable market scores to the registered
   }));
   const args = {
     evaluationId, modelId, modelVersion,
-    sourceId: "synthetic-market-source",
+    sourceId: "hf-minmaxxxer-epl-2025-26",
     sourceRevision: "f".repeat(40),
     evaluatedAt,
     testRows: marketRows
   };
+  await assert.rejects(
+    () => registerWinMarketEvaluation(args),
+    /market_evaluation_source_dataset_binding_invalid/
+  );
+  await put("library/model-lab/market-consensus-datasets", "consensus-" + args.sourceId, {
+    providerId: args.sourceId,
+    sourceRevision: args.sourceRevision,
+    rawChecksum: "e".repeat(64),
+    totalRows: 100,
+    records: Array.from({ length: 100 }, (_, index) => ({ id: "source-row-" + index })),
+    marketDataType: "consensus_market_lines",
+    origin: "provider_historical_data"
+  });
   const first = await registerWinMarketEvaluation(args);
   assert.equal(first.registered, true);
   assert.equal(first.record.modelArtifactSha256, train.artifact.artifactSha256);
@@ -192,7 +205,7 @@ test("market evaluation registry binds immutable market scores to the registered
       market: {
         eventId: sample.eventId,
         at: new Date(Date.parse(sample.predictionCutoff) - 5 * 60 * 1000).toISOString(),
-        sourceId: "synthetic-market-source",
+        sourceId: args.sourceId,
         snapshotId: "synthetic-snapshot-001",
         decimalOdds: { home: 2.1, draw: 3.4, away: 3.8 }
       },
