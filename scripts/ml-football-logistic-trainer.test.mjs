@@ -83,7 +83,7 @@ test("trainer rejects overlapping chronology, duplicate identities and feature s
 test("trainer rejects non-finite features and unsafe numerical configuration", () => {
   const invalid = rows(0, 60);
   invalid[0].features.home_signal.value = Number.NaN;
-  assert.throws(() => train({ trainingRows: invalid }), /training_feature_not_finite_numeric/);
+  assert.throws(() => train({ trainingRows: invalid }), /training_feature_provenance_invalid/);
   assert.throws(() => train({ config: { learningRate: 2, epochs: 500, l2: 0.001 } }), /training_config_invalid/);
   const unsettled = rows(0, 60);
   unsettled[0].labelAvailableAt = "2025-12-31T23:00:00.000Z";
