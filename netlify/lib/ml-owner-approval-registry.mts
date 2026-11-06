@@ -262,8 +262,10 @@ export async function evaluateWinMLTrainingReadiness(
   if (!validId(approvalId)) reasons.push("owner_approval_id_invalid");
   else {
     const status = await getWinMLOwnerTrainingApprovalStatus(approvalId, trustedConfig, now);
-    if (status.status !== "active") reasons.push("owner_approval_not_active:" + status.status);
-    else {
+    if (status.status !== "active") {
+      reasons.push("owner_approval_not_active:" + status.status);
+      if (status.status === "invalid" && Array.isArray(status.reasons)) reasons.push(...status.reasons);
+    } else {
       if (status.datasetId !== manifest.datasetId) reasons.push("owner_approval_dataset_mismatch");
       if (status.datasetContentSha256 !== manifest.contentSha256) reasons.push("owner_approval_dataset_hash_mismatch");
       if (status.licenceId !== manifest.licenceId) reasons.push("owner_approval_licence_mismatch");
