@@ -65,7 +65,7 @@ export function evaluateSameSlateFavouritePairs(input:Array<{eventId:string;even
  for(const item of Array.isArray(input)?input:[]){
   const eventId=typeof item?.eventId==="string"?item.eventId.trim():"";
   const day=typeof item?.eventStart==="string"?item.eventStart.slice(0,10):"";
-  if(!eventId||!/^\\d{4}-\\d{2}-\\d{2}$/.test(day)||!validProb(item.p)||typeof item.won!=="boolean"||seen.has(eventId))continue;
+  if(!eventId||!/^\d{4}-\d{2}-\d{2}$/.test(day)||!validProb(item.p)||typeof item.won!=="boolean"||seen.has(eventId))continue;
   seen.add(eventId);
   const group=groups.get(day)||[];
   group.push({eventId,p:item.p,won:item.won});
