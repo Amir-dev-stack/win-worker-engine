@@ -39,6 +39,7 @@ const resultSubmissionTests = await read("scripts/results-isolated-retry.test.mj
 const mcpApi = await read("netlify/functions/mcp.mts");
 const oauthStore = await read("netlify/lib/oauth-store.mts");
 const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
+const oauthConsent = await read("netlify/lib/oauth-consent.mts");
 add("WIN shared-store contract tests cover conditional races, bounded reads, legacy and malformed records",
   storeContractTests.includes("onlyIfNew race must have exactly one winner") &&
   storeContractTests.includes("only one compare-and-swap update may win for a shared ETag") &&
@@ -628,7 +629,7 @@ add("Netlify Blobs conditional-write dependency is pinned to the concurrent-writ
 const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
-  oauthAuthorize.includes("describeOAuthScopes") &&
+  oauthConsent.includes("describeOAuthScopes") &&
   oauthAuthorize.includes("consumeOAuthRecord(\"requests\"") &&
   oauthAuthorize.includes("storedAuth.etag") &&
   oauthConsentTests.includes("does not overstate research access") &&
