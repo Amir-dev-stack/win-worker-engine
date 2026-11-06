@@ -191,3 +191,11 @@ These are source changes and synthetic tests; no current-head CI execution is cl
 - Authorization POST now stages a short-lived code and atomically consumes the authorization transaction using the stored ETag. If two browser submissions race, only the code committed by the compare-and-swap winner is returned; a losing staged code is an unreachable short-lived orphan.
 - Existing browser retry behavior is preserved: a retry after successful consumption receives the same committed code until its short expiry.
 - Added a focused consent-description test and architecture-gate assertions. The CAS uses the existing conditional-write contract; live Netlify Blobs race verification remains outstanding.
+
+
+### MCP per-tool authorization review (2026-11-06)
+- Inspected all 19 registered MCP tools. Each declares an OAuth2 scope in its tool metadata and checks the same scope inside its handler.
+- The three `win:audit` tools are read-only and use the explicit audit collection allowlist; the audit handler paths contain no storage mutation calls.
+- Added an architecture quality gate that enumerates every `registerTool` block and requires its declared OAuth scope to match an in-handler scope guard. New tools cannot silently omit this dual declaration/check.
+- Tightened audit consent wording to state explicitly that the scope cannot start research, write records, approve coupons or place bets.
+- This remains source-level inspection; OAuth callback compatibility, provider-side storage races and deployed rate-limit enforcement are not proven by the static gate.
