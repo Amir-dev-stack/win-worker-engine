@@ -58,12 +58,12 @@ test("market benchmark rejects duplicate model cutoff identities and malformed c
   assert.throws(() => assertWinMarketCohortMatchesModel(rows, malformed), /market_evaluation_model_cutoffs_invalid/);
 });
 
-import { installIsolatedTestStore, remove, put } from "../netlify/lib/store.mts";
+import { installIsolatedTestStore, remove, put, get } from "../netlify/lib/store.mts";
 import { registerWinMLDatasetManifest } from "../netlify/lib/ml-dataset-registry.mts";
 import { registerWinMLModelArtifact } from "../netlify/lib/ml-model-artifact-registry.mts";
 import { getWinMLMarketBlendEvaluationEvidence } from "../netlify/lib/ml-market-blend-evidence.mts";
 import { calculateWinMLMarketAnchoredBlendWithRegisteredEvidence } from "../netlify/lib/ml-market-anchored-blend-verified.mts";
-import { buildWinMLShadowPrediction, recordWinMLShadowPrediction } from "../netlify/lib/ml-shadow-prediction.mts";
+import { buildWinMLShadowPrediction, recordWinMLShadowPrediction, getWinMLShadowPredictionRecord } from "../netlify/lib/ml-shadow-prediction.mts";
 import {
   registerWinMarketEvaluation,
   getWinMarketEvaluation
@@ -251,6 +251,8 @@ test("market evaluation registry binds immutable market scores to the registered
     features: sample.features
   });
   await recordWinMLShadowPrediction(shadow.prediction);
+  const verifiedShadowRecord = await getWinMLShadowPredictionRecord(predictionRunId);
+  assert.deepEqual(verifiedShadowRecord.prediction, shadow.prediction);
   const verifiedBlendArgs = {
     modelId, modelVersion, marketEvaluationId: evaluationId, predictionRunId,
     input: {
@@ -322,6 +324,17 @@ test("market evaluation registry binds immutable market scores to the registered
     assert.equal(verifiedBlend.status, "blocked");
     assert.equal(verifiedBlend.probabilities, null);
   }
+
+  const storedShadow = await get("library/ml-shadow-predictions", predictionRunId);
+  await put("library/ml-shadow-predictions", predictionRunId, {
+    ...storedShadow,
+    prediction: {
+      ...storedShadow.prediction,
+      probabilities: { home: 0.8, draw: 0.1, away: 0.1 }
+    }
+  });
+  await assert.rejects(() => calculateWinMLMarketAnchoredBlendWithRegisteredEvidence(verifiedBlendArgs),
+    /shadow_prediction_record_tampered/);
 
   const tamperedSourceRecords = sourceRecords.map((record, index) => index === 0
     ? { ...record, closing: { ...record.closing, homeWinProbability: 0.51 } }
