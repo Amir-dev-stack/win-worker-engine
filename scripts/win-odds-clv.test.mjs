@@ -38,7 +38,7 @@ test("rejects a decision quote observed or ingested after the prediction cutoff"
 
 test("rejects mismatched bookmaker, source, market, selection or line", () => {
   for (const patch of [
-    { bookmakerId: "book-b" }, { sourceId: "feed-b" }, { marketId: "totals" },
+    { bookmakerId: "book-b" }, { sourceId: "feed-b" }, { sourceRevision: "b".repeat(40) }, { licenceId: "ODD-LICENCE" }, { marketId: "totals" },
     { selectionId: "draw" }, { line: 2.5 }
   ]) {
     assert.throws(() => calculateWinClosingLineValue({
@@ -64,6 +64,13 @@ test("rejects closing prices that are not strictly after the decision cutoff", (
     decisionQuote, closingQuote: { ...closingQuote, sourceObservedAt: predictionCutoff },
     predictionCutoff, kickoffAt, evaluationMode: "live"
   }), e => e instanceof WinCLVError && e.code === "clv_closing_quote_not_after_decision");
+});
+
+test("rejects ingestion timestamps earlier than the source observation", () => {
+  assert.throws(() => calculateWinClosingLineValue({
+    decisionQuote: { ...decisionQuote, ingestedAt: "2026-11-10T16:58:00.000Z" },
+    closingQuote, predictionCutoff, kickoffAt, evaluationMode: "live"
+  }), e => e instanceof WinCLVError && e.code === "clv_ingestion_precedes_source_observation");
 });
 
 test("rejects suspended, closed, unknown, live and post-kickoff observations", () => {
