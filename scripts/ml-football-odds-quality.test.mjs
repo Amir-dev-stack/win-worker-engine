@@ -138,3 +138,30 @@ test("reports bookmaker availability separately from historical price validity",
   assert.equal(report.bookmakerIndependenceVerified, false);
   assert.equal(report.trainingApprovalGranted, false);
 });
+
+
+test("checks source event start time against the fixture only when a skew contract is supplied", () => {
+  const timed = [
+    ...snapshots.map(row => ({ ...row, eventStartAt: fixtures[0].kickoff })),
+    { ...snapshots[0], snapshotId: "rescheduled-mismatch", eventStartAt: "2026-11-10T18:20:00.000Z" },
+    { ...snapshots[1], snapshotId: "missing-source-start", eventStartAt: undefined }
+  ];
+  const report = assessWinFootballOddsQuality({
+    fixtures, expectedMarkets, snapshots: timed, maxFixtureStartSkewMinutes: 5
+  });
+  assert.equal(report.validPreKickoffSnapshotCount, 3);
+  assert.equal(report.fixtureStartMismatchCount, 1);
+  assert.equal(report.fixtureStartTimeUnavailableCount, 1);
+  assert.equal(report.fixtureStartMismatches[0].snapshotId, "rescheduled-mismatch");
+  assert.ok(report.reasons.includes("fixture_start_time_mismatch_excluded"));
+  assert.ok(report.reasons.includes("fixture_start_time_unavailable_excluded"));
+});
+
+test("rejects malformed source event start timestamps", () => {
+  const report = assessWinFootballOddsQuality({
+    fixtures, expectedMarkets,
+    snapshots: [{ ...snapshots[0], eventStartAt: "2026-02-31T18:00:00.000Z" }]
+  });
+  assert.equal(report.invalidSnapshotCount, 1);
+  assert.equal(report.validPreKickoffSnapshotCount, 0);
+});
