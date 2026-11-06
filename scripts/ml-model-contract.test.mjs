@@ -157,3 +157,10 @@ test("evaluation requires a training run, configuration hash, split hash and fea
   assert.ok(result.reasons.includes("split_manifest_hash_invalid"));
   assert.ok(result.reasons.includes("feature_builder_commit_sha_invalid"));
 });
+
+test("model evaluation rejects impossible calendar timestamps", () => {
+  const result = evaluateWinMLPromotionReadiness(manifest(), evaluation({
+    trainingWindow: { from: "2026-02-31T00:00:00.000Z", to: "2026-08-31T23:59:59.000Z" }
+  }));
+  assert.ok(result.reasons.includes("evaluation_timestamps_invalid"));
+});
