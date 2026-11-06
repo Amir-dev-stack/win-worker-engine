@@ -85,3 +85,12 @@ test("ML data contract rejects impossible calendar timestamps", () => {
     );
   }
 });
+
+test("ML dataset manifests reject mutable source references and credential-bearing source URLs", () => {
+  assert.ok(validateWinMLDatasetManifest(manifest({ sourceRevision: "main" })).includes("source_revision_invalid"));
+  assert.ok(validateWinMLDatasetManifest(manifest({ sourceRevision: "latest" })).includes("source_revision_invalid"));
+  assert.ok(validateWinMLDatasetManifest(manifest({ sourceRevision: "a1b2c3d4e5f6" })).length === 0);
+  assert.ok(validateWinMLDatasetManifest(manifest({
+    sourceUrl: "https://user:password@example.test/data"
+  })).includes("source_url_credentials_or_host_invalid"));
+});
