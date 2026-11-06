@@ -51,6 +51,7 @@ test("OpenAI adapter maps Agents SDK output, citations, usage and cancellation s
   assert.equal(received.webSearch, true);
   assert.equal(received.maxOutputTokens, 200);
   assert.equal(received.maxTurns, 2);
+  assert.equal(received.maxToolCallsPerResponse, 1);
   assert.equal(response.status, "completed");
   assert.equal(response.providerId, "openai");
   assert.equal(response.model, "approved-model");
@@ -65,6 +66,20 @@ test("OpenAI adapter maps Agents SDK output, citations, usage and cancellation s
     { title: "Source A", url: "https://example.com/a" },
     { title: "Source B", url: "https://example.com/b" }
   ]);
+});
+
+test("OpenAI adapter derives a bounded per-response tool cap from the total run reservation", async () => {
+  let received;
+  const adapter = createOpenAIWinLLMAdapter({
+    apiKey: "synthetic-test-key",
+    model: "approved-model",
+    async runAgent(input) { received = input; return agentResult; }
+  });
+  await adapter.execute(request({
+    limits: { maxOutputTokens: 200, maxToolCalls: 4, timeoutMs: 1000 }
+  }));
+  assert.equal(received.maxToolCallsPerResponse, 2);
+  assert.equal(received.maxTurns, 2);
 });
 
 test("governed execution wrapper invokes the approved OpenAI adapter end to end", async () => {
