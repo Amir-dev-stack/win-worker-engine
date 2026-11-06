@@ -8,8 +8,9 @@ export type WinMLFootballOutcome = typeof WIN_ML_FOOTBALL_1X2_CLASSES[number];
 export type WinMLFootballNumericRow = {
   eventId: string;
   eventStart: string;
+  predictionCutoff: string;
   labelAvailableAt: string;
-  features: Record<string, number>;
+  features: Record<string, { value: number; availableAt: string; sourceId: string }>;
   outcome: WinMLFootballOutcome;
 };
 
@@ -59,7 +60,11 @@ function validateRows(rows: WinMLFootballNumericRow[], featureNames: string[], s
     }
     seen.add(row.eventId);
     const eventStart = timestamp(row.eventStart);
+    const predictionCutoff = timestamp(row.predictionCutoff);
     const labelAvailableAt = timestamp(row.labelAvailableAt);
+    if (eventStart === null || predictionCutoff === null || predictionCutoff >= eventStart) {
+      errors.push("training_prediction_cutoff_invalid:" + row.eventId);
+    }
     if (eventStart === null || labelAvailableAt === null || labelAvailableAt < eventStart) {
       errors.push("training_label_availability_invalid:" + row.eventId);
     }
@@ -74,8 +79,13 @@ function validateRows(rows: WinMLFootballNumericRow[], featureNames: string[], s
       continue;
     }
     for (const key of featureNames) {
-      if (typeof row.features[key] !== "number" || !Number.isFinite(row.features[key])) {
-        errors.push("training_feature_not_finite_numeric:" + row.eventId + ":" + key);
+      const feature = row.features[key];
+      const availableAt = timestamp(feature?.availableAt);
+      if (!feature || typeof feature !== "object" ||
+          typeof feature.value !== "number" || !Number.isFinite(feature.value) ||
+          availableAt === null || predictionCutoff === null || availableAt > predictionCutoff ||
+          typeof feature.sourceId !== "string" || !feature.sourceId.trim()) {
+        errors.push("training_feature_provenance_invalid:" + row.eventId + ":" + key);
       }
     }
   }
@@ -172,15 +182,15 @@ export function trainWinMLFootball1X2LogisticModel(args: {
   if (trainingAvailabilityEnd >= validationStart) throw new Error("training_validation_chronology_invalid");
 
   const means = featureNames.map(name =>
-    trainingRows.reduce((sum, row) => sum + row.features[name], 0) / trainingRows.length
+    trainingRows.reduce((sum, row) => sum + row.features[name].value, 0) / trainingRows.length
   );
   const scales = featureNames.map((name, index) => {
-    const variance = trainingRows.reduce((sum, row) => sum + (row.features[name] - means[index]) ** 2, 0) / trainingRows.length;
+    const variance = trainingRows.reduce((sum, row) => sum + (row.features[name].value - means[index]) ** 2, 0) / trainingRows.length;
     const scale = Math.sqrt(variance);
     return scale > 1e-12 ? scale : 1;
   });
   const normalize = (row: WinMLFootballNumericRow) =>
-    featureNames.map((name, index) => (row.features[name] - means[index]) / scales[index]);
+    featureNames.map((name, index) => (row.features[name].value - means[index]) / scales[index]);
 
   const weights = WIN_ML_FOOTBALL_1X2_CLASSES.map(() => Array(featureNames.length + 1).fill(0) as number[]);
   const classIndex = (outcome: WinMLFootballOutcome) => WIN_ML_FOOTBALL_1X2_CLASSES.indexOf(outcome);
