@@ -72,6 +72,8 @@ function verifyRecord(record: StoredRecord) {
       !/^[a-f0-9]{64}$/i.test(record.artifactSha256 || "") ||
       !/^[a-f0-9]{64}$/i.test(record.evaluationSha256 || "") ||
       !/^[a-f0-9]{64}$/i.test(record.testRowsSha256 || "") ||
+      !/^[a-f0-9]{64}$/i.test(record.evaluation?.testCohortSha256 || "") ||
+      !/^[a-f0-9]{64}$/i.test(record.evaluation?.testRowsSha256 || "") ||
       !/^[a-f0-9]{64}$/i.test(record.recordSha256 || "")) {
     throw new WinMLModelArtifactRegistryError("model_artifact_record_invalid");
   }
@@ -80,6 +82,7 @@ function verifyRecord(record: StoredRecord) {
       record.datasetId !== record.artifact.datasetId ||
       record.datasetContentSha256 !== record.artifact.datasetContentSha256 ||
       record.artifactSha256 !== record.artifact.artifactSha256 ||
+      record.evaluation.testRowsSha256 !== record.testRowsSha256 ||
       hashWinMLProvenance(record.evaluation).sha256 !== record.evaluationSha256 ||
       hashWinMLProvenance(withoutRecordHash(record)).sha256 !== record.recordSha256) {
     throw new WinMLModelArtifactRegistryError("model_artifact_record_hash_mismatch");
@@ -117,7 +120,9 @@ export async function registerWinMLModelArtifact(args: {
     sourceCommitSha: evaluation.sourceCommitSha,
     trainedAt: evaluation.trainedAt
   });
-  if (hashWinMLProvenance(recomputedEvaluation).sha256 !== hashWinMLProvenance(evaluation).sha256) {
+  if (hashWinMLProvenance(recomputedEvaluation).sha256 !== hashWinMLProvenance(evaluation).sha256 ||
+      evaluation.testRowsSha256 !== hashWinMLProvenance(testRows).sha256 ||
+      evaluation.testCohortSha256 !== hashWinMLProvenance([...testRows].map(row => row.eventId).sort()).sha256) {
     throw new WinMLModelArtifactRegistryError("model_artifact_held_out_evaluation_mismatch");
   }
   const manifest = await getWinMLDatasetManifest(artifact.datasetId);
