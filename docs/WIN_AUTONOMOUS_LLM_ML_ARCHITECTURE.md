@@ -231,3 +231,14 @@ This section supersedes any wording elsewhere that implies WIN or its agents aut
 - Keep analytical states separate: model/data eligibility, risk estimate, agent recommendation, coupon proposal status and user decision are distinct fields. A low-confidence or incomplete-evidence proposal remains visible with explicit warnings.
 - If a market cannot be verified or priced, show it as unverified/unpriced in the requested proposal and offer a clearly marked alternative where possible. Do not silently omit it or pretend it is supported.
 - Coupon generation is mandatory for a requested coupon; automatic bet placement is not authorized.
+
+
+## Proactive coupon discovery and construction learning (2026-11-06)
+
+WIN must proactively discover and recommend coupon opportunities; it is not limited to responding to user-requested coupons. Agents should learn which selections, market families and coupon structures perform best in comparable contexts, then generate and rank candidate singles, multiples, system products, Bet Builders and other supported formats. No format is universally best, and no minimum/maximum combined-odds threshold is imposed.
+
+The learning loop must score both prediction quality and ticket-construction quality against timestamped prices and correctly settled outcomes. It must account for leg dependence, joint probability, voids/pushes, market availability, calibration, uncertainty and out-of-sample performance. Agents research, challenge and advise; validated statistical models provide probabilities. The user alone makes the final bet/no-bet decision, and WIN never places bets.
+
+A proactive scan may report that it found no defensible recommendation for its scanned coverage. That does not suppress a user-requested coupon: requested proposals remain visible with explicit warnings and unverified/unpriced fields where needed. Risk percentages are shown only when defensible; otherwise state that risk is not reliably quantifiable. Do not promise near-perfect predictions or claim a coupon format is best without repeatable out-of-sample evidence.
+
+See docs/WIN_PROACTIVE_COUPON_INTELLIGENCE.md for the detailed discovery, construction, evaluation and learning contract.
