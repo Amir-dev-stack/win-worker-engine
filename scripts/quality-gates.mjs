@@ -652,6 +652,7 @@ add("WIN market benchmark is bound to the registered ML artifact's exact held-ou
   winMarketEvaluationRegistry.includes("sourceDatasetSha256: sourceDataset.rawChecksum") &&
   winMarketEvaluationRegistry.includes("sourceDatasetRecordsSha256: sourceDataset.recordsSha256") &&
   winMarketEvaluationRegistry.includes("validateSourceRecordBindings(testRows, sourceDataset, provider.id)") &&
+  winMarketEvaluationRegistry.includes("sourceRecordId: string") &&
   winMarketEvaluationRegistry.includes("market_evaluation_source_record_probabilities_mismatch") &&
   winMarketEvaluationRegistry.includes("market_evaluation_source_record_outcome_mismatch") &&
   winMarketEvaluationRegistry.includes('source.closing?.marketSnapshotTimestampStatus !== "source_timestamp"') &&
@@ -668,7 +669,8 @@ add("WIN market benchmark is bound to the registered ML artifact's exact held-ou
   winMarketEvaluationRegistryTests.includes("market_evaluation_source_record_reference_invalid") &&
   winMarketEvaluationRegistryTests.includes("market_evaluation_source_record_binding_mismatch") &&
   winMarketEvaluationRegistryTests.includes("market_evaluation_source_record_probabilities_mismatch") &&
-  winMarketEvaluationRegistryTests.includes("market_evaluation_source_record_outcome_mismatch"),
+  winMarketEvaluationRegistryTests.includes("market_evaluation_source_record_outcome_mismatch") &&
+  winMarketEvaluationRegistryTests.includes("Reject post-registration source-record tampering"),
   "Market metrics are accepted only for the exact registered model test cohort, event cutoffs and unique hashed source records whose kickoff, snapshot, probabilities and outcome match; evidence remains immutable and shadow-only.");
 
 const verifiedMarketBlend = await read("netlify/lib/ml-market-anchored-blend-verified.mts");
