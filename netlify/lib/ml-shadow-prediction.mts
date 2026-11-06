@@ -19,6 +19,12 @@ function validId(value: unknown): value is string {
 function instant(value: unknown): number | null {
   if (typeof value !== "string" ||
       !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(value)) return null;
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T/.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+  const calendar = new Date(Date.UTC(year, month - 1, day));
+  if (calendar.getUTCFullYear() !== year || calendar.getUTCMonth() !== month - 1 ||
+      calendar.getUTCDate() !== day) return null;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -127,6 +133,17 @@ export async function recordWinMLShadowPrediction(prediction: WinMLPredictionV1)
       prediction.contractVersion !== WIN_ML_PREDICTION_VERSION ||
       !validId(prediction.predictionRunId)) {
     throw new WinMLShadowPredictionError("shadow_prediction_record_invalid");
+  }
+  const registered = await getWinMLModelArtifact(prediction.modelId, prediction.modelVersion);
+  if (!registered) throw new WinMLShadowPredictionError("shadow_prediction_model_not_registered");
+  const manifest = await getWinMLDatasetManifest(registered.artifact.datasetId);
+  if (!manifest || manifest.contentSha256 !== registered.artifact.datasetContentSha256) {
+    throw new WinMLShadowPredictionError("shadow_prediction_dataset_binding_invalid");
+  }
+  const validation = validateWinMLPrediction(manifest, registered.evaluation, prediction);
+  if (validation.status !== "eligible_for_shadow_only") {
+    throw new WinMLShadowPredictionError("shadow_prediction_record_contract_blocked:" +
+      validation.reasons.join("|"));
   }
   const payload = {
     recordVersion: RECORD_VERSION,
