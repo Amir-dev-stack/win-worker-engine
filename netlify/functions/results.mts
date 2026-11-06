@@ -5,7 +5,7 @@ import { get, list, put, putIfNew } from "../lib/store.mts";
 const MAX_RESULT_REQUEST_BYTES = 64 * 1024;
 
 export async function readResultSubmissionBody(req: Request): Promise<{ body: any } | Response> {
-  if (!req.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+  if (req.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {
     return Response.json({ error: "application_json_required" }, { status: 415 });
   }
   const declaredLength = Number(req.headers.get("content-length") || 0);
