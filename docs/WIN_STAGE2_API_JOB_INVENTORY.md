@@ -1,7 +1,7 @@
 # WIN Stage 2 — API and scheduled-job inventory (first pass)
 
 Audit branch: `docs/win-staged-build-roadmap`
-Audited tree: `9df4826ead23ea863be1b356e47328ba4b07a9a3`
+Audited tree: `0713ccd0174a08f2944225368aae4c8d2e16e015`
 Base: `main` at `61aa7112f0e5be08e52cfd507b4bac00137ab727`
 
 Status: source-level inventory only. This is not a complete authorization review, live deployment inventory, or proof that scheduled functions are active. The current audited tree contains 43 `netlify/functions/*.mts` files. PR #8, #9 and #10 remain separate and unmerged; their additional routes and memory/backup handlers are not counted here.
@@ -227,3 +227,6 @@ These are source changes and synthetic tests; no current-head CI execution is cl
 - Added route-specific byte caps: AI budget 8 KiB; department smoke test 8 KiB; OpenAI key diagnostics 8 KiB; source import 64 KiB; tips 16 KiB; research evidence 128 KiB; source-candidate review 8 KiB; post-match check 8 KiB; simulation runner 8 KiB; simulation creation 64 KiB; worker runner 16 KiB.
 - The internal simulation and worker runners now require POST in addition to their existing internal bearer token. All 16 covered routes authenticate before parsing request bodies.
 - Extended the architecture gate to enumerate all 16 routes, verify their configured caps and authentication ordering, and require POST on the internal runners.
+
+
+- A further pass extended the shared bounded parser to AI-budget unlock, department smoke test, OpenAI key diagnostics, source imports, tips, research evidence, source-candidate review, post-match check, simulation runner, simulation creation and worker runner. The architecture gate now enumerates all 16 routes and checks their exact per-route limits plus authentication-before-body ordering.
