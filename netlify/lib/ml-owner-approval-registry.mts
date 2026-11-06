@@ -15,6 +15,7 @@ import { canonicalizeWinMLProvenance } from "./ml-provenance.mts";
 import { get, list, putIfNew } from "./store.mts";
 
 const LICENCE_COLLECTION = "library/ml-licence-review-evidence";
+const LICENCE_ID_COLLECTION = "library/ml-licence-review-evidence-ids";
 const APPROVAL_COLLECTION = "library/ml-owner-training-approvals";
 const REVOCATION_COLLECTION = "library/ml-owner-training-revocations";
 
@@ -32,6 +33,11 @@ export class WinMLOwnerApprovalRegistryError extends Error {
 type TrustedOwnerConfig = {
   publicKeyPem: string;
   reviewerId: string;
+};
+
+type StoredLicenceEvidenceId = {
+  recordVersion: "win.ml.licence-review-id-record.v1";
+  evidenceSha256: string;
 };
 
 type StoredLicenceEvidence = {
@@ -92,6 +98,17 @@ export async function registerWinMLLicenceReviewEvidence(
     licenceId: payload.licenceId, evidenceSha256, reviewerId: trustedConfig.reviewerId, now
   });
   if (!verification.valid) registryError("licence_evidence_invalid", verification.reasons);
+  const idIndex: StoredLicenceEvidenceId = {
+    recordVersion: "win.ml.licence-review-id-record.v1", evidenceSha256
+  };
+  const idResult = await putIfNew(LICENCE_ID_COLLECTION, payload.evidenceId, idIndex);
+  if (!idResult?.modified) {
+    const existingId = await get<StoredLicenceEvidenceId>(LICENCE_ID_COLLECTION, payload.evidenceId);
+    if (existingId?.recordVersion !== "win.ml.licence-review-id-record.v1" ||
+        existingId.evidenceSha256 !== evidenceSha256) {
+      registryError("licence_evidence_id_immutable_conflict");
+    }
+  }
   const record: StoredLicenceEvidence = {
     recordVersion: "win.ml.licence-review-record.v1", evidence, evidenceSha256, recordedAt: now
   };
