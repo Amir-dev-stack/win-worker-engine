@@ -2,6 +2,7 @@ import { get, putIfNew } from "./store.mts";
 import { hashWinMLProvenance } from "./ml-provenance.mts";
 import { isStrictIsoTimestamp } from "./strict-timestamp.mts";
 import { getWinMLModelArtifact } from "./ml-model-artifact-registry.mts";
+import { assertProviderImportAllowed } from "./data-provider-registry.mts";
 import type { WinMLModelEvaluationV1 } from "./ml-model-contract.mts";
 
 export const WIN_MARKET_EVALUATION_VERSION = "win.market.evaluation.v2" as const;
@@ -29,6 +30,8 @@ export type WinMarketEvaluationRecord = {
   datasetContentSha256: string;
   sourceId: string;
   sourceRevision: string;
+  sourceDatasetId: string;
+  sourceDatasetSha256: string;
   evaluatedAt: string;
   testEventIdsSha256: string;
   testRowsSha256: string;
@@ -142,6 +145,23 @@ export async function registerWinMarketEvaluation(args: {
       !/^[a-f0-9]{40}$/i.test(sourceRevision || "") || !isStrictIsoTimestamp(evaluatedAt)) {
     throw new WinMarketEvaluationError("market_evaluation_metadata_invalid");
   }
+  let provider;
+  try {
+    provider = assertProviderImportAllowed(sourceId, ["historical_consensus_market_lines"]);
+  } catch {
+    throw new WinMarketEvaluationError("market_evaluation_source_provider_not_approved");
+  }
+  const sourceDatasetId = "consensus-" + provider.id;
+  const sourceDataset = await get<any>("library/model-lab/market-consensus-datasets", sourceDatasetId);
+  if (!sourceDataset || sourceDataset.providerId !== provider.id ||
+      sourceDataset.sourceRevision !== sourceRevision ||
+      !validHash(sourceDataset.rawChecksum) ||
+      !Array.isArray(sourceDataset.records) ||
+      sourceDataset.totalRows !== sourceDataset.records.length ||
+      sourceDataset.marketDataType !== "consensus_market_lines" ||
+      sourceDataset.origin !== "provider_historical_data") {
+    throw new WinMarketEvaluationError("market_evaluation_source_dataset_binding_invalid");
+  }
   const model = await getWinMLModelArtifact(modelId, modelVersion);
   if (!model) throw new WinMarketEvaluationError("market_evaluation_model_artifact_missing");
   const evaluation = model.evaluation;
@@ -154,7 +174,7 @@ export async function registerWinMarketEvaluation(args: {
     modelEvaluationSha256: model.provenance.evaluationSha256,
     datasetId: evaluation.datasetId,
     datasetContentSha256: evaluation.datasetContentSha256,
-    sourceId, sourceRevision, evaluatedAt,
+    sourceId: provider.id, sourceRevision, sourceDatasetId,\n    sourceDatasetSha256: sourceDataset.rawChecksum, evaluatedAt,
     testEventIdsSha256: hashWinMLProvenance(computed.eventIds).sha256,
     testRowsSha256: computed.testRowsSha256,
     testRows: testRows.length,
@@ -175,7 +195,7 @@ export function verifyWinMarketEvaluationRecord(record: WinMarketEvaluationRecor
       !validId(record.evaluationId) || !validId(record.modelId) || !validId(record.modelVersion) ||
       !validHash(record.modelArtifactSha256) || !validHash(record.modelEvaluationSha256) ||
       !validId(record.datasetId) || !validId(record.sourceId) ||
-      !validHash(record.datasetContentSha256) || !/^[a-f0-9]{40}$/i.test(record.sourceRevision || "") ||
+      !validHash(record.datasetContentSha256) || !/^[a-f0-9]{40}$/i.test(record.sourceRevision || "") ||\n      record.sourceDatasetId !== "consensus-" + record.sourceId || !validHash(record.sourceDatasetSha256) ||
       !isStrictIsoTimestamp(record.evaluatedAt) || !validHash(record.testEventIdsSha256) ||
       !validHash(record.testRowsSha256) || !Number.isSafeInteger(record.testRows) || record.testRows < 100 ||
       !record.metrics || ![record.metrics.brier, record.metrics.logLoss, record.metrics.expectedCalibrationError]
