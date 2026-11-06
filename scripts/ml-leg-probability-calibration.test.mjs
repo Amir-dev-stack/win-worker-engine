@@ -29,7 +29,7 @@ test("evaluates 100 chronological holdout leg estimates with proper scores and r
   const cohort = report.cohorts[0];
   assert.equal(cohort.settledObservations, 100);
   assert.equal(cohort.observedWinRate, 0.7);
-  assert.equal(cohort.meanPredictedProbability, 0.7);
+  assert.ok(Math.abs(cohort.meanPredictedProbability - 0.7) < 1e-12);
   assert.equal(cohort.calibrationGap, 0);
   assert.equal(cohort.expectedCalibrationError, 0);
   assert.equal(cohort.reliabilityBins.length, 10);
