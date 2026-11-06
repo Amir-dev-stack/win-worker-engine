@@ -481,7 +481,7 @@ export function buildWinMLFootball1X2EvaluationRecord(
   const evaluatedAt = timestamp(testEvaluation.evaluatedAt);
   if (trainedAt === null || fitDataCutoff === null || validationStart === null ||
       validationEnd === null || testStart === null || testEnd === null || evaluatedAt === null ||
-      trainedAt < fitDataCutoff ||
+      trainedAt < fitDataCutoff || trainedAt > testStart ||
       testStart <= validationEnd || evaluatedAt < testEnd) {
     throw new Error("model_evaluation_chronology_invalid");
   }
