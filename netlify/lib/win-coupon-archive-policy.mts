@@ -79,6 +79,7 @@ export function buildWinCouponArchiveCandidate(args: {
     status: fullyQualified ? "QUALIFIED" : legs.length > 0 ? "DRAFTABLE" : "BLOCKED",
     couponDraftAllowed: legs.length > 0,
     dataQualityStatus: evidenceBlockers.length === 0 ? "complete" : "incomplete",
+    legs,
     researchGateStatus: runResearchPassed ? "passed" : "pending",
     combinedOdds: fullyQualified && Number.isFinite(candidate?.combinedOdds) ? candidate.combinedOdds : null,
     theoreticalOddsProduct: Number.isFinite(candidate?.theoreticalOddsProduct) ? candidate.theoreticalOddsProduct : null,
