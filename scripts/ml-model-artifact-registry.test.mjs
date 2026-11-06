@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { installIsolatedTestStore } from "../netlify/lib/store.mts";
+import { installIsolatedTestStore, remove } from "../netlify/lib/store.mts";
 import { registerWinMLDatasetManifest } from "../netlify/lib/ml-dataset-registry.mts";
 import { registerWinMLModelArtifact, getWinMLModelArtifact, WinMLModelArtifactRegistryError } from "../netlify/lib/ml-model-artifact-registry.mts";
 import { trainWinMLFootball1X2LogisticModel, evaluateWinMLFootball1X2LogisticModel, buildWinMLFootball1X2EvaluationRecord } from "../netlify/lib/ml-football-logistic-trainer.mts";
 
+const values = new Map();
 function makeStore() {
-  const values = new Map();
   return {
     async setJSON(key, value, options = {}) {
       if (options.onlyIfNew && values.has(key)) return { modified: false };
@@ -17,6 +17,13 @@ function makeStore() {
     async delete(key) { values.delete(key); },
     async getWithMetadata(key) { return values.has(key) ? { data: structuredClone(values.get(key)), etag: "test-etag" } : null; }
   };
+}
+const testStore = makeStore();
+process.env.WIN_STORE_TEST_MODE = "1";
+installIsolatedTestStore(testStore);
+async function resetRecords() {
+  await remove("library/ml-model-artifacts", "registry-synthetic-model::0.1.0");
+  await remove("library/ml-dataset-manifests", "registry-synthetic-data");
 }
 function rows(offset, count) {
   return Array.from({ length: count }, (_, index) => {
@@ -33,8 +40,6 @@ function rows(offset, count) {
   });
 }
 function setup() {
-  process.env.WIN_STORE_TEST_MODE = "1";
-  installIsolatedTestStore(makeStore());
   const trained = trainWinMLFootball1X2LogisticModel({
     modelId: "registry-synthetic-model", datasetId: "registry-synthetic-data", datasetContentSha256: "a".repeat(64),
     featureSchemaVersion: "win.football.form.v1", trainingRows: rows(0, 60), validationRows: rows(60, 30),
@@ -55,6 +60,7 @@ const manifest = {
   rowCount: 120, labeledRowCount: 120, schemaVersion: "synthetic.v1", contentSha256: "a".repeat(64)
 };
 test("model artifact registry immutably binds artifact, evaluation and registered dataset", async () => {
+  await resetRecords();
   const { artifact, evaluation } = setup();
   await registerWinMLDatasetManifest(manifest);
   const first = await registerWinMLModelArtifact({ artifact, evaluation, registeredAt: "2027-01-03T00:00:00.000Z" });
@@ -78,14 +84,16 @@ test("model artifact registry rejects dataset hash drift and immutable version c
   }), /model_artifact_evaluation_binding_mismatch/);
   await registerWinMLModelArtifact({ artifact, evaluation, registeredAt: "2027-01-03T00:00:00.000Z" });
   await assert.rejects(() => registerWinMLModelArtifact({
-    artifact, evaluation: { ...evaluation, modelVersion: "0.2.0" },
+    artifact, evaluation,
     registeredAt: "2027-01-04T00:00:00.000Z"
   }), /model_artifact_immutable_conflict/);
 });
 test("model artifact retrieval fails closed after stored record tampering", async () => {
+  await resetRecords();
   const { artifact, evaluation } = setup();
   await registerWinMLDatasetManifest(manifest);
   await registerWinMLModelArtifact({ artifact, evaluation, registeredAt: "2027-01-03T00:00:00.000Z" });
+  await testStore.setJSON("library/ml-model-artifacts/registry-synthetic-model::0.1.0", { recordVersion: "tampered" });
   await assert.rejects(() => getWinMLModelArtifact("registry-synthetic-model", "0.1.0"), error =>
     error instanceof WinMLModelArtifactRegistryError || /model_artifact/.test(error.message)
   );
