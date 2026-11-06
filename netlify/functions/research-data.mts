@@ -1,4 +1,5 @@
 import { requireAuth } from "../lib/auth.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 import { saveResearchEvidence, searchResearchEvidence } from "../lib/library.mts";
 
 export default async (req: Request) => {
@@ -18,8 +19,9 @@ export default async (req: Request) => {
     }));
   }
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  let body: any;
-  try { body = await req.json(); } catch { return Response.json({ error: "Expected JSON body" }, { status: 400 }); }
+  const parsedRequest = await readBoundedJsonObject(req, 128 * 1024);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
   try {
     const records = Array.isArray(body?.records) ? body.records.slice(0, 500) : [body];
     const saved = [];
