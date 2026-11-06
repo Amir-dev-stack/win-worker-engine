@@ -238,6 +238,21 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
 
 const mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
 const mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
+const mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
+const mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
+add("WIN shadow inference loads only registered artifacts and enforces point-in-time feature availability",
+  mlShadowPrediction.includes("getWinMLModelArtifact(args.modelId, args.modelVersion)") &&
+  mlShadowPrediction.includes("getWinMLDatasetManifest(artifact.datasetId)") &&
+  mlShadowPrediction.includes("featureSchemaVersion: artifact.featureSchemaVersion") &&
+  mlShadowPrediction.includes("hashWinMLProvenance(args.features)") &&
+  mlShadowPrediction.includes("putIfNew(COLLECTION, prediction.predictionRunId, record)") &&
+  mlShadowPrediction.includes("productionUseAllowed: false") &&
+  mlShadowPrediction.includes("automatedBettingAllowed: false") &&
+  mlShadowPredictionTests.includes("rejects kickoff-time and post-kickoff cutoffs") &&
+  mlShadowPredictionTests.includes("rejects features unavailable at the declared cutoff") &&
+  mlShadowPredictionTests.includes("never a caller-supplied artifact"),
+  "The inference boundary retrieves a hash-verified registered artifact, validates exact feature schema and availability timestamps, and records immutable shadow-only outputs; no production route or betting action is exposed.");
+
 add("WIN ML predictions are provenance-bound to an evaluated model and shadow-only",
   mlPredictionContract.includes('origin: "trained_model"') &&
   mlPredictionContract.includes('usage: "shadow_only"') &&
