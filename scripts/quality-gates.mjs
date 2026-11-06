@@ -824,6 +824,11 @@ add("WIN shadow inference revalidates signed owner approval from protected confi
   mlOwnerShadowIntegrationTests.includes("eligible_for_human_shadow_review") &&
   mlOwnerShadowIntegrationTests.includes("eligible_for_shadow_only") &&
   mlOwnerShadowIntegrationTests.includes("registerWinMLOwnerTrainingRevocation") &&
+  mlOwnerShadowIntegrationTests.includes("signed-shadow-wrong-hash") &&
+  mlOwnerShadowIntegrationTests.includes("signed-shadow-wrong-licence") &&
+  mlOwnerShadowIntegrationTests.includes("signed-shadow-expired") &&
+  mlOwnerShadowIntegrationTests.includes("signed-shadow-invalid-signature") &&
+  mlOwnerShadowIntegrationTests.includes("signed-shadow-wrong-dataset") &&
   mlOwnerShadowIntegrationTests.includes("automatedBettingAllowed, false"),
   "A stored approval ID is only a reference: the signed licence, owner signature, expiry and revocation chain is revalidated from protected server configuration before shadow inference. The integrated regression proves valid evidence reaches shadow-only review and revocation blocks it; training, production promotion and betting remain disabled.");
 
