@@ -74,6 +74,10 @@ function verifyRecord(record: StoredRecord) {
       !/^[a-f0-9]{64}$/i.test(record.testRowsSha256 || "") ||
       !/^[a-f0-9]{64}$/i.test(record.evaluation?.testCohortSha256 || "") ||
       !/^[a-f0-9]{64}$/i.test(record.evaluation?.testRowsSha256 || "") ||
+      !Array.isArray(record.evaluation?.testEventIds) ||
+      record.evaluation.testEventIds.length !== record.evaluation.testRows ||
+      new Set(record.evaluation.testEventIds).size !== record.evaluation.testEventIds.length ||
+      hashWinMLProvenance([...record.evaluation.testEventIds].sort()).sha256 !== record.evaluation.testCohortSha256 ||
       !/^[a-f0-9]{64}$/i.test(record.recordSha256 || "")) {
     throw new WinMLModelArtifactRegistryError("model_artifact_record_invalid");
   }
