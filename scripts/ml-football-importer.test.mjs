@@ -13,6 +13,7 @@ const source = {
   competition: "Synthetic League",
   season: "2025-2026",
   sourceUrl: "https://example.test/results.json",
+  sourceRevision: "synthetic-rev-1",
   licenceId: "UNVERIFIED-TEST-FIXTURE",
   attributionRequired: false,
   retrievedAt: "2026-11-05T12:00:00.000Z"
@@ -129,4 +130,16 @@ test("offline importer rejects impossible calendar timestamps and mixed dataset 
     ]), source),
     error => error.code === "football_import_rows_invalid" && error.details.includes("record_1:competition_mismatch")
   );
+});
+
+test("offline importer requires a pinned immutable source revision", () => {
+  assert.throws(() => importWinFootballResultsBytes(payload(), { ...source, sourceRevision: "main" }),
+    error => error.code === "football_import_source_metadata_invalid" &&
+      error.details.includes("source_revision_invalid"));
+  const { sourceRevision, ...missingRevision } = source;
+  assert.throws(() => importWinFootballResultsBytes(payload(), missingRevision),
+    error => error.code === "football_import_source_metadata_invalid" &&
+      error.details.includes("source_revision_invalid"));
+  const imported = importWinFootballResultsBytes(payload(), source);
+  assert.equal(imported.manifest.sourceRevision, source.sourceRevision);
 });
