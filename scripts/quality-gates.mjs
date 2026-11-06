@@ -40,6 +40,14 @@ const mcpApi = await read("netlify/functions/mcp.mts");
 const oauthStore = await read("netlify/lib/oauth-store.mts");
 const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 const oauthConsent = await read("netlify/lib/oauth-consent.mts");
+const mcpToolRegistrationMatches = [...mcpApi.matchAll(/server\\.registerTool\\("([^"]+)"/g)];
+const mcpToolsHaveMatchingScopeGuards = mcpToolRegistrationMatches.every((match, index) => {
+  const end = index + 1 < mcpToolRegistrationMatches.length ? mcpToolRegistrationMatches[index + 1].index : mcpApi.length;
+  const block = mcpApi.slice(match.index, end);
+  const declared = block.match(/securitySchemes:\\s*\\[\\{\\s*type:\\s*"oauth2",\\s*scopes:\\s*\\[([^\\]]+)\\]/)?.[1] || "";
+  const guarded = block.match(/if \\(!scopes\\.includes\\("([^"]+)"\\)\\)/)?.[1] || "";
+  return Boolean(declared && guarded && declared.includes("\\"" + guarded + "\\""));
+});
 add("WIN shared-store contract tests cover conditional races, bounded reads, legacy and malformed records",
   storeContractTests.includes("onlyIfNew race must have exactly one winner") &&
   storeContractTests.includes("only one compare-and-swap update may win for a shared ETag") &&
@@ -56,9 +64,13 @@ add("WIN result submission tests cover same-outcome and conflicting races plus i
   resultSubmissionTests.includes("a retry should resume an existing same-outcome result"),
   "Result claim idempotency and recovery regressions must remain in the isolated test suite.");
 
-add("WIN exposes a dedicated read-only audit scope through OAuth", oauthStore.includes('"win:audit"') && oauthAuthorize.includes("Read-only WIN diagnostics") && mcpApi.includes('securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]'), "The user can authorize diagnostics separately from research permissions.");
+add("WIN exposes a dedicated read-only audit scope through OAuth", oauthStore.includes('"win:audit"') && oauthConsent.includes("Read-only diagnostics") && mcpApi.includes('securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]'), "The user can authorize diagnostics separately from research permissions.");
 add("OAuth authorization requires explicit least-privilege scopes", oauthAuthorize.includes("const requested = value.trim() ? value.trim().split") && oauthAuthorize.includes(": [];") && oauthAuthorize.includes("!requested.length"), "An omitted scope is rejected instead of silently granting every supported permission.");
-add("WIN audit consent accurately describes read-only research-run metadata", oauthAuthorize.includes("read-only research-run records") && oauthAuthorize.includes("Cannot start research") && mcpApi.includes("read-only research-run metadata"), "The audit scope may read run metadata but cannot start research or mutate data.");
+add("WIN audit consent accurately describes read-only research-run metadata", oauthConsent.includes("Cannot start research") && mcpApi.includes("read-only research-run metadata"), "The audit scope may read run metadata but cannot start research or mutate data.");
+add("Every registered MCP tool declares and enforces the same OAuth scope",
+  mcpToolRegistrationMatches.length === 19 && mcpToolsHaveMatchingScopeGuards,
+  "Each MCP tool must have an OAuth2 security scope and enforce that exact scope inside its handler; new tools fail the gate until both are present.");
+
 add("WIN audit MCP tools are read-only and limited to an explicit collection allowlist", mcpApi.includes("get_win_audit_overview") && mcpApi.includes("list_win_audit_records") && mcpApi.includes("get_win_audit_record") && mcpApi.includes("auditCollections") && mcpApi.includes('scope="win:audit win:read win:research"') && mcpApi.includes("if (!scopes.includes(\"win:audit\"))") && !mcpApi.includes("put(auditCollections") && !mcpApi.includes("remove(auditCollections"), "Audit tokens can inspect observatory and approved WIN data collections but cannot mutate storage or invoke research tools.");
 
 add("WIN settlement and lesson trust rules are shared across live paths and covered by isolated unit tests", winLearningCore.includes("evaluateFullTimeLeg") && winLearningCore.includes("aggregateCouponOutcome") && winLearningCore.includes("deriveReviewedCouponOutcome") && winLearningCore.includes("isEligibleWinForecastCoupon") && winLearningCore.includes("isIndependentlyValidatedLesson") && postMatch.includes("evaluateFullTimeLeg as evaluateLeg") && postMatch.includes("isEligibleWinForecastCoupon") && independentReview.includes("deriveReviewedCouponOutcome as deriveCouponOutcome") && library.includes("isIndependentlyValidatedLesson") && learningObservatory.includes("isIndependentlyValidatedLesson as validatedLesson") && pkg.includes("--experimental-strip-types --test scripts/*.test.mjs") && (await read("scripts/win-learning-core.test.mjs")).includes("Fixtures are pure in-memory values"), "Both result checking and independent review use the tested pure core; unit fixtures cannot write to production storage or call public APIs.");
