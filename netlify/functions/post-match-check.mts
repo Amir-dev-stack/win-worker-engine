@@ -1,11 +1,13 @@
 import { requireAuth } from "../lib/auth.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 
 export default async (req: Request) => {
   const denied = requireAuth(req);
   if (denied) return denied;
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  let body: any;
-  try { body = await req.json(); } catch { return Response.json({ error: "Expected JSON body" }, { status: 400 }); }
+  const parsedRequest = await readBoundedJsonObject(req, 8 * 1024);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
   if (body?.action !== "run_post_match_check")
     return Response.json({ error: "Action must be run_post_match_check." }, { status: 400 });
   const url = new URL("/.netlify/functions/post-match-runner", new URL(req.url).origin);
