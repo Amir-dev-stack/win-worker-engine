@@ -7,10 +7,7 @@ import {
 } from "../netlify/lib/ml-market-blend-evidence.mts";
 
 function fixture() {
-  const model = {
-    artifact: { artifactSha256: "a".repeat(64) },
-    provenance: { evaluationSha256: "b".repeat(64) },
-    evaluation: {
+  const evaluation = {
       modelId: "fixture-model",
       modelVersion: "1.0.0",
       datasetId: "fixture-dataset",
@@ -19,8 +16,13 @@ function fixture() {
       testRows: 120,
       modelMetrics: { brier: 0.18, logLoss: 0.52 },
       expectedCalibrationError: 0.03,
-      testWindow: { from: "2026-04-01T00:00:00.000Z", to: "2026-06-01T20:00:00.000Z" }
-    }
+      testWindow: { from: "2026-04-01T00:00:00.000Z", to: "2026-06-01T20:00:00.000Z" },
+      artifactSha256: "a".repeat(64)
+  };
+  const model = {
+    artifact: { artifactSha256: "a".repeat(64) },
+    provenance: { evaluationSha256: hashWinMLProvenance(evaluation).sha256 },
+    evaluation
   };
   const payload = {
     version: "win.market.evaluation.v2",
@@ -28,7 +30,7 @@ function fixture() {
     modelId: "fixture-model",
     modelVersion: "1.0.0",
     modelArtifactSha256: "a".repeat(64),
-    modelEvaluationSha256: "b".repeat(64),
+    modelEvaluationSha256: model.provenance.evaluationSha256,
     datasetId: "fixture-dataset",
     datasetContentSha256: "c".repeat(64),
     sourceId: "fixture-market-source",
