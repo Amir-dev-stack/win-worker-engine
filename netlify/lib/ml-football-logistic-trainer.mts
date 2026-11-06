@@ -428,7 +428,7 @@ export function evaluateWinMLFootball1X2LogisticModel(
     modelMetrics,
     baselineMetrics,
     testEventIds: sorted.map(row => row.eventId),
-    testCohortSha256: sha256(canonicalizeWinMLProvenance(sorted.map(row => row.eventId))),
+    testCohortSha256: sha256(canonicalizeWinMLProvenance(sorted.map(row => row.eventId).sort())),
     testRowsSha256: sha256(canonicalizeWinMLProvenance(testRows)),
     heldOutTest: true as const,
     promotionAllowed: false as const,
