@@ -203,3 +203,8 @@ The distinction matters: OpenAI's `max_tool_calls` applies to one Responses API 
 ## Bounded multi-agent scheduling (2026-11-06)
 
 The initial D1 scout remains sequential because its report constructs the dynamic task graph. The remaining department workers and the four debate/red-team roles now run through a stable-order bounded scheduler with a maximum of two active LLM workers per phase. This reduces provider bursts while preserving report ordering and the existing completion/receipt gates. It is a per-run cap; the persistent spending lock and budget ledger remain the separate cross-request spending controls.
+
+
+## Worker-run execution leases (2026-11-06)
+
+Manual research runs now claim the same atomic run-ID lease used by scheduled learning before starting the scout/debate pipeline. A concurrent duplicate receives a conflict response, completed runs cannot be replayed, and the invocation releases only its own lease in a `finally` block. The lease uses ETag compare-and-swap for claims/reclaims and owner-specific release, so a stale worker cannot release a newer owner's claim. Failed runs remain eligible for an intentional retry after the prior lease is released or expires.
