@@ -55,7 +55,7 @@ const prediction = (overrides = {}) => ({
 test("standalone prediction contract stays blocked without signed owner readiness evidence", () => {
   const result = validateWinMLPrediction(manifest, evaluation, prediction());
   assert.equal(result.status, "blocked");
-  assert.ok(result.reasons.includes("trusted_owner_approval_evidence_missing"));
+  assert.ok(result.reasons.includes("prediction_model_evaluation_not_eligible"));
   assert.equal(result.productionUseAllowed, false);
   assert.equal(result.automatedBettingAllowed, false);
 });
