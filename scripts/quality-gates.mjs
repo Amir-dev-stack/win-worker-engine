@@ -1134,6 +1134,7 @@ add("Football odds quality checks freshness, market completeness, price integrit
   footballOddsQuality.includes("expected_cadence_gaps") &&
   footballOddsQuality.includes("market_outcome_timestamp_skew_exceeds_limit") &&
   footballOddsQualityTests.includes("outcomes captured too far apart") &&
+  footballOddsQualityTests.includes("unique within a source, not across unrelated publishers") &&
   footballOddsQuality.includes("bookmakerIndependenceVerified: false") &&
   footballOddsQuality.includes("trainingApprovalGranted: false") &&
   footballOddsQualityTests.includes("incomplete outcomes, duplicate IDs, stale and post-kickoff") &&
