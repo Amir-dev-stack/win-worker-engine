@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
 
-const read = path => readFile(path, "utf8");
-const checks = [];
-const add = (name, ok, detail) => checks.push({ name, ok: Boolean(ok), detail });
-const [coverage, coverageApi, monitor, hourlyMonitor, settlement, independentReview, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library, settlementBridge, settlementFn, sourceDiscovery, sourceDiscoveryFn, sourceReviewFn, agentEvolution, scheduledRunner, aiBudget, health, budgetApi, openaiKeyCheck, departmentSmokeTest, predictionsApi, resultsApi, libraryApi, runsApi, storeApi] = await Promise.all([
+var read = path => readFile(path, "utf8");
+var checks = [];
+var add = (name, ok, detail) => checks.push({ name, ok: Boolean(ok), detail });
+var [coverage, coverageApi, monitor, hourlyMonitor, settlement, independentReview, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library, settlementBridge, settlementFn, sourceDiscovery, sourceDiscoveryFn, sourceReviewFn, agentEvolution, scheduledRunner, aiBudget, health, budgetApi, openaiKeyCheck, departmentSmokeTest, predictionsApi, resultsApi, libraryApi, runsApi, storeApi] = await Promise.all([
   read("netlify/lib/coverage.mts"), read("netlify/functions/coverage.mts"),
   read("netlify/functions/coverage-monitor.mts"), read("netlify/functions/hourly-monitor.mts"), read("netlify/functions/human-coupon-settlements.mts"), read("netlify/functions/independent-review.mts"),
   read("netlify/lib/source-intelligence.mts"), read("netlify/functions/worker-runner.mts"),
@@ -18,30 +18,30 @@ const [coverage, coverageApi, monitor, hourlyMonitor, settlement, independentRev
   read("netlify/lib/agent-evolution.mts"), read("netlify/functions/scheduled-scout-runner.mts"),
   read("netlify/lib/ai-budget.mts"), read("netlify/functions/health.mts"), read("netlify/functions/ai-budget.mts"), read("netlify/functions/openai-key-check.mts"), read("netlify/functions/department-smoke-test.mts"), read("netlify/functions/predictions.mts"), read("netlify/functions/results.mts"), read("netlify/functions/library.mts"), read("netlify/functions/runs.mts"), read("netlify/lib/store.mts")
 ]);
-const dashboardAuth = await read("netlify/edge-functions/dashboard-auth.ts");
-const postMatch = await read("netlify/lib/post-match-followup.mts");
-const matchEvidence = await read("netlify/lib/match-evidence.mts");
-const agentTaskQueue = await read("netlify/lib/agent-task-queue.mts");
-const statCatalog = await read("netlify/lib/sport-stat-catalog.mts");
-const [oauthToken, publicSourceStatus, agentEvolutionStatus, worldCupStatus] = await Promise.all([
+var dashboardAuth = await read("netlify/edge-functions/dashboard-auth.ts");
+var postMatch = await read("netlify/lib/post-match-followup.mts");
+var matchEvidence = await read("netlify/lib/match-evidence.mts");
+var agentTaskQueue = await read("netlify/lib/agent-task-queue.mts");
+var statCatalog = await read("netlify/lib/sport-stat-catalog.mts");
+var [oauthToken, publicSourceStatus, agentEvolutionStatus, worldCupStatus] = await Promise.all([
   read("netlify/functions/oauth-token.mts"), read("netlify/lib/public-source-discovery.mts"),
   read("netlify/lib/agent-evolution.mts"), read("netlify/lib/openfootball-worldcup-adapter.mts")
 ]);
-const postMatchFn = await read("netlify/functions/post-match-followup.mts");
-const postMatchCheckApi = await read("netlify/functions/post-match-check.mts");
-const postMatchRunner = await read("netlify/functions/post-match-runner.mts");
-const learningObservatory = await read("netlify/lib/learning-observatory.mts");
-const winLearningCore = await read("netlify/lib/win-learning-core.mjs");
-const learningObservatoryFn = await read("netlify/functions/learning-observatory.mts");
-const learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts");
-const storeContractTests = await read("scripts/win-store.test.mjs");
-const resultSubmissionTests = await read("scripts/results-isolated-retry.test.mjs");
-const mcpApi = await read("netlify/functions/mcp.mts");
-const oauthStore = await read("netlify/lib/oauth-store.mts");
-const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
-const oauthConsent = await read("netlify/lib/oauth-consent.mts");
-const mcpToolRegistrationMatches = [...mcpApi.matchAll(/server\.registerTool\("([^"]+)"/g)];
-const mcpToolsHaveMatchingScopeGuards = mcpToolRegistrationMatches.every((match, index) => {
+var postMatchFn = await read("netlify/functions/post-match-followup.mts");
+var postMatchCheckApi = await read("netlify/functions/post-match-check.mts");
+var postMatchRunner = await read("netlify/functions/post-match-runner.mts");
+var learningObservatory = await read("netlify/lib/learning-observatory.mts");
+var winLearningCore = await read("netlify/lib/win-learning-core.mjs");
+var learningObservatoryFn = await read("netlify/functions/learning-observatory.mts");
+var learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts");
+var storeContractTests = await read("scripts/win-store.test.mjs");
+var resultSubmissionTests = await read("scripts/results-isolated-retry.test.mjs");
+var mcpApi = await read("netlify/functions/mcp.mts");
+var oauthStore = await read("netlify/lib/oauth-store.mts");
+var oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
+var oauthConsent = await read("netlify/lib/oauth-consent.mts");
+var mcpToolRegistrationMatches = [...mcpApi.matchAll(/server\.registerTool\("([^"]+)"/g)];
+var mcpToolsHaveMatchingScopeGuards = mcpToolRegistrationMatches.every((match, index) => {
   const end = index + 1 < mcpToolRegistrationMatches.length ? mcpToolRegistrationMatches[index + 1].index : mcpApi.length;
   const toolBlock = mcpApi.slice(match.index, end);
   const declared = toolBlock.match(/securitySchemes:\s*\[\{\s*type:\s*"oauth2",\s*scopes:\s*\[([^\]]+)\]/)?.[1] || "";
@@ -73,21 +73,21 @@ add("Every registered MCP tool declares and enforces the same OAuth scope",
 
 add("WIN audit MCP tools are read-only and limited to an explicit collection allowlist", mcpApi.includes("get_win_audit_overview") && mcpApi.includes("list_win_audit_records") && mcpApi.includes("get_win_audit_record") && mcpApi.includes("auditCollections") && mcpApi.includes('scope="win:audit win:read win:research"') && mcpApi.includes("if (!scopes.includes(\"win:audit\"))") && !mcpApi.includes("put(auditCollections") && !mcpApi.includes("remove(auditCollections"), "Audit tokens can inspect observatory and approved WIN data collections but cannot mutate storage or invoke research tools.");
 
-const boundedJsonHelper = await read("netlify/lib/bounded-json-request.mts");
-const boundedJsonTests = await read("scripts/bounded-json-request.test.mjs");
-const boundedJsonRoutePaths = [
+var boundedJsonHelper = await read("netlify/lib/bounded-json-request.mts");
+var boundedJsonTests = await read("scripts/bounded-json-request.test.mjs");
+var boundedJsonRoutePaths = [
   "runs.mts", "library.mts", "learning-data-jobs.mts", "human-coupon-settlements.mts", "human-sources.mts",
   "ai-budget.mts", "department-smoke-test.mts", "openai-key-check.mts", "sources.mts", "tips.mts",
   "research-data.mts", "research-source-candidates.mts", "post-match-check.mts", "simulation-runner.mts",
   "simulations.mts", "worker-runner.mts"
 ];
-const boundedJsonRoutes = await Promise.all(boundedJsonRoutePaths.map(name => read("netlify/functions/" + name)));
-const boundedJsonRouteCaps = [
+var boundedJsonRoutes = await Promise.all(boundedJsonRoutePaths.map(name => read("netlify/functions/" + name)));
+var boundedJsonRouteCaps = [
   64 * 1024, 128 * 1024, 8 * 1024, 16 * 1024, 64 * 1024,
   8 * 1024, 8 * 1024, 8 * 1024, 64 * 1024, 16 * 1024,
   128 * 1024, 8 * 1024, 8 * 1024, 8 * 1024, 64 * 1024, 16 * 1024
 ];
-const boundedJsonRoutesHaveAuth = boundedJsonRoutes.every(route => {
+var boundedJsonRoutesHaveAuth = boundedJsonRoutes.every(route => {
   const parserIndex = route.indexOf("readBoundedJsonObject(req");
   if (parserIndex < 0) return false;
   return ["requireAuth(req)", "authorized(req)"].some(auth => {
@@ -105,16 +105,16 @@ add("High-impact authenticated JSON write routes enforce bounded streaming reque
   boundedJsonRoutes[13].includes('req.method!=="POST"') && boundedJsonRoutes[15].includes('req.method !== "POST"'),
   "Sixteen authenticated JSON write routes use the same strict streaming parser with route-specific limits. Both internal background runners also require POST and authenticate before parsing.");
 
-const healthEndpoint = await read("netlify/functions/health.mts");
+var healthEndpoint = await read("netlify/functions/health.mts");
 add("Authenticated health endpoint is read-only",
   healthEndpoint.includes("requireAuth(req)") &&
   healthEndpoint.includes('req.method !== "GET"') &&
   healthEndpoint.includes('path:"/api/health"'),
   "Health and budget diagnostics must reject non-GET methods and remain behind the internal bearer token.");
 
-const independentReviewRequest = await read("netlify/lib/independent-review-request.mts");
-const independentReviewRequestTests = await read("scripts/independent-review-request.test.mjs");
-const independentReviewHandler = await read("netlify/functions/independent-review.mts");
+var independentReviewRequest = await read("netlify/lib/independent-review-request.mts");
+var independentReviewRequestTests = await read("scripts/independent-review-request.test.mjs");
+var independentReviewHandler = await read("netlify/functions/independent-review.mts");
 add("Independent review authenticates before reading bounded JSON request bodies",
   independentReviewRequest.includes("reader.read()") &&
   independentReviewRequest.includes("MAX_INDEPENDENT_REVIEW_BODY_BYTES = 64 * 1024") &&
@@ -276,8 +276,8 @@ add("Consensus calibration evaluates binary moneyline datasets without inventing
   "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
 
 
-const mlDataContract = await read("netlify/lib/ml-data-contract.mts");
-const mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
+var mlDataContract = await read("netlify/lib/ml-data-contract.mts");
+var mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
 add("WIN ML training requires immutable licensed dataset provenance and point-in-time feature validation",
   mlDataContract.includes("WIN_ML_DATASET_MANIFEST_VERSION") &&
   mlDataContract.includes("contentSha256") &&
@@ -295,8 +295,8 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   "Synthetic-only tests enforce source/licence provenance, block caller-asserted training approval without trusted owner evidence, and validate exact event timing, feature availability cutoffs and settlement-aware labels.");
 
 
-const mlModelContract = await read("netlify/lib/ml-model-contract.mts");
-const mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
+var mlModelContract = await read("netlify/lib/ml-model-contract.mts");
+var mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
 add("WIN ML artifacts require point-in-time, out-of-sample evidence before human shadow review",
   mlModelContract.includes("evaluateWinMLDatasetReadiness") &&
   mlModelContract.includes("fit_data_cutoff_exceeds_training_window") &&
@@ -321,10 +321,10 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContractTests.includes("evaluation requires a training run, configuration hash, split hash and feature-builder commit"),
   "A model artifact remains blocked until trusted owner evidence is available, even when chronology, sample size, baseline improvement and calibration pass. No automatic or production promotion is allowed.");
 
-const mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
-const mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
-const mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
-const mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
+var mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
+var mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
+var mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
+var mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
 add("WIN shadow inference loads only registered artifacts and enforces point-in-time feature availability",
   mlShadowPrediction.includes("getWinMLModelArtifact(args.modelId, args.modelVersion)") &&
   mlShadowPrediction.includes("getWinMLDatasetManifest(artifact.datasetId)") &&
@@ -350,9 +350,9 @@ add("WIN ML predictions are provenance-bound to an evaluated model and shadow-on
   mlPredictionTests.includes("prediction provenance must match the evaluated model and dataset") &&
   mlPredictionTests.includes("invalid or unnormalized probability vectors are rejected"),
   "LLM research and market benchmarks cannot be represented as WIN ML output; the 1X2 envelope must match an eligible artifact/dataset and remains shadow-only.");
-const mlProvenance = await read("netlify/lib/ml-provenance.mts");
-const mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
-const mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
+var mlProvenance = await read("netlify/lib/ml-provenance.mts");
+var mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
+var mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
 add("Football results v2 imports preserve availability into point-in-time training candidates",
   mlFootballImportTrainingIntegration.includes("football results v2 flows through availability-aware point-in-time candidate construction") &&
   mlFootballImportTrainingIntegration.includes("resultAvailableAt") &&
@@ -370,11 +370,11 @@ add("WIN ML training and inference provenance uses deterministic canonical hashe
   mlProvenanceTests.includes("unsupported, undefined, non-finite and cyclic values fail closed") &&
   mlProvenanceTests.includes("sparse arrays, symbol keys and accessors cannot create ambiguous hashes"),
   "Training configuration, exact split membership and feature vectors can be hashed reproducibly; ambiguous values and cyclic structures are rejected.");
-const llmExecution = await read("netlify/lib/llm-execution.mts");
-const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
-const agentsSdk = await read("netlify/lib/agents-sdk.mts");
-const agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
-const agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
+var llmExecution = await read("netlify/lib/llm-execution.mts");
+var llmExecutionTests = await read("scripts/llm-execution.test.mjs");
+var agentsSdk = await read("netlify/lib/agents-sdk.mts");
+var agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
+var agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
 add("WIN production OpenAI agent calls use the governed LLM execution layer",
   ai.includes("executeWinLLMWithPolicy") &&
   ai.includes("createOpenAIWinLLMAdapter") &&
@@ -424,8 +424,8 @@ add("WIN LLM provider execution is bounded, validates responses and never blindl
   llmExecutionTests.includes("invalid provider responses fail closed"),
   "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
 
-const mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
-const mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
+var mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
+var mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
 add("WIN licence evidence requires a signed, time-bounded reviewer attestation and exact source hash",
   mlLicenceEvidence.includes("hashWinMLLicenceEvidence") &&
   mlLicenceEvidence.includes("verifyWinMLLicenceEvidence") &&
@@ -439,8 +439,8 @@ add("WIN licence evidence requires a signed, time-bounded reviewer attestation a
   mlLicenceEvidenceTests.includes("2026-02-30T09:00:00.000Z"),
   "A trusted reviewer signature binds the licence, source-document hash, training-use attestation and review validity window; it does not replace human legal review.");
 
-const mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
-const mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
+var mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
+var mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
 add("WIN owner training approvals require dataset-bound Ed25519 signatures and licence evidence",
   mlOwnerApproval.includes("verifySignature") &&
   mlOwnerApproval.includes("datasetContentSha256") &&
@@ -456,7 +456,7 @@ add("WIN owner training approvals require dataset-bound Ed25519 signatures and l
   mlOwnerApprovalTests.includes("2026-02-30T09:00:00.000Z"),
   "The isolated verifier binds signed approval to dataset content, licence evidence, reviewer and validity window; readiness remains separately blocked.");
 
-const mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
+var mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
 add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes('action: "licence_evidence"') &&
   mlTrainingReadinessDocs.includes('action: "readiness"') &&
@@ -464,8 +464,8 @@ add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes("does not prove that the source document is authentic"),
   "The operator guide describes immutable signed evidence, endpoint actions, evidence-only readiness semantics and the legal-review limitation.");
 
-const mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
-const mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
+var mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
+var mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
 add("WIN signed owner approvals and revocations are stored immutably and checked against the registered dataset",
   mlOwnerApprovalRegistry.includes("putIfNew") &&
   mlOwnerApprovalRegistry.includes("getWinMLDatasetManifest") &&
@@ -487,8 +487,8 @@ add("WIN signed owner approvals and revocations are stored immutably and checked
   mlOwnerApprovalRegistryTests.includes("licence_evidence_id_immutable_conflict"),
   "Signed licence evidence is immutably registered by canonical hash and rechecked during approval status; the composite readiness audit validates dataset, licence, owner approval and revocation while keeping fitting disabled.");
 
-const mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
-const mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
+var mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
+var mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
 add("WIN owner approval endpoint requires a separate protected token, trusted public key and bounded JSON body",
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") &&
@@ -509,8 +509,8 @@ add("WIN owner approval endpoint requires a separate protected token, trusted pu
   mlOwnerApprovalEndpointTests.includes("readinessBody.modelFittingAllowed, false"),
   "The protected owner endpoint registers signed licence evidence and exposes a read-only composite readiness check without accepting caller-supplied keys or enabling fitting.");
 
-const mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
-const mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
+var mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
+var mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
 add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer with frozen shadow-only artifacts",
   mlFootballTrainer.includes("trainWinMLFootball1X2LogisticModel") &&
   mlFootballTrainer.includes("evaluateWinMLFootball1X2LogisticModel") &&
@@ -548,14 +548,14 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainerTests.includes("2026-02-30T00:00:00.000Z"),
   "The pure trainer fits only a chronological training partition, uses training-only normalization, reports validation metrics against a class-frequency baseline, hashes its artifact, and requires a separate held-out test. No production route or real dataset is wired to it.");
 
-const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
-const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
-const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
-const mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
-const mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
-const mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
-const mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
-const mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
+var mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
+var mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
+var mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
+var mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
+var mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
+var mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
+var mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
 add("WIN football point-in-time features reject duplicate identities and future or unavailable results",
   mlFootballFeatures.includes("historical_row_identity_duplicate_or_invalid") &&
   mlFootballFeatures.includes("resultAvailableAt") &&
@@ -600,9 +600,9 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImportTests.includes("permittedUse, \"research_only\""),
   "The importer hashes caller-supplied bytes, applies strict row and payload bounds, performs no network fetch, and never grants training permission.");
 
-const mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
-const mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
-const mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
+var mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
+var mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
 add("WIN model fitting is blocked by a server-side execution gate and immutable approved plan",
   mlTrainingExecutionGate.includes("WIN_ML_FITTING_ENABLED") &&
   mlTrainingExecutionGate.includes("WIN_ML_EXECUTION_APPROVED") &&
@@ -616,8 +616,8 @@ add("WIN model fitting is blocked by a server-side execution gate and immutable 
   mlTrainingExecutionGateTests.includes("rejects caller-constructed plans"),
   "Training requires protected server flags, the server-owned plan identity and the signed dataset/licence/owner readiness chain. The current plan remains disabled; the gate cannot authorize promotion or betting.");
  
-const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
-const mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
+var mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
+var mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
 add("WIN model artifact registry immutably binds model, dataset, evaluation and all provenance hashes",
   mlModelArtifactRegistry.includes("putIfNew") &&
   mlModelArtifactRegistry.includes("getWinMLDatasetManifest") &&
@@ -634,8 +634,8 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch"),
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
-const resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
-const apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
+var resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
+var apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
 add("Stage 2 API inventory includes the protected ML owner-approval route and its control-plane boundary",
   apiJobInventory.includes("`/api/ml-owner-approval`") &&
   apiJobInventory.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
@@ -653,9 +653,9 @@ add("Prediction-result corrections remain append-only, independently reviewed an
   resultCorrectionDesign.includes("unreviewed or rejected correction never enters model training data"),
   "A governed correction path must preserve the original claim, require a separate reviewer and keep unreviewed corrections out of training.");
 
-const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
-const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
-const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
+var scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
+var scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
+var scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -673,8 +673,8 @@ add("Scheduled learning runs use atomic owner leases, bounded request validation
   scheduledRequestTests.includes("rejects non-POST methods"),
   "A scheduled runner must reject malformed/oversized requests, serialize duplicate run execution with conditional leases, and permit stale-lease recovery without allowing stale workers to release a newer lease.");
 
-const resultRequestTests = await read("scripts/results-request-validation.test.mjs");
-const resultsHandler = await read("netlify/functions/results.mts");
+var resultRequestTests = await read("scripts/results-request-validation.test.mjs");
+var resultsHandler = await read("netlify/functions/results.mts");
 add("Result submissions enforce bounded JSON request parsing before settlement processing",
   resultsHandler.includes("readResultSubmissionBody") &&
   resultsHandler.includes("MAX_RESULT_REQUEST_BYTES") &&
@@ -685,8 +685,8 @@ add("Result submissions enforce bounded JSON request parsing before settlement p
   resultRequestTests.includes("JSON-like but invalid media types"),
   "The result endpoint must require JSON, enforce a streaming 64 KiB cap, reject invalid UTF-8/non-object JSON, and cover those boundaries with regression tests.");
 
-const humanSettlementApi = await read("netlify/functions/human-coupon-settlements.mts");
-const humanSettlementIdentityTests = await read("scripts/human-settlement-idempotency.test.mjs");
+var humanSettlementApi = await read("netlify/functions/human-coupon-settlements.mts");
+var humanSettlementIdentityTests = await read("scripts/human-settlement-idempotency.test.mjs");
 add("Human settlement evidence submissions use deterministic identity and atomic create-once semantics",
   humanSettlementApi.includes("humanSettlementSubmissionId") &&
   humanSettlementApi.includes("putIfNew(\"library/human-settlement-cases\"") &&
@@ -696,10 +696,10 @@ add("Human settlement evidence submissions use deterministic identity and atomic
   humanSettlementIdentityTests.includes("separates coupon, evidence and outcome"),
   "Concurrent retries of the same coupon/evidence/outcome tuple must converge on one immutable settlement claim instead of racing a list-then-write duplicate check.");
 
-const lessonReviewApi = await read("netlify/functions/library.mts");
-const lessonReviewIdentity = await read("netlify/lib/lesson-review-submission.mts");
-const lessonReviewIdentityTests = await read("scripts/lesson-review-submission.test.mjs");
-const lessonReviewSubmissionBlock = lessonReviewApi.slice(
+var lessonReviewApi = await read("netlify/functions/library.mts");
+var lessonReviewIdentity = await read("netlify/lib/lesson-review-submission.mts");
+var lessonReviewIdentityTests = await read("scripts/lesson-review-submission.test.mjs");
+var lessonReviewSubmissionBlock = lessonReviewApi.slice(
   lessonReviewApi.indexOf('case "validate_lesson"'),
   lessonReviewApi.indexOf('default:')
 );
@@ -714,13 +714,13 @@ add("Lesson review submissions are idempotent per lesson revision and recover th
   lessonReviewIdentityTests.includes("rejected or otherwise revised lesson"),
   "Identical submissions against one lesson revision must converge on one review case; rejected/revised lessons must receive a distinct identity, with lesson linkage updated using ETag compare-and-swap.");
 
-const packageManifest = JSON.parse(await read("package.json"));
+var packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
+var oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
   oauthAuthorize.includes("consumeOAuthRecord(\"requests\"") &&
@@ -729,8 +729,8 @@ add("OAuth consent text reflects only requested scopes and authorization codes a
   oauthConsentTests.includes("describes audit, read and research scopes independently"),
   "Consent must accurately describe audit/read/research/refresh permissions. Concurrent authorization POSTs must return only the code committed by the request-record ETag claim.");
 
-const oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
-const oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
+var oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
+var oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
 add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate form parameters",
   oauthRequestHelper.includes("readBoundedOAuthText") &&
   oauthRequestHelper.includes("reader.read()") &&
@@ -742,7 +742,7 @@ add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate
   oauthRequestTests.includes("rejects malformed, non-object and misleading media types"),
   "Authorization and token form requests are capped at 16 KiB (8 KiB for owner authorization); dynamic registration JSON is capped at 16 KiB. Invalid UTF-8, malformed/non-object JSON, duplicate form keys and unsupported media types fail closed.");
 
-const winCiWorkflow = await read(".github/workflows/win-quality.yml");
+var winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
@@ -757,7 +757,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   "The CI job runs tests and build checks with read-only repository permissions; it does not deploy or access production secrets.");
 
 
-const independentReviewRecoveryTests = await read("scripts/independent-review-recovery.test.mjs");
+var independentReviewRecoveryTests = await read("scripts/independent-review-recovery.test.mjs");
 add("Independent coupon review retries repair interrupted settlement and learning projections idempotently",
   independentReview.includes("alreadyApplied") &&
   independentReview.includes("coupon?.settlementLearningId === settlementLearningId") &&
@@ -771,8 +771,8 @@ add("Independent coupon review retries repair interrupted settlement and learnin
   "Independent-review recovery must resume the same approved settlement after a partial write, reuse stable projection identities, and complete the operation without duplicating history or learning records.");
 
 
-const librarySettlementRecoveryTests = await read("scripts/library-settlement-recovery.test.mjs");
-const librarySettlement = await read("netlify/lib/library.mts");
+var librarySettlementRecoveryTests = await read("scripts/library-settlement-recovery.test.mjs");
+var librarySettlement = await read("netlify/lib/library.mts");
 add("WIN-origin coupon settlements use immutable outcome claims and idempotent crash recovery",
   librarySettlement.includes('library/coupon-settlement-claims') &&
   librarySettlement.includes('win.coupon-settlement-claim.v1') &&
@@ -785,8 +785,8 @@ add("WIN-origin coupon settlements use immutable outcome claims and idempotent c
   "Each WIN-origin coupon has one immutable settlement decision. Identical retries reuse its payload and stable history identity; conflicting outcomes and legacy settled records without claims fail closed.");
 
 
-const mlMarketBlend = await read("netlify/lib/ml-market-anchored-blend.mts");
-const mlMarketBlendTests = await read("scripts/ml-market-anchored-blend.test.mjs");
+var mlMarketBlend = await read("netlify/lib/ml-market-anchored-blend.mts");
+var mlMarketBlendTests = await read("scripts/ml-market-anchored-blend.test.mjs");
 add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and research-only",
   mlMarketBlend.includes("MAX_MODEL_WEIGHT = 0.20") &&
   mlMarketBlend.includes("MAX_MARKET_SNAPSHOT_AGE_MS = 6 * 60 * 60 * 1000") &&
@@ -812,10 +812,9 @@ add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and re
   mlMarketBlendTests.includes("tiny apparent gains that may be noise"),
   "The research blend must require a shared held-out cohort, at least 100 test rows, model improvement on both Brier and log loss, ECE <= 0.05, labels available by evaluation time, a market quote no older than six hours, and never allow more than 20% model influence or authorize production/betting.");
 
-const failed = checks.filter(x => !x.ok);
+var failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
-{
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&
@@ -966,8 +965,8 @@ add("Consensus calibration evaluates binary moneyline datasets without inventing
   "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
 
 
-const mlDataContract = await read("netlify/lib/ml-data-contract.mts");
-const mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
+var mlDataContract = await read("netlify/lib/ml-data-contract.mts");
+var mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
 add("WIN ML training requires immutable licensed dataset provenance and point-in-time feature validation",
   mlDataContract.includes("WIN_ML_DATASET_MANIFEST_VERSION") &&
   mlDataContract.includes("contentSha256") &&
@@ -985,8 +984,8 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   "Synthetic-only tests enforce source/licence provenance, block caller-asserted training approval without trusted owner evidence, and validate exact event timing, feature availability cutoffs and settlement-aware labels.");
 
 
-const mlModelContract = await read("netlify/lib/ml-model-contract.mts");
-const mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
+var mlModelContract = await read("netlify/lib/ml-model-contract.mts");
+var mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
 add("WIN ML artifacts require point-in-time, out-of-sample evidence before human shadow review",
   mlModelContract.includes("evaluateWinMLDatasetReadiness") &&
   mlModelContract.includes("fit_data_cutoff_exceeds_training_window") &&
@@ -1011,10 +1010,10 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContractTests.includes("evaluation requires a training run, configuration hash, split hash and feature-builder commit"),
   "A model artifact remains blocked until trusted owner evidence is available, even when chronology, sample size, baseline improvement and calibration pass. No automatic or production promotion is allowed.");
 
-const mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
-const mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
-const mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
-const mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
+var mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
+var mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
+var mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
+var mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
 add("WIN shadow inference loads only registered artifacts and enforces point-in-time feature availability",
   mlShadowPrediction.includes("getWinMLModelArtifact(args.modelId, args.modelVersion)") &&
   mlShadowPrediction.includes("getWinMLDatasetManifest(artifact.datasetId)") &&
@@ -1040,9 +1039,9 @@ add("WIN ML predictions are provenance-bound to an evaluated model and shadow-on
   mlPredictionTests.includes("prediction provenance must match the evaluated model and dataset") &&
   mlPredictionTests.includes("invalid or unnormalized probability vectors are rejected"),
   "LLM research and market benchmarks cannot be represented as WIN ML output; the 1X2 envelope must match an eligible artifact/dataset and remains shadow-only.");
-const mlProvenance = await read("netlify/lib/ml-provenance.mts");
-const mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
-const mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
+var mlProvenance = await read("netlify/lib/ml-provenance.mts");
+var mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
+var mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
 add("Football results v2 imports preserve availability into point-in-time training candidates",
   mlFootballImportTrainingIntegration.includes("football results v2 flows through availability-aware point-in-time candidate construction") &&
   mlFootballImportTrainingIntegration.includes("resultAvailableAt") &&
@@ -1060,11 +1059,11 @@ add("WIN ML training and inference provenance uses deterministic canonical hashe
   mlProvenanceTests.includes("unsupported, undefined, non-finite and cyclic values fail closed") &&
   mlProvenanceTests.includes("sparse arrays, symbol keys and accessors cannot create ambiguous hashes"),
   "Training configuration, exact split membership and feature vectors can be hashed reproducibly; ambiguous values and cyclic structures are rejected.");
-const llmExecution = await read("netlify/lib/llm-execution.mts");
-const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
-const agentsSdk = await read("netlify/lib/agents-sdk.mts");
-const agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
-const agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
+var llmExecution = await read("netlify/lib/llm-execution.mts");
+var llmExecutionTests = await read("scripts/llm-execution.test.mjs");
+var agentsSdk = await read("netlify/lib/agents-sdk.mts");
+var agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
+var agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
 add("WIN production OpenAI agent calls use the governed LLM execution layer",
   ai.includes("executeWinLLMWithPolicy") &&
   ai.includes("createOpenAIWinLLMAdapter") &&
@@ -1114,8 +1113,8 @@ add("WIN LLM provider execution is bounded, validates responses and never blindl
   llmExecutionTests.includes("invalid provider responses fail closed"),
   "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
 
-const mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
-const mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
+var mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
+var mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
 add("WIN licence evidence requires a signed, time-bounded reviewer attestation and exact source hash",
   mlLicenceEvidence.includes("hashWinMLLicenceEvidence") &&
   mlLicenceEvidence.includes("verifyWinMLLicenceEvidence") &&
@@ -1129,8 +1128,8 @@ add("WIN licence evidence requires a signed, time-bounded reviewer attestation a
   mlLicenceEvidenceTests.includes("2026-02-30T09:00:00.000Z"),
   "A trusted reviewer signature binds the licence, source-document hash, training-use attestation and review validity window; it does not replace human legal review.");
 
-const mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
-const mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
+var mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
+var mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
 add("WIN owner training approvals require dataset-bound Ed25519 signatures and licence evidence",
   mlOwnerApproval.includes("verifySignature") &&
   mlOwnerApproval.includes("datasetContentSha256") &&
@@ -1146,7 +1145,7 @@ add("WIN owner training approvals require dataset-bound Ed25519 signatures and l
   mlOwnerApprovalTests.includes("2026-02-30T09:00:00.000Z"),
   "The isolated verifier binds signed approval to dataset content, licence evidence, reviewer and validity window; readiness remains separately blocked.");
 
-const mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
+var mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
 add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes('action: "licence_evidence"') &&
   mlTrainingReadinessDocs.includes('action: "readiness"') &&
@@ -1154,8 +1153,8 @@ add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes("does not prove that the source document is authentic"),
   "The operator guide describes immutable signed evidence, endpoint actions, evidence-only readiness semantics and the legal-review limitation.");
 
-const mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
-const mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
+var mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
+var mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
 add("WIN signed owner approvals and revocations are stored immutably and checked against the registered dataset",
   mlOwnerApprovalRegistry.includes("putIfNew") &&
   mlOwnerApprovalRegistry.includes("getWinMLDatasetManifest") &&
@@ -1177,8 +1176,8 @@ add("WIN signed owner approvals and revocations are stored immutably and checked
   mlOwnerApprovalRegistryTests.includes("licence_evidence_id_immutable_conflict"),
   "Signed licence evidence is immutably registered by canonical hash and rechecked during approval status; the composite readiness audit validates dataset, licence, owner approval and revocation while keeping fitting disabled.");
 
-const mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
-const mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
+var mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
+var mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
 add("WIN owner approval endpoint requires a separate protected token, trusted public key and bounded JSON body",
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") &&
@@ -1199,8 +1198,8 @@ add("WIN owner approval endpoint requires a separate protected token, trusted pu
   mlOwnerApprovalEndpointTests.includes("readinessBody.modelFittingAllowed, false"),
   "The protected owner endpoint registers signed licence evidence and exposes a read-only composite readiness check without accepting caller-supplied keys or enabling fitting.");
 
-const mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
-const mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
+var mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
+var mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
 add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer with frozen shadow-only artifacts",
   mlFootballTrainer.includes("trainWinMLFootball1X2LogisticModel") &&
   mlFootballTrainer.includes("evaluateWinMLFootball1X2LogisticModel") &&
@@ -1238,14 +1237,14 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainerTests.includes("2026-02-30T00:00:00.000Z"),
   "The pure trainer fits only a chronological training partition, uses training-only normalization, reports validation metrics against a class-frequency baseline, hashes its artifact, and requires a separate held-out test. No production route or real dataset is wired to it.");
 
-const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
-const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
-const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
-const mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
-const mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
-const mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
-const mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
-const mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
+var mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
+var mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
+var mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
+var mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
+var mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
+var mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
+var mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
 add("WIN football point-in-time features reject duplicate identities and future or unavailable results",
   mlFootballFeatures.includes("historical_row_identity_duplicate_or_invalid") &&
   mlFootballFeatures.includes("resultAvailableAt") &&
@@ -1288,9 +1287,9 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImportTests.includes("permittedUse, \"research_only\""),
   "The importer hashes caller-supplied bytes, applies strict row and payload bounds, performs no network fetch, and never grants training permission.");
 
-const mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
-const mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
-const mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
+var mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
+var mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
 add("WIN model fitting is blocked by a server-side execution gate and immutable approved plan",
   mlTrainingExecutionGate.includes("WIN_ML_FITTING_ENABLED") &&
   mlTrainingExecutionGate.includes("WIN_ML_EXECUTION_APPROVED") &&
@@ -1304,8 +1303,8 @@ add("WIN model fitting is blocked by a server-side execution gate and immutable 
   mlTrainingExecutionGateTests.includes("rejects caller-constructed plans"),
   "Training requires protected server flags, the server-owned plan identity and the signed dataset/licence/owner readiness chain. The current plan remains disabled; the gate cannot authorize promotion or betting.");
  
-const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
-const mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
+var mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
+var mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
 add("WIN model artifact registry immutably binds model, dataset, evaluation and all provenance hashes",
   mlModelArtifactRegistry.includes("putIfNew") &&
   mlModelArtifactRegistry.includes("getWinMLDatasetManifest") &&
@@ -1322,8 +1321,8 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch"),
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
-const resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
-const apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
+var resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
+var apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
 add("Stage 2 API inventory includes the protected ML owner-approval route and its control-plane boundary",
   apiJobInventory.includes("`/api/ml-owner-approval`") &&
   apiJobInventory.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
@@ -1341,9 +1340,9 @@ add("Prediction-result corrections remain append-only, independently reviewed an
   resultCorrectionDesign.includes("unreviewed or rejected correction never enters model training data"),
   "A governed correction path must preserve the original claim, require a separate reviewer and keep unreviewed corrections out of training.");
 
-const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
-const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
-const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
+var scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
+var scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
+var scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -1361,8 +1360,8 @@ add("Scheduled learning runs use atomic owner leases, bounded request validation
   scheduledRequestTests.includes("rejects non-POST methods"),
   "A scheduled runner must reject malformed/oversized requests, serialize duplicate run execution with conditional leases, and permit stale-lease recovery without allowing stale workers to release a newer lease.");
 
-const resultRequestTests = await read("scripts/results-request-validation.test.mjs");
-const resultsHandler = await read("netlify/functions/results.mts");
+var resultRequestTests = await read("scripts/results-request-validation.test.mjs");
+var resultsHandler = await read("netlify/functions/results.mts");
 add("Result submissions enforce bounded JSON request parsing before settlement processing",
   resultsHandler.includes("readResultSubmissionBody") &&
   resultsHandler.includes("MAX_RESULT_REQUEST_BYTES") &&
@@ -1373,13 +1372,13 @@ add("Result submissions enforce bounded JSON request parsing before settlement p
   resultRequestTests.includes("JSON-like but invalid media types"),
   "The result endpoint must require JSON, enforce a streaming 64 KiB cap, reject invalid UTF-8/non-object JSON, and cover those boundaries with regression tests.");
 
-const packageManifest = JSON.parse(await read("package.json"));
+var packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
+var oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
   oauthAuthorize.includes("consumeOAuthRecord(\"requests\"") &&
@@ -1388,8 +1387,8 @@ add("OAuth consent text reflects only requested scopes and authorization codes a
   oauthConsentTests.includes("describes audit, read and research scopes independently"),
   "Consent must accurately describe audit/read/research/refresh permissions. Concurrent authorization POSTs must return only the code committed by the request-record ETag claim.");
 
-const oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
-const oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
+var oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
+var oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
 add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate form parameters",
   oauthRequestHelper.includes("readBoundedOAuthText") &&
   oauthRequestHelper.includes("reader.read()") &&
@@ -1401,7 +1400,7 @@ add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate
   oauthRequestTests.includes("rejects malformed, non-object and misleading media types"),
   "Authorization and token form requests are capped at 16 KiB (8 KiB for owner authorization); dynamic registration JSON is capped at 16 KiB. Invalid UTF-8, malformed/non-object JSON, duplicate form keys and unsupported media types fail closed.");
 
-const winCiWorkflow = await read(".github/workflows/win-quality.yml");
+var winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
@@ -1415,14 +1414,12 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   !winCiWorkflow.includes("NETLIFY_SITE_ID"),
   "The CI job runs tests and build checks with read-only repository permissions; it does not deploy or access production secrets.");
 
-const failed = checks.filter(x => !x.ok);
+var failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
-}
-{
 
-const independentReviewRequestTests = await read("scripts/independent-review-request.test.mjs");
-const independentReviewHandler = await read("netlify/functions/independent-review.mts");
+var independentReviewRequestTests = await read("scripts/independent-review-request.test.mjs");
+var independentReviewHandler = await read("netlify/functions/independent-review.mts");
 add("Independent review authenticates before reading bounded JSON request bodies",
   independentReviewRequest.includes("reader.read()") &&
   independentReviewRequest.includes("MAX_INDEPENDENT_REVIEW_BODY_BYTES = 64 * 1024") &&
@@ -1584,8 +1581,8 @@ add("Consensus calibration evaluates binary moneyline datasets without inventing
   "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
 
 
-const mlDataContract = await read("netlify/lib/ml-data-contract.mts");
-const mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
+var mlDataContract = await read("netlify/lib/ml-data-contract.mts");
+var mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
 add("WIN ML training requires immutable licensed dataset provenance and point-in-time feature validation",
   mlDataContract.includes("WIN_ML_DATASET_MANIFEST_VERSION") &&
   mlDataContract.includes("contentSha256") &&
@@ -1603,8 +1600,8 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   "Synthetic-only tests enforce source/licence provenance, block caller-asserted training approval without trusted owner evidence, and validate exact event timing, feature availability cutoffs and settlement-aware labels.");
 
 
-const mlModelContract = await read("netlify/lib/ml-model-contract.mts");
-const mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
+var mlModelContract = await read("netlify/lib/ml-model-contract.mts");
+var mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
 add("WIN ML artifacts require point-in-time, out-of-sample evidence before human shadow review",
   mlModelContract.includes("evaluateWinMLDatasetReadiness") &&
   mlModelContract.includes("fit_data_cutoff_exceeds_training_window") &&
@@ -1629,10 +1626,10 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContractTests.includes("evaluation requires a training run, configuration hash, split hash and feature-builder commit"),
   "A model artifact remains blocked until trusted owner evidence is available, even when chronology, sample size, baseline improvement and calibration pass. No automatic or production promotion is allowed.");
 
-const mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
-const mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
-const mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
-const mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
+var mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
+var mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
+var mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
+var mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
 add("WIN shadow inference loads only registered artifacts and enforces point-in-time feature availability",
   mlShadowPrediction.includes("getWinMLModelArtifact(args.modelId, args.modelVersion)") &&
   mlShadowPrediction.includes("getWinMLDatasetManifest(artifact.datasetId)") &&
@@ -1658,9 +1655,9 @@ add("WIN ML predictions are provenance-bound to an evaluated model and shadow-on
   mlPredictionTests.includes("prediction provenance must match the evaluated model and dataset") &&
   mlPredictionTests.includes("invalid or unnormalized probability vectors are rejected"),
   "LLM research and market benchmarks cannot be represented as WIN ML output; the 1X2 envelope must match an eligible artifact/dataset and remains shadow-only.");
-const mlProvenance = await read("netlify/lib/ml-provenance.mts");
-const mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
-const mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
+var mlProvenance = await read("netlify/lib/ml-provenance.mts");
+var mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
+var mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
 add("Football results v2 imports preserve availability into point-in-time training candidates",
   mlFootballImportTrainingIntegration.includes("football results v2 flows through availability-aware point-in-time candidate construction") &&
   mlFootballImportTrainingIntegration.includes("resultAvailableAt") &&
@@ -1678,11 +1675,11 @@ add("WIN ML training and inference provenance uses deterministic canonical hashe
   mlProvenanceTests.includes("unsupported, undefined, non-finite and cyclic values fail closed") &&
   mlProvenanceTests.includes("sparse arrays, symbol keys and accessors cannot create ambiguous hashes"),
   "Training configuration, exact split membership and feature vectors can be hashed reproducibly; ambiguous values and cyclic structures are rejected.");
-const llmExecution = await read("netlify/lib/llm-execution.mts");
-const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
-const agentsSdk = await read("netlify/lib/agents-sdk.mts");
-const agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
-const agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
+var llmExecution = await read("netlify/lib/llm-execution.mts");
+var llmExecutionTests = await read("scripts/llm-execution.test.mjs");
+var agentsSdk = await read("netlify/lib/agents-sdk.mts");
+var agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
+var agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
 add("WIN production OpenAI agent calls use the governed LLM execution layer",
   ai.includes("executeWinLLMWithPolicy") &&
   ai.includes("createOpenAIWinLLMAdapter") &&
@@ -1732,8 +1729,8 @@ add("WIN LLM provider execution is bounded, validates responses and never blindl
   llmExecutionTests.includes("invalid provider responses fail closed"),
   "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
 
-const mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
-const mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
+var mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
+var mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
 add("WIN licence evidence requires a signed, time-bounded reviewer attestation and exact source hash",
   mlLicenceEvidence.includes("hashWinMLLicenceEvidence") &&
   mlLicenceEvidence.includes("verifyWinMLLicenceEvidence") &&
@@ -1747,8 +1744,8 @@ add("WIN licence evidence requires a signed, time-bounded reviewer attestation a
   mlLicenceEvidenceTests.includes("2026-02-30T09:00:00.000Z"),
   "A trusted reviewer signature binds the licence, source-document hash, training-use attestation and review validity window; it does not replace human legal review.");
 
-const mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
-const mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
+var mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
+var mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
 add("WIN owner training approvals require dataset-bound Ed25519 signatures and licence evidence",
   mlOwnerApproval.includes("verifySignature") &&
   mlOwnerApproval.includes("datasetContentSha256") &&
@@ -1764,7 +1761,7 @@ add("WIN owner training approvals require dataset-bound Ed25519 signatures and l
   mlOwnerApprovalTests.includes("2026-02-30T09:00:00.000Z"),
   "The isolated verifier binds signed approval to dataset content, licence evidence, reviewer and validity window; readiness remains separately blocked.");
 
-const mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
+var mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
 add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes('action: "licence_evidence"') &&
   mlTrainingReadinessDocs.includes('action: "readiness"') &&
@@ -1772,8 +1769,8 @@ add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes("does not prove that the source document is authentic"),
   "The operator guide describes immutable signed evidence, endpoint actions, evidence-only readiness semantics and the legal-review limitation.");
 
-const mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
-const mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
+var mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
+var mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
 add("WIN signed owner approvals and revocations are stored immutably and checked against the registered dataset",
   mlOwnerApprovalRegistry.includes("putIfNew") &&
   mlOwnerApprovalRegistry.includes("getWinMLDatasetManifest") &&
@@ -1795,8 +1792,8 @@ add("WIN signed owner approvals and revocations are stored immutably and checked
   mlOwnerApprovalRegistryTests.includes("licence_evidence_id_immutable_conflict"),
   "Signed licence evidence is immutably registered by canonical hash and rechecked during approval status; the composite readiness audit validates dataset, licence, owner approval and revocation while keeping fitting disabled.");
 
-const mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
-const mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
+var mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
+var mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
 add("WIN owner approval endpoint requires a separate protected token, trusted public key and bounded JSON body",
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") &&
@@ -1817,8 +1814,8 @@ add("WIN owner approval endpoint requires a separate protected token, trusted pu
   mlOwnerApprovalEndpointTests.includes("readinessBody.modelFittingAllowed, false"),
   "The protected owner endpoint registers signed licence evidence and exposes a read-only composite readiness check without accepting caller-supplied keys or enabling fitting.");
 
-const mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
-const mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
+var mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
+var mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
 add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer with frozen shadow-only artifacts",
   mlFootballTrainer.includes("trainWinMLFootball1X2LogisticModel") &&
   mlFootballTrainer.includes("evaluateWinMLFootball1X2LogisticModel") &&
@@ -1856,14 +1853,14 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainerTests.includes("2026-02-30T00:00:00.000Z"),
   "The pure trainer fits only a chronological training partition, uses training-only normalization, reports validation metrics against a class-frequency baseline, hashes its artifact, and requires a separate held-out test. No production route or real dataset is wired to it.");
 
-const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
-const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
-const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
-const mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
-const mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
-const mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
-const mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
-const mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
+var mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
+var mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
+var mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
+var mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
+var mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
+var mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
+var mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
 add("WIN football point-in-time features reject duplicate identities and future or unavailable results",
   mlFootballFeatures.includes("historical_row_identity_duplicate_or_invalid") &&
   mlFootballFeatures.includes("resultAvailableAt") &&
@@ -1906,9 +1903,9 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImportTests.includes("permittedUse, \"research_only\""),
   "The importer hashes caller-supplied bytes, applies strict row and payload bounds, performs no network fetch, and never grants training permission.");
 
-const mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
-const mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
-const mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
+var mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
+var mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
 add("WIN model fitting is blocked by a server-side execution gate and immutable approved plan",
   mlTrainingExecutionGate.includes("WIN_ML_FITTING_ENABLED") &&
   mlTrainingExecutionGate.includes("WIN_ML_EXECUTION_APPROVED") &&
@@ -1922,8 +1919,8 @@ add("WIN model fitting is blocked by a server-side execution gate and immutable 
   mlTrainingExecutionGateTests.includes("rejects caller-constructed plans"),
   "Training requires protected server flags, the server-owned plan identity and the signed dataset/licence/owner readiness chain. The current plan remains disabled; the gate cannot authorize promotion or betting.");
  
-const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
-const mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
+var mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
+var mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
 add("WIN model artifact registry immutably binds model, dataset, evaluation and all provenance hashes",
   mlModelArtifactRegistry.includes("putIfNew") &&
   mlModelArtifactRegistry.includes("getWinMLDatasetManifest") &&
@@ -1940,8 +1937,8 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch"),
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
-const resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
-const apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
+var resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
+var apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
 add("Stage 2 API inventory includes the protected ML owner-approval route and its control-plane boundary",
   apiJobInventory.includes("`/api/ml-owner-approval`") &&
   apiJobInventory.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
@@ -1959,9 +1956,9 @@ add("Prediction-result corrections remain append-only, independently reviewed an
   resultCorrectionDesign.includes("unreviewed or rejected correction never enters model training data"),
   "A governed correction path must preserve the original claim, require a separate reviewer and keep unreviewed corrections out of training.");
 
-const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
-const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
-const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
+var scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
+var scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
+var scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -1979,8 +1976,8 @@ add("Scheduled learning runs use atomic owner leases, bounded request validation
   scheduledRequestTests.includes("rejects non-POST methods"),
   "A scheduled runner must reject malformed/oversized requests, serialize duplicate run execution with conditional leases, and permit stale-lease recovery without allowing stale workers to release a newer lease.");
 
-const resultRequestTests = await read("scripts/results-request-validation.test.mjs");
-const resultsHandler = await read("netlify/functions/results.mts");
+var resultRequestTests = await read("scripts/results-request-validation.test.mjs");
+var resultsHandler = await read("netlify/functions/results.mts");
 add("Result submissions enforce bounded JSON request parsing before settlement processing",
   resultsHandler.includes("readResultSubmissionBody") &&
   resultsHandler.includes("MAX_RESULT_REQUEST_BYTES") &&
@@ -1991,13 +1988,13 @@ add("Result submissions enforce bounded JSON request parsing before settlement p
   resultRequestTests.includes("JSON-like but invalid media types"),
   "The result endpoint must require JSON, enforce a streaming 64 KiB cap, reject invalid UTF-8/non-object JSON, and cover those boundaries with regression tests.");
 
-const packageManifest = JSON.parse(await read("package.json"));
+var packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
+var oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
   oauthAuthorize.includes("consumeOAuthRecord(\"requests\"") &&
@@ -2006,8 +2003,8 @@ add("OAuth consent text reflects only requested scopes and authorization codes a
   oauthConsentTests.includes("describes audit, read and research scopes independently"),
   "Consent must accurately describe audit/read/research/refresh permissions. Concurrent authorization POSTs must return only the code committed by the request-record ETag claim.");
 
-const oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
-const oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
+var oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
+var oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
 add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate form parameters",
   oauthRequestHelper.includes("readBoundedOAuthText") &&
   oauthRequestHelper.includes("reader.read()") &&
@@ -2019,7 +2016,7 @@ add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate
   oauthRequestTests.includes("rejects malformed, non-object and misleading media types"),
   "Authorization and token form requests are capped at 16 KiB (8 KiB for owner authorization); dynamic registration JSON is capped at 16 KiB. Invalid UTF-8, malformed/non-object JSON, duplicate form keys and unsupported media types fail closed.");
 
-const winCiWorkflow = await read(".github/workflows/win-quality.yml");
+var winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
@@ -2033,11 +2030,9 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   !winCiWorkflow.includes("NETLIFY_SITE_ID"),
   "The CI job runs tests and build checks with read-only repository permissions; it does not deploy or access production secrets.");
 
-const failed = checks.filter(x => !x.ok);
+var failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
-}
-{
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&
@@ -2188,8 +2183,8 @@ add("Consensus calibration evaluates binary moneyline datasets without inventing
   "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
 
 
-const mlDataContract = await read("netlify/lib/ml-data-contract.mts");
-const mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
+var mlDataContract = await read("netlify/lib/ml-data-contract.mts");
+var mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
 add("WIN ML training requires immutable licensed dataset provenance and point-in-time feature validation",
   mlDataContract.includes("WIN_ML_DATASET_MANIFEST_VERSION") &&
   mlDataContract.includes("contentSha256") &&
@@ -2207,8 +2202,8 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   "Synthetic-only tests enforce source/licence provenance, block caller-asserted training approval without trusted owner evidence, and validate exact event timing, feature availability cutoffs and settlement-aware labels.");
 
 
-const mlModelContract = await read("netlify/lib/ml-model-contract.mts");
-const mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
+var mlModelContract = await read("netlify/lib/ml-model-contract.mts");
+var mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
 add("WIN ML artifacts require point-in-time, out-of-sample evidence before human shadow review",
   mlModelContract.includes("evaluateWinMLDatasetReadiness") &&
   mlModelContract.includes("fit_data_cutoff_exceeds_training_window") &&
@@ -2233,10 +2228,10 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContractTests.includes("evaluation requires a training run, configuration hash, split hash and feature-builder commit"),
   "A model artifact remains blocked until trusted owner evidence is available, even when chronology, sample size, baseline improvement and calibration pass. No automatic or production promotion is allowed.");
 
-const mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
-const mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
-const mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
-const mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
+var mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
+var mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
+var mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
+var mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
 add("WIN shadow inference loads only registered artifacts and enforces point-in-time feature availability",
   mlShadowPrediction.includes("getWinMLModelArtifact(args.modelId, args.modelVersion)") &&
   mlShadowPrediction.includes("getWinMLDatasetManifest(artifact.datasetId)") &&
@@ -2262,9 +2257,9 @@ add("WIN ML predictions are provenance-bound to an evaluated model and shadow-on
   mlPredictionTests.includes("prediction provenance must match the evaluated model and dataset") &&
   mlPredictionTests.includes("invalid or unnormalized probability vectors are rejected"),
   "LLM research and market benchmarks cannot be represented as WIN ML output; the 1X2 envelope must match an eligible artifact/dataset and remains shadow-only.");
-const mlProvenance = await read("netlify/lib/ml-provenance.mts");
-const mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
-const mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
+var mlProvenance = await read("netlify/lib/ml-provenance.mts");
+var mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
+var mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
 add("Football results v2 imports preserve availability into point-in-time training candidates",
   mlFootballImportTrainingIntegration.includes("football results v2 flows through availability-aware point-in-time candidate construction") &&
   mlFootballImportTrainingIntegration.includes("resultAvailableAt") &&
@@ -2282,11 +2277,11 @@ add("WIN ML training and inference provenance uses deterministic canonical hashe
   mlProvenanceTests.includes("unsupported, undefined, non-finite and cyclic values fail closed") &&
   mlProvenanceTests.includes("sparse arrays, symbol keys and accessors cannot create ambiguous hashes"),
   "Training configuration, exact split membership and feature vectors can be hashed reproducibly; ambiguous values and cyclic structures are rejected.");
-const llmExecution = await read("netlify/lib/llm-execution.mts");
-const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
-const agentsSdk = await read("netlify/lib/agents-sdk.mts");
-const agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
-const agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
+var llmExecution = await read("netlify/lib/llm-execution.mts");
+var llmExecutionTests = await read("scripts/llm-execution.test.mjs");
+var agentsSdk = await read("netlify/lib/agents-sdk.mts");
+var agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
+var agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
 add("WIN production OpenAI agent calls use the governed LLM execution layer",
   ai.includes("executeWinLLMWithPolicy") &&
   ai.includes("createOpenAIWinLLMAdapter") &&
@@ -2336,8 +2331,8 @@ add("WIN LLM provider execution is bounded, validates responses and never blindl
   llmExecutionTests.includes("invalid provider responses fail closed"),
   "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
 
-const mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
-const mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
+var mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
+var mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
 add("WIN licence evidence requires a signed, time-bounded reviewer attestation and exact source hash",
   mlLicenceEvidence.includes("hashWinMLLicenceEvidence") &&
   mlLicenceEvidence.includes("verifyWinMLLicenceEvidence") &&
@@ -2351,8 +2346,8 @@ add("WIN licence evidence requires a signed, time-bounded reviewer attestation a
   mlLicenceEvidenceTests.includes("2026-02-30T09:00:00.000Z"),
   "A trusted reviewer signature binds the licence, source-document hash, training-use attestation and review validity window; it does not replace human legal review.");
 
-const mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
-const mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
+var mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
+var mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
 add("WIN owner training approvals require dataset-bound Ed25519 signatures and licence evidence",
   mlOwnerApproval.includes("verifySignature") &&
   mlOwnerApproval.includes("datasetContentSha256") &&
@@ -2368,7 +2363,7 @@ add("WIN owner training approvals require dataset-bound Ed25519 signatures and l
   mlOwnerApprovalTests.includes("2026-02-30T09:00:00.000Z"),
   "The isolated verifier binds signed approval to dataset content, licence evidence, reviewer and validity window; readiness remains separately blocked.");
 
-const mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
+var mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
 add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes('action: "licence_evidence"') &&
   mlTrainingReadinessDocs.includes('action: "readiness"') &&
@@ -2376,8 +2371,8 @@ add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes("does not prove that the source document is authentic"),
   "The operator guide describes immutable signed evidence, endpoint actions, evidence-only readiness semantics and the legal-review limitation.");
 
-const mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
-const mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
+var mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
+var mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
 add("WIN signed owner approvals and revocations are stored immutably and checked against the registered dataset",
   mlOwnerApprovalRegistry.includes("putIfNew") &&
   mlOwnerApprovalRegistry.includes("getWinMLDatasetManifest") &&
@@ -2399,8 +2394,8 @@ add("WIN signed owner approvals and revocations are stored immutably and checked
   mlOwnerApprovalRegistryTests.includes("licence_evidence_id_immutable_conflict"),
   "Signed licence evidence is immutably registered by canonical hash and rechecked during approval status; the composite readiness audit validates dataset, licence, owner approval and revocation while keeping fitting disabled.");
 
-const mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
-const mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
+var mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
+var mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
 add("WIN owner approval endpoint requires a separate protected token, trusted public key and bounded JSON body",
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") &&
@@ -2421,8 +2416,8 @@ add("WIN owner approval endpoint requires a separate protected token, trusted pu
   mlOwnerApprovalEndpointTests.includes("readinessBody.modelFittingAllowed, false"),
   "The protected owner endpoint registers signed licence evidence and exposes a read-only composite readiness check without accepting caller-supplied keys or enabling fitting.");
 
-const mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
-const mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
+var mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
+var mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
 add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer with frozen shadow-only artifacts",
   mlFootballTrainer.includes("trainWinMLFootball1X2LogisticModel") &&
   mlFootballTrainer.includes("evaluateWinMLFootball1X2LogisticModel") &&
@@ -2460,14 +2455,14 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainerTests.includes("2026-02-30T00:00:00.000Z"),
   "The pure trainer fits only a chronological training partition, uses training-only normalization, reports validation metrics against a class-frequency baseline, hashes its artifact, and requires a separate held-out test. No production route or real dataset is wired to it.");
 
-const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
-const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
-const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
-const mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
-const mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
-const mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
-const mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
-const mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
+var mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
+var mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
+var mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
+var mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
+var mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
+var mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
+var mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
 add("WIN football point-in-time features reject duplicate identities and future or unavailable results",
   mlFootballFeatures.includes("historical_row_identity_duplicate_or_invalid") &&
   mlFootballFeatures.includes("resultAvailableAt") &&
@@ -2510,9 +2505,9 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImportTests.includes("permittedUse, \"research_only\""),
   "The importer hashes caller-supplied bytes, applies strict row and payload bounds, performs no network fetch, and never grants training permission.");
 
-const mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
-const mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
-const mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
+var mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
+var mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
 add("WIN model fitting is blocked by a server-side execution gate and immutable approved plan",
   mlTrainingExecutionGate.includes("WIN_ML_FITTING_ENABLED") &&
   mlTrainingExecutionGate.includes("WIN_ML_EXECUTION_APPROVED") &&
@@ -2526,8 +2521,8 @@ add("WIN model fitting is blocked by a server-side execution gate and immutable 
   mlTrainingExecutionGateTests.includes("rejects caller-constructed plans"),
   "Training requires protected server flags, the server-owned plan identity and the signed dataset/licence/owner readiness chain. The current plan remains disabled; the gate cannot authorize promotion or betting.");
  
-const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
-const mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
+var mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
+var mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
 add("WIN model artifact registry immutably binds model, dataset, evaluation and all provenance hashes",
   mlModelArtifactRegistry.includes("putIfNew") &&
   mlModelArtifactRegistry.includes("getWinMLDatasetManifest") &&
@@ -2544,8 +2539,8 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch"),
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
-const resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
-const apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
+var resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
+var apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
 add("Stage 2 API inventory includes the protected ML owner-approval route and its control-plane boundary",
   apiJobInventory.includes("`/api/ml-owner-approval`") &&
   apiJobInventory.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
@@ -2563,9 +2558,9 @@ add("Prediction-result corrections remain append-only, independently reviewed an
   resultCorrectionDesign.includes("unreviewed or rejected correction never enters model training data"),
   "A governed correction path must preserve the original claim, require a separate reviewer and keep unreviewed corrections out of training.");
 
-const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
-const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
-const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
+var scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
+var scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
+var scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -2583,8 +2578,8 @@ add("Scheduled learning runs use atomic owner leases, bounded request validation
   scheduledRequestTests.includes("rejects non-POST methods"),
   "A scheduled runner must reject malformed/oversized requests, serialize duplicate run execution with conditional leases, and permit stale-lease recovery without allowing stale workers to release a newer lease.");
 
-const resultRequestTests = await read("scripts/results-request-validation.test.mjs");
-const resultsHandler = await read("netlify/functions/results.mts");
+var resultRequestTests = await read("scripts/results-request-validation.test.mjs");
+var resultsHandler = await read("netlify/functions/results.mts");
 add("Result submissions enforce bounded JSON request parsing before settlement processing",
   resultsHandler.includes("readResultSubmissionBody") &&
   resultsHandler.includes("MAX_RESULT_REQUEST_BYTES") &&
@@ -2595,13 +2590,13 @@ add("Result submissions enforce bounded JSON request parsing before settlement p
   resultRequestTests.includes("JSON-like but invalid media types"),
   "The result endpoint must require JSON, enforce a streaming 64 KiB cap, reject invalid UTF-8/non-object JSON, and cover those boundaries with regression tests.");
 
-const packageManifest = JSON.parse(await read("package.json"));
+var packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
+var oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
   oauthAuthorize.includes("consumeOAuthRecord(\"requests\"") &&
@@ -2610,8 +2605,8 @@ add("OAuth consent text reflects only requested scopes and authorization codes a
   oauthConsentTests.includes("describes audit, read and research scopes independently"),
   "Consent must accurately describe audit/read/research/refresh permissions. Concurrent authorization POSTs must return only the code committed by the request-record ETag claim.");
 
-const oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
-const oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
+var oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
+var oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
 add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate form parameters",
   oauthRequestHelper.includes("readBoundedOAuthText") &&
   oauthRequestHelper.includes("reader.read()") &&
@@ -2623,7 +2618,7 @@ add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate
   oauthRequestTests.includes("rejects malformed, non-object and misleading media types"),
   "Authorization and token form requests are capped at 16 KiB (8 KiB for owner authorization); dynamic registration JSON is capped at 16 KiB. Invalid UTF-8, malformed/non-object JSON, duplicate form keys and unsupported media types fail closed.");
 
-const winCiWorkflow = await read(".github/workflows/win-quality.yml");
+var winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
@@ -2637,11 +2632,9 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   !winCiWorkflow.includes("NETLIFY_SITE_ID"),
   "The CI job runs tests and build checks with read-only repository permissions; it does not deploy or access production secrets.");
 
-const failed = checks.filter(x => !x.ok);
+var failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
-}
-{
 
 add("Authenticated health endpoint is read-only",
   healthEndpoint.includes("requireAuth(req)") &&
@@ -2649,9 +2642,9 @@ add("Authenticated health endpoint is read-only",
   healthEndpoint.includes('path:"/api/health"'),
   "Health and budget diagnostics must reject non-GET methods and remain behind the internal bearer token.");
 
-const independentReviewRequest = await read("netlify/lib/independent-review-request.mts");
-const independentReviewRequestTests = await read("scripts/independent-review-request.test.mjs");
-const independentReviewHandler = await read("netlify/functions/independent-review.mts");
+var independentReviewRequest = await read("netlify/lib/independent-review-request.mts");
+var independentReviewRequestTests = await read("scripts/independent-review-request.test.mjs");
+var independentReviewHandler = await read("netlify/functions/independent-review.mts");
 add("Independent review authenticates before reading bounded JSON request bodies",
   independentReviewRequest.includes("reader.read()") &&
   independentReviewRequest.includes("MAX_INDEPENDENT_REVIEW_BODY_BYTES = 64 * 1024") &&
@@ -2813,8 +2806,8 @@ add("Consensus calibration evaluates binary moneyline datasets without inventing
   "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
 
 
-const mlDataContract = await read("netlify/lib/ml-data-contract.mts");
-const mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
+var mlDataContract = await read("netlify/lib/ml-data-contract.mts");
+var mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
 add("WIN ML training requires immutable licensed dataset provenance and point-in-time feature validation",
   mlDataContract.includes("WIN_ML_DATASET_MANIFEST_VERSION") &&
   mlDataContract.includes("contentSha256") &&
@@ -2832,8 +2825,8 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   "Synthetic-only tests enforce source/licence provenance, block caller-asserted training approval without trusted owner evidence, and validate exact event timing, feature availability cutoffs and settlement-aware labels.");
 
 
-const mlModelContract = await read("netlify/lib/ml-model-contract.mts");
-const mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
+var mlModelContract = await read("netlify/lib/ml-model-contract.mts");
+var mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
 add("WIN ML artifacts require point-in-time, out-of-sample evidence before human shadow review",
   mlModelContract.includes("evaluateWinMLDatasetReadiness") &&
   mlModelContract.includes("fit_data_cutoff_exceeds_training_window") &&
@@ -2858,10 +2851,10 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContractTests.includes("evaluation requires a training run, configuration hash, split hash and feature-builder commit"),
   "A model artifact remains blocked until trusted owner evidence is available, even when chronology, sample size, baseline improvement and calibration pass. No automatic or production promotion is allowed.");
 
-const mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
-const mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
-const mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
-const mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
+var mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
+var mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
+var mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
+var mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
 add("WIN shadow inference loads only registered artifacts and enforces point-in-time feature availability",
   mlShadowPrediction.includes("getWinMLModelArtifact(args.modelId, args.modelVersion)") &&
   mlShadowPrediction.includes("getWinMLDatasetManifest(artifact.datasetId)") &&
@@ -2887,9 +2880,9 @@ add("WIN ML predictions are provenance-bound to an evaluated model and shadow-on
   mlPredictionTests.includes("prediction provenance must match the evaluated model and dataset") &&
   mlPredictionTests.includes("invalid or unnormalized probability vectors are rejected"),
   "LLM research and market benchmarks cannot be represented as WIN ML output; the 1X2 envelope must match an eligible artifact/dataset and remains shadow-only.");
-const mlProvenance = await read("netlify/lib/ml-provenance.mts");
-const mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
-const mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
+var mlProvenance = await read("netlify/lib/ml-provenance.mts");
+var mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
+var mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
 add("Football results v2 imports preserve availability into point-in-time training candidates",
   mlFootballImportTrainingIntegration.includes("football results v2 flows through availability-aware point-in-time candidate construction") &&
   mlFootballImportTrainingIntegration.includes("resultAvailableAt") &&
@@ -2907,11 +2900,11 @@ add("WIN ML training and inference provenance uses deterministic canonical hashe
   mlProvenanceTests.includes("unsupported, undefined, non-finite and cyclic values fail closed") &&
   mlProvenanceTests.includes("sparse arrays, symbol keys and accessors cannot create ambiguous hashes"),
   "Training configuration, exact split membership and feature vectors can be hashed reproducibly; ambiguous values and cyclic structures are rejected.");
-const llmExecution = await read("netlify/lib/llm-execution.mts");
-const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
-const agentsSdk = await read("netlify/lib/agents-sdk.mts");
-const agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
-const agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
+var llmExecution = await read("netlify/lib/llm-execution.mts");
+var llmExecutionTests = await read("scripts/llm-execution.test.mjs");
+var agentsSdk = await read("netlify/lib/agents-sdk.mts");
+var agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
+var agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
 add("WIN production OpenAI agent calls use the governed LLM execution layer",
   ai.includes("executeWinLLMWithPolicy") &&
   ai.includes("createOpenAIWinLLMAdapter") &&
@@ -2961,8 +2954,8 @@ add("WIN LLM provider execution is bounded, validates responses and never blindl
   llmExecutionTests.includes("invalid provider responses fail closed"),
   "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
 
-const mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
-const mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
+var mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
+var mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
 add("WIN licence evidence requires a signed, time-bounded reviewer attestation and exact source hash",
   mlLicenceEvidence.includes("hashWinMLLicenceEvidence") &&
   mlLicenceEvidence.includes("verifyWinMLLicenceEvidence") &&
@@ -2976,8 +2969,8 @@ add("WIN licence evidence requires a signed, time-bounded reviewer attestation a
   mlLicenceEvidenceTests.includes("2026-02-30T09:00:00.000Z"),
   "A trusted reviewer signature binds the licence, source-document hash, training-use attestation and review validity window; it does not replace human legal review.");
 
-const mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
-const mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
+var mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
+var mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
 add("WIN owner training approvals require dataset-bound Ed25519 signatures and licence evidence",
   mlOwnerApproval.includes("verifySignature") &&
   mlOwnerApproval.includes("datasetContentSha256") &&
@@ -2993,7 +2986,7 @@ add("WIN owner training approvals require dataset-bound Ed25519 signatures and l
   mlOwnerApprovalTests.includes("2026-02-30T09:00:00.000Z"),
   "The isolated verifier binds signed approval to dataset content, licence evidence, reviewer and validity window; readiness remains separately blocked.");
 
-const mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
+var mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
 add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes('action: "licence_evidence"') &&
   mlTrainingReadinessDocs.includes('action: "readiness"') &&
@@ -3001,8 +2994,8 @@ add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes("does not prove that the source document is authentic"),
   "The operator guide describes immutable signed evidence, endpoint actions, evidence-only readiness semantics and the legal-review limitation.");
 
-const mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
-const mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
+var mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
+var mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
 add("WIN signed owner approvals and revocations are stored immutably and checked against the registered dataset",
   mlOwnerApprovalRegistry.includes("putIfNew") &&
   mlOwnerApprovalRegistry.includes("getWinMLDatasetManifest") &&
@@ -3024,8 +3017,8 @@ add("WIN signed owner approvals and revocations are stored immutably and checked
   mlOwnerApprovalRegistryTests.includes("licence_evidence_id_immutable_conflict"),
   "Signed licence evidence is immutably registered by canonical hash and rechecked during approval status; the composite readiness audit validates dataset, licence, owner approval and revocation while keeping fitting disabled.");
 
-const mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
-const mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
+var mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
+var mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
 add("WIN owner approval endpoint requires a separate protected token, trusted public key and bounded JSON body",
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") &&
@@ -3046,8 +3039,8 @@ add("WIN owner approval endpoint requires a separate protected token, trusted pu
   mlOwnerApprovalEndpointTests.includes("readinessBody.modelFittingAllowed, false"),
   "The protected owner endpoint registers signed licence evidence and exposes a read-only composite readiness check without accepting caller-supplied keys or enabling fitting.");
 
-const mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
-const mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
+var mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
+var mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
 add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer with frozen shadow-only artifacts",
   mlFootballTrainer.includes("trainWinMLFootball1X2LogisticModel") &&
   mlFootballTrainer.includes("evaluateWinMLFootball1X2LogisticModel") &&
@@ -3085,14 +3078,14 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainerTests.includes("2026-02-30T00:00:00.000Z"),
   "The pure trainer fits only a chronological training partition, uses training-only normalization, reports validation metrics against a class-frequency baseline, hashes its artifact, and requires a separate held-out test. No production route or real dataset is wired to it.");
 
-const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
-const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
-const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
-const mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
-const mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
-const mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
-const mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
-const mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
+var mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
+var mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
+var mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
+var mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
+var mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
+var mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
+var mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
 add("WIN football point-in-time features reject duplicate identities and future or unavailable results",
   mlFootballFeatures.includes("historical_row_identity_duplicate_or_invalid") &&
   mlFootballFeatures.includes("resultAvailableAt") &&
@@ -3135,9 +3128,9 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImportTests.includes("permittedUse, \"research_only\""),
   "The importer hashes caller-supplied bytes, applies strict row and payload bounds, performs no network fetch, and never grants training permission.");
 
-const mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
-const mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
-const mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
+var mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
+var mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
 add("WIN model fitting is blocked by a server-side execution gate and immutable approved plan",
   mlTrainingExecutionGate.includes("WIN_ML_FITTING_ENABLED") &&
   mlTrainingExecutionGate.includes("WIN_ML_EXECUTION_APPROVED") &&
@@ -3151,8 +3144,8 @@ add("WIN model fitting is blocked by a server-side execution gate and immutable 
   mlTrainingExecutionGateTests.includes("rejects caller-constructed plans"),
   "Training requires protected server flags, the server-owned plan identity and the signed dataset/licence/owner readiness chain. The current plan remains disabled; the gate cannot authorize promotion or betting.");
  
-const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
-const mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
+var mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
+var mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
 add("WIN model artifact registry immutably binds model, dataset, evaluation and all provenance hashes",
   mlModelArtifactRegistry.includes("putIfNew") &&
   mlModelArtifactRegistry.includes("getWinMLDatasetManifest") &&
@@ -3169,8 +3162,8 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch"),
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
-const resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
-const apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
+var resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
+var apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
 add("Stage 2 API inventory includes the protected ML owner-approval route and its control-plane boundary",
   apiJobInventory.includes("`/api/ml-owner-approval`") &&
   apiJobInventory.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
@@ -3188,9 +3181,9 @@ add("Prediction-result corrections remain append-only, independently reviewed an
   resultCorrectionDesign.includes("unreviewed or rejected correction never enters model training data"),
   "A governed correction path must preserve the original claim, require a separate reviewer and keep unreviewed corrections out of training.");
 
-const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
-const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
-const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
+var scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
+var scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
+var scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -3208,8 +3201,8 @@ add("Scheduled learning runs use atomic owner leases, bounded request validation
   scheduledRequestTests.includes("rejects non-POST methods"),
   "A scheduled runner must reject malformed/oversized requests, serialize duplicate run execution with conditional leases, and permit stale-lease recovery without allowing stale workers to release a newer lease.");
 
-const resultRequestTests = await read("scripts/results-request-validation.test.mjs");
-const resultsHandler = await read("netlify/functions/results.mts");
+var resultRequestTests = await read("scripts/results-request-validation.test.mjs");
+var resultsHandler = await read("netlify/functions/results.mts");
 add("Result submissions enforce bounded JSON request parsing before settlement processing",
   resultsHandler.includes("readResultSubmissionBody") &&
   resultsHandler.includes("MAX_RESULT_REQUEST_BYTES") &&
@@ -3220,13 +3213,13 @@ add("Result submissions enforce bounded JSON request parsing before settlement p
   resultRequestTests.includes("JSON-like but invalid media types"),
   "The result endpoint must require JSON, enforce a streaming 64 KiB cap, reject invalid UTF-8/non-object JSON, and cover those boundaries with regression tests.");
 
-const packageManifest = JSON.parse(await read("package.json"));
+var packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
+var oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
   oauthAuthorize.includes("consumeOAuthRecord(\"requests\"") &&
@@ -3235,8 +3228,8 @@ add("OAuth consent text reflects only requested scopes and authorization codes a
   oauthConsentTests.includes("describes audit, read and research scopes independently"),
   "Consent must accurately describe audit/read/research/refresh permissions. Concurrent authorization POSTs must return only the code committed by the request-record ETag claim.");
 
-const oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
-const oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
+var oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
+var oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
 add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate form parameters",
   oauthRequestHelper.includes("readBoundedOAuthText") &&
   oauthRequestHelper.includes("reader.read()") &&
@@ -3248,7 +3241,7 @@ add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate
   oauthRequestTests.includes("rejects malformed, non-object and misleading media types"),
   "Authorization and token form requests are capped at 16 KiB (8 KiB for owner authorization); dynamic registration JSON is capped at 16 KiB. Invalid UTF-8, malformed/non-object JSON, duplicate form keys and unsupported media types fail closed.");
 
-const winCiWorkflow = await read(".github/workflows/win-quality.yml");
+var winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
@@ -3262,11 +3255,9 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   !winCiWorkflow.includes("NETLIFY_SITE_ID"),
   "The CI job runs tests and build checks with read-only repository permissions; it does not deploy or access production secrets.");
 
-const failed = checks.filter(x => !x.ok);
+var failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
-}
-{
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&
@@ -3417,8 +3408,8 @@ add("Consensus calibration evaluates binary moneyline datasets without inventing
   "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
 
 
-const mlDataContract = await read("netlify/lib/ml-data-contract.mts");
-const mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
+var mlDataContract = await read("netlify/lib/ml-data-contract.mts");
+var mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
 add("WIN ML training requires immutable licensed dataset provenance and point-in-time feature validation",
   mlDataContract.includes("WIN_ML_DATASET_MANIFEST_VERSION") &&
   mlDataContract.includes("contentSha256") &&
@@ -3436,8 +3427,8 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   "Synthetic-only tests enforce source/licence provenance, block caller-asserted training approval without trusted owner evidence, and validate exact event timing, feature availability cutoffs and settlement-aware labels.");
 
 
-const mlModelContract = await read("netlify/lib/ml-model-contract.mts");
-const mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
+var mlModelContract = await read("netlify/lib/ml-model-contract.mts");
+var mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
 add("WIN ML artifacts require point-in-time, out-of-sample evidence before human shadow review",
   mlModelContract.includes("evaluateWinMLDatasetReadiness") &&
   mlModelContract.includes("fit_data_cutoff_exceeds_training_window") &&
@@ -3462,10 +3453,10 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContractTests.includes("evaluation requires a training run, configuration hash, split hash and feature-builder commit"),
   "A model artifact remains blocked until trusted owner evidence is available, even when chronology, sample size, baseline improvement and calibration pass. No automatic or production promotion is allowed.");
 
-const mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
-const mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
-const mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
-const mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
+var mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
+var mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
+var mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
+var mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
 add("WIN shadow inference loads only registered artifacts and enforces point-in-time feature availability",
   mlShadowPrediction.includes("getWinMLModelArtifact(args.modelId, args.modelVersion)") &&
   mlShadowPrediction.includes("getWinMLDatasetManifest(artifact.datasetId)") &&
@@ -3491,9 +3482,9 @@ add("WIN ML predictions are provenance-bound to an evaluated model and shadow-on
   mlPredictionTests.includes("prediction provenance must match the evaluated model and dataset") &&
   mlPredictionTests.includes("invalid or unnormalized probability vectors are rejected"),
   "LLM research and market benchmarks cannot be represented as WIN ML output; the 1X2 envelope must match an eligible artifact/dataset and remains shadow-only.");
-const mlProvenance = await read("netlify/lib/ml-provenance.mts");
-const mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
-const mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
+var mlProvenance = await read("netlify/lib/ml-provenance.mts");
+var mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
+var mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
 add("Football results v2 imports preserve availability into point-in-time training candidates",
   mlFootballImportTrainingIntegration.includes("football results v2 flows through availability-aware point-in-time candidate construction") &&
   mlFootballImportTrainingIntegration.includes("resultAvailableAt") &&
@@ -3511,11 +3502,11 @@ add("WIN ML training and inference provenance uses deterministic canonical hashe
   mlProvenanceTests.includes("unsupported, undefined, non-finite and cyclic values fail closed") &&
   mlProvenanceTests.includes("sparse arrays, symbol keys and accessors cannot create ambiguous hashes"),
   "Training configuration, exact split membership and feature vectors can be hashed reproducibly; ambiguous values and cyclic structures are rejected.");
-const llmExecution = await read("netlify/lib/llm-execution.mts");
-const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
-const agentsSdk = await read("netlify/lib/agents-sdk.mts");
-const agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
-const agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
+var llmExecution = await read("netlify/lib/llm-execution.mts");
+var llmExecutionTests = await read("scripts/llm-execution.test.mjs");
+var agentsSdk = await read("netlify/lib/agents-sdk.mts");
+var agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
+var agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
 add("WIN production OpenAI agent calls use the governed LLM execution layer",
   ai.includes("executeWinLLMWithPolicy") &&
   ai.includes("createOpenAIWinLLMAdapter") &&
@@ -3565,8 +3556,8 @@ add("WIN LLM provider execution is bounded, validates responses and never blindl
   llmExecutionTests.includes("invalid provider responses fail closed"),
   "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
 
-const mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
-const mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
+var mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
+var mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
 add("WIN licence evidence requires a signed, time-bounded reviewer attestation and exact source hash",
   mlLicenceEvidence.includes("hashWinMLLicenceEvidence") &&
   mlLicenceEvidence.includes("verifyWinMLLicenceEvidence") &&
@@ -3580,8 +3571,8 @@ add("WIN licence evidence requires a signed, time-bounded reviewer attestation a
   mlLicenceEvidenceTests.includes("2026-02-30T09:00:00.000Z"),
   "A trusted reviewer signature binds the licence, source-document hash, training-use attestation and review validity window; it does not replace human legal review.");
 
-const mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
-const mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
+var mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
+var mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
 add("WIN owner training approvals require dataset-bound Ed25519 signatures and licence evidence",
   mlOwnerApproval.includes("verifySignature") &&
   mlOwnerApproval.includes("datasetContentSha256") &&
@@ -3597,7 +3588,7 @@ add("WIN owner training approvals require dataset-bound Ed25519 signatures and l
   mlOwnerApprovalTests.includes("2026-02-30T09:00:00.000Z"),
   "The isolated verifier binds signed approval to dataset content, licence evidence, reviewer and validity window; readiness remains separately blocked.");
 
-const mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
+var mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
 add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes('action: "licence_evidence"') &&
   mlTrainingReadinessDocs.includes('action: "readiness"') &&
@@ -3605,8 +3596,8 @@ add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes("does not prove that the source document is authentic"),
   "The operator guide describes immutable signed evidence, endpoint actions, evidence-only readiness semantics and the legal-review limitation.");
 
-const mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
-const mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
+var mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
+var mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
 add("WIN signed owner approvals and revocations are stored immutably and checked against the registered dataset",
   mlOwnerApprovalRegistry.includes("putIfNew") &&
   mlOwnerApprovalRegistry.includes("getWinMLDatasetManifest") &&
@@ -3628,8 +3619,8 @@ add("WIN signed owner approvals and revocations are stored immutably and checked
   mlOwnerApprovalRegistryTests.includes("licence_evidence_id_immutable_conflict"),
   "Signed licence evidence is immutably registered by canonical hash and rechecked during approval status; the composite readiness audit validates dataset, licence, owner approval and revocation while keeping fitting disabled.");
 
-const mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
-const mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
+var mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
+var mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
 add("WIN owner approval endpoint requires a separate protected token, trusted public key and bounded JSON body",
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") &&
@@ -3650,8 +3641,8 @@ add("WIN owner approval endpoint requires a separate protected token, trusted pu
   mlOwnerApprovalEndpointTests.includes("readinessBody.modelFittingAllowed, false"),
   "The protected owner endpoint registers signed licence evidence and exposes a read-only composite readiness check without accepting caller-supplied keys or enabling fitting.");
 
-const mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
-const mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
+var mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
+var mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
 add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer with frozen shadow-only artifacts",
   mlFootballTrainer.includes("trainWinMLFootball1X2LogisticModel") &&
   mlFootballTrainer.includes("evaluateWinMLFootball1X2LogisticModel") &&
@@ -3689,14 +3680,14 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainerTests.includes("2026-02-30T00:00:00.000Z"),
   "The pure trainer fits only a chronological training partition, uses training-only normalization, reports validation metrics against a class-frequency baseline, hashes its artifact, and requires a separate held-out test. No production route or real dataset is wired to it.");
 
-const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
-const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
-const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
-const mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
-const mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
-const mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
-const mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
-const mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
+var mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
+var mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
+var mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
+var mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
+var mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
+var mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
+var mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
 add("WIN football point-in-time features reject duplicate identities and future or unavailable results",
   mlFootballFeatures.includes("historical_row_identity_duplicate_or_invalid") &&
   mlFootballFeatures.includes("resultAvailableAt") &&
@@ -3739,9 +3730,9 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImportTests.includes("permittedUse, \"research_only\""),
   "The importer hashes caller-supplied bytes, applies strict row and payload bounds, performs no network fetch, and never grants training permission.");
 
-const mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
-const mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
-const mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
+var mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
+var mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
 add("WIN model fitting is blocked by a server-side execution gate and immutable approved plan",
   mlTrainingExecutionGate.includes("WIN_ML_FITTING_ENABLED") &&
   mlTrainingExecutionGate.includes("WIN_ML_EXECUTION_APPROVED") &&
@@ -3755,8 +3746,8 @@ add("WIN model fitting is blocked by a server-side execution gate and immutable 
   mlTrainingExecutionGateTests.includes("rejects caller-constructed plans"),
   "Training requires protected server flags, the server-owned plan identity and the signed dataset/licence/owner readiness chain. The current plan remains disabled; the gate cannot authorize promotion or betting.");
  
-const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
-const mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
+var mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
+var mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
 add("WIN model artifact registry immutably binds model, dataset, evaluation and all provenance hashes",
   mlModelArtifactRegistry.includes("putIfNew") &&
   mlModelArtifactRegistry.includes("getWinMLDatasetManifest") &&
@@ -3773,8 +3764,8 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch"),
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
-const resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
-const apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
+var resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
+var apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
 add("Stage 2 API inventory includes the protected ML owner-approval route and its control-plane boundary",
   apiJobInventory.includes("`/api/ml-owner-approval`") &&
   apiJobInventory.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
@@ -3792,9 +3783,9 @@ add("Prediction-result corrections remain append-only, independently reviewed an
   resultCorrectionDesign.includes("unreviewed or rejected correction never enters model training data"),
   "A governed correction path must preserve the original claim, require a separate reviewer and keep unreviewed corrections out of training.");
 
-const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
-const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
-const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
+var scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
+var scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
+var scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -3812,8 +3803,8 @@ add("Scheduled learning runs use atomic owner leases, bounded request validation
   scheduledRequestTests.includes("rejects non-POST methods"),
   "A scheduled runner must reject malformed/oversized requests, serialize duplicate run execution with conditional leases, and permit stale-lease recovery without allowing stale workers to release a newer lease.");
 
-const resultRequestTests = await read("scripts/results-request-validation.test.mjs");
-const resultsHandler = await read("netlify/functions/results.mts");
+var resultRequestTests = await read("scripts/results-request-validation.test.mjs");
+var resultsHandler = await read("netlify/functions/results.mts");
 add("Result submissions enforce bounded JSON request parsing before settlement processing",
   resultsHandler.includes("readResultSubmissionBody") &&
   resultsHandler.includes("MAX_RESULT_REQUEST_BYTES") &&
@@ -3824,13 +3815,13 @@ add("Result submissions enforce bounded JSON request parsing before settlement p
   resultRequestTests.includes("JSON-like but invalid media types"),
   "The result endpoint must require JSON, enforce a streaming 64 KiB cap, reject invalid UTF-8/non-object JSON, and cover those boundaries with regression tests.");
 
-const packageManifest = JSON.parse(await read("package.json"));
+var packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
+var oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
   oauthAuthorize.includes("consumeOAuthRecord(\"requests\"") &&
@@ -3839,8 +3830,8 @@ add("OAuth consent text reflects only requested scopes and authorization codes a
   oauthConsentTests.includes("describes audit, read and research scopes independently"),
   "Consent must accurately describe audit/read/research/refresh permissions. Concurrent authorization POSTs must return only the code committed by the request-record ETag claim.");
 
-const oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
-const oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
+var oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
+var oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
 add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate form parameters",
   oauthRequestHelper.includes("readBoundedOAuthText") &&
   oauthRequestHelper.includes("reader.read()") &&
@@ -3852,7 +3843,7 @@ add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate
   oauthRequestTests.includes("rejects malformed, non-object and misleading media types"),
   "Authorization and token form requests are capped at 16 KiB (8 KiB for owner authorization); dynamic registration JSON is capped at 16 KiB. Invalid UTF-8, malformed/non-object JSON, duplicate form keys and unsupported media types fail closed.");
 
-const winCiWorkflow = await read(".github/workflows/win-quality.yml");
+var winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
@@ -3866,14 +3857,12 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   !winCiWorkflow.includes("NETLIFY_SITE_ID"),
   "The CI job runs tests and build checks with read-only repository permissions; it does not deploy or access production secrets.");
 
-const failed = checks.filter(x => !x.ok);
+var failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
-}
-{
 
-const independentReviewRequestTests = await read("scripts/independent-review-request.test.mjs");
-const independentReviewHandler = await read("netlify/functions/independent-review.mts");
+var independentReviewRequestTests = await read("scripts/independent-review-request.test.mjs");
+var independentReviewHandler = await read("netlify/functions/independent-review.mts");
 add("Independent review authenticates before reading bounded JSON request bodies",
   independentReviewRequest.includes("reader.read()") &&
   independentReviewRequest.includes("MAX_INDEPENDENT_REVIEW_BODY_BYTES = 64 * 1024") &&
@@ -4035,8 +4024,8 @@ add("Consensus calibration evaluates binary moneyline datasets without inventing
   "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
 
 
-const mlDataContract = await read("netlify/lib/ml-data-contract.mts");
-const mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
+var mlDataContract = await read("netlify/lib/ml-data-contract.mts");
+var mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
 add("WIN ML training requires immutable licensed dataset provenance and point-in-time feature validation",
   mlDataContract.includes("WIN_ML_DATASET_MANIFEST_VERSION") &&
   mlDataContract.includes("contentSha256") &&
@@ -4054,8 +4043,8 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   "Synthetic-only tests enforce source/licence provenance, block caller-asserted training approval without trusted owner evidence, and validate exact event timing, feature availability cutoffs and settlement-aware labels.");
 
 
-const mlModelContract = await read("netlify/lib/ml-model-contract.mts");
-const mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
+var mlModelContract = await read("netlify/lib/ml-model-contract.mts");
+var mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
 add("WIN ML artifacts require point-in-time, out-of-sample evidence before human shadow review",
   mlModelContract.includes("evaluateWinMLDatasetReadiness") &&
   mlModelContract.includes("fit_data_cutoff_exceeds_training_window") &&
@@ -4080,10 +4069,10 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContractTests.includes("evaluation requires a training run, configuration hash, split hash and feature-builder commit"),
   "A model artifact remains blocked until trusted owner evidence is available, even when chronology, sample size, baseline improvement and calibration pass. No automatic or production promotion is allowed.");
 
-const mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
-const mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
-const mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
-const mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
+var mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
+var mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
+var mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
+var mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
 add("WIN shadow inference loads only registered artifacts and enforces point-in-time feature availability",
   mlShadowPrediction.includes("getWinMLModelArtifact(args.modelId, args.modelVersion)") &&
   mlShadowPrediction.includes("getWinMLDatasetManifest(artifact.datasetId)") &&
@@ -4109,9 +4098,9 @@ add("WIN ML predictions are provenance-bound to an evaluated model and shadow-on
   mlPredictionTests.includes("prediction provenance must match the evaluated model and dataset") &&
   mlPredictionTests.includes("invalid or unnormalized probability vectors are rejected"),
   "LLM research and market benchmarks cannot be represented as WIN ML output; the 1X2 envelope must match an eligible artifact/dataset and remains shadow-only.");
-const mlProvenance = await read("netlify/lib/ml-provenance.mts");
-const mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
-const mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
+var mlProvenance = await read("netlify/lib/ml-provenance.mts");
+var mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
+var mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
 add("Football results v2 imports preserve availability into point-in-time training candidates",
   mlFootballImportTrainingIntegration.includes("football results v2 flows through availability-aware point-in-time candidate construction") &&
   mlFootballImportTrainingIntegration.includes("resultAvailableAt") &&
@@ -4129,11 +4118,11 @@ add("WIN ML training and inference provenance uses deterministic canonical hashe
   mlProvenanceTests.includes("unsupported, undefined, non-finite and cyclic values fail closed") &&
   mlProvenanceTests.includes("sparse arrays, symbol keys and accessors cannot create ambiguous hashes"),
   "Training configuration, exact split membership and feature vectors can be hashed reproducibly; ambiguous values and cyclic structures are rejected.");
-const llmExecution = await read("netlify/lib/llm-execution.mts");
-const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
-const agentsSdk = await read("netlify/lib/agents-sdk.mts");
-const agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
-const agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
+var llmExecution = await read("netlify/lib/llm-execution.mts");
+var llmExecutionTests = await read("scripts/llm-execution.test.mjs");
+var agentsSdk = await read("netlify/lib/agents-sdk.mts");
+var agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
+var agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
 add("WIN production OpenAI agent calls use the governed LLM execution layer",
   ai.includes("executeWinLLMWithPolicy") &&
   ai.includes("createOpenAIWinLLMAdapter") &&
@@ -4183,8 +4172,8 @@ add("WIN LLM provider execution is bounded, validates responses and never blindl
   llmExecutionTests.includes("invalid provider responses fail closed"),
   "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
 
-const mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
-const mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
+var mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
+var mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
 add("WIN licence evidence requires a signed, time-bounded reviewer attestation and exact source hash",
   mlLicenceEvidence.includes("hashWinMLLicenceEvidence") &&
   mlLicenceEvidence.includes("verifyWinMLLicenceEvidence") &&
@@ -4198,8 +4187,8 @@ add("WIN licence evidence requires a signed, time-bounded reviewer attestation a
   mlLicenceEvidenceTests.includes("2026-02-30T09:00:00.000Z"),
   "A trusted reviewer signature binds the licence, source-document hash, training-use attestation and review validity window; it does not replace human legal review.");
 
-const mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
-const mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
+var mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
+var mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
 add("WIN owner training approvals require dataset-bound Ed25519 signatures and licence evidence",
   mlOwnerApproval.includes("verifySignature") &&
   mlOwnerApproval.includes("datasetContentSha256") &&
@@ -4215,7 +4204,7 @@ add("WIN owner training approvals require dataset-bound Ed25519 signatures and l
   mlOwnerApprovalTests.includes("2026-02-30T09:00:00.000Z"),
   "The isolated verifier binds signed approval to dataset content, licence evidence, reviewer and validity window; readiness remains separately blocked.");
 
-const mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
+var mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
 add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes('action: "licence_evidence"') &&
   mlTrainingReadinessDocs.includes('action: "readiness"') &&
@@ -4223,8 +4212,8 @@ add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes("does not prove that the source document is authentic"),
   "The operator guide describes immutable signed evidence, endpoint actions, evidence-only readiness semantics and the legal-review limitation.");
 
-const mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
-const mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
+var mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
+var mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
 add("WIN signed owner approvals and revocations are stored immutably and checked against the registered dataset",
   mlOwnerApprovalRegistry.includes("putIfNew") &&
   mlOwnerApprovalRegistry.includes("getWinMLDatasetManifest") &&
@@ -4246,8 +4235,8 @@ add("WIN signed owner approvals and revocations are stored immutably and checked
   mlOwnerApprovalRegistryTests.includes("licence_evidence_id_immutable_conflict"),
   "Signed licence evidence is immutably registered by canonical hash and rechecked during approval status; the composite readiness audit validates dataset, licence, owner approval and revocation while keeping fitting disabled.");
 
-const mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
-const mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
+var mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
+var mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
 add("WIN owner approval endpoint requires a separate protected token, trusted public key and bounded JSON body",
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") &&
@@ -4268,8 +4257,8 @@ add("WIN owner approval endpoint requires a separate protected token, trusted pu
   mlOwnerApprovalEndpointTests.includes("readinessBody.modelFittingAllowed, false"),
   "The protected owner endpoint registers signed licence evidence and exposes a read-only composite readiness check without accepting caller-supplied keys or enabling fitting.");
 
-const mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
-const mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
+var mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
+var mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
 add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer with frozen shadow-only artifacts",
   mlFootballTrainer.includes("trainWinMLFootball1X2LogisticModel") &&
   mlFootballTrainer.includes("evaluateWinMLFootball1X2LogisticModel") &&
@@ -4307,14 +4296,14 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainerTests.includes("2026-02-30T00:00:00.000Z"),
   "The pure trainer fits only a chronological training partition, uses training-only normalization, reports validation metrics against a class-frequency baseline, hashes its artifact, and requires a separate held-out test. No production route or real dataset is wired to it.");
 
-const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
-const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
-const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
-const mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
-const mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
-const mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
-const mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
-const mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
+var mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
+var mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
+var mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
+var mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
+var mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
+var mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
+var mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
 add("WIN football point-in-time features reject duplicate identities and future or unavailable results",
   mlFootballFeatures.includes("historical_row_identity_duplicate_or_invalid") &&
   mlFootballFeatures.includes("resultAvailableAt") &&
@@ -4357,9 +4346,9 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImportTests.includes("permittedUse, \"research_only\""),
   "The importer hashes caller-supplied bytes, applies strict row and payload bounds, performs no network fetch, and never grants training permission.");
 
-const mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
-const mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
-const mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
+var mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
+var mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
 add("WIN model fitting is blocked by a server-side execution gate and immutable approved plan",
   mlTrainingExecutionGate.includes("WIN_ML_FITTING_ENABLED") &&
   mlTrainingExecutionGate.includes("WIN_ML_EXECUTION_APPROVED") &&
@@ -4373,8 +4362,8 @@ add("WIN model fitting is blocked by a server-side execution gate and immutable 
   mlTrainingExecutionGateTests.includes("rejects caller-constructed plans"),
   "Training requires protected server flags, the server-owned plan identity and the signed dataset/licence/owner readiness chain. The current plan remains disabled; the gate cannot authorize promotion or betting.");
  
-const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
-const mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
+var mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
+var mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
 add("WIN model artifact registry immutably binds model, dataset, evaluation and all provenance hashes",
   mlModelArtifactRegistry.includes("putIfNew") &&
   mlModelArtifactRegistry.includes("getWinMLDatasetManifest") &&
@@ -4391,8 +4380,8 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch"),
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
-const resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
-const apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
+var resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
+var apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
 add("Stage 2 API inventory includes the protected ML owner-approval route and its control-plane boundary",
   apiJobInventory.includes("`/api/ml-owner-approval`") &&
   apiJobInventory.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
@@ -4410,9 +4399,9 @@ add("Prediction-result corrections remain append-only, independently reviewed an
   resultCorrectionDesign.includes("unreviewed or rejected correction never enters model training data"),
   "A governed correction path must preserve the original claim, require a separate reviewer and keep unreviewed corrections out of training.");
 
-const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
-const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
-const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
+var scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
+var scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
+var scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -4430,8 +4419,8 @@ add("Scheduled learning runs use atomic owner leases, bounded request validation
   scheduledRequestTests.includes("rejects non-POST methods"),
   "A scheduled runner must reject malformed/oversized requests, serialize duplicate run execution with conditional leases, and permit stale-lease recovery without allowing stale workers to release a newer lease.");
 
-const resultRequestTests = await read("scripts/results-request-validation.test.mjs");
-const resultsHandler = await read("netlify/functions/results.mts");
+var resultRequestTests = await read("scripts/results-request-validation.test.mjs");
+var resultsHandler = await read("netlify/functions/results.mts");
 add("Result submissions enforce bounded JSON request parsing before settlement processing",
   resultsHandler.includes("readResultSubmissionBody") &&
   resultsHandler.includes("MAX_RESULT_REQUEST_BYTES") &&
@@ -4442,13 +4431,13 @@ add("Result submissions enforce bounded JSON request parsing before settlement p
   resultRequestTests.includes("JSON-like but invalid media types"),
   "The result endpoint must require JSON, enforce a streaming 64 KiB cap, reject invalid UTF-8/non-object JSON, and cover those boundaries with regression tests.");
 
-const packageManifest = JSON.parse(await read("package.json"));
+var packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
+var oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
   oauthAuthorize.includes("consumeOAuthRecord(\"requests\"") &&
@@ -4457,8 +4446,8 @@ add("OAuth consent text reflects only requested scopes and authorization codes a
   oauthConsentTests.includes("describes audit, read and research scopes independently"),
   "Consent must accurately describe audit/read/research/refresh permissions. Concurrent authorization POSTs must return only the code committed by the request-record ETag claim.");
 
-const oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
-const oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
+var oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
+var oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
 add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate form parameters",
   oauthRequestHelper.includes("readBoundedOAuthText") &&
   oauthRequestHelper.includes("reader.read()") &&
@@ -4470,7 +4459,7 @@ add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate
   oauthRequestTests.includes("rejects malformed, non-object and misleading media types"),
   "Authorization and token form requests are capped at 16 KiB (8 KiB for owner authorization); dynamic registration JSON is capped at 16 KiB. Invalid UTF-8, malformed/non-object JSON, duplicate form keys and unsupported media types fail closed.");
 
-const winCiWorkflow = await read(".github/workflows/win-quality.yml");
+var winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
@@ -4484,11 +4473,9 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   !winCiWorkflow.includes("NETLIFY_SITE_ID"),
   "The CI job runs tests and build checks with read-only repository permissions; it does not deploy or access production secrets.");
 
-const failed = checks.filter(x => !x.ok);
+var failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
-}
-{
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&
@@ -4639,8 +4626,8 @@ add("Consensus calibration evaluates binary moneyline datasets without inventing
   "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
 
 
-const mlDataContract = await read("netlify/lib/ml-data-contract.mts");
-const mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
+var mlDataContract = await read("netlify/lib/ml-data-contract.mts");
+var mlDataContractTests = await read("scripts/ml-data-contract.test.mjs");
 add("WIN ML training requires immutable licensed dataset provenance and point-in-time feature validation",
   mlDataContract.includes("WIN_ML_DATASET_MANIFEST_VERSION") &&
   mlDataContract.includes("contentSha256") &&
@@ -4658,8 +4645,8 @@ add("WIN ML training requires immutable licensed dataset provenance and point-in
   "Synthetic-only tests enforce source/licence provenance, block caller-asserted training approval without trusted owner evidence, and validate exact event timing, feature availability cutoffs and settlement-aware labels.");
 
 
-const mlModelContract = await read("netlify/lib/ml-model-contract.mts");
-const mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
+var mlModelContract = await read("netlify/lib/ml-model-contract.mts");
+var mlModelContractTests = await read("scripts/ml-model-contract.test.mjs");
 add("WIN ML artifacts require point-in-time, out-of-sample evidence before human shadow review",
   mlModelContract.includes("evaluateWinMLDatasetReadiness") &&
   mlModelContract.includes("fit_data_cutoff_exceeds_training_window") &&
@@ -4684,10 +4671,10 @@ add("WIN ML artifacts require point-in-time, out-of-sample evidence before human
   mlModelContractTests.includes("evaluation requires a training run, configuration hash, split hash and feature-builder commit"),
   "A model artifact remains blocked until trusted owner evidence is available, even when chronology, sample size, baseline improvement and calibration pass. No automatic or production promotion is allowed.");
 
-const mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
-const mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
-const mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
-const mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
+var mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
+var mlPredictionTests = await read("scripts/ml-prediction-contract.test.mjs");
+var mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
+var mlShadowPredictionTests = await read("scripts/ml-shadow-prediction.test.mjs");
 add("WIN shadow inference loads only registered artifacts and enforces point-in-time feature availability",
   mlShadowPrediction.includes("getWinMLModelArtifact(args.modelId, args.modelVersion)") &&
   mlShadowPrediction.includes("getWinMLDatasetManifest(artifact.datasetId)") &&
@@ -4713,9 +4700,9 @@ add("WIN ML predictions are provenance-bound to an evaluated model and shadow-on
   mlPredictionTests.includes("prediction provenance must match the evaluated model and dataset") &&
   mlPredictionTests.includes("invalid or unnormalized probability vectors are rejected"),
   "LLM research and market benchmarks cannot be represented as WIN ML output; the 1X2 envelope must match an eligible artifact/dataset and remains shadow-only.");
-const mlProvenance = await read("netlify/lib/ml-provenance.mts");
-const mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
-const mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
+var mlProvenance = await read("netlify/lib/ml-provenance.mts");
+var mlProvenanceTests = await read("scripts/ml-provenance.test.mjs");
+var mlFootballImportTrainingIntegration = await read("scripts/ml-football-import-training.integration.test.mjs");
 add("Football results v2 imports preserve availability into point-in-time training candidates",
   mlFootballImportTrainingIntegration.includes("football results v2 flows through availability-aware point-in-time candidate construction") &&
   mlFootballImportTrainingIntegration.includes("resultAvailableAt") &&
@@ -4733,11 +4720,11 @@ add("WIN ML training and inference provenance uses deterministic canonical hashe
   mlProvenanceTests.includes("unsupported, undefined, non-finite and cyclic values fail closed") &&
   mlProvenanceTests.includes("sparse arrays, symbol keys and accessors cannot create ambiguous hashes"),
   "Training configuration, exact split membership and feature vectors can be hashed reproducibly; ambiguous values and cyclic structures are rejected.");
-const llmExecution = await read("netlify/lib/llm-execution.mts");
-const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
-const agentsSdk = await read("netlify/lib/agents-sdk.mts");
-const agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
-const agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
+var llmExecution = await read("netlify/lib/llm-execution.mts");
+var llmExecutionTests = await read("scripts/llm-execution.test.mjs");
+var agentsSdk = await read("netlify/lib/agents-sdk.mts");
+var agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
+var agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
 add("WIN production OpenAI agent calls use the governed LLM execution layer",
   ai.includes("executeWinLLMWithPolicy") &&
   ai.includes("createOpenAIWinLLMAdapter") &&
@@ -4787,8 +4774,8 @@ add("WIN LLM provider execution is bounded, validates responses and never blindl
   llmExecutionTests.includes("invalid provider responses fail closed"),
   "The isolated execution wrapper has cancellation-aware timeout handling, strict response validation and explicit uncertain-outcome semantics; it does not perform automatic retries or fallback.");
 
-const mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
-const mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
+var mlLicenceEvidence = await read("netlify/lib/ml-licence-evidence.mts");
+var mlLicenceEvidenceTests = await read("scripts/ml-licence-evidence.test.mjs");
 add("WIN licence evidence requires a signed, time-bounded reviewer attestation and exact source hash",
   mlLicenceEvidence.includes("hashWinMLLicenceEvidence") &&
   mlLicenceEvidence.includes("verifyWinMLLicenceEvidence") &&
@@ -4802,8 +4789,8 @@ add("WIN licence evidence requires a signed, time-bounded reviewer attestation a
   mlLicenceEvidenceTests.includes("2026-02-30T09:00:00.000Z"),
   "A trusted reviewer signature binds the licence, source-document hash, training-use attestation and review validity window; it does not replace human legal review.");
 
-const mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
-const mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
+var mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
+var mlOwnerApprovalTests = await read("scripts/ml-owner-approval.test.mjs");
 add("WIN owner training approvals require dataset-bound Ed25519 signatures and licence evidence",
   mlOwnerApproval.includes("verifySignature") &&
   mlOwnerApproval.includes("datasetContentSha256") &&
@@ -4819,7 +4806,7 @@ add("WIN owner training approvals require dataset-bound Ed25519 signatures and l
   mlOwnerApprovalTests.includes("2026-02-30T09:00:00.000Z"),
   "The isolated verifier binds signed approval to dataset content, licence evidence, reviewer and validity window; readiness remains separately blocked.");
 
-const mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
+var mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
 add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes('action: "licence_evidence"') &&
   mlTrainingReadinessDocs.includes('action: "readiness"') &&
@@ -4827,8 +4814,8 @@ add("WIN documents the signed licence-to-training-readiness evidence chain",
   mlTrainingReadinessDocs.includes("does not prove that the source document is authentic"),
   "The operator guide describes immutable signed evidence, endpoint actions, evidence-only readiness semantics and the legal-review limitation.");
 
-const mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
-const mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
+var mlOwnerApprovalRegistry = await read("netlify/lib/ml-owner-approval-registry.mts");
+var mlOwnerApprovalRegistryTests = await read("scripts/ml-owner-approval-registry.test.mjs");
 add("WIN signed owner approvals and revocations are stored immutably and checked against the registered dataset",
   mlOwnerApprovalRegistry.includes("putIfNew") &&
   mlOwnerApprovalRegistry.includes("getWinMLDatasetManifest") &&
@@ -4850,8 +4837,8 @@ add("WIN signed owner approvals and revocations are stored immutably and checked
   mlOwnerApprovalRegistryTests.includes("licence_evidence_id_immutable_conflict"),
   "Signed licence evidence is immutably registered by canonical hash and rechecked during approval status; the composite readiness audit validates dataset, licence, owner approval and revocation while keeping fitting disabled.");
 
-const mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
-const mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
+var mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
+var mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
 add("WIN owner approval endpoint requires a separate protected token, trusted public key and bounded JSON body",
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") &&
@@ -4872,8 +4859,8 @@ add("WIN owner approval endpoint requires a separate protected token, trusted pu
   mlOwnerApprovalEndpointTests.includes("readinessBody.modelFittingAllowed, false"),
   "The protected owner endpoint registers signed licence evidence and exposes a read-only composite readiness check without accepting caller-supplied keys or enabling fitting.");
 
-const mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
-const mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
+var mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
+var mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
 add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer with frozen shadow-only artifacts",
   mlFootballTrainer.includes("trainWinMLFootball1X2LogisticModel") &&
   mlFootballTrainer.includes("evaluateWinMLFootball1X2LogisticModel") &&
@@ -4911,14 +4898,14 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainerTests.includes("2026-02-30T00:00:00.000Z"),
   "The pure trainer fits only a chronological training partition, uses training-only normalization, reports validation metrics against a class-frequency baseline, hashes its artifact, and requires a separate held-out test. No production route or real dataset is wired to it.");
 
-const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
-const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
-const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
-const mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
-const mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
-const mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
-const mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
-const mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
+var mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
+var mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
+var mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
+var mlFootballTrainingTests = await read("scripts/ml-football-training-builder.test.mjs");
+var mlFootballExperiments = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlFootballExperimentTests = await read("scripts/ml-football-experiment-plans.test.mjs");
+var mlFootballImporter = await read("netlify/lib/ml-football-importer.mts");
+var mlFootballImportTests = await read("scripts/ml-football-importer.test.mjs");
 add("WIN football point-in-time features reject duplicate identities and future or unavailable results",
   mlFootballFeatures.includes("historical_row_identity_duplicate_or_invalid") &&
   mlFootballFeatures.includes("resultAvailableAt") &&
@@ -4961,9 +4948,9 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImportTests.includes("permittedUse, \"research_only\""),
   "The importer hashes caller-supplied bytes, applies strict row and payload bounds, performs no network fetch, and never grants training permission.");
 
-const mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
-const mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
-const mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
+var mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
+var mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
+var mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
 add("WIN model fitting is blocked by a server-side execution gate and immutable approved plan",
   mlTrainingExecutionGate.includes("WIN_ML_FITTING_ENABLED") &&
   mlTrainingExecutionGate.includes("WIN_ML_EXECUTION_APPROVED") &&
@@ -4977,8 +4964,8 @@ add("WIN model fitting is blocked by a server-side execution gate and immutable 
   mlTrainingExecutionGateTests.includes("rejects caller-constructed plans"),
   "Training requires protected server flags, the server-owned plan identity and the signed dataset/licence/owner readiness chain. The current plan remains disabled; the gate cannot authorize promotion or betting.");
  
-const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
-const mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
+var mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
+var mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
 add("WIN model artifact registry immutably binds model, dataset, evaluation and all provenance hashes",
   mlModelArtifactRegistry.includes("putIfNew") &&
   mlModelArtifactRegistry.includes("getWinMLDatasetManifest") &&
@@ -4995,8 +4982,8 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   mlModelArtifactRegistry.includes("model_artifact_held_out_evaluation_mismatch"),
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
-const resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
-const apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
+var resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
+var apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
 add("Stage 2 API inventory includes the protected ML owner-approval route and its control-plane boundary",
   apiJobInventory.includes("`/api/ml-owner-approval`") &&
   apiJobInventory.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
@@ -5014,9 +5001,9 @@ add("Prediction-result corrections remain append-only, independently reviewed an
   resultCorrectionDesign.includes("unreviewed or rejected correction never enters model training data"),
   "A governed correction path must preserve the original claim, require a separate reviewer and keep unreviewed corrections out of training.");
 
-const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
-const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
-const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
+var scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
+var scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
+var scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -5034,8 +5021,8 @@ add("Scheduled learning runs use atomic owner leases, bounded request validation
   scheduledRequestTests.includes("rejects non-POST methods"),
   "A scheduled runner must reject malformed/oversized requests, serialize duplicate run execution with conditional leases, and permit stale-lease recovery without allowing stale workers to release a newer lease.");
 
-const resultRequestTests = await read("scripts/results-request-validation.test.mjs");
-const resultsHandler = await read("netlify/functions/results.mts");
+var resultRequestTests = await read("scripts/results-request-validation.test.mjs");
+var resultsHandler = await read("netlify/functions/results.mts");
 add("Result submissions enforce bounded JSON request parsing before settlement processing",
   resultsHandler.includes("readResultSubmissionBody") &&
   resultsHandler.includes("MAX_RESULT_REQUEST_BYTES") &&
@@ -5046,13 +5033,13 @@ add("Result submissions enforce bounded JSON request parsing before settlement p
   resultRequestTests.includes("JSON-like but invalid media types"),
   "The result endpoint must require JSON, enforce a streaming 64 KiB cap, reject invalid UTF-8/non-object JSON, and cover those boundaries with regression tests.");
 
-const packageManifest = JSON.parse(await read("package.json"));
+var packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
+var oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
   oauthAuthorize.includes("consumeOAuthRecord(\"requests\"") &&
@@ -5061,8 +5048,8 @@ add("OAuth consent text reflects only requested scopes and authorization codes a
   oauthConsentTests.includes("describes audit, read and research scopes independently"),
   "Consent must accurately describe audit/read/research/refresh permissions. Concurrent authorization POSTs must return only the code committed by the request-record ETag claim.");
 
-const oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
-const oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
+var oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
+var oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
 add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate form parameters",
   oauthRequestHelper.includes("readBoundedOAuthText") &&
   oauthRequestHelper.includes("reader.read()") &&
@@ -5074,7 +5061,7 @@ add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate
   oauthRequestTests.includes("rejects malformed, non-object and misleading media types"),
   "Authorization and token form requests are capped at 16 KiB (8 KiB for owner authorization); dynamic registration JSON is capped at 16 KiB. Invalid UTF-8, malformed/non-object JSON, duplicate form keys and unsupported media types fail closed.");
 
-const winCiWorkflow = await read(".github/workflows/win-quality.yml");
+var winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
@@ -5088,7 +5075,6 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   !winCiWorkflow.includes("NETLIFY_SITE_ID"),
   "The CI job runs tests and build checks with read-only repository permissions; it does not deploy or access production secrets.");
 
-const failed = checks.filter(x => !x.ok);
+var failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
-}
