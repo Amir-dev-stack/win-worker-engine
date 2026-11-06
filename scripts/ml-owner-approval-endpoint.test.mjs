@@ -10,6 +10,7 @@ function createMemoryStore() {
   const records = new Map();
   let revision = 0;
   return {
+    records,
     async setJSON(key, value, options = {}) {
       const existing = records.get(key);
       if (options.onlyIfNew && existing) return { modified: false, etag: existing.etag };
