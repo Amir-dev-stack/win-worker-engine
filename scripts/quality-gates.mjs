@@ -931,6 +931,13 @@ add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and re
   mlMarketBlendTests.includes("tiny apparent gains that may be noise"),
   "The research blend must require a shared held-out cohort, at least 100 test rows, model improvement on both Brier and log loss, ECE <= 0.05, labels available by evaluation time, a market quote no older than six hours, and never allow more than 20% model influence or authorize production/betting.");
 
+add("Coupon dashboard distinguishes verified combined odds from theoretical price products and unquantified joint probability",
+  app.includes("Theoretical leg-price product:") &&
+  app.includes("not a bookmaker-quoted accumulator price") &&
+  app.includes("Whole-coupon probability: not reliably quantifiable") &&
+  app.includes("Probability warning:") &&
+  app.includes("Incomplete evidence:"),
+  "The coupon board must display draftable multi-leg proposals without presenting a leg-price product as a quoted accumulator price or claiming a joint win probability.");
 const couponCorrelationGate = await read("netlify/lib/coupon-correlation-gate.mts");
 const couponCorrelationTests = await read("scripts/coupon-correlation-gate.test.mjs");
 const couponRunner = await read("netlify/functions/worker-runner.mts");
