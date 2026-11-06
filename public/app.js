@@ -14,11 +14,22 @@ function citationHtml(items=[]){return items.map(c=>{const u=safeUrl(c.url);retu
 function couponPanel(coupons=[]){
  if(!coupons.length)return '<section class="report-card"><b>Constructed coupons</b><p class="empty">No structured coupon candidate was returned. Check D6 report and evidence blockers.</p></section>';
  return '<section class="report-card"><h4>Coupon candidates — your decision</h4>'+coupons.map(c=>{
-  const legs=(c.legs||[]).map((l,i)=>'<tr><td>'+(i+1)+'. '+escapeHtml(l.event)+'</td><td>'+escapeHtml(l.market)+'<br><b>'+escapeHtml(l.selection)+'</b></td><td>'+(l.odds===null||l.odds===undefined?'Not verified':Number(l.odds).toFixed(2))+'</td><td>'+(l.sourceUrl?'<a href="'+escapeHtml(safeUrl(l.sourceUrl))+'" target="_blank" rel="noopener noreferrer">Source ↗</a>':'Not supplied')+'<br><small>'+escapeHtml(l.observedAt||'No timestamp')+'</small></td></tr>').join('');
+  const legs=(c.legs||[]).map((l,i)=>{
+   const probability=typeof l.estimatedWinProbabilityPercent==="number"?Number(l.estimatedWinProbabilityPercent).toFixed(1)+"%":"—";
+   const basis=l.probabilityType==="agent_heuristic_unverified"?"Uncalibrated agent estimate":l.probabilityType==="unverified_claim"?"Unverified model/market claim":"Not available";
+   const rationale=l.probabilityRationale?'<small>'+escapeHtml(l.probabilityRationale)+'</small>':"";
+   return '<tr><td>'+(i+1)+'. '+escapeHtml(l.event)+'</td><td>'+escapeHtml(l.market)+'<br><b>'+escapeHtml(l.selection)+'</b></td><td>'+(l.odds===null||l.odds===undefined?'Not verified':Number(l.odds).toFixed(2))+'</td><td>'+probability+'<br><small>'+basis+'</small>'+rationale+'</td><td>'+(l.sourceUrl?'<a href="'+escapeHtml(safeUrl(l.sourceUrl))+'" target="_blank" rel="noopener noreferrer">Source ↗</a>':'Not supplied')+'<br><small>'+escapeHtml(l.observedAt||'No timestamp')+'</small></td></tr>';
+  }).join('');
   const blockers=(c.blockers||[]).length?'<p class="report-error"><b>Evidence gaps / blockers:</b> '+escapeHtml(c.blockers.join(' · '))+'</p>':'';
   const corr=(c.correlationNotes||[]).length?'<p><b>Correlation:</b> '+escapeHtml(c.correlationNotes.join(' · '))+'</p>':'';
-  const risk=(c.riskFactors||[]).length?'<p><b>Risk factors:</b> '+escapeHtml(c.riskFactors.join(' · '))+'</p>':'';
-  return '<article class="mini-row"><div><div class="report-title"><b>'+escapeHtml(c.label||'WIN candidate')+'</b><span class="decision">'+escapeHtml(c.status||'UNASSESSED')+'</span></div><p>Combined odds: <b>'+(c.combinedOdds?Number(c.combinedOdds).toFixed(2):'Not verified')+'</b></p><div class="table-wrap"><table><thead><tr><th>Event</th><th>Market / selection</th><th>Odds</th><th>Price evidence</th></tr></thead><tbody>'+legs+'</tbody></table></div>'+blockers+corr+risk+'</div></article>';
+  const warnings=(c.probabilityWarnings||[]).length?'<p class="detail-meta"><b>Probability warnings:</b> '+escapeHtml(c.probabilityWarnings.join(' · '))+'</p>':'';
+  const riskFactors=(c.riskFactors||[]).length?'<p><b>Risk factors:</b> '+escapeHtml(c.riskFactors.join(' · '))+'</p>':'';
+  const wholeProbability=typeof c.wholeCouponWinProbabilityPercent==="number"?Number(c.wholeCouponWinProbabilityPercent).toFixed(1)+"%":"Not reliably quantifiable";
+  const probability='<p class="detail-meta">Whole-coupon probability: <b>'+wholeProbability+'</b></p>';
+  const risk=typeof c.riskPercent==="number"?'<p class="detail-meta">Heuristic risk score: <b>'+Number(c.riskPercent).toFixed(0)+'%</b> · not a calibrated loss probability.</p>':"";
+  const theoretical=c.theoreticalOddsProduct===null||c.theoreticalOddsProduct===undefined?"":'<p class="detail-meta">Theoretical leg-price product: <b>'+Number(c.theoreticalOddsProduct).toFixed(2)+'</b> · not a bookmaker-quoted accumulator price.</p>';
+  const dataQuality=c.dataQualityStatus==="incomplete"?'<p class="report-error">Some leg evidence is incomplete; review the blockers before using this draft.</p>':"";
+  return '<article class="mini-row"><div><div class="report-title"><b>'+escapeHtml(c.label||'WIN candidate')+'</b><span class="decision">'+escapeHtml(c.status||'UNASSESSED')+'</span></div><p>Combined odds: <b>'+(c.combinedOdds?Number(c.combinedOdds).toFixed(2):'Not verified')+'</b></p>'+theoretical+probability+risk+warnings+dataQuality+'<div class="table-wrap"><table><thead><tr><th>Event</th><th>Market / selection</th><th>Odds</th><th>Estimated leg win %</th><th>Price evidence</th></tr></thead><tbody>'+legs+'</tbody></table></div>'+blockers+corr+riskFactors+'</div></article>';
  }).join('')+'</section>';
 }
 function riskPanel(risk,master){
