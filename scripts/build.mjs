@@ -73,6 +73,8 @@ const required = [
   "netlify/lib/ml-training-execution-gate.mts",
   "netlify/lib/ml-model-artifact-registry.mts",
   "netlify/lib/ml-shadow-prediction.mts",
+  "scripts/win-store.test.mjs",
+  "scripts/results-isolated-retry.test.mjs",
   "scripts/ml-model-artifact-registry.test.mjs",
   "scripts/ml-shadow-prediction.test.mjs",
   "scripts/ml-training-execution-gate.test.mjs",
