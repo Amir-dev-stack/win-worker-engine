@@ -1266,6 +1266,18 @@ add("WIN CLV requires source-timestamped decimal prices for the exact same bookm
   winOddsClvTests.includes("prediction-market prices and fair-probability inputs"),
   "CLV is computed only from comparable source-timestamped decimal back prices; retrospective and live evidence are distinguished, and the evaluator makes no profitability claim.");
 
+const winOddsEvidenceSchema = await read("database/migrations/20261107_win_odds_evidence.sql");
+const winOddsEvidenceSchemaTests = await read("scripts/win-odds-evidence-schema.test.mjs");
+add("WIN odds evidence schema is append-only, source-pinned and prediction-bound",
+  winOddsEvidenceSchema.includes("source_revision char(40)") &&
+  winOddsEvidenceSchema.includes("licence_id text not null") &&
+  winOddsEvidenceSchema.includes("win_prediction_quote_bindings") &&
+  winOddsEvidenceSchema.includes("win_clv_evaluations") &&
+  winOddsEvidenceSchema.includes("win_reject_odds_evidence_mutation") &&
+  winOddsEvidenceSchemaTests.includes("append-only") &&
+  winOddsEvidenceSchemaTests.includes("cannot claim profitability"),
+  "Quote evidence, prediction-time price binding and CLV results must remain immutable and evidence-only.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
