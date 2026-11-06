@@ -68,6 +68,8 @@ const required = [
   "netlify/lib/ml-football-import-workflow.mts",
   "netlify/lib/ml-football-features.mts",
   "netlify/lib/ml-football-training-builder.mts",
+  "netlify/lib/ml-football-logistic-trainer.mts",
+  "scripts/ml-football-logistic-trainer.test.mjs",
   "netlify/lib/ml-football-experiment-plans.mts",
   "netlify/lib/ml-model-contract.mts",
   "netlify/lib/ml-prediction-contract.mts",
