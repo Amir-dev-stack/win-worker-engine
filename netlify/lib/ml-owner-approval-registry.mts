@@ -83,7 +83,7 @@ export async function registerWinMLLicenceReviewEvidence(
 ) {
   if (!configValid(trustedConfig)) registryError("trusted_owner_approval_configuration_missing");
   const payload = evidence?.payload;
-  if (!validId(payload?.evidenceId)) registryError("licence_evidence_id_invalid");
+  if (!payload || !validId(payload.evidenceId)) registryError("licence_evidence_id_invalid");
   if (payload?.reviewerId !== trustedConfig.reviewerId) registryError("licence_evidence_reviewer_not_authorized");
   let evidenceSha256: string;
   try { evidenceSha256 = hashWinMLLicenceEvidence(payload); }
