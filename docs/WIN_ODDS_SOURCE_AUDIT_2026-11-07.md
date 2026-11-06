@@ -62,3 +62,34 @@ CLV should be computed only for comparable quotes and explicit price semantics. 
 5. Continue using the current consensus probabilities for market-benchmark scoring where their source timestamp and cohort binding pass validation; label the benchmark accurately.
 
 This is a source-schema audit, not a live-provider test, dataset import, model evaluation or profitability result. No production data, secrets, provider calls, deployments or betting activity were changed.
+
+
+## Follow-up implementation update — 2026-11-07
+
+The following research-only foundations have now been added on the same branch:
+
+- `netlify/lib/win-odds-clv.mts` defines `win.odds.clv.v1` and calculates price-based CLV only from a source-declared decision quote and source-declared closing quote.
+- The two quotes must match on source, pinned source revision, licence ID, event, market, selection, period, line, bookmaker, venue and decimal-back-price semantics.
+- Both quotes must be source-timestamped, open, pre-kickoff and non-live. The decision quote must also have been ingested by the prediction cutoff.
+- Live and retrospective modes are distinct. Retrospective backfills do not claim that WIN itself possessed the quote live.
+- Synthetic tests and build/quality-gate registration were added.
+
+### Existing observed-price sample importer
+
+The repository also contains `netlify/lib/sharpapi-sample-adapter.mts`. It imports static CC BY 4.0 sample CSVs and preserves decimal odds, a bookmaker label, event/market/selection fields and source observation timestamp. However:
+- Its source URL points to the mutable GitHub `main` branch rather than a pinned commit revision.
+- Availability status is set to `unknown`.
+- The files are static sample snapshots, not a verified continuously captured opening-to-closing bookmaker history.
+- The importer does not establish that the quoted bookmaker price was executable or that WIN could access it at a historical decision time.
+
+Therefore this sample importer is useful for testing data-shape handling and quality diagnostics, but it is **not** currently approved evidence for live CLV, historical CLV claims, ROI or provider performance.
+
+### Remaining integration work
+
+1. Find and review a source whose licence permits the intended use and whose historical snapshots include stable source revision, bookmaker, market/selection/line, raw decimal prices and explicit source timestamps.
+2. Add an immutable quote registry that binds each source record and quote to its licence/revision and each WIN prediction to the decision-time quote.
+3. Add an explicit source-declared closing snapshot marker and ensure the adapter selects the true market close, not an arbitrary late quote.
+4. Aggregate matched CLV observations by sport, league, market, bookmaker and time horizon, with sample counts and uncertainty intervals.
+5. Verify the full workflow on real licensed data before claiming CLV performance.
+
+The evaluator is not wired to a production route or automated betting. No provider was activated and no real-world CLV result is claimed.
