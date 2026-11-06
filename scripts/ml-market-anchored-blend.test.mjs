@@ -160,3 +160,17 @@ test("rejects implausible market overround and impossible calendar timestamps", 
   assert.equal(impossibleDate.status, "blocked");
   assert.ok(impossibleDate.reasons.includes("prediction_cutoff_invalid"));
 });
+
+test("rejects unnormalized ML probabilities and out-of-range evaluation metrics", () => {
+  const unnormalized = calculateWinMLMarketAnchoredBlend(input({
+    model: { ...input().model, probabilities: { home: 0.6, draw: 0.6, away: 0.6 } }
+  }));
+  assert.equal(unnormalized.status, "blocked");
+  assert.ok(unnormalized.reasons.includes("model_probabilities_invalid"));
+
+  const impossibleMetric = calculateWinMLMarketAnchoredBlend(input({
+    evaluation: { ...input().evaluation, marketBrier: 2.5 }
+  }));
+  assert.equal(impossibleMetric.status, "blocked");
+  assert.ok(impossibleMetric.reasons.includes("held_out_evaluation_metrics_invalid"));
+});
