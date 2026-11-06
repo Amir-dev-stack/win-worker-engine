@@ -625,6 +625,16 @@ add("Netlify Blobs conditional-write dependency is pinned to the concurrent-writ
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
+const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
+const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
+add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
+  oauthAuthorize.includes("describeOAuthScopes") &&
+  oauthAuthorize.includes("consumeOAuthRecord(\"requests\"") &&
+  oauthAuthorize.includes("storedAuth.etag") &&
+  oauthConsentTests.includes("does not overstate research access") &&
+  oauthConsentTests.includes("describes audit, read and research scopes independently"),
+  "Consent must accurately describe audit/read/research/refresh permissions. Concurrent authorization POSTs must return only the code committed by the request-record ETag claim.");
+
 const oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
 const oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
 add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate form parameters",
