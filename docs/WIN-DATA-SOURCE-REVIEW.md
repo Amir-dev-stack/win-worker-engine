@@ -105,6 +105,8 @@ Bookmaker and source identifiers are preserved as labels only. Separate IDs do n
 
 Snapshot identifiers are checked for duplication within each declared source, so two different feeds may legitimately use the same local ID without being conflated. This is an identifier-scoping rule only; it does not establish that the feeds are independent.
 
+Historical price validity is now reported separately from bookmaker availability. Each valid pre-kickoff observation retains its declared open, suspended, closed or unknown status, and the report counts each category. Suspended, closed and unknown records remain visible for historical diagnostics but must not be mistaken for an offer that was open to a bettor at capture time. Missing status is classified as unknown rather than assumed open. This status view does not rewrite the source record or grant market execution eligibility.
+
 ### Normalized observed-market bridge
 
 A read-only bridge now maps WIN's normalized `ObservedMarket` records into the football odds-quality assessor. It retains provider ID as the source label, bookmaker ID, event, canonical market plus period, selection identity, line, source-record ID, observation timestamp and decimal price. Only records explicitly marked as football, non-live, non-prediction-market and scheduled-event-start are included; live, non-football and non-scheduled market rows are counted as excluded context. Expected market outcomes must be supplied explicitly by the caller, including exact selection identifiers. The bridge does not infer market outcomes from market names, rewrite provider records, connect feeds, or approve source independence/training.
