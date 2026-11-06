@@ -272,3 +272,12 @@ This follow-up is a source review and documentation update only. It does not cla
 - The endpoint now claims the case with `putIfNew`. Concurrent identical submissions converge on one stored case; retries return that existing case with `duplicate: true`. A conflicting or unreadable occupied identity fails closed with HTTP 409.
 - Added regression coverage for deterministic identity and separation across coupon, evidence and outcome values. The test is required by the build and the atomic create-once wiring is checked by an architecture quality gate.
 - This closes the duplicate POST race for identical human-settlement claims. It does not make independent-review processing atomic, prove provider-side Blobs semantics, or convert submitted claims into verified outcomes.
+
+
+### Lesson-review submission concurrency follow-up (2026-11-06)
+- Replaced the `/api/library` lesson-review list-then-write duplicate scan with a deterministic SHA-256 case ID derived from the lesson's validation revision (lesson ID, validation status, prior review-case ID, update timestamp and validation timestamp).
+- Identical submissions against the same lesson revision now use `putIfNew` to converge on one pending review case. The lesson's pointer/status update uses `putIfMatch` against the original ETag.
+- A retry after a case was claimed but before the lesson pointer was updated reuses the same case ID and can complete the pointer update. If the lesson changes concurrently, the handler returns HTTP 409 rather than overwriting the newer lesson state.
+- If the lesson already says pending, the handler follows its stored case pointer and verifies the referenced case; a missing or inconsistent pointer fails closed for manual reconciliation.
+- Rejection changes the lesson validation status, so a later resubmission derives a different case ID. Tests cover deterministic identity and changed/rejected revision separation; build and architecture quality gate require these tests and the atomic route wiring.
+- This is not a multi-record transaction. A storage failure after case creation can leave a pending case whose lesson pointer needs retry/reconciliation. Provider-side Netlify Blobs conditional-write guarantees remain unverified by the isolated test fixtures.
