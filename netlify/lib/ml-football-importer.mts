@@ -96,6 +96,7 @@ export function importWinFootballResultsBytes(
   try {
     const url = new URL(source?.sourceUrl || "");
     if (url.protocol !== "https:") sourceErrors.push("source_url_must_be_https");
+    if (!url.hostname || url.username || url.password) sourceErrors.push("source_url_credentials_or_host_invalid");
   } catch {
     sourceErrors.push("source_url_invalid");
   }
