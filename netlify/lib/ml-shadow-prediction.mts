@@ -4,6 +4,7 @@ import { getWinMLDatasetManifest } from "./ml-dataset-registry.mts";
 import { predictWinMLFootball1X2 } from "./ml-football-logistic-trainer.mts";
 import { validateWinMLPrediction, WIN_ML_PREDICTION_VERSION, type WinMLPredictionV1 } from "./ml-prediction-contract.mts";
 import { hashWinMLProvenance } from "./ml-provenance.mts";
+import { parseStrictIsoTimestamp } from "./strict-timestamp.mts";
 
 const COLLECTION = "library/ml-shadow-predictions";
 const RECORD_VERSION = "win.ml.shadow-prediction-record.v1";
@@ -17,16 +18,7 @@ function validId(value: unknown): value is string {
   return typeof value === "string" && /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(value);
 }
 function instant(value: unknown): number | null {
-  if (typeof value !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})T/.exec(value);
-  if (!match) return null;
-  const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
-  const calendar = new Date(Date.UTC(year, month - 1, day));
-  if (calendar.getUTCFullYear() !== year || calendar.getUTCMonth() !== month - 1 ||
-      calendar.getUTCDate() !== day) return null;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  return parseStrictIsoTimestamp(value);
 }
 
 /**
