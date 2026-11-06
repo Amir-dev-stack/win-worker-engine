@@ -1112,6 +1112,17 @@ add("Football historical coverage measures result and pre-kickoff odds completen
   footballCoverageTests.includes("impossible timestamps"),
   "The assessment quantifies results and per-market pre-kickoff odds coverage, reports missing records and excludes post-kickoff prices. It is descriptive only and never unlocks training.");
 
+const footballSeasonCoverage = await read("netlify/lib/ml-football-season-coverage.mts");
+const footballSeasonCoverageTests = await read("scripts/ml-football-season-coverage.test.mjs");
+add("Football coverage is grouped by competition and season with explicit odds-phase provenance",
+  footballSeasonCoverage.includes("assessWinFootballCoverageByCompetitionSeason") &&
+  footballSeasonCoverage.includes("event_id_reused_across_competition_or_season") &&
+  footballSeasonCoverage.includes('["opening", "intermediate", "closing"]') &&
+  footballSeasonCoverage.includes("trainingApprovalGranted: false") &&
+  footballSeasonCoverageTests.includes("groups historical coverage by competition and season") &&
+  footballSeasonCoverageTests.includes("ambiguous reused event IDs"),
+  "Coverage reports are partitioned by competition-season. Opening/intermediate/closing counts require explicit source phase labels and pre-kickoff timestamps; ambiguous event IDs are left unassigned.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
