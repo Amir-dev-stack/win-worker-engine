@@ -78,6 +78,24 @@ test("model artifact registry immutably binds artifact, evaluation and registere
   assert.equal(loaded.evaluation.testEventIds.length, loaded.evaluation.testRows);
   assert.equal(loaded.productionPromotionAllowed, false);
 });
+test("model artifact registry refuses approval references without protected server configuration", async () => {
+  await resetRecords();
+  const { artifact, evaluation, testRows, evaluatedAt } = setup();
+  await registerWinMLDatasetManifest(manifest);
+  const previousNetlify = globalThis.Netlify;
+  try {
+    delete globalThis.Netlify;
+    await assert.rejects(() => registerWinMLModelArtifact({
+      artifact, evaluation, testRows, evaluatedAt, approvalId: "untrusted-approval-id",
+      registeredAt: "2027-01-03T00:00:00.000Z"
+    }), error => error instanceof WinMLModelArtifactRegistryError &&
+      error.code === "model_artifact_owner_approval_not_ready");
+  } finally {
+    if (previousNetlify === undefined) delete globalThis.Netlify;
+    else globalThis.Netlify = previousNetlify;
+  }
+});
+
 test("model artifact registry rejects dataset hash drift and immutable version conflicts", async () => {
   await resetRecords();
   const { artifact, evaluation, testRows, evaluatedAt } = setup();

@@ -51,10 +51,13 @@ function sha256(value: unknown): value is string {
 export function validateWinMLPrediction(
   manifest: WinMLDatasetManifestV1,
   evaluation: WinMLModelEvaluationV1,
-  prediction: WinMLPredictionV1
+  prediction: WinMLPredictionV1,
+  options: { ownerApprovalEvidenceReady?: boolean } = {}
 ) {
   const reasons: string[] = [];
-  const readiness = evaluateWinMLPromotionReadiness(manifest, evaluation);
+  const readiness = evaluateWinMLPromotionReadiness(manifest, evaluation, {
+    ownerApprovalEvidenceReady: options.ownerApprovalEvidenceReady === true
+  });
   if (readiness.status !== "eligible_for_human_shadow_review") {
     reasons.push("prediction_model_evaluation_not_eligible");
   }

@@ -1,6 +1,7 @@
 import { isStrictIsoTimestamp } from "./strict-timestamp.mts";
 import { get, putIfNew } from "./store.mts";
 import { getWinMLDatasetManifest } from "./ml-dataset-registry.mts";
+import { evaluateWinMLTrainingReadinessFromProtectedConfig } from "./ml-owner-approval-registry.mts";
 import { evaluateWinMLPromotionReadiness, type WinMLModelEvaluationV1 } from "./ml-model-contract.mts";
 import { hashWinMLProvenance } from "./ml-provenance.mts";
 import {
@@ -27,6 +28,7 @@ type StoredRecord = {
   artifact: WinMLFootballLogisticArtifactV1;
   evaluation: WinMLModelEvaluationV1;
   registeredAt: string;
+  approvalId?: string;
 };
 
 export class WinMLModelArtifactRegistryError extends Error {
@@ -68,6 +70,7 @@ function verifyRecord(record: StoredRecord) {
   if (!record || record.recordVersion !== VERSION ||
       !validId(record.modelId) || !validId(record.modelVersion) ||
       !validId(record.datasetId) ||
+      (record.approvalId !== undefined && !validId(record.approvalId)) ||
       !/^[a-f0-9]{64}$/i.test(record.datasetContentSha256 || "") ||
       !/^[a-f0-9]{64}$/i.test(record.artifactSha256 || "") ||
       !/^[a-f0-9]{64}$/i.test(record.evaluationSha256 || "") ||
@@ -112,11 +115,13 @@ export async function registerWinMLModelArtifact(args: {
   registeredAt: string;
   evaluatedAt: string;
   testRows: WinMLFootballNumericRow[];
+  approvalId?: string;
 }) {
-  const { artifact, evaluation, registeredAt, evaluatedAt, testRows } = args || ({} as any);
+  const { artifact, evaluation, registeredAt, evaluatedAt, testRows, approvalId } = args || ({} as any);
   validateBinding(artifact, evaluation);
   if (!validId(evaluation.modelId) || !validId(evaluation.modelVersion) ||
-      !isStrictIsoTimestamp(registeredAt)) {
+      !isStrictIsoTimestamp(registeredAt) ||
+      (approvalId !== undefined && !validId(approvalId))) {
     throw new WinMLModelArtifactRegistryError("model_artifact_registration_metadata_invalid");
   }
   if (!isStrictIsoTimestamp(evaluatedAt) || Date.parse(registeredAt) < Date.parse(evaluatedAt) ||
@@ -142,7 +147,15 @@ export async function registerWinMLModelArtifact(args: {
   if (!manifest || manifest.contentSha256 !== artifact.datasetContentSha256) {
     throw new WinMLModelArtifactRegistryError("registered_dataset_content_binding_missing_or_mismatched");
   }
-  const promotionReadiness = evaluateWinMLPromotionReadiness(manifest, evaluation);
+  const ownerApprovalReadiness = approvalId
+    ? await evaluateWinMLTrainingReadinessFromProtectedConfig(artifact.datasetId, approvalId)
+    : null;
+  if (approvalId && !ownerApprovalReadiness?.evidenceReady) {
+    throw new WinMLModelArtifactRegistryError("model_artifact_owner_approval_not_ready");
+  }
+  const promotionReadiness = evaluateWinMLPromotionReadiness(manifest, evaluation, {
+    ownerApprovalEvidenceReady: ownerApprovalReadiness?.evidenceReady === true
+  });
   const payload = {
     recordVersion: VERSION,
     modelId: artifact.modelId,
@@ -154,7 +167,8 @@ export async function registerWinMLModelArtifact(args: {
     testRowsSha256: hashWinMLProvenance(testRows).sha256,
     artifact,
     evaluation,
-    registeredAt
+    registeredAt,
+    ...(approvalId ? { approvalId } : {})
   };
   const record = { ...payload, recordSha256: hashWinMLProvenance(payload).sha256 } as StoredRecord;
   const id = key(record.modelId, record.modelVersion);
@@ -191,6 +205,9 @@ export async function getWinMLModelArtifact(modelId: string, modelVersion: strin
   if (!manifest || manifest.contentSha256 !== record.datasetContentSha256) {
     throw new WinMLModelArtifactRegistryError("registered_dataset_content_binding_missing_or_mismatched");
   }
+  const ownerApprovalReadiness = record.approvalId
+    ? await evaluateWinMLTrainingReadinessFromProtectedConfig(record.datasetId, record.approvalId)
+    : null;
   return {
     artifact: record.artifact,
     evaluation: record.evaluation,
@@ -200,9 +217,13 @@ export async function getWinMLModelArtifact(modelId: string, modelVersion: strin
       evaluationSha256: record.evaluationSha256, testRowsSha256: record.testRowsSha256,
       datasetId: record.datasetId,
       datasetContentSha256: record.datasetContentSha256,
-      registeredAt: record.registeredAt
+      registeredAt: record.registeredAt,
+      ...(record.approvalId ? { approvalId: record.approvalId } : {})
     },
-    promotionReadiness: evaluateWinMLPromotionReadiness(manifest, record.evaluation),
+    ownerApprovalEvidenceReady: ownerApprovalReadiness?.evidenceReady === true,
+    promotionReadiness: evaluateWinMLPromotionReadiness(manifest, record.evaluation, {
+      ownerApprovalEvidenceReady: ownerApprovalReadiness?.evidenceReady === true
+    }),
     productionPromotionAllowed: false as const,
     automatedBettingAllowed: false as const
   };

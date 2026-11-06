@@ -47,6 +47,8 @@ export type WinMLPromotionGateOptions = {
   minimumTestRows?: number;
   minimumRelativeBrierImprovement?: number;
   maximumExpectedCalibrationError?: number;
+  /** Only set after protected server-side signature, licence and revocation revalidation. */
+  ownerApprovalEvidenceReady?: boolean;
 };
 
 function nonEmpty(value: unknown): value is string {
@@ -73,7 +75,10 @@ export function evaluateWinMLPromotionReadiness(
 ) {
   const reasons: string[] = [];
   const datasetReadiness = evaluateWinMLDatasetReadiness(manifest);
-  reasons.push(...datasetReadiness.reasons.map(reason => "dataset_" + reason));
+  const approvalReasons = new Set(["owner_training_approval_missing", "trusted_owner_approval_evidence_missing"]);
+  reasons.push(...datasetReadiness.reasons
+    .filter(reason => options.ownerApprovalEvidenceReady !== true || !approvalReasons.has(reason))
+    .map(reason => "dataset_" + reason));
 
   const minimumTrainingRows = options.minimumTrainingRows ?? 500;
   const minimumValidationRows = options.minimumValidationRows ?? 100;

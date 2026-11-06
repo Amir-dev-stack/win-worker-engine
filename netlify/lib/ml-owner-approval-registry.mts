@@ -337,3 +337,34 @@ export async function getWinMLOwnerTrainingApprovalStatus(
     expiresAt: payload.expiresAt
   };
 }
+
+/**
+ * Revalidate an approval reference using only protected server configuration.
+ * The caller cannot supply a reviewer identity, trusted public key or status.
+ */
+export async function evaluateWinMLTrainingReadinessFromProtectedConfig(
+  datasetId: string,
+  approvalId: string,
+  now = new Date().toISOString()
+) {
+  let publicKeyPem = "";
+  let reviewerId = "";
+  try {
+    publicKeyPem = Netlify.env.get("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") || "";
+    reviewerId = Netlify.env.get("WIN_ML_OWNER_REVIEWER_ID") || "";
+  } catch {
+    // Missing protected runtime configuration is a closed gate.
+  }
+  if (!publicKeyPem.trim() || !reviewerId.trim()) {
+    return {
+      evidenceReady: false as const,
+      reasons: ["owner_approval_control_plane_not_configured"],
+      datasetId,
+      approvalId,
+      modelFittingAllowed: false as const,
+      productionPromotionAllowed: false as const,
+      automatedBettingAllowed: false as const
+    };
+  }
+  return evaluateWinMLTrainingReadiness(datasetId, approvalId, { publicKeyPem, reviewerId }, now);
+}

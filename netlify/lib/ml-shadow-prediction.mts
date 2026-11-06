@@ -141,7 +141,9 @@ export async function buildWinMLShadowPrediction(args: {
       away: result.probabilities[2]
     }
   };
-  const validation = validateWinMLPrediction(manifest, evaluation, prediction);
+  const validation = validateWinMLPrediction(manifest, evaluation, prediction, {
+    ownerApprovalEvidenceReady: registered.ownerApprovalEvidenceReady
+  });
   if (validation.status !== "eligible_for_shadow_only") {
     throw new WinMLShadowPredictionError("shadow_prediction_contract_blocked:" +
       validation.reasons.join("|"));
@@ -170,7 +172,9 @@ export async function recordWinMLShadowPrediction(
   if (!manifest || manifest.contentSha256 !== registered.artifact.datasetContentSha256) {
     throw new WinMLShadowPredictionError("shadow_prediction_dataset_binding_invalid");
   }
-  const validation = validateWinMLPrediction(manifest, registered.evaluation, prediction);
+  const validation = validateWinMLPrediction(manifest, registered.evaluation, prediction, {
+    ownerApprovalEvidenceReady: registered.ownerApprovalEvidenceReady
+  });
   if (validation.status !== "eligible_for_shadow_only") {
     throw new WinMLShadowPredictionError("shadow_prediction_record_contract_blocked:" +
       validation.reasons.join("|"));
@@ -226,7 +230,9 @@ export async function getWinMLShadowPredictionRecord(predictionRunId: string) {
   if (!manifest || manifest.contentSha256 !== registered.artifact.datasetContentSha256) {
     throw new WinMLShadowPredictionError("shadow_prediction_dataset_binding_invalid");
   }
-  const validation = validateWinMLPrediction(manifest, registered.evaluation, prediction);
+  const validation = validateWinMLPrediction(manifest, registered.evaluation, prediction, {
+    ownerApprovalEvidenceReady: registered.ownerApprovalEvidenceReady
+  });
   if (validation.status !== "eligible_for_shadow_only") {
     throw new WinMLShadowPredictionError("shadow_prediction_record_contract_blocked:" +
       validation.reasons.join("|"));
