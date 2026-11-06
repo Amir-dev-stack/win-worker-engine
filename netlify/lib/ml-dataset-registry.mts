@@ -80,6 +80,6 @@ export async function listWinMLDatasetManifests(limit = 100) {
     : 100;
   const manifests = await list<WinMLDatasetManifestV1>(DATASET_COLLECTION, boundedLimit);
   return manifests
-    .filter(manifest => manifest && manifest.manifestVersion === "win.ml.dataset.v1")
+    .filter(manifest => manifest && validateWinMLDatasetManifest(manifest).length === 0)
     .sort((a, b) => Date.parse(b.retrievedAt) - Date.parse(a.retrievedAt));
 }
