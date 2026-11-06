@@ -18,6 +18,7 @@ export type WinFootballOddsQualitySnapshot = {
   decimalOdds: number;
   line?: string | number | null;
   availabilityStatus?: "open" | "suspended" | "closed" | "unknown";
+  eventStartAt?: string;
 };
 export type WinFootballOddsQualityReport = {
   snapshotCount: number;
@@ -26,6 +27,9 @@ export type WinFootballOddsQualityReport = {
   duplicateSnapshotCount: number;
   staleSnapshotCount: number;
   postKickoffSnapshotCount: number;
+  fixtureStartMismatchCount: number;
+  fixtureStartTimeUnavailableCount: number;
+  fixtureStartMismatches: Array<{ snapshotId: string; eventId: string; fixtureKickoff: string; observedStartAt: string; skewMinutes: number }>;
   missingMarketOutcomeGroups: string[];
   incompleteMarketGroupCount: number;
   overroundOutOfBounds: Array<{ groupId: string; overround: number }>;
@@ -59,6 +63,7 @@ export function assessWinFootballOddsQuality(args: {
   expectedCadenceMinutes?: number;
   suspiciousRelativeMoveThreshold?: number;
   maxOutcomeTimestampSkewMinutes?: number;
+  maxFixtureStartSkewMinutes?: number;
 }): WinFootballOddsQualityReport {
   const reasons: string[] = [];
   const fixtures = new Map<string, WinFootballOddsQualityFixture>();
@@ -83,19 +88,25 @@ export function assessWinFootballOddsQuality(args: {
   const cadence = args?.expectedCadenceMinutes;
   const jumpThreshold = args?.suspiciousRelativeMoveThreshold ?? 0.25;
   const maxOutcomeSkew = args?.maxOutcomeTimestampSkewMinutes;
+  const maxFixtureStartSkew = args?.maxFixtureStartSkewMinutes;
   const maxAgeValid = maxAge === undefined || (Number.isFinite(maxAge) && maxAge > 0);
   const cadenceValid = cadence === undefined || (Number.isFinite(cadence) && cadence > 0);
   const jumpValid = Number.isFinite(jumpThreshold) && jumpThreshold > 0 && jumpThreshold <= 10;
   const outcomeSkewValid = maxOutcomeSkew === undefined || (Number.isFinite(maxOutcomeSkew) && maxOutcomeSkew >= 0);
+  const fixtureStartSkewValid = maxFixtureStartSkew === undefined || (Number.isFinite(maxFixtureStartSkew) && maxFixtureStartSkew >= 0);
   if (!maxAgeValid) reasons.push("max_snapshot_age_invalid");
   if (!cadenceValid) reasons.push("expected_cadence_invalid");
   if (!jumpValid) reasons.push("suspicious_move_threshold_invalid");
   if (!outcomeSkewValid) reasons.push("outcome_timestamp_skew_invalid");
+  if (!fixtureStartSkewValid) reasons.push("fixture_start_skew_invalid");
 
   let invalidSnapshotCount = 0;
   let duplicateSnapshotCount = 0;
   let staleSnapshotCount = 0;
   let postKickoffSnapshotCount = 0;
+  let fixtureStartMismatchCount = 0;
+  let fixtureStartTimeUnavailableCount = 0;
+  const fixtureStartMismatches: WinFootballOddsQualityReport["fixtureStartMismatches"] = [];
   const seen = new Set<string>();
   const valid: WinFootballOddsQualitySnapshot[] = [];
   for (const s of Array.isArray(args?.snapshots) ? args.snapshots : []) {
@@ -104,6 +115,7 @@ export function assessWinFootballOddsQuality(args: {
         !nonEmpty(s?.snapshotId) || !nonEmpty(s?.outcomeId) ||
         !nonEmpty(s?.bookmakerId) || !nonEmpty(s?.sourceId) ||
         !isStrictIsoTimestamp(s?.capturedAt) ||
+        (s?.eventStartAt !== undefined && !isStrictIsoTimestamp(s.eventStartAt)) ||
         typeof s?.decimalOdds !== "number" || !Number.isFinite(s.decimalOdds) ||
         s.decimalOdds <= 1 || s.decimalOdds > 1000 ||
         !expectedMarkets.get(s.marketId)!.outcomeIds.includes(s.outcomeId)) {
@@ -116,6 +128,18 @@ export function assessWinFootballOddsQuality(args: {
       continue;
     }
     seen.add(duplicateKey);
+    if (fixtureStartSkewValid && maxFixtureStartSkew !== undefined) {
+      if (!s.eventStartAt) {
+        fixtureStartTimeUnavailableCount++;
+        continue;
+      }
+      const skewMinutes = Math.abs(Date.parse(s.eventStartAt) - Date.parse(f.kickoff)) / 60000;
+      if (skewMinutes > maxFixtureStartSkew) {
+        fixtureStartMismatchCount++;
+        fixtureStartMismatches.push({ snapshotId: s.snapshotId, eventId: s.eventId, fixtureKickoff: f.kickoff, observedStartAt: s.eventStartAt, skewMinutes });
+        continue;
+      }
+    }
     if (Date.parse(s.capturedAt) >= Date.parse(f.kickoff)) {
       postKickoffSnapshotCount++;
       continue;
@@ -224,6 +248,8 @@ export function assessWinFootballOddsQuality(args: {
   if (duplicateSnapshotCount) reasons.push("duplicate_snapshot_ids");
   if (staleSnapshotCount) reasons.push("stale_snapshots_excluded");
   if (postKickoffSnapshotCount) reasons.push("post_kickoff_snapshots_excluded");
+  if (fixtureStartMismatchCount) reasons.push("fixture_start_time_mismatch_excluded");
+  if (fixtureStartTimeUnavailableCount) reasons.push("fixture_start_time_unavailable_excluded");
   if (missingMarketOutcomeGroups.length) reasons.push("incomplete_market_outcome_groups");
   if (overroundOutOfBounds.length) reasons.push("market_overround_out_of_bounds");
   if (incoherentMarketTimestampGroups.length) reasons.push("market_outcome_timestamp_skew_exceeds_limit");
@@ -239,6 +265,7 @@ export function assessWinFootballOddsQuality(args: {
     snapshotCount: Array.isArray(args?.snapshots) ? args.snapshots.length : 0,
     validPreKickoffSnapshotCount: valid.length,
     invalidSnapshotCount, duplicateSnapshotCount, staleSnapshotCount, postKickoffSnapshotCount,
+    fixtureStartMismatchCount, fixtureStartTimeUnavailableCount, fixtureStartMismatches,
     missingMarketOutcomeGroups, incompleteMarketGroupCount: missingMarketOutcomeGroups.length,
     overroundOutOfBounds, incoherentMarketTimestampGroups, suspiciousPriceMoves, cadenceGaps,
     conflictingTimestampQuotes,
