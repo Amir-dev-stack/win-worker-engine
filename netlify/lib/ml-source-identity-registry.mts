@@ -44,14 +44,14 @@ export function validateWinReviewedSourceIdentity(
   if (isStrictClock(identity?.reviewedAt) && isStrictClock(identity?.reviewExpiresAt) &&
       Date.parse(identity.reviewExpiresAt) <= Date.parse(identity.reviewedAt)) errors.push("review_window_invalid");
   if (typeof identity?.evidenceUrl !== "string" || !/^https:\/\//i.test(identity.evidenceUrl) ||
-      /[?#]/.test(identity.evidenceUrl) || /[\\s]/.test(identity.evidenceUrl)) errors.push("review_evidence_url_invalid");
+      /[?#]/.test(identity.evidenceUrl) || /[\s]/.test(identity.evidenceUrl)) errors.push("review_evidence_url_invalid");
   if (!hash256(identity?.evidenceSha256)) errors.push("review_evidence_hash_invalid");
   return [...new Set(errors)];
 }
 
 function isStrictClock(value: unknown): value is string {
   return typeof value === "string" &&
-    /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$/.test(value) &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value) &&
     Number.isFinite(Date.parse(value)) && new Date(value).toISOString() ===
       (value.includes(".") ? value : value.replace("Z", ".000Z"));
 }
