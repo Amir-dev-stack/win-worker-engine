@@ -74,6 +74,7 @@ const required = [
   "netlify/lib/ml-provenance.mts",
   "netlify/lib/ml-owner-approval.mts",
   "netlify/lib/ml-licence-evidence.mts",
+  "docs/WIN_ML_TRAINING_READINESS.md",
   "scripts/ml-licence-evidence.test.mjs",
   "netlify/lib/ml-owner-approval-registry.mts",
   "scripts/ml-owner-approval-registry.test.mjs",
