@@ -8,6 +8,41 @@ import { parseStrictIsoTimestamp } from "./strict-timestamp.mts";
 
 const COLLECTION = "library/ml-shadow-predictions";
 const RECORD_VERSION = "win.ml.shadow-prediction-record.v1";
+function assertShadowInferenceMatches(
+  registered: Awaited<ReturnType<typeof getWinMLModelArtifact>>,
+  prediction: WinMLPredictionV1,
+  features: Record<string, { value: number; availableAt: string; sourceId: string }>
+) {
+  if (!registered || !features || typeof features !== "object" || Array.isArray(features)) {
+    throw new WinMLShadowPredictionError("shadow_prediction_features_invalid");
+  }
+  const featureNames = registered.artifact.featureNames;
+  const keys = Object.keys(features).sort();
+  if (keys.length !== featureNames.length || keys.some((key, index) => key !== featureNames[index])) {
+    throw new WinMLShadowPredictionError("shadow_prediction_feature_schema_mismatch");
+  }
+  const cutoff = instant(prediction.predictionCutoff);
+  if (cutoff === null) throw new WinMLShadowPredictionError("shadow_prediction_time_window_invalid");
+  for (const name of featureNames) {
+    const feature = features[name];
+    const availableAt = instant(feature?.availableAt);
+    if (!feature || typeof feature.value !== "number" || !Number.isFinite(feature.value) ||
+        availableAt === null || availableAt > cutoff ||
+        typeof feature.sourceId !== "string" || !feature.sourceId.trim()) {
+      throw new WinMLShadowPredictionError("shadow_prediction_feature_provenance_invalid:" + name);
+    }
+  }
+  if (hashWinMLProvenance(features).sha256 !== prediction.featureVectorSha256) {
+    throw new WinMLShadowPredictionError("shadow_prediction_feature_vector_hash_mismatch");
+  }
+  const numericFeatures = Object.fromEntries(featureNames.map(name => [name, features[name].value]));
+  const inferred = predictWinMLFootball1X2(registered.artifact, numericFeatures).probabilities;
+  const actual = [prediction.probabilities.home, prediction.probabilities.draw, prediction.probabilities.away];
+  if (actual.some((value, index) => Math.abs(value - inferred[index]) > 1e-12)) {
+    throw new WinMLShadowPredictionError("shadow_prediction_inference_mismatch");
+  }
+}
+
 
 export class WinMLShadowPredictionError extends Error {
   readonly code: string;
@@ -120,7 +155,10 @@ export async function buildWinMLShadowPrediction(args: {
 }
 
 /** Immutable audit write; identical retries are safe, conflicting IDs fail. */
-export async function recordWinMLShadowPrediction(prediction: WinMLPredictionV1) {
+export async function recordWinMLShadowPrediction(
+  prediction: WinMLPredictionV1,
+  features: Record<string, { value: number; availableAt: string; sourceId: string }>
+) {
   if (!prediction || prediction.usage !== "shadow_only" ||
       prediction.contractVersion !== WIN_ML_PREDICTION_VERSION ||
       !validId(prediction.predictionRunId)) {
@@ -137,9 +175,11 @@ export async function recordWinMLShadowPrediction(prediction: WinMLPredictionV1)
     throw new WinMLShadowPredictionError("shadow_prediction_record_contract_blocked:" +
       validation.reasons.join("|"));
   }
+  assertShadowInferenceMatches(registered, prediction, features);
   const payload = {
     recordVersion: RECORD_VERSION,
     prediction,
+    features,
     predictionSha256: hashWinMLProvenance(prediction).sha256,
     recordedAt: new Date().toISOString(),
     productionUseAllowed: false,
@@ -191,6 +231,7 @@ export async function getWinMLShadowPredictionRecord(predictionRunId: string) {
     throw new WinMLShadowPredictionError("shadow_prediction_record_contract_blocked:" +
       validation.reasons.join("|"));
   }
+  assertShadowInferenceMatches(registered, prediction, record.features);
   return { prediction, recordSha256, recordedAt: record.recordedAt };
 }
 
