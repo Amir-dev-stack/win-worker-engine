@@ -108,7 +108,7 @@ async function archiveHumanCouponResearch(reports: any[]) {
     rejected: imports.filter(x => x.status === "rejected").length, records: imports };
 }
 
-function collectCouponCandidates(reports: any[]) {
+export function collectCouponCandidates(reports: any[]) {
   const source = reports.find(x => x.departmentId === "D6");
   const parsed = source ? extractJsonBlock(source.report || "", "WIN_COUPONS_JSON") : null;
   const coupons = Array.isArray(parsed?.coupons) ? parsed.coupons : [];
@@ -152,18 +152,34 @@ function collectCouponCandidates(reports: any[]) {
       return absent.map((item: string) => "Leg " + (i + 1) + ": " + item);
     });
     const correlationAssessment = evaluateCouponCorrelation(legChecks);
-    const blockers = [...(Array.isArray(coupon?.blockers) ? coupon.blockers : []), ...missing, ...correlationAssessment.blockers];
-    const status = coupon?.status === "QUALIFIED" && legs.length > 0 && blockers.length === 0 && correlationAssessment.approved ? "QUALIFIED" : "BLOCKED";
-    const combined = legChecks.length && legChecks.every((x: any) => x.odds !== null)
+    const blockers = [...(Array.isArray(coupon?.blockers) ? coupon.blockers : []), ...missing];
+    const allOddsAvailable = legChecks.length > 0 && legChecks.every((x: any) => x.odds !== null);
+    const eventIds = legChecks.map((x: any) => x.eventId).filter((x: any) => typeof x === "string" && x.length > 0);
+    const distinctEvents = eventIds.length === legChecks.length && new Set(eventIds).size === legChecks.length;
+    const theoreticalOddsProduct = legChecks.length > 1 && allOddsAvailable && distinctEvents
       ? Number(legChecks.reduce((n: number, x: any) => n * x.odds, 1).toFixed(4)) : null;
+    const singleLeg = legChecks.length === 1;
+    const status = legs.length === 0 ? "BLOCKED"
+      : singleLeg && coupon?.status === "QUALIFIED" && blockers.length === 0 && correlationAssessment.approved
+        ? "QUALIFIED" : "DRAFTABLE";
     return {
       id: typeof coupon?.id === "string" ? coupon.id : crypto.randomUUID(),
       label: typeof coupon?.label === "string" ? coupon.label : "WIN coupon candidate",
       status, legs: legChecks,
-      combinedOdds: status === "QUALIFIED" ? (typeof coupon?.combinedOdds === "number" ? coupon.combinedOdds : combined) : null,
+      couponDraftAllowed: legs.length > 0,
+      dataQualityStatus: blockers.length === 0 ? "complete" : "incomplete",
+      combinedOdds: singleLeg && status === "QUALIFIED"
+        ? (typeof coupon?.combinedOdds === "number" ? coupon.combinedOdds : legChecks[0].odds) : null,
+      theoreticalOddsProduct,
+      theoreticalOddsProductWarning: theoreticalOddsProduct === null ? null
+        : "Mathematical product of individual decimal prices only; not a bookmaker-quoted accumulator price or a joint win probability.",
+      jointProbabilityAvailable: singleLeg && correlationAssessment.approved,
+      probabilityStatus: singleLeg && correlationAssessment.approved
+        ? "single_leg_marginal" : "marginal_only_joint_unavailable",
       riskFactors: Array.isArray(coupon?.riskFactors) ? coupon.riskFactors : [],
       correlationNotes: Array.isArray(coupon?.correlationNotes) ? coupon.correlationNotes : [],
       correlationAssessment,
+      probabilityWarnings: correlationAssessment.warnings,
       blockers
     };
   });
