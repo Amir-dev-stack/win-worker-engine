@@ -601,6 +601,17 @@ add("Scheduled learning runs use atomic owner leases, bounded request validation
   scheduledRequestTests.includes("rejects non-POST methods"),
   "A scheduled runner must reject malformed/oversized requests, serialize duplicate run execution with conditional leases, and permit stale-lease recovery without allowing stale workers to release a newer lease.");
 
+const resultRequestTests = await read("scripts/results-request-validation.test.mjs");
+const resultsHandler = await read("netlify/functions/results.mts");
+add("Result submissions enforce bounded JSON request parsing before settlement processing",
+  resultsHandler.includes("readResultSubmissionBody") &&
+  resultsHandler.includes("MAX_RESULT_REQUEST_BYTES") &&
+  resultsHandler.includes("request_body_too_large") &&
+  resultRequestTests.includes("enforces declared and streamed body limits") &&
+  resultRequestTests.includes("rejects invalid UTF-8") &&
+  resultRequestTests.includes("requires JSON content type"),
+  "The result endpoint must require JSON, enforce a streaming 64 KiB cap, reject invalid UTF-8/non-object JSON, and cover those boundaries with regression tests.");
+
 const packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
