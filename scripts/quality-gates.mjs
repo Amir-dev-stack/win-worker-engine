@@ -405,6 +405,22 @@ add("WIN owner approval endpoint requires a separate protected token, trusted pu
   mlOwnerApprovalEndpointTests.includes("readinessBody.modelFittingAllowed, false"),
   "The protected owner endpoint registers signed licence evidence and exposes a read-only composite readiness check without accepting caller-supplied keys or enabling fitting.");
 
+const mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.mts");
+const mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
+add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer with frozen shadow-only artifacts",
+  mlFootballTrainer.includes("trainWinMLFootball1X2LogisticModel") &&
+  mlFootballTrainer.includes("training_validation_chronology_invalid") &&
+  mlFootballTrainer.includes("training_compute_budget_exceeded") &&
+  mlFootballTrainer.includes("model_artifact_hash_mismatch") &&
+  mlFootballTrainer.includes("heldOutTestRequired: true") &&
+  mlFootballTrainer.includes('usage: "shadow_only"') &&
+  mlFootballTrainer.includes("productionPromotionAllowed: false") &&
+  mlFootballTrainer.includes("automatedBettingAllowed: false") &&
+  mlFootballTrainerTests.includes("learns a synthetic 1X2 pattern") &&
+  mlFootballTrainerTests.includes("trainer is deterministic") &&
+  mlFootballTrainerTests.includes("prediction rejects modified artifacts"),
+  "The pure trainer fits only a chronological training partition, uses training-only normalization, reports validation metrics against a class-frequency baseline, hashes its artifact, and requires a separate held-out test. No production route or real dataset is wired to it.");
+
 const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
 const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
 const mlFootballTraining = await read("netlify/lib/ml-football-training-builder.mts");
