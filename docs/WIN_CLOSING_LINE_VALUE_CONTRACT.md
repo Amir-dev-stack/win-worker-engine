@@ -14,6 +14,9 @@ type WinCLVQuote = {
   quoteId: string;
   sourceId: string;
   sourceRecordId: string;
+  sourceRevision: string; // immutable 40-character source revision
+  licenceId: string;
+  snapshotRole: "decision" | "closing"; // source-declared, never inferred
   eventId: string;
   marketId: string;
   selectionId: string;
@@ -35,7 +38,7 @@ The decision and closing observations must match exactly on source, event, marke
 
 ## Timing and leakage rules
 
-- Decision quote source time and ingestion time must both be at or before the prediction cutoff.
+- The source revision must be pinned and its licence ID retained; decision and closing snapshot roles must be explicitly declared by the source adapter, never inferred from which argument is passed.\n- Decision quote source time and ingestion time must both be at or before the prediction cutoff.
 - Closing quote source time must be strictly after the prediction cutoff and before kickoff.
 - Live mode additionally requires the closing quote to have been ingested before kickoff.
 - Retrospective mode permits later ingestion of a historical close only when the source itself provides a valid pre-kickoff observation timestamp. This supports historical research; it does not claim the quote was available to WIN live at the time.
