@@ -75,19 +75,35 @@ add("WIN audit MCP tools are read-only and limited to an explicit collection all
 
 const boundedJsonHelper = await read("netlify/lib/bounded-json-request.mts");
 const boundedJsonTests = await read("scripts/bounded-json-request.test.mjs");
-const boundedJsonRoutes = await Promise.all([
-  read("netlify/functions/runs.mts"), read("netlify/functions/library.mts"),
-  read("netlify/functions/learning-data-jobs.mts"), read("netlify/functions/human-coupon-settlements.mts"),
-  read("netlify/functions/human-sources.mts")
-]);
+const boundedJsonRoutePaths = [
+  "runs.mts", "library.mts", "learning-data-jobs.mts", "human-coupon-settlements.mts", "human-sources.mts",
+  "ai-budget.mts", "department-smoke-test.mts", "openai-key-check.mts", "sources.mts", "tips.mts",
+  "research-data.mts", "research-source-candidates.mts", "post-match-check.mts", "simulation-runner.mts",
+  "simulations.mts", "worker-runner.mts"
+];
+const boundedJsonRoutes = await Promise.all(boundedJsonRoutePaths.map(name => read("netlify/functions/" + name)));
+const boundedJsonRouteCaps = [
+  64 * 1024, 128 * 1024, 8 * 1024, 16 * 1024, 64 * 1024,
+  8 * 1024, 8 * 1024, 8 * 1024, 64 * 1024, 16 * 1024,
+  128 * 1024, 8 * 1024, 8 * 1024, 8 * 1024, 64 * 1024, 16 * 1024
+];
+const boundedJsonRoutesHaveAuth = boundedJsonRoutes.every(route => {
+  const parserIndex = route.indexOf("readBoundedJsonObject(req");
+  if (parserIndex < 0) return false;
+  return ["requireAuth(req)", "authorized(req)"].some(auth => {
+    const authIndex = route.indexOf(auth);
+    return authIndex >= 0 && authIndex < parserIndex;
+  });
+});
 add("High-impact authenticated JSON write routes enforce bounded streaming request bodies",
   boundedJsonHelper.includes("reader.read()") &&
   boundedJsonHelper.includes("DEFAULT_MAX_JSON_BODY_BYTES = 128 * 1024") &&
   boundedJsonHelper.includes("new TextDecoder(\"utf-8\", { fatal: true })") &&
   boundedJsonTests.includes("enforces declared and streamed byte limits") &&
   boundedJsonTests.includes("rejects invalid UTF-8, malformed JSON and non-object JSON") &&
-  boundedJsonRoutes.every(route => route.includes("readBoundedJsonObject(req") && route.indexOf("requireAuth(req)") < route.indexOf("readBoundedJsonObject(req")),
-  "Runs (64 KiB), library writes (128 KiB), learning-data jobs (8 KiB), human settlement claims (16 KiB) and human-source imports (64 KiB) use the same bounded strict-JSON parser after authentication.");
+  boundedJsonRoutes.length === 16 && boundedJsonRoutes.every((route, index) => route.includes("readBoundedJsonObject(req, " + boundedJsonRouteCaps[index])) && boundedJsonRoutesHaveAuth &&
+  boundedJsonRoutes[13].includes('req.method!=="POST"') && boundedJsonRoutes[15].includes('req.method !== "POST"'),
+  "Sixteen authenticated JSON write routes use the same strict streaming parser with route-specific limits. Both internal background runners also require POST and authenticate before parsing.");
 
 const healthEndpoint = await read("netlify/functions/health.mts");
 add("Authenticated health endpoint is read-only",
