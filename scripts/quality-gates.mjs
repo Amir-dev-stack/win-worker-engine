@@ -248,7 +248,7 @@ add("WIN archives every coupon draft and only fully evidenced single-leg candida
   couponArchivePolicy.includes("legs.length === 1") &&
   couponArchivePolicy.includes("status: fullyQualified ? \"QUALIFIED\" : legs.length > 0 ? \"DRAFTABLE\" : \"BLOCKED\"") &&
   couponArchivePolicy.includes("researchGateStatus: runResearchPassed ? \"passed\" : \"pending\"") &&
-  !library.includes("FINAL DECISION:") &&
+  !couponArchivePolicy.includes("FINAL DECISION") &&
   couponArchivePolicyTests.includes("archives multi-leg proposals as DRAFTABLE without requiring a Master BET decision") &&
   couponArchivePolicyTests.includes("archives candidates as DRAFTABLE when research gates are incomplete") &&
   couponArchivePolicyTests.includes("only fully evidenced qualified single-leg candidates enter pending tracking"),
