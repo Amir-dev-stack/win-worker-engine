@@ -429,7 +429,8 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainerTests.includes("model_artifact_split_manifest_hash_mismatch") &&
   mlFootballTrainerTests.includes("model_artifact_training_config_hash_mismatch") &&
   mlFootballTrainerTests.includes("training_label_availability_invalid") &&
-  mlFootballTrainerTests.includes("training_feature_provenance_invalid"),
+  mlFootballTrainerTests.includes("training_feature_provenance_invalid") &&
+  mlFootballTrainerTests.includes("2026-02-30T00:00:00.000Z"),
   "The pure trainer fits only a chronological training partition, uses training-only normalization, reports validation metrics against a class-frequency baseline, hashes its artifact, and requires a separate held-out test. No production route or real dataset is wired to it.");
 
 const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
