@@ -103,4 +103,14 @@ test("prediction rejects modified artifacts and incompatible feature vectors", (
   assert.throws(() => predictWinMLFootball1X2(result.artifact, {
     home_signal: 1, draw_signal: 0
   }), /prediction_feature_schema_mismatch/);
+  const changedSplit = structuredClone(result.artifact);
+  changedSplit.splitManifest.trainingEventIds[0] = "changed-event";
+  assert.throws(() => predictWinMLFootball1X2(changedSplit, {
+    home_signal: 1, draw_signal: 0, away_signal: 0
+  }), /model_artifact_split_manifest_hash_mismatch/);
+  const changedConfig = structuredClone(result.artifact);
+  changedConfig.trainingConfig.l2 += 0.1;
+  assert.throws(() => predictWinMLFootball1X2(changedConfig, {
+    home_signal: 1, draw_signal: 0, away_signal: 0
+  }), /model_artifact_training_config_hash_mismatch/);
 });
