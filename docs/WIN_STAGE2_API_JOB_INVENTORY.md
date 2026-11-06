@@ -211,3 +211,9 @@ These are source changes and synthetic tests; no current-head CI execution is cl
 ### Health route method boundary (2026-11-06)
 - `/api/health` already required the internal bearer token and did not mutate state, but accepted every HTTP method. It now explicitly permits GET only and returns 405 with `no-store` for other methods.
 - Added an architecture gate requiring both authentication and GET-only routing.
+
+
+### Shared bounded JSON parsing for authenticated write routes (2026-11-06)
+- Added a reusable strict JSON-object parser with incremental stream reads, declared and actual byte caps, strict UTF-8, exact `application/json` media type and malformed/non-object rejection.
+- Applied route-specific limits after authentication and POST method checks: `/api/runs` 64 KiB, `/api/library` 128 KiB, `/api/learning-data-jobs` 8 KiB, `/api/human-coupon-settlements` 16 KiB and `/api/human-sources` 64 KiB.
+- The shared helper rejects invalid configured limits rather than silently disabling the cap. Added isolated tests, build registration and a quality gate.
