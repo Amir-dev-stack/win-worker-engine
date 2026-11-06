@@ -66,9 +66,10 @@ function hash(value: unknown): value is string {
 function validTriple(value: unknown): value is Triple {
   if (!value || typeof value !== "object") return false;
   const item = value as Triple;
-  return [item.home, item.draw, item.away].every(number =>
+  const values = [item.home, item.draw, item.away];
+  return values.every(number =>
     typeof number === "number" && Number.isFinite(number) && number >= 0 && number <= 1
-  );
+  ) && Math.abs(values.reduce((sum, number) => sum + number, 0) - 1) <= 1e-6;
 }
 
 function normalize(values: Triple): Triple {
@@ -142,7 +143,9 @@ export function calculateWinMLMarketAnchoredBlend(input: WinMLMarketBlendInput) 
     evaluation?.expectedCalibrationError
   ];
   if (metrics.some(value => typeof value !== "number" || !Number.isFinite(value) || value < 0) ||
-      (typeof evaluation?.expectedCalibrationError === "number" && evaluation.expectedCalibrationError > 1)) {
+      evaluation.modelLogLoss > 20 || evaluation.marketLogLoss > 20 ||
+      evaluation.modelBrier > 2 || evaluation.marketBrier > 2 ||
+      evaluation.expectedCalibrationError > 1) {
     reasons.push("held_out_evaluation_metrics_invalid");
   } else {
     if (evaluation.modelLogLoss <= 0 || evaluation.marketLogLoss <= 0 ||
