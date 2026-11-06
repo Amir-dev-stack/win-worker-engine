@@ -1,0 +1,39 @@
+name: WIN build and quality
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [docs/win-staged-build-roadmap]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: win-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Node 22 build, tests and quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run complete test suite and architecture gates
+        run: npm test
+
+      - name: Run production build checks
+        run: npm run build
