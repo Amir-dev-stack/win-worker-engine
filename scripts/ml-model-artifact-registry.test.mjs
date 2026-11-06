@@ -50,7 +50,7 @@ function setup() {
     modelVersion: "0.1.0", trainingRunId: "synthetic-run", featureBuilderCommitSha: "d".repeat(40),
     sourceCommitSha: "e".repeat(40), trainedAt: "2026-03-01T07:00:00.000Z"
   });
-  return { artifact: trained.artifact, evaluation };
+  return { artifact: trained.artifact, evaluation, testRows: rows(91, 30), evaluatedAt: "2027-01-03T00:00:00.000Z" };
 }
 const manifest = {
   manifestVersion: "win.ml.dataset.v1", datasetId: "registry-synthetic-data", providerId: "synthetic",
@@ -61,9 +61,9 @@ const manifest = {
 };
 test("model artifact registry immutably binds artifact, evaluation and registered dataset", async () => {
   await resetRecords();
-  const { artifact, evaluation } = setup();
+  const { artifact, evaluation, testRows, evaluatedAt } = setup();
   await registerWinMLDatasetManifest(manifest);
-  const first = await registerWinMLModelArtifact({ artifact, evaluation, registeredAt: "2027-01-03T00:00:00.000Z" });
+  const first = await registerWinMLModelArtifact({ artifact, evaluation, testRows, evaluatedAt, registeredAt: "2027-01-03T00:00:00.000Z" });
   assert.equal(first.registered, true);
   assert.equal(first.productionPromotionAllowed, false);
   assert.equal(first.automatedBettingAllowed, false);
@@ -80,16 +80,16 @@ test("model artifact registry rejects dataset hash drift and immutable version c
   const { artifact, evaluation } = setup();
   await registerWinMLDatasetManifest(manifest);
   await assert.rejects(() => registerWinMLModelArtifact({
-    artifact: { ...artifact, datasetContentSha256: "b".repeat(64) }, evaluation,
+    artifact: { ...artifact, datasetContentSha256: "b".repeat(64) }, evaluation, testRows, evaluatedAt,
     registeredAt: "2027-01-03T00:00:00.000Z"
   }), /model_artifact_evaluation_binding_mismatch/);
   await registerWinMLModelArtifact({ artifact, evaluation, registeredAt: "2027-01-03T00:00:00.000Z" });
   await assert.rejects(() => registerWinMLModelArtifact({
-    artifact, evaluation,
+    artifact, evaluation, testRows, evaluatedAt,
     registeredAt: "2027-01-04T00:00:00.000Z"
   }), /model_artifact_immutable_conflict/);
 });
-test("model artifact retrieval fails closed after stored record tampering", async () => {
+test("model artifact registration rejects caller-forged held-out metrics", async () => {\n  await resetRecords();\n  const { artifact, evaluation, testRows, evaluatedAt } = setup();\n  await registerWinMLDatasetManifest(manifest);\n  await assert.rejects(() => registerWinMLModelArtifact({ artifact, evaluation: { ...evaluation, modelMetrics: { ...evaluation.modelMetrics, brier: 0 } }, testRows, evaluatedAt, registeredAt: "2027-01-03T00:00:00.000Z" }), /model_artifact_held_out_evaluation_mismatch/);\n});\ntest("model artifact retrieval fails closed after stored record tampering", async () => {
   await resetRecords();
   const { artifact, evaluation } = setup();
   await registerWinMLDatasetManifest(manifest);
