@@ -57,6 +57,75 @@ export function getWinSourceReviewQueue(): WinSourceReviewQueueEntry[] {
     .sort((a, b) => a.rolloutTrack.localeCompare(b.rolloutTrack) || a.providerId.localeCompare(b.providerId));
 }
 
+const ODDS_DOMAIN_PATTERN = /(odds?|markets?|prices?|spreads?|totals?|handicaps?|btts|closing_lines)/i;
+
+export type WinOddsSourceReviewQueueEntry = {
+  providerId: string;
+  providerName: string;
+  website: string;
+  sportIds: string[];
+  oddsDomains: string[];
+  rolloutTrack: "football_first" | "later_sport";
+  reviewStatus: "unreviewed";
+  sourceIdentityVerified: false;
+  bookmakerIdentitySemanticsVerified: false;
+  marketOutcomeSemanticsVerified: false;
+  timestampSemanticsVerified: false;
+  availabilitySemanticsVerified: false;
+  upstreamOwnerId: null;
+  feedProductId: null;
+  bookmakerIdentityContract: null;
+  expectedCadenceMinutes: null;
+  evidenceRequired: readonly string[];
+};
+
+const ODDS_EVIDENCE_REQUIRED = Object.freeze([
+  "primary_publisher_ownership_and_republication_chain",
+  "exact_feed_or_dataset_product_and_immutable_revision",
+  "bookmaker_or_exchange_identity_and_alias_mapping",
+  "market_period_line_and_outcome_catalogue",
+  "decimal_odds_and_implied_probability_semantics",
+  "capture_timestamp_timezone_and_event_kickoff_semantics",
+  "open_suspended_closed_unknown_availability_definitions",
+  "capture_cadence_contract_or_explicitly_no_cadence_claim",
+  "licence_attribution_and_historical_reuse_rights"
+] as const);
+
+function oddsDomains(provider: ProviderRecord): string[] {
+  return provider.dataDomains.filter(domain => ODDS_DOMAIN_PATTERN.test(domain)).sort();
+}
+
+/**
+ * Read-only odds-source contract queue. It deliberately leaves source ownership,
+ * bookmaker identity, market semantics, timestamp semantics and refresh cadence
+ * unverified until primary evidence is reviewed. Queue membership is not approval.
+ */
+export function getWinOddsSourceReviewQueue(): WinOddsSourceReviewQueueEntry[] {
+  return DATA_PROVIDER_REGISTRY
+    .map(provider => ({ provider, domains: oddsDomains(provider) }))
+    .filter(item => item.domains.length > 0)
+    .map(({ provider, domains }) => ({
+      providerId: provider.id,
+      providerName: provider.name,
+      website: provider.website,
+      sportIds: [...provider.sports].sort(),
+      oddsDomains: domains,
+      rolloutTrack: provider.sports.includes("football") ? "football_first" : "later_sport",
+      reviewStatus: "unreviewed" as const,
+      sourceIdentityVerified: false as const,
+      bookmakerIdentitySemanticsVerified: false as const,
+      marketOutcomeSemanticsVerified: false as const,
+      timestampSemanticsVerified: false as const,
+      availabilitySemanticsVerified: false as const,
+      upstreamOwnerId: null,
+      feedProductId: null,
+      bookmakerIdentityContract: null,
+      expectedCadenceMinutes: null,
+      evidenceRequired: ODDS_EVIDENCE_REQUIRED
+    }))
+    .sort((a, b) => a.rolloutTrack.localeCompare(b.rolloutTrack) || a.providerId.localeCompare(b.providerId));
+}
+
 
 export type WinFootballSourceCoverageArea =
   | "fixtures_and_results"
