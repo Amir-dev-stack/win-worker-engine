@@ -36,6 +36,10 @@ export type WinMLFootballLogisticArtifactV1 = {
   fitDataCutoff: string;
   trainingConfig: WinMLFootballLogisticConfig;
   trainingConfigSha256: string;
+  splitManifest: {
+    trainingEventIds: string[];
+    validationEventIds: string[];
+  };
   splitManifestSha256: string;
   artifactSha256: string;
 };
@@ -236,10 +240,12 @@ export function trainWinMLFootball1X2LogisticModel(args: {
   };
   const fitDataCutoff = trainingAvailabilityEndAt;
   const trainingConfigSha256 = sha256(canonicalizeWinMLProvenance(config));
-  const splitManifestSha256 = sha256(canonicalizeWinMLProvenance({
+  const splitManifest = {
     trainingEventIds: trainingSorted.map(row => row.eventId),
-    validationEventIds: validationSorted.map(row => row.eventId),
-    trainingWindow, validationWindow, fitDataCutoff
+    validationEventIds: validationSorted.map(row => row.eventId)
+  };
+  const splitManifestSha256 = sha256(canonicalizeWinMLProvenance({
+    ...splitManifest, trainingWindow, validationWindow, fitDataCutoff
   }));
   const artifactPayload = {
     artifactVersion: WIN_ML_FOOTBALL_LOGISTIC_ARTIFACT_VERSION,
@@ -257,6 +263,7 @@ export function trainWinMLFootball1X2LogisticModel(args: {
     fitDataCutoff,
     trainingConfig: { ...config },
     trainingConfigSha256,
+    splitManifest,
     splitManifestSha256
   };
   const artifact: WinMLFootballLogisticArtifactV1 = {
@@ -282,8 +289,21 @@ export function predictWinMLFootball1X2(
   if (!artifact || artifact.artifactVersion !== WIN_ML_FOOTBALL_LOGISTIC_ARTIFACT_VERSION ||
       !Array.isArray(artifact.featureNames) || !Array.isArray(artifact.weights) ||
       artifact.weights.length !== WIN_ML_FOOTBALL_1X2_CLASSES.length ||
-      !Array.isArray(artifact.classes) ||
+      !Array.isArray(artifact.classes) || artifact.classes.length !== WIN_ML_FOOTBALL_1X2_CLASSES.length ||
       artifact.classes.some((value, index) => value !== WIN_ML_FOOTBALL_1X2_CLASSES[index]) ||
+      artifact.featureNames.length < 1 || artifact.featureNames.length > 128 ||
+      typeof artifact.modelId !== "string" || !artifact.modelId.trim() ||
+      typeof artifact.datasetId !== "string" || !artifact.datasetId.trim() ||
+      !/^[a-f0-9]{64}$/i.test(artifact.datasetContentSha256 || "") ||
+      !Number.isSafeInteger(artifact.trainingRows) || artifact.trainingRows < 3 ||
+      !artifact.trainingConfig || !Number.isFinite(artifact.trainingConfig.learningRate) ||
+      !Number.isSafeInteger(artifact.trainingConfig.epochs) || !Number.isFinite(artifact.trainingConfig.l2) ||
+      !artifact.splitManifest || !Array.isArray(artifact.splitManifest.trainingEventIds) ||
+      !Array.isArray(artifact.splitManifest.validationEventIds) ||
+      artifact.splitManifest.trainingEventIds.length !== artifact.trainingRows ||
+      artifact.splitManifest.validationEventIds.length < 1 ||
+      new Set([...artifact.splitManifest.trainingEventIds, ...artifact.splitManifest.validationEventIds]).size !==
+        artifact.splitManifest.trainingEventIds.length + artifact.splitManifest.validationEventIds.length ||
       !Array.isArray(artifact.normalization?.means) ||
       !Array.isArray(artifact.normalization?.scales) ||
       artifact.normalization.means.length !== artifact.featureNames.length ||
@@ -293,6 +313,28 @@ export function predictWinMLFootball1X2(
       artifact.normalization.means.some(value => typeof value !== "number" || !Number.isFinite(value)) ||
       artifact.normalization.scales.some(value => typeof value !== "number" || !Number.isFinite(value) || value <= 0)) {
     throw new Error("model_artifact_invalid");
+  }
+  const trainingFrom = timestamp(artifact.trainingWindow?.from);
+  const trainingTo = timestamp(artifact.trainingWindow?.to);
+  const validationFrom = timestamp(artifact.validationWindow?.from);
+  const validationTo = timestamp(artifact.validationWindow?.to);
+  const fitCutoff = timestamp(artifact.fitDataCutoff);
+  if (trainingFrom === null || trainingTo === null || validationFrom === null ||
+      validationTo === null || fitCutoff === null || trainingFrom > trainingTo ||
+      trainingTo !== fitCutoff || trainingTo >= validationFrom || validationFrom > validationTo) {
+    throw new Error("model_artifact_chronology_invalid");
+  }
+  if (sha256(canonicalizeWinMLProvenance(artifact.trainingConfig)) !== artifact.trainingConfigSha256) {
+    throw new Error("model_artifact_training_config_hash_mismatch");
+  }
+  const splitPayload = {
+    ...artifact.splitManifest,
+    trainingWindow: artifact.trainingWindow,
+    validationWindow: artifact.validationWindow,
+    fitDataCutoff: artifact.fitDataCutoff
+  };
+  if (sha256(canonicalizeWinMLProvenance(splitPayload)) !== artifact.splitManifestSha256) {
+    throw new Error("model_artifact_split_manifest_hash_mismatch");
   }
   const { artifactSha256, ...artifactPayload } = artifact;
   if (!/^[a-f0-9]{64}$/i.test(artifactSha256 || "") ||
