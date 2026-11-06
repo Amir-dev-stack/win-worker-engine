@@ -97,6 +97,8 @@ const required = [
   "netlify/lib/ml-football-season-coverage.mts",
   "scripts/ml-football-season-coverage.test.mjs",
   "netlify/lib/ml-football-odds-quality.mts",
+  "netlify/lib/win-odds-clv.mts",
+  "scripts/win-odds-clv.test.mjs",
   "scripts/ml-football-odds-quality.test.mjs",
   "netlify/lib/ml-football-observed-odds-quality.mts",
   "netlify/lib/win-coupon-archive-policy.mts",
