@@ -68,7 +68,7 @@ test("owner approval endpoint fails closed and accepts only a separately authent
       evidenceVersion: "win.ml.licence-review.v1", evidenceId: "endpoint-licence-review-1",
       licenceId: "CC0-1.0", sourceUrl: "https://example.test/licence",
       sourceDocumentSha256: "f".repeat(64), reviewedUse: "training", reviewerId: "owner:amir",
-      reviewedAt: "2026-11-06T08:00:00.000Z", reviewExpiresAt: "2027-11-06T08:00:00.000Z",
+      reviewedAt: "2026-11-05T08:00:00.000Z", reviewExpiresAt: "2027-11-05T08:00:00.000Z",
       rationale: "Reviewed source terms and confirmed training permission."
     };
     const licenceEvidence = {
