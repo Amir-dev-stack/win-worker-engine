@@ -30,6 +30,8 @@ export type WinMLModelEvaluationV1 = {
   trainingRows: number;
   validationRows: number;
   testRows: number;
+  testCohortSha256: string;
+  testRowsSha256: string;
   baselineMetrics: { brier: number; logLoss: number };
   modelMetrics: { brier: number; logLoss: number };
   expectedCalibrationError: number;
