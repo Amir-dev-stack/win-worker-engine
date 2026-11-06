@@ -37,4 +37,21 @@ test("scheduled scout request rejects oversized bodies before JSON parsing", asy
   const result = await readScheduledScoutRunId(request(" ".repeat(16 * 1024 + 1)));
   assert.ok(result instanceof Response);
   assert.equal(result.status, 413);
+
+  const declaredTooLarge = await readScheduledScoutRunId(request("{}", {
+    headers: { "content-type": "application/json", "content-length": String(16 * 1024 + 1) }
+  }));
+  assert.ok(declaredTooLarge instanceof Response);
+  assert.equal(declaredTooLarge.status, 413);
+});
+
+test("scheduled scout request rejects invalid UTF-8 bodies", async () => {
+  const invalidUtf8 = new Request("https://win.test/.netlify/functions/scheduled-scout-runner", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: new Uint8Array([0xff, 0xfe])
+  });
+  const result = await readScheduledScoutRunId(invalidUtf8);
+  assert.ok(result instanceof Response);
+  assert.equal(result.status, 400);
 });
