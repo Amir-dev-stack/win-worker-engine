@@ -625,6 +625,19 @@ add("Netlify Blobs conditional-write dependency is pinned to the concurrent-writ
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
+const oauthRequestHelper = await read("netlify/lib/oauth-request.mts");
+const oauthRequestTests = await read("scripts/oauth-request-validation.test.mjs");
+add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate form parameters",
+  oauthRequestHelper.includes("readBoundedOAuthText") &&
+  oauthRequestHelper.includes("reader.read()") &&
+  oauthRequestHelper.includes("request_body_too_large") &&
+  oauthRequestHelper.includes("new TextDecoder(\"utf-8\", { fatal: true })") &&
+  oauthRequestHelper.includes("seen.has(key)") &&
+  oauthRequestTests.includes("rejects oversized streamed bodies") &&
+  oauthRequestTests.includes("rejects duplicate form keys") &&
+  oauthRequestTests.includes("rejects misleading media types"),
+  "Authorization and token form requests are capped at 16 KiB (8 KiB for owner authorization); dynamic registration JSON is capped at 16 KiB. Invalid UTF-8, malformed/non-object JSON, duplicate form keys and unsupported media types fail closed.");
+
 const winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
