@@ -13,7 +13,7 @@ const records = [
 ];
 const expectedMarkets = [{ marketId: "1x2", outcomeIds: ["home::Home", "draw::Draw", "away::Away"], minOverround: 0.95, maxOverround: 1.2 }];
 
-test("maps normalized observed football rows into pre-match odds diagnostics", () => {
+test("maps normalized observed football rows and enforces prediction-market exclusion", () => {
   const report = assessWinObservedFootballOddsQuality({ fixtures, records, expectedMarkets });
   assert.equal(report.inputRecordCount, 6);
   assert.equal(report.excludedNonFootballLiveOrNonScheduledCount, 3);
