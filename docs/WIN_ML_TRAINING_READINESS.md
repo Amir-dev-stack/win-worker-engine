@@ -41,3 +41,10 @@ No source data is fetched by this control plane. It does not import real sports 
 The deterministic logistic trainer is a pure computation module, not an execution endpoint. Any future server runner must first use `ml-training-execution-gate.mts`. The gate reads feature and execution approvals only from protected Netlify environment configuration, accepts only the server-owned experiment plan object, and rechecks the immutable dataset manifest, signed licence evidence, owner approval and revocation state. Request bodies cannot supply the flags, public key or reviewer identity.
 
 The current football 1X2 plan remains `fittingAllowed: false`; therefore the gate is intentionally fail-closed and no training run can start. Even an evidence-ready result is not sufficient by itself: a separately reviewed release change is required. Model promotion and automated betting remain disabled. No production route invokes the trainer.
+
+
+## Immutable model artifact registry
+
+The model-artifact registry stores one immutable envelope per model ID/version. It binds the self-hashed logistic artifact, versioned held-out evaluation record, registered dataset ID/content hash, evaluation hash and envelope hash. Registration uses an atomic create-if-absent operation; identical retries are idempotent and conflicting writes fail. Reads revalidate the artifact/config/split hashes, evaluation bindings, envelope hash and current dataset manifest hash.
+
+The registry records research artifacts only. It does not train models, store raw training rows, authorize fitting, approve promotion, expose a production inference endpoint or enable automated betting. Research-only or unapproved datasets remain visibly blocked by the promotion-readiness result.
