@@ -463,6 +463,9 @@ export function buildWinMLFootball1X2EvaluationRecord(
       testEvaluation.artifactSha256 !== artifact.artifactSha256) {
     throw new Error("model_evaluation_artifact_binding_invalid");
   }
+  predictWinMLFootball1X2(artifact,
+    Object.fromEntries(artifact.featureNames.map(name => [name, 0]))
+  );
   if (!metadata || typeof metadata.modelVersion !== "string" || !metadata.modelVersion.trim() ||
       typeof metadata.trainingRunId !== "string" || !metadata.trainingRunId.trim() ||
       !/^[a-f0-9]{40}$/i.test(metadata.featureBuilderCommitSha || "") ||
