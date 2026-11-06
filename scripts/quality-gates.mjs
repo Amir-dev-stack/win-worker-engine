@@ -1062,12 +1062,15 @@ const sourceIdentityTests = await read("scripts/ml-source-identity-registry.test
 add("WIN source identity requires server-curated publisher ownership, pinned review evidence and an unexpired review",
   sourceIdentityRegistry.includes("REVIEWED_SOURCE_IDENTITIES: readonly WinReviewedSourceIdentityV1[] = []") &&
   sourceIdentityRegistry.includes("resolveWinReviewedSourceIdentity") &&
+  sourceIdentityRegistry.includes("validateWinReviewedSourceIdentityCatalogue") &&
+  sourceIdentityRegistry.includes("upstream_owner_mapped_to_multiple_groups") &&
   sourceIdentityRegistry.includes("upstreamOwnerId") &&
   sourceIdentityRegistry.includes("feedProductId") &&
   sourceIdentityRegistry.includes("reviewExpiresAt") &&
   sourceIdentityRegistry.includes("evidenceSha256") &&
   sourceIdentityRegistry.includes("providers_share_upstream_owner") &&
   sourceIdentityTests.includes("requires pinned evidence and a live review window") &&
+  sourceIdentityTests.includes("catalogue rejects duplicate providers and inconsistent owner/group mappings") &&
   sourceIdentityTests.includes("never treats caller-declared provider groups as verified"),
   "Provider independence can only be resolved from server-curated, reviewed source metadata; an empty catalogue fails closed, and shared upstream owners cannot count as independent.");
 
