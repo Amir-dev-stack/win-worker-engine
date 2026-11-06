@@ -281,3 +281,13 @@ This follow-up is a source review and documentation update only. It does not cla
 - If the lesson already says pending, the handler follows its stored case pointer and verifies the referenced case; a missing or inconsistent pointer fails closed for manual reconciliation.
 - Rejection changes the lesson validation status, so a later resubmission derives a different case ID. Tests cover deterministic identity and changed/rejected revision separation; build and architecture quality gate require these tests and the atomic route wiring.
 - This is not a multi-record transaction. A storage failure after case creation can leave a pending case whose lesson pointer needs retry/reconciliation. Provider-side Netlify Blobs conditional-write guarantees remain unverified by the isolated test fixtures.
+
+### Independent-review partial-write recovery regression (2026-11-06)
+
+- Added `scripts/independent-review-recovery.test.mjs` for the human-coupon approval path.
+- The isolated fixture injects a storage failure after the coupon and its winning-outcome projection have been written, but before the settlement-learning projection is complete.
+- It then simulates expiry of the in-progress review lease and retries the exact same reviewer submission.
+- The regression requires the retry to recognize the already-applied coupon outcome, finish the missing learning projection, mark the review case and operation completed, and retain one canonical history/lesson/settlement-learning record after a further identical retry.
+- The test writes only synthetic records through the explicitly enabled in-memory adapter. It does not establish provider-side Netlify Blobs conditional-write behavior.
+- The test is registered in the build-required file list and a source-level architecture gate checks that the recovery assertions remain present.
+- This is newly added test coverage; no execution result is claimed for the current PR head. The review remains a sequence of single-record writes, not a multi-record transaction. If the process fails at another boundary, exact-payload retry after lease expiry remains the recovery mechanism.
