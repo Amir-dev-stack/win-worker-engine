@@ -23,6 +23,12 @@ All requests require the dedicated owner bearer token. The trusted public key an
 
 The synchronous dataset/training-example contract remains fail-closed. This audit does not unlock the trainer. A future training-execution integration must consume the composite readiness result at the actual fit boundary, independently verify the frozen dataset bytes and training run, and preserve human shadow review before any further promotion.
 
+## Isolated 1X2 trainer foundation
+
+WIN also contains a pure, deterministic multinomial logistic-regression implementation for football 1X2. It is not connected to a production route or automatic training job. Its inputs must include an event-specific prediction cutoff, feature availability timestamps and source IDs, and label-availability timestamps. It fits normalization parameters only on the training partition and rejects future features, unsettled labels, duplicate events, schema drift, overlapping training/validation chronology, non-finite values, and excessive compute requests.
+
+The trainer emits a content-hashed artifact and validation metrics against a training-class-frequency baseline. Validation metrics are not held-out test evidence. A separate chronological test partition and the existing evaluation/promotion contract remain mandatory. The experiment plan still declares `fittingAllowed: false`; this implementation does not activate real-data fitting, production predictions, or betting.
+
 ## Cryptographic and legal limits
 
 The Ed25519 signature proves that the configured reviewer signed the exact canonical attestation. It does not prove that the source document is authentic, complete, current, or legally interpreted correctly. A qualified human must inspect the source terms and determine whether the specific proposed training, storage, derivative-model, commercial, attribution, and automated-use activities are permitted. The source-document SHA-256 binds the attestation to the reviewed bytes; it is not a substitute for retaining and auditing those bytes under the applicable policy.
