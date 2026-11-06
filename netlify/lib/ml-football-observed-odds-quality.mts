@@ -18,6 +18,7 @@ export function assessWinObservedFootballOddsQuality(args: {
   expectedCadenceMinutes?: number;
   suspiciousRelativeMoveThreshold?: number;
   maxOutcomeTimestampSkewMinutes?: number;
+  maxFixtureStartSkewMinutes?: number;
 }) {
   const records = Array.isArray(args?.records) ? args.records : [];
   const eligible = records.filter(row =>
@@ -36,7 +37,8 @@ export function assessWinObservedFootballOddsQuality(args: {
     capturedAt: row.observedAt,
     decimalOdds: row.oddsDecimal,
     line: row.line ?? null,
-    availabilityStatus: row.availabilityStatus || "unknown"
+    availabilityStatus: row.availabilityStatus || "unknown",
+    ...(row.startsAt ? { eventStartAt: row.startsAt } : {})
   }));
   const expectedMarkets = (Array.isArray(args?.expectedMarkets) ? args.expectedMarkets : []).map(m => ({
     ...m,
@@ -49,7 +51,8 @@ export function assessWinObservedFootballOddsQuality(args: {
     ...(args?.maxSnapshotAgeMinutes !== undefined ? { maxSnapshotAgeMinutes: args.maxSnapshotAgeMinutes } : {}),
     ...(args?.expectedCadenceMinutes !== undefined ? { expectedCadenceMinutes: args.expectedCadenceMinutes } : {}),
     ...(args?.suspiciousRelativeMoveThreshold !== undefined ? { suspiciousRelativeMoveThreshold: args.suspiciousRelativeMoveThreshold } : {}),
-    ...(args?.maxOutcomeTimestampSkewMinutes !== undefined ? { maxOutcomeTimestampSkewMinutes: args.maxOutcomeTimestampSkewMinutes } : {})
+    ...(args?.maxOutcomeTimestampSkewMinutes !== undefined ? { maxOutcomeTimestampSkewMinutes: args.maxOutcomeTimestampSkewMinutes } : {}),
+    ...(args?.maxFixtureStartSkewMinutes !== undefined ? { maxFixtureStartSkewMinutes: args.maxFixtureStartSkewMinutes } : {})
   });
   return {
     ...report,
