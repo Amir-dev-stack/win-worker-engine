@@ -1,7 +1,7 @@
 # WIN Stage 2 — API and scheduled-job inventory (first pass)
 
 Audit branch: `docs/win-staged-build-roadmap`
-Audited tree: `4d3d5e00bf0e27a946957741103acd99f0f0e093`
+Audited tree: `06bf1bd33bc918a717d93f10c964c2f773d47433`
 Base: `main` at `61aa7112f0e5be08e52cfd507b4bac00137ab727`
 
 Status: source-level inventory only. This is not a complete authorization review, live deployment inventory, or proof that scheduled functions are active. The current audited tree contains 43 `netlify/functions/*.mts` files. PR #8, #9 and #10 remain separate and unmerged; their additional routes and memory/backup handlers are not counted here.
