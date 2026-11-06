@@ -36,6 +36,7 @@ const required = [
   "netlify/lib/backtest.mts",
   "netlify/lib/ai.mts",
   "netlify/lib/agents-sdk.mts",
+  "scripts/agents-sdk.test.mjs",
   "netlify/lib/worker-org.mts",
   "netlify/lib/library.mts",
   "netlify/lib/oauth-store.mts",
