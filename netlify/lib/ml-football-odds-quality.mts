@@ -17,6 +17,7 @@ export type WinFootballOddsQualitySnapshot = {
   capturedAt: string;
   decimalOdds: number;
   line?: string | number | null;
+  availabilityStatus?: "open" | "suspended" | "closed" | "unknown";
 };
 export type WinFootballOddsQualityReport = {
   snapshotCount: number;
@@ -35,6 +36,7 @@ export type WinFootballOddsQualityReport = {
   marketGroupDiagnostics: Array<{ eventId: string; marketId: string; bookmakerId: string; sourceId: string; line: string | number | null; expectedOutcomeCount: number; observedOutcomeCount: number; missingOutcomeIds: string[]; earliestCapturedAt: string; latestCapturedAt: string; overround: number | null; overroundSkippedForTimestampSkew: boolean; overroundSkippedForConflictingTimestamp: boolean }>;
   bookmakerIds: string[];
   sourceIds: string[];
+  availabilityStatusCounts: { open: number; suspended: number; closed: number; unknown: number };
   bookmakerIndependenceVerified: false;
   completeForResearch: false;
   trainingApprovalGranted: false;
@@ -228,6 +230,11 @@ export function assessWinFootballOddsQuality(args: {
   if (conflictingTimestampQuotes.length) reasons.push("conflicting_same_timestamp_quotes_flagged");
   if (suspiciousPriceMoves.length) reasons.push("suspicious_price_moves_flagged_for_review");
   if (cadenceGaps.length) reasons.push("expected_cadence_gaps");
+  const availabilityStatusCounts = { open: 0, suspended: 0, closed: 0, unknown: 0 };
+  for (const snapshot of valid) availabilityStatusCounts[snapshot.availabilityStatus || "unknown"]++;
+  if (availabilityStatusCounts.suspended || availabilityStatusCounts.closed || availabilityStatusCounts.unknown) {
+    reasons.push("non_open_or_unknown_availability_snapshots_present");
+  }
   return {
     snapshotCount: Array.isArray(args?.snapshots) ? args.snapshots.length : 0,
     validPreKickoffSnapshotCount: valid.length,
@@ -238,6 +245,7 @@ export function assessWinFootballOddsQuality(args: {
     marketGroupDiagnostics: marketGroupDiagnostics.sort((a, b) => a.eventId.localeCompare(b.eventId) || a.marketId.localeCompare(b.marketId) || a.bookmakerId.localeCompare(b.bookmakerId) || a.sourceId.localeCompare(b.sourceId)),
     bookmakerIds: [...new Set(valid.map(s => s.bookmakerId))].sort(),
     sourceIds: [...new Set(valid.map(s => s.sourceId))].sort(),
+    availabilityStatusCounts,
     bookmakerIndependenceVerified: false,
     completeForResearch: false,
     trainingApprovalGranted: false,
