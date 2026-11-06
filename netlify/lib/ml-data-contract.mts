@@ -6,7 +6,7 @@ export type WinMLEventTimePrecision = "instant" | "date" | "unknown";
 export type WinMLRowGrain = "match" | "player_match" | "event" | "market_snapshot";
 export type WinMLDatasetManifestV1 = {
   manifestVersion: typeof WIN_ML_DATASET_MANIFEST_VERSION; datasetId: string; providerId: string;
-  sport: string; competition: string; season: string; sourceUrl: string; licenceId: string;
+  sport: string; competition: string; season: string; sourceUrl: string; sourceRevision?: string; licenceId: string;
   attributionRequired: boolean; attributionText?: string; automationAllowed: boolean;
   approvedForTraining: boolean; permittedUse: WinMLPermittedUse; rowGrain: WinMLRowGrain;
   eventTimePrecision: WinMLEventTimePrecision; retrievedAt: string; rowCount: number;
@@ -19,6 +19,11 @@ export type WinMLTrainingExampleV1 = {
   label: { market: "1x2" | "total_goals"; outcome: "HOME" | "DRAW" | "AWAY" | "OVER" | "UNDER" | "PUSH" | "VOID"; settlementRuleId: string; settledAt: string };
 };
 function nonEmpty(value: unknown): value is string { return typeof value === "string" && value.trim().length > 0; }
+export function isPinnedWinMLSourceRevision(value: unknown): value is string {
+  return nonEmpty(value) && value.length <= 128 &&
+    /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value) &&
+    !/^(main|master|latest|head|current)$/i.test(value);
+}
 function validTimestamp(value: unknown): value is string {
   return isStrictIsoTimestamp(value);
 }
@@ -33,11 +38,13 @@ export function validateWinMLDatasetManifest(manifest: WinMLDatasetManifestV1): 
     competition: manifest?.competition, season: manifest?.season, licenceId: manifest?.licenceId,
     schemaVersion: manifest?.schemaVersion
   })) if (!nonEmpty(value)) errors.push(field + "_required");
-  try { const url = new URL(manifest?.sourceUrl || ""); if (url.protocol !== "https:") errors.push("source_url_must_be_https"); }
+  try { const url = new URL(manifest?.sourceUrl || ""); if (url.protocol !== "https:") errors.push("source_url_must_be_https");
+    if (!url.hostname || url.username || url.password) errors.push("source_url_credentials_or_host_invalid"); }
   catch { errors.push("source_url_invalid"); }
   if (typeof manifest?.attributionRequired !== "boolean" || typeof manifest?.automationAllowed !== "boolean" ||
       typeof manifest?.approvedForTraining !== "boolean") errors.push("licence_permissions_required");
   if (manifest?.attributionRequired === true && !nonEmpty(manifest?.attributionText)) errors.push("required_attribution_missing");
+  if (manifest?.sourceRevision !== undefined && !isPinnedWinMLSourceRevision(manifest.sourceRevision)) errors.push("source_revision_invalid");
   if (!["training", "research_only", "benchmark_only", "blocked"].includes(manifest?.permittedUse)) errors.push("permitted_use_invalid");
   if (!["match", "player_match", "event", "market_snapshot"].includes(manifest?.rowGrain)) errors.push("row_grain_invalid");
   if (!["instant", "date", "unknown"].includes(manifest?.eventTimePrecision)) errors.push("event_time_precision_invalid");
