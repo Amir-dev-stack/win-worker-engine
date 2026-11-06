@@ -99,6 +99,8 @@ const required = [
   "netlify/lib/ml-football-experiment-plans.mts",
   "netlify/lib/ml-model-contract.mts",
   "netlify/lib/ml-prediction-contract.mts",
+  "netlify/lib/ml-market-anchored-blend.mts",
+  "scripts/ml-market-anchored-blend.test.mjs",
   "netlify/lib/ml-provenance.mts",
   "netlify/lib/ml-owner-approval.mts",
   "netlify/lib/ml-licence-evidence.mts",
