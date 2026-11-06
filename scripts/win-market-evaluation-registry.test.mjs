@@ -234,7 +234,7 @@ test("market evaluation registry binds immutable market scores to the registered
     "market_evaluation_row_invalid");
   await assert.rejects(() => registerWinMarketEvaluation({
     ...args, evaluationId: "market-registry-labels-too-early",
-    evaluatedAt: "2026-12-31T00:00:00.000Z"
+    evaluatedAt: new Date(Date.parse(testRows.at(-1).eventStart) + 60 * 60 * 1000).toISOString()
   }), /market_evaluation_labels_not_yet_available/);
   const blendEvidence = await getWinMLMarketBlendEvaluationEvidence({
     modelId, modelVersion, marketEvaluationId: evaluationId
