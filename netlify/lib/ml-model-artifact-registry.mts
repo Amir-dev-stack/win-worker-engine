@@ -56,7 +56,7 @@ function validateBinding(artifact: WinMLFootballLogisticArtifactV1, evaluation: 
       evaluation.validationRows !== artifact.validationRows ||
       evaluation.fitDataCutoff !== artifact.fitDataCutoff ||
       evaluation.featureSchemaVersion !== artifact.featureSchemaVersion ||
-      evaluation.featureNames.length !== artifact.featureNames.length ||
+      !Array.isArray(evaluation.featureNames) || evaluation.featureNames.length !== artifact.featureNames.length ||
       evaluation.featureNames.some((name, index) => name !== artifact.featureNames[index]) ||
       evaluation.market !== "1x2" || evaluation.algorithm !== "logistic_regression") {
     throw new WinMLModelArtifactRegistryError("model_artifact_evaluation_binding_mismatch");
@@ -101,7 +101,7 @@ export async function registerWinMLModelArtifact(args: {
       !Number.isFinite(Date.parse(registeredAt))) {
     throw new WinMLModelArtifactRegistryError("model_artifact_registration_metadata_invalid");
   }
-  if (!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(evaluatedAt || "") ||
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(evaluatedAt || "") ||
       !Number.isFinite(Date.parse(evaluatedAt)) || Date.parse(registeredAt) < Date.parse(evaluatedAt) ||
       !Array.isArray(testRows)) {
     throw new WinMLModelArtifactRegistryError("model_artifact_test_evaluation_evidence_invalid");
