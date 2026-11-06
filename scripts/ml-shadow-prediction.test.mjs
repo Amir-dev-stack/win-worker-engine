@@ -1,6 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildWinMLShadowPrediction, WinMLShadowPredictionError } from "../netlify/lib/ml-shadow-prediction.mts";
+import { installIsolatedTestStore } from "../netlify/lib/store.mts";
+
+const records = new Map();
+installIsolatedTestStore({
+  async setJSON(key, value, options = {}) {
+    if (options.onlyIfNew && records.has(key)) return { modified: false };
+    records.set(key, structuredClone(value));
+    return { modified: true };
+  },
+  async get(key) { return records.has(key) ? structuredClone(records.get(key)) : null; },
+  async *list() { yield { blobs: [] }; },
+  async delete(key) { records.delete(key); },
+  async getWithMetadata(key) { return records.has(key) ? { data: structuredClone(records.get(key)), etag: "test-etag" } : null; }
+});
+process.env.WIN_STORE_TEST_MODE = "1";
 
 const base = {
   predictionRunId: "shadow-run-1",
