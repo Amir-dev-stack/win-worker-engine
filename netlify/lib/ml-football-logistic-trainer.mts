@@ -30,6 +30,7 @@ export type WinMLFootballLogisticArtifactV1 = {
   classes: typeof WIN_ML_FOOTBALL_1X2_CLASSES;
   normalization: { means: number[]; scales: number[] };
   weights: number[][];
+  baselineProbabilities: number[];
   trainingRows: number;
   trainingWindow: { from: string; to: string };
   validationWindow: { from: string; to: string };
@@ -266,6 +267,7 @@ export function trainWinMLFootball1X2LogisticModel(args: {
     classes: WIN_ML_FOOTBALL_1X2_CLASSES,
     normalization: { means, scales },
     weights,
+    baselineProbabilities: classCounts,
     trainingRows: trainingRows.length,
     trainingWindow,
     validationWindow,
@@ -300,6 +302,10 @@ export function predictWinMLFootball1X2(
       artifact.weights.length !== WIN_ML_FOOTBALL_1X2_CLASSES.length ||
       !Array.isArray(artifact.classes) || artifact.classes.length !== WIN_ML_FOOTBALL_1X2_CLASSES.length ||
       artifact.classes.some((value, index) => value !== WIN_ML_FOOTBALL_1X2_CLASSES[index]) ||
+      !Array.isArray(artifact.baselineProbabilities) ||
+      artifact.baselineProbabilities.length !== WIN_ML_FOOTBALL_1X2_CLASSES.length ||
+      artifact.baselineProbabilities.some(value => typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) ||
+      Math.abs(artifact.baselineProbabilities.reduce((sum, value) => sum + value, 0) - 1) > 1e-9 ||
       artifact.featureNames.length < 1 || artifact.featureNames.length > 128 ||
       typeof artifact.modelId !== "string" || !artifact.modelId.trim() ||
       typeof artifact.datasetId !== "string" || !artifact.datasetId.trim() ||
@@ -376,6 +382,48 @@ export function predictWinMLFootball1X2(
     probabilities: probabilities(artifact.weights, normalized),
     usage: "shadow_only" as const,
     productionUseAllowed: false as const,
+    automatedBettingAllowed: false as const
+  };
+}
+
+/** Evaluates a frozen artifact on a later, non-overlapping test partition. */
+export function evaluateWinMLFootball1X2LogisticModel(
+  artifact: WinMLFootballLogisticArtifactV1,
+  testRows: WinMLFootballNumericRow[]
+) {
+  if (!artifact || !Array.isArray(artifact.featureNames) || !Array.isArray(testRows) ||
+      testRows.length < 1 || testRows.length > 10_000) {
+    throw new Error("held_out_test_rows_out_of_bounds");
+  }
+  const emptyFeatures = Object.fromEntries(artifact.featureNames.map(name => [name, 0]));
+  predictWinMLFootball1X2(artifact, emptyFeatures);
+  const seen = new Set([
+    ...artifact.splitManifest.trainingEventIds,
+    ...artifact.splitManifest.validationEventIds
+  ]);
+  const errors = validateRows(testRows, artifact.featureNames, seen);
+  if (errors.length) throw new Error([...new Set(errors)].join(","));
+  const sorted = [...testRows].sort((a, b) => Date.parse(a.eventStart) - Date.parse(b.eventStart));
+  const validationEnd = timestamp(artifact.validationWindow.to);
+  const testStart = timestamp(sorted[0].eventStart);
+  if (validationEnd === null || testStart === null || testStart <= validationEnd) {
+    throw new Error("held_out_test_not_after_validation_label_availability");
+  }
+  const modelMetrics = metrics(testRows, row => predictWinMLFootball1X2(artifact,
+    Object.fromEntries(artifact.featureNames.map(name => [name, row.features[name].value]))
+  ).probabilities);
+  const baselineMetrics = metrics(testRows, () => artifact.baselineProbabilities);
+  return {
+    testRows: testRows.length,
+    testWindow: {
+      from: sorted[0].eventStart,
+      to: [...testRows].sort((a, b) => Date.parse(b.labelAvailableAt) - Date.parse(a.labelAvailableAt))[0].labelAvailableAt
+    },
+    modelMetrics,
+    baselineMetrics,
+    heldOutTest: true as const,
+    promotionAllowed: false as const,
+    productionPromotionAllowed: false as const,
     automatedBettingAllowed: false as const
   };
 }
