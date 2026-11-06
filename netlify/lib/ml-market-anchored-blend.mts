@@ -46,6 +46,15 @@ export type WinMLMarketBlendInput = {
 function timestamp(value: unknown): number | null {
   if (typeof value !== "string" ||
       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d{1,9})?(Z|([+-])(\\d{2}):(\\d{2}))$/.exec(value);
+  if (!match) return null;
+  const [, year, month, day, hour, minute, second, , , offsetHour, offsetMinute] = match;
+  const y = Number(year), m = Number(month), d = Number(day);
+  const calendar = new Date(Date.UTC(y, m - 1, d));
+  if (calendar.getUTCFullYear() !== y || calendar.getUTCMonth() !== m - 1 ||
+      calendar.getUTCDate() !== d || Number(hour) > 23 || Number(minute) > 59 ||
+      Number(second) > 59 || (offsetHour !== undefined &&
+      (Number(offsetHour) > 23 || Number(offsetMinute) > 59))) return null;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -112,6 +121,9 @@ export function calculateWinMLMarketAnchoredBlend(input: WinMLMarketBlendInput) 
   if (!market?.decimalOdds || ![market.decimalOdds.home, market.decimalOdds.draw, market.decimalOdds.away]
       .every(value => typeof value === "number" && Number.isFinite(value) && value > 1 && value <= 1000)) {
     reasons.push("market_decimal_odds_invalid");
+  } else {
+    const overround = 1 / market.decimalOdds.home + 1 / market.decimalOdds.draw + 1 / market.decimalOdds.away;
+    if (overround < 0.90 || overround > 1.35) reasons.push("market_overround_out_of_bounds");
   }
   if (!evaluation || typeof evaluation.modelEvaluationId !== "string" || !evaluation.modelEvaluationId.trim() ||
       typeof evaluation.marketEvaluationId !== "string" || !evaluation.marketEvaluationId.trim() ||
