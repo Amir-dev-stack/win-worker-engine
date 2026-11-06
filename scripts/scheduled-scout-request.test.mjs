@@ -25,6 +25,14 @@ test("scheduled scout request requires JSON content type", async () => {
   assert.equal(result.status, 415);
 });
 
+test("scheduled scout request rejects misleading JSON media types", async () => {
+  for (const contentType of ["application/jsonp", "application/json-evil"]) {
+    const result = await readScheduledScoutRunId(request("{}", { headers: { "content-type": contentType } }));
+    assert.ok(result instanceof Response);
+    assert.equal(result.status, 415);
+  }
+});
+
 test("scheduled scout request rejects malformed JSON and invalid run IDs", async () => {
   for (const body of ["{", "{}", JSON.stringify({ runId: " " }), JSON.stringify({ runId: "x".repeat(181) }), JSON.stringify({ runId: 123 })]) {
     const result = await readScheduledScoutRunId(request(body));
