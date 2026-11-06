@@ -798,6 +798,7 @@ add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and re
   mlMarketBlend.includes("calendar.getUTCDate() !== d") &&
   mlMarketBlend.includes("marketTestCohortSha256 !== evaluation.testCohortSha256") &&
   mlMarketBlend.includes("model_does_not_beat_market_on_both_metrics") &&
+  mlMarketBlend.includes("MIN_RELATIVE_MARKET_IMPROVEMENT = 0.01") &&
   mlMarketBlend.includes("model_calibration_gate_failed") &&
   mlMarketBlend.includes("held_out_labels_not_available_as_of_evaluation") &&
   mlMarketBlend.includes("productionUseAllowed: false") &&
@@ -808,7 +809,8 @@ add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and re
   mlMarketBlendTests.includes("poor calibration and evaluation performed before held-out labels") &&
   mlMarketBlendTests.includes("caps even a very strong research model at twenty percent influence") &&
   mlMarketBlendTests.includes("implausible market overround and impossible calendar timestamps") &&
-  mlMarketBlendTests.includes("unnormalized ML probabilities and out-of-range evaluation metrics"),
+  mlMarketBlendTests.includes("unnormalized ML probabilities and out-of-range evaluation metrics") &&
+  mlMarketBlendTests.includes("tiny apparent gains that may be noise"),
   "The research blend must require a shared held-out cohort, at least 100 test rows, model improvement on both Brier and log loss, ECE <= 0.05, labels available by evaluation time, a market quote no older than six hours, and never allow more than 20% model influence or authorize production/betting.");
 
 const failed = checks.filter(x => !x.ok);
