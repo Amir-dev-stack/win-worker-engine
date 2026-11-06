@@ -153,6 +153,7 @@ test("market evaluation registry binds immutable market scores to the registered
     predictionCutoff: row.predictionCutoff,
     marketSnapshotAt: new Date(Date.parse(row.predictionCutoff) - 5 * 60 * 1000).toISOString(),
     resultAvailableAt: row.labelAvailableAt,
+    sourceRecordId: "source-row-" + index,
     probabilities: [0.5, 0.25, 0.25],
     outcome: row.outcome.toLowerCase()
   }));
@@ -167,12 +168,29 @@ test("market evaluation registry binds immutable market scores to the registered
     () => registerWinMarketEvaluation(args),
     /market_evaluation_source_dataset_binding_invalid/
   );
+  const sourceRecords = marketRows.map((row, index) => ({
+    id: row.sourceRecordId,
+    providerId: args.sourceId,
+    sport: "football",
+    marketDataType: "consensus_market_lines",
+    status: "completed",
+    eventStart: row.kickoffAt,
+    homeScore: row.outcome === "home" ? 2 : row.outcome === "draw" ? 1 : 0,
+    awayScore: row.outcome === "away" ? 2 : row.outcome === "draw" ? 1 : 0,
+    closing: {
+      marketSnapshotAt: row.marketSnapshotAt,
+      homeWinProbability: row.probabilities[0],
+      drawProbability: row.probabilities[1],
+      awayWinProbability: row.probabilities[2]
+    }
+  }));
   await put("library/model-lab/market-consensus-datasets", "consensus-" + args.sourceId, {
     providerId: args.sourceId,
     sourceRevision: args.sourceRevision,
     rawChecksum: "e".repeat(64),
-    totalRows: 100,
-    records: Array.from({ length: 100 }, (_, index) => ({ id: "source-row-" + index })),
+    totalRows: sourceRecords.length,
+    records: sourceRecords,
+    recordsSha256: hashWinMLProvenance(sourceRecords).sha256,
     marketDataType: "consensus_market_lines",
     origin: "provider_historical_data"
   });
@@ -186,6 +204,30 @@ test("market evaluation registry binds immutable market scores to the registered
   const loaded = await getWinMarketEvaluation(evaluationId);
   assert.equal(loaded.recordSha256, first.record.recordSha256);
   assert.equal(loaded.datasetContentSha256, train.artifact.datasetContentSha256);
+
+  const rejectSourceMutation = async (suffix, mutate, expected) => {
+    const changedRows = marketRows.map((row, index) => mutate({ ...row }, index));
+    await assert.rejects(() => registerWinMarketEvaluation({
+      ...args, evaluationId: "market-registry-source-" + suffix, testRows: changedRows
+    }), new RegExp(expected));
+  };
+  await rejectSourceMutation("missing", (row, index) => index === 0 ? { ...row, sourceRecordId: undefined } : row,
+    "market_evaluation_source_record_reference_invalid");
+  await rejectSourceMutation("duplicate", (row, index) => index === 1
+    ? { ...row, sourceRecordId: "source-row-0" } : row,
+    "market_evaluation_source_record_reference_invalid");
+  await rejectSourceMutation("kickoff", (row, index) => index === 0
+    ? { ...row, kickoffAt: "2026-06-01T19:00:00.000Z" } : row,
+    "market_evaluation_source_record_binding_mismatch");
+  await rejectSourceMutation("snapshot", (row, index) => index === 0
+    ? { ...row, marketSnapshotAt: "2026-06-01T16:54:00.000Z" } : row,
+    "market_evaluation_source_record_binding_mismatch");
+  await rejectSourceMutation("probabilities", (row, index) => index === 0
+    ? { ...row, probabilities: [0.49, 0.26, 0.25] } : row,
+    "market_evaluation_source_record_probabilities_mismatch");
+  await rejectSourceMutation("outcome", (row, index) => index === 0
+    ? { ...row, outcome: "away" } : row,
+    "market_evaluation_source_record_outcome_mismatch");
   const blendEvidence = await getWinMLMarketBlendEvaluationEvidence({
     modelId, modelVersion, marketEvaluationId: evaluationId
   });
