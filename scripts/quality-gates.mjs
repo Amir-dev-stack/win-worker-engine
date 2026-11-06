@@ -1141,6 +1141,16 @@ add("Football odds quality checks freshness, market completeness, price integrit
   footballOddsQualityTests.includes("suspicious moves without deleting observations") &&
   footballOddsQualityTests.includes("only when an expected cadence is supplied"),
   "Odds diagnostics require explicit bookmaker/source/outcome identity, only apply freshness/cadence rules when configured, flag overround and suspicious movements for review, and never infer bookmaker independence or training readiness.");
+const observedFootballOddsBridge = await read("netlify/lib/ml-football-observed-odds-quality.mts");
+const observedFootballOddsBridgeTests = await read("scripts/ml-football-observed-odds-quality.test.mjs");
+add("Normalized observed football odds map into quality diagnostics without admitting live or non-football rows",
+  observedFootballOddsBridge.includes("assessWinObservedFootballOddsQuality") &&
+  observedFootballOddsBridge.includes("eventTimeSemantics === \"scheduled_event_start\"") &&
+  observedFootballOddsBridge.includes("row?.live === false") &&
+  observedFootballOddsBridge.includes("row?.sportId === \"football\"") &&
+  observedFootballOddsBridgeTests.includes("maps normalized observed football rows into pre-match odds diagnostics") &&
+  observedFootballOddsBridgeTests.includes("preserves explicit market periods"),
+  "The read-only bridge must retain explicit provider/bookmaker/outcome identity and exclude live, non-football or non-scheduled market rows.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
