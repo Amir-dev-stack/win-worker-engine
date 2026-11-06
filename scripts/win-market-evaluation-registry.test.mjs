@@ -250,7 +250,15 @@ test("market evaluation registry binds immutable market scores to the registered
     modelVersion,
     features: sample.features
   });
-  await recordWinMLShadowPrediction(shadow.prediction);
+  await assert.rejects(() => recordWinMLShadowPrediction({
+    ...shadow.prediction,
+    probabilities: {
+      home: Math.max(0, shadow.prediction.probabilities.home - 0.01),
+      draw: shadow.prediction.probabilities.draw + 0.01,
+      away: shadow.prediction.probabilities.away
+    }
+  }, sample.features), /shadow_prediction_inference_mismatch/);
+  await recordWinMLShadowPrediction(shadow.prediction, sample.features);
   const verifiedShadowRecord = await getWinMLShadowPredictionRecord(predictionRunId);
   assert.deepEqual(verifiedShadowRecord.prediction, shadow.prediction);
   const verifiedBlendArgs = {
