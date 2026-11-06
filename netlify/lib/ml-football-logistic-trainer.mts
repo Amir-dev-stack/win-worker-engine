@@ -45,8 +45,15 @@ export type WinMLFootballLogisticArtifactV1 = {
 };
 
 function timestamp(value: unknown): number | null {
-  if (typeof value !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
+  if (typeof value !== "string") return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
+  if (!match) return null;
+  const [, year, month, day, hour, minute, second, , , offsetHour, offsetMinute] = match;
+  const y = Number(year), m = Number(month), d = Number(day);
+  const calendar = new Date(Date.UTC(y, m - 1, d));
+  if (calendar.getUTCFullYear() !== y || calendar.getUTCMonth() !== m - 1 || calendar.getUTCDate() !== d ||
+      Number(hour) > 23 || Number(minute) > 59 || Number(second) > 59 ||
+      (offsetHour !== undefined && (Number(offsetHour) > 23 || Number(offsetMinute) > 59))) return null;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -166,7 +173,9 @@ export function trainWinMLFootball1X2LogisticModel(args: {
   const trainingRows = args.trainingRows;
   const validationRows = args.validationRows;
   const featureNames = Object.keys(trainingRows[0].features || {}).sort();
-  if (featureNames.length === 0 || featureNames.length > 128) throw new Error("training_feature_count_out_of_bounds");
+  if (featureNames.length === 0 || featureNames.length > 128 || featureNames.some(name => !name.trim())) {
+    throw new Error("training_feature_count_out_of_bounds");
+  }
   if (trainingRows.length * featureNames.length * config.epochs > 25_000_000 ||
       validationRows.length * featureNames.length > 5_000_000) {
     throw new Error("training_compute_budget_exceeded");
