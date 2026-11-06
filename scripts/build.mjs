@@ -88,6 +88,8 @@ const required = [
   "netlify/lib/ml-football-logistic-trainer.mts",
   "netlify/lib/ml-training-execution-gate.mts",
   "netlify/lib/ml-model-artifact-registry.mts",
+  "netlify/lib/win-market-evaluation-registry.mts",
+  "scripts/win-market-evaluation-registry.test.mjs",
   "netlify/lib/ml-shadow-prediction.mts",
   "scripts/win-store.test.mjs",
   "scripts/results-isolated-retry.test.mjs",
