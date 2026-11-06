@@ -16,6 +16,9 @@ test("WIN odds evidence is append-only and prediction decisions bind to exact qu
   assert.ok(sql.includes("win_prediction_quote_bindings"));
   assert.ok(sql.includes("decision_quote_id text not null references public.win_odds_quote_snapshots"));
   assert.ok(sql.includes("win_reject_odds_evidence_mutation"));
+  assert.ok(sql.includes("win_validate_prediction_quote_binding"));
+  assert.ok(sql.includes("win_validate_clv_evaluation"));
+  assert.ok(sql.includes("closing quote does not match decision evidence"));
   assert.ok(sql.includes("before update or delete on public.win_odds_quote_snapshots"));
   assert.ok(sql.includes("before update or delete on public.win_clv_evaluations"));
 });
