@@ -44,7 +44,6 @@ export function bindWinMLShadowPredictionToBlendInput(args: {
       prediction.eventId !== input.model.eventId ||
       prediction.eventStart !== input.event.kickoff ||
       prediction.predictionCutoff !== input.event.predictionCutoff ||
-      prediction.predictionCutoff !== input.model.at ||
       prediction.generatedAt !== input.model.at ||
       prediction.featureVectorSha256 !== input.model.featureVectorSha256 ||
       model.evaluation.trainedAt !== input.model.trainedAt) {
