@@ -350,7 +350,8 @@ add("WIN owner training approvals require dataset-bound Ed25519 signatures and l
   mlOwnerApprovalTests.includes("signed revocation is bound to the approval, dataset and content hash") &&
   mlOwnerApproval.includes("The public key MUST come from trusted server configuration") &&
   mlOwnerApprovalTests.includes("tampered payload, wrong signing key and malformed signature fail closed") &&
-  mlOwnerApprovalTests.includes("approval signature cannot be reused for a different dataset"),
+  mlOwnerApprovalTests.includes("approval signature cannot be reused for a different dataset") &&
+  mlOwnerApprovalTests.includes("2026-02-30T09:00:00.000Z"),
   "The isolated verifier binds signed approval to dataset content, licence evidence, reviewer and validity window; readiness remains separately blocked.");
 
 const mlTrainingReadinessDocs = await read("docs/WIN_ML_TRAINING_READINESS.md");
