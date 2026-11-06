@@ -1052,9 +1052,24 @@ add("WIN football result evidence registry is immutable, tamper-evident and rese
   footballResultEvidenceRegistry.includes("result_evidence_record_hash_mismatch") &&
   footballResultEvidenceRegistry.includes("trainingApprovalGranted: false") &&
   footballResultEvidenceRegistry.includes("reconcileWinFootballResultEvidence") &&
-  footballResultEvidenceRegistryTests.includes("persists immutable matching and conflicting pairs") &&
-  footballResultEvidenceRegistryTests.includes("refuses unverifiable pairs and rejects tampered stored evidence"),
-  "Durable evidence storage accepts only valid two-source comparisons, preserves matches and conflicts immutably, verifies records on read, and never grants training approval.");
+  footballResultEvidenceRegistry.includes("validateWinFootballSourcePairIdentity") &&
+  footballResultEvidenceRegistry.includes("result_evidence_source_identity_unverified") &&
+  footballResultEvidenceRegistryTests.includes("refuses providers without server-reviewed upstream identity"),
+  "Durable result evidence refuses unreviewed providers before storage and revalidates the reviewed identity requirement when records are read.");
+
+const sourceIdentityRegistry = await read("netlify/lib/ml-source-identity-registry.mts");
+const sourceIdentityTests = await read("scripts/ml-source-identity-registry.test.mjs");
+add("WIN source identity requires server-curated publisher ownership, pinned review evidence and an unexpired review",
+  sourceIdentityRegistry.includes("REVIEWED_SOURCE_IDENTITIES: readonly WinReviewedSourceIdentityV1[] = []") &&
+  sourceIdentityRegistry.includes("resolveWinReviewedSourceIdentity") &&
+  sourceIdentityRegistry.includes("upstreamOwnerId") &&
+  sourceIdentityRegistry.includes("feedProductId") &&
+  sourceIdentityRegistry.includes("reviewExpiresAt") &&
+  sourceIdentityRegistry.includes("evidenceSha256") &&
+  sourceIdentityRegistry.includes("providers_share_upstream_owner") &&
+  sourceIdentityTests.includes("requires pinned evidence and a live review window") &&
+  sourceIdentityTests.includes("never treats caller-declared provider groups as verified"),
+  "Provider independence can only be resolved from server-curated, reviewed source metadata; an empty catalogue fails closed, and shared upstream owners cannot count as independent.");
 
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
