@@ -1246,6 +1246,21 @@ add("Normalized observed football odds map into quality diagnostics without admi
   observedFootballOddsBridgeTests.includes("maps normalized observed football rows into pre-match odds diagnostics") &&
   observedFootballOddsBridgeTests.includes("preserves explicit market periods"),
   "The read-only bridge must retain explicit provider/bookmaker/outcome identity and exclude live, non-football or non-scheduled market rows.");
+const winOddsClv = await read("netlify/lib/win-odds-clv.mts");
+const winOddsClvTests = await read("scripts/win-odds-clv.test.mjs");
+add("WIN CLV requires source-timestamped decimal prices for the exact same bookmaker market selection",
+  winOddsClv.includes('version: "win.odds.clv.v1"') &&
+  winOddsClv.includes("clv_quote_identity_mismatch") &&
+  winOddsClv.includes("clv_decision_quote_not_available_at_cutoff") &&
+  winOddsClv.includes("clv_closing_quote_not_after_decision") &&
+  winOddsClv.includes("clv_live_close_ingested_after_kickoff") &&
+  winOddsClv.includes("profitabilityClaimed: false") &&
+  winOddsClvTests.includes("mismatched bookmaker, source, market, selection or line") &&
+  winOddsClvTests.includes("decision quote observed or ingested after the prediction cutoff") &&
+  winOddsClvTests.includes("retrospective backfills") &&
+  winOddsClvTests.includes("prediction-market prices and fair-probability inputs"),
+  "CLV is computed only from comparable source-timestamped decimal back prices; retrospective and live evidence are distinguished, and the evaluator makes no profitability claim.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
