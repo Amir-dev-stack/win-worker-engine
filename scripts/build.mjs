@@ -126,7 +126,7 @@ const [aiBudget, hourlyMonitor, scheduledRunner, budgetApi, health, independentR
 ]);
 
 const checks = [
-  [packageJson.includes('"@openai/agents": "0.21.0"') && sdkRuntime.includes("from \"@openai/agents\"") && ai.includes("runWinAgent"), "OpenAI Agents SDK runtime is not installed or wired into WIN worker execution."],
+  [packageJson.includes('"@openai/agents": "0.21.0"') && sdkRuntime.includes("from \"@openai/agents\"") && ai.includes("createOpenAIWinLLMAdapter"), "OpenAI Agents SDK runtime is not installed or wired into WIN worker execution."],
   [html.includes("WIN Worker Engine"), "Dashboard title is missing."],
   [independentReview.includes('path: "/api/independent-review"') && independentReview.includes("create_reviewer_access") && independentReview.includes("separate_reviewer_credential"), "Separate reviewer approval route is missing."],
   [html.includes('id="createReviewerAccess"') && html.includes('id="reviewerQueue"') && app.includes("refreshReviewerQueue") && app.includes("reviewerApi"), "Dual-control reviewer dashboard is missing."],
