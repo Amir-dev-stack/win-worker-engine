@@ -508,6 +508,22 @@ add("WIN model fitting is blocked by a server-side execution gate and immutable 
   mlTrainingExecutionGateTests.includes("rejects caller-constructed plans"),
   "Training requires protected server flags, the server-owned plan identity and the signed dataset/licence/owner readiness chain. The current plan remains disabled; the gate cannot authorize promotion or betting.");
  
+const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
+const mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
+add("WIN model artifact registry immutably binds model, dataset, evaluation and all provenance hashes",
+  mlModelArtifactRegistry.includes("putIfNew") &&
+  mlModelArtifactRegistry.includes("getWinMLDatasetManifest") &&
+  mlModelArtifactRegistry.includes("evaluationSha256") &&
+  mlModelArtifactRegistry.includes("recordSha256") &&
+  mlModelArtifactRegistry.includes("predictWinMLFootball1X2") &&
+  mlModelArtifactRegistry.includes("model_artifact_immutable_conflict") &&
+  mlModelArtifactRegistry.includes("productionPromotionAllowed: false") &&
+  mlModelArtifactRegistry.includes("automatedBettingAllowed: false") &&
+  mlModelArtifactRegistryTests.includes("immutably binds artifact, evaluation and registered dataset") &&
+  mlModelArtifactRegistryTests.includes("rejects dataset hash drift and immutable version conflicts") &&
+  mlModelArtifactRegistryTests.includes("fails closed after stored record tampering"),
+  "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
+
 const winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
