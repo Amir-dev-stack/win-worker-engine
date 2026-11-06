@@ -1,4 +1,5 @@
 import { requireAuth } from "../lib/auth.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 import { getAIbudgetStatus, ownerApproveBudgetUnlock } from "../lib/ai-budget.mts";
 
 export default async (req: Request) => {
@@ -8,8 +9,9 @@ export default async (req: Request) => {
     return Response.json(await getAIbudgetStatus(), { headers: { "cache-control": "no-store" } });
   }
   if (req.method === "POST") {
-    let body: any;
-    try { body = await req.json(); } catch { return Response.json({ error: "Invalid JSON body." }, { status: 400 }); }
+    const parsedRequest = await readBoundedJsonObject(req, 8 * 1024);
+    if (parsedRequest instanceof Response) return parsedRequest;
+    const body = parsedRequest.body;
     if (body?.action !== "owner_approve_unlock" || typeof body?.confirmation !== "string") {
       return Response.json({ error: "Budget changes are locked. Only explicit owner unlock with the exact confirmation phrase is accepted." }, { status: 403 });
     }
