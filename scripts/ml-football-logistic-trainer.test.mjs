@@ -88,6 +88,9 @@ test("trainer rejects non-finite features and unsafe numerical configuration", (
   const unsettled = rows(0, 60);
   unsettled[0].labelAvailableAt = "2025-12-31T23:00:00.000Z";
   assert.throws(() => train({ trainingRows: unsettled }), /training_label_availability_invalid/);
+  const leaked = rows(0, 60);
+  leaked[0].features.home_signal.availableAt = leaked[0].eventStart;
+  assert.throws(() => train({ trainingRows: leaked }), /training_feature_provenance_invalid/);
 });
 
 test("prediction rejects modified artifacts and incompatible feature vectors", () => {
