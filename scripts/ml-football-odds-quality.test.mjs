@@ -53,6 +53,20 @@ test("flags implausible overround and suspicious moves without deleting observat
   assert.equal(report.validPreKickoffSnapshotCount, 4);
 });
 
+test("does not calculate market overround from outcomes captured too far apart", () => {
+  const mixed = [
+    ...snapshots.slice(0, 2),
+    { ...snapshots[2], capturedAt: "2026-11-10T17:00:00.000Z" },
+    { ...snapshots[0], snapshotId: "home-later", capturedAt: "2026-11-10T17:30:00.000Z", decimalOdds: 1.8 }
+  ];
+  const report = assessWinFootballOddsQuality({
+    fixtures, expectedMarkets, snapshots: mixed, maxOutcomeTimestampSkewMinutes: 10
+  });
+  assert.equal(report.incoherentMarketTimestampGroups.length, 1);
+  assert.equal(report.overroundOutOfBounds.length, 0);
+  assert.ok(report.reasons.includes("market_outcome_timestamp_skew_exceeds_limit"));
+});
+
 test("cadence gaps are evaluated only when an expected cadence is supplied", () => {
   const extended = [
     ...snapshots,
