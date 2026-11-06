@@ -67,6 +67,21 @@ test("flags implausible overround and suspicious moves without deleting observat
   assert.equal(report.validPreKickoffSnapshotCount, 4);
 });
 
+test("flags conflicting prices for the same outcome and timestamp instead of selecting one", () => {
+  const report = assessWinFootballOddsQuality({
+    fixtures, expectedMarkets,
+    snapshots: [
+      ...snapshots,
+      { ...snapshots[0], snapshotId: "home-conflict", decimalOdds: 1.6 }
+    ]
+  });
+  assert.equal(report.conflictingTimestampQuotes.length, 1);
+  assert.equal(report.conflictingTimestampQuotes[0].outcomeId, "home");
+  assert.equal(report.marketGroupDiagnostics[0].overround, null);
+  assert.equal(report.marketGroupDiagnostics[0].overroundSkippedForConflictingTimestamp, true);
+  assert.ok(report.reasons.includes("conflicting_same_timestamp_quotes_flagged"));
+});
+
 test("does not calculate market overround from outcomes captured too far apart", () => {
   const mixed = [
     ...snapshots.slice(0, 2),
