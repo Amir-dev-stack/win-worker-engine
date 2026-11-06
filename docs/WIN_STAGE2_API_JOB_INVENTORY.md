@@ -1,7 +1,7 @@
 # WIN Stage 2 — API and scheduled-job inventory (first pass)
 
 Audit branch: `docs/win-staged-build-roadmap`
-Audited tree: `85c84944d26a8589dfa1e8b71336e823fcb2701b`
+Audited tree: `9df4826ead23ea863be1b356e47328ba4b07a9a3`
 Base: `main` at `61aa7112f0e5be08e52cfd507b4bac00137ab727`
 
 Status: source-level inventory only. This is not a complete authorization review, live deployment inventory, or proof that scheduled functions are active. The current audited tree contains 43 `netlify/functions/*.mts` files. PR #8, #9 and #10 remain separate and unmerged; their additional routes and memory/backup handlers are not counted here.
@@ -217,3 +217,6 @@ These are source changes and synthetic tests; no current-head CI execution is cl
 - Added a reusable strict JSON-object parser with incremental stream reads, declared and actual byte caps, strict UTF-8, exact `application/json` media type and malformed/non-object rejection.
 - Applied route-specific limits after authentication and POST method checks: `/api/runs` 64 KiB, `/api/library` 128 KiB, `/api/learning-data-jobs` 8 KiB, `/api/human-coupon-settlements` 16 KiB and `/api/human-sources` 64 KiB.
 - The shared helper rejects invalid configured limits rather than silently disabling the cap. Added isolated tests, build registration and a quality gate.
+
+
+- The follow-on shared parser pass also moved `/api/runs`, `/api/library`, `/api/learning-data-jobs`, `/api/human-coupon-settlements` and `/api/human-sources` to strict bounded JSON reads after their existing bearer-authentication and method checks. Per-route caps are documented above in the Stage 2 request-boundary audit.
