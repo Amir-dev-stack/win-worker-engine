@@ -652,6 +652,17 @@ add("WIN market benchmark is bound to the registered ML artifact's exact held-ou
   winMarketEvaluationRegistryTests.includes("rejects duplicate model cutoff identities"),
   "Market metrics are accepted only for the exact registered model test cohort and each event's frozen prediction cutoff; market evidence remains immutable and shadow-only.");
 
+const verifiedMarketBlend = await read("netlify/lib/ml-market-anchored-blend-verified.mts");
+add("WIN market blend runtime obtains metrics only from registered immutable evidence",
+  verifiedMarketBlend.includes("getWinMLMarketBlendEvaluationEvidence") &&
+  verifiedMarketBlend.includes("getWinMLModelArtifact") &&
+  verifiedMarketBlend.includes("input.model?.artifactSha256 !== model.artifact.artifactSha256") &&
+  verifiedMarketBlend.includes("input.model?.datasetContentSha256 !== evidence.datasetContentSha256") &&
+  verifiedMarketBlend.includes("calculateWinMLMarketAnchoredBlend({ ...input, evaluation: evidence })") &&
+  verifiedMarketBlend.includes("probability vector is still caller-supplied") &&
+  winMarketEvaluationRegistryTests.includes("Deliberately forged caller metrics must be overwritten by registry evidence"),
+  "The verified wrapper replaces caller metrics with registry evidence and binds the model artifact/dataset; event probabilities remain explicitly unverified caller input.");
+
 const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
 const mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
 add("WIN model artifact registry immutably binds model, dataset, evaluation and all provenance hashes",
