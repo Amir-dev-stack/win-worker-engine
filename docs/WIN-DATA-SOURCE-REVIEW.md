@@ -116,3 +116,12 @@ A read-only bridge now maps WIN's normalized `ObservedMarket` records into the f
 The odds-quality report now includes one structured diagnostic per event/market/bookmaker/source/line group: expected and observed outcome counts, missing outcome identifiers, earliest/latest capture timestamps, calculated overround where valid, and whether overround was withheld for configured timestamp skew. These rows make coverage gaps attributable to a specific source and bookmaker without aggregating unlike lines or claiming source independence. The diagnostic is descriptive; it does not establish that a bookmaker offered every market at the same time unless the configured timestamp-skew rule is satisfied.
 
 Same-source observations for the same outcome and exact capture timestamp are also checked for conflicting prices. When one timestamp has more than one distinct decimal price, WIN flags the conflict and withholds that market group's overround instead of selecting an arbitrary row. This is separate from duplicate snapshot IDs and from cross-outcome timestamp skew.
+
+
+## Football-first odds-source contract review queue (2026-11-06)
+
+The source-review module now exposes a read-only queue for every registered provider whose declared domains include odds, markets, prices, spreads, totals, handicaps or related market data. Football providers are prioritised; providers for other sports remain visible as later tracks.
+
+Each entry requires primary evidence for publisher ownership and republication chains, the exact feed/dataset product and immutable revision, bookmaker/exchange identity and alias mapping, market/period/line/outcome semantics, decimal-price and implied-probability definitions, timestamp timezone and event-kickoff semantics, availability-state meanings, cadence claims and licence/attribution rights.
+
+The queue intentionally leaves source identity, bookmaker identity semantics, market semantics, timestamp semantics and availability semantics unverified. Expected capture cadence remains null until a source contract or other primary evidence establishes it. The queue does not connect feeds, approve licences, establish independent publishers, or permit training. A provider can appear in the inventory and review queue while remaining disconnected and unusable for automated research ingestion.
