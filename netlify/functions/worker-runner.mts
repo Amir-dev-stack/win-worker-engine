@@ -1,4 +1,5 @@
 import type { Config } from "@netlify/functions";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 import { authorized } from "../lib/auth.mts";
 import { get, list, put } from "../lib/store.mts";
 import { runDebate, runGlobalMaster, runIndependentWorkers } from "../lib/ai.mts";
@@ -239,6 +240,7 @@ function updateNetworkStatuses(network: any, reports: any[], debate: any[]) {
 
 export default async (req: Request) => {
   if (!authorized(req)) return new Response("Unauthorized", { status: 401 });
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
   if (Netlify.env.get("WIN_AI_BUDGET_APPROVED") !== "true") {
     return Response.json({ error: "WIN research execution is disabled; worker run blocked before research." }, { status: 423 });
@@ -247,8 +249,9 @@ export default async (req: Request) => {
   if (budgetStatus.spendingLocked) {
     return Response.json({ error: "WIN's persistent spending lock is active; worker run blocked before research." }, { status: 423 });
   }
-  let body: any;
-  try { body = await req.json(); } catch { return new Response("Bad JSON", { status: 400 }); }
+  const parsedRequest = await readBoundedJsonObject(req, 16 * 1024);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
   const run = await get<any>("runs", body.runId);
   if (!run) return new Response("Run not found", { status: 404 });
 
