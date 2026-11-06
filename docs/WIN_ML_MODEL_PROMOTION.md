@@ -74,3 +74,10 @@ Current implementation still has no real trainer, model artifact registry, autho
 `netlify/lib/ml-provenance.mts` provides deterministic JSON canonicalization and SHA-256 helpers for training configurations, chronological split manifests and inference feature vectors. Object keys are sorted, array order is retained, and undefined, non-finite, cyclic or non-plain-object values are rejected. This prevents semantically identical objects with different key insertion order from receiving different hashes while preserving ordered split membership.
 
 The training/inference caller must persist the canonical JSON and the referenced run artifacts alongside each hash. Hash generation is deterministic, but it does not itself store source data, run training, attest an artifact or establish licensing.
+
+
+## Registered shadow-inference boundary
+
+`netlify/lib/ml-shadow-prediction.mts` is the guarded offline inference boundary. It accepts a registered model ID/version rather than caller-supplied artifact bytes, reloads the immutable artifact and registered dataset, checks the artifact's human-shadow eligibility, enforces exact feature-schema matching and requires every feature's source availability timestamp to be at or before the declared pre-kickoff cutoff. It computes the numeric HOME/DRAW/AWAY probabilities from the frozen logistic artifact, hashes the exact feature vector, and validates the resulting prediction envelope.
+
+Prediction audit records are immutable and idempotent by prediction-run ID; conflicting reuse fails. The module is not exposed as a production endpoint or betting action. Production use and automated betting remain false. Synthetic tests cover invalid time windows, late features, malformed provenance and unknown model IDs. No live dataset or real model has been used.
