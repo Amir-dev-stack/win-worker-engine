@@ -1,5 +1,18 @@
 import { Agent, run, setDefaultOpenAIKey, setTracingDisabled, webSearchTool } from "@openai/agents";
 
+export function buildWinAgentModelSettings(maxOutputTokens: number, maxToolCallsPerResponse: number) {
+  if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1 ||
+      !Number.isSafeInteger(maxToolCallsPerResponse) || maxToolCallsPerResponse < 1) {
+    throw new Error("WIN Agents SDK token and tool-call limits must be positive safe integers.");
+  }
+  return {
+    store: false,
+    maxTokens: maxOutputTokens,
+    parallelToolCalls: false,
+    providerData: { max_tool_calls: maxToolCallsPerResponse }
+  };
+}
+
 export type WinAgentRun = {
   finalOutput: string;
   responseId?: string;
@@ -33,12 +46,7 @@ export async function runWinAgent(input: {
     name: input.name,
     instructions: input.instructions,
     model: input.model,
-    modelSettings: {
-      store: false,
-      maxTokens: input.maxOutputTokens,
-      parallelToolCalls: false,
-      providerData: { max_tool_calls: input.maxToolCallsPerResponse }
-    },
+    modelSettings: buildWinAgentModelSettings(input.maxOutputTokens, input.maxToolCallsPerResponse),
     tools
   });
 
