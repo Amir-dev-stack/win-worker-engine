@@ -40,13 +40,13 @@ const mcpApi = await read("netlify/functions/mcp.mts");
 const oauthStore = await read("netlify/lib/oauth-store.mts");
 const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 const oauthConsent = await read("netlify/lib/oauth-consent.mts");
-const mcpToolRegistrationMatches = [...mcpApi.matchAll(/server\\.registerTool\\("([^"]+)"/g)];
+const mcpToolRegistrationMatches = [...mcpApi.matchAll(/server\.registerTool\("([^"]+)"/g)];
 const mcpToolsHaveMatchingScopeGuards = mcpToolRegistrationMatches.every((match, index) => {
   const end = index + 1 < mcpToolRegistrationMatches.length ? mcpToolRegistrationMatches[index + 1].index : mcpApi.length;
-  const block = mcpApi.slice(match.index, end);
-  const declared = block.match(/securitySchemes:\\s*\\[\\{\\s*type:\\s*"oauth2",\\s*scopes:\\s*\\[([^\\]]+)\\]/)?.[1] || "";
-  const guarded = block.match(/if \\(!scopes\\.includes\\("([^"]+)"\\)\\)/)?.[1] || "";
-  return Boolean(declared && guarded && declared.includes("\\"" + guarded + "\\""));
+  const toolBlock = mcpApi.slice(match.index, end);
+  const declared = toolBlock.match(/securitySchemes:\s*\[\{\s*type:\s*"oauth2",\s*scopes:\s*\[([^\]]+)\]/)?.[1] || "";
+  const guarded = toolBlock.match(/if \(!scopes\.includes\("([^"]+)"\)\)/)?.[1] || "";
+  return Boolean(declared && guarded && declared.includes('"' + guarded + '"'));
 });
 add("WIN shared-store contract tests cover conditional races, bounded reads, legacy and malformed records",
   storeContractTests.includes("onlyIfNew race must have exactly one winner") &&
