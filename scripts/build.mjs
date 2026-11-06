@@ -87,6 +87,8 @@ const required = [
   "netlify/lib/ml-dataset-registry.mts",
   "netlify/lib/ml-football-importer.mts",
   "netlify/lib/ml-football-import-workflow.mts",
+  "netlify/lib/ml-football-result-reconciliation.mts",
+  "scripts/ml-football-result-reconciliation.test.mjs",
   "netlify/lib/ml-football-features.mts",
   "netlify/lib/ml-football-training-builder.mts",
   "netlify/lib/ml-football-logistic-trainer.mts",
