@@ -41,8 +41,8 @@ const oauthStore = await read("netlify/lib/oauth-store.mts");
 const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 add("WIN shared-store contract tests cover conditional races, bounded reads, legacy and malformed records",
   storeContractTests.includes("onlyIfNew race must have exactly one winner") &&
-  storeContractTests.includes("compare-and-swap update may have exactly one winner") &&
-  storeContractTests.includes("bounded parallel reads") &&
+  storeContractTests.includes("only one compare-and-swap update may win for a shared ETag") &&
+  storeContractTests.includes("Blob record reads must stay within the configured 16-read batch") &&
   storeContractTests.includes("valid legacy JSON record remains readable") &&
   storeContractTests.includes("malformed JSON must surface as a parse failure") &&
   storeContractTests.includes("deleted record must not reappear"),
