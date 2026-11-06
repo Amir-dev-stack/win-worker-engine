@@ -1,10 +1,10 @@
 # WIN Stage 2 — API and scheduled-job inventory (first pass)
 
 Audit branch: `docs/win-staged-build-roadmap`
-Audited tree: `5b6427cd6225557e3e57295409984017c2496488`
+Audited tree: `4d3d5e00bf0e27a946957741103acd99f0f0e093`
 Base: `main` at `61aa7112f0e5be08e52cfd507b4bac00137ab727`
 
-Status: source-level inventory only. This is not a complete authorization review, live deployment inventory, or proof that scheduled functions are active. The branch contains 42 `netlify/functions/*.mts` files. PR #8, #9 and #10 remain separate and unmerged; their additional routes and memory/backup handlers are not counted here.
+Status: source-level inventory only. This is not a complete authorization review, live deployment inventory, or proof that scheduled functions are active. The current audited tree contains 43 `netlify/functions/*.mts` files. PR #8, #9 and #10 remain separate and unmerged; their additional routes and memory/backup handlers are not counted here.
 
 ## 1. Explicit API paths
 
@@ -22,6 +22,7 @@ The following explicit `config.path` declarations were found. A direct `requireA
 | `/api/independent-review` | `independent-review.mts` | Direct auth marker; branch-level reviewer authorization also exists |
 | `/api/learning-data-jobs` | `learning-data-jobs.mts` | Direct auth marker |
 | `/api/library` | `library.mts` | Direct auth marker |
+| `/api/ml-owner-approval` | `ml-owner-approval.mts` | Dedicated owner-only bearer token plus protected public-key/reviewer configuration; distinct from dashboard `requireAuth` |
 | `/mcp` | `mcp.mts` | Direct auth marker; inspect OAuth scopes and tool-level authorization separately |
 | `/oauth/authorize` | `oauth-authorize.mts` | OAuth protocol flow; not dashboard `requireAuth` |
 | `/oauth/register` | `oauth-register.mts` | OAuth client-registration flow; not dashboard `requireAuth` |
@@ -86,3 +87,11 @@ Do not infer that these are inaccessible or public from the absence of an explic
 ## 5. Safety boundary
 
 No production deployment, schedule change, live job invocation, database migration, storage backfill/restore, provider import, paid service, or credential change was performed. This document is a first-pass source inventory, not a sign-off that every route is secure or every job operational.
+
+
+## 6. ML owner-approval control plane update
+
+The current tree adds `/api/ml-owner-approval`. Source inspection confirms POST-only handling, a dedicated `WIN_ML_OWNER_APPROVAL_TOKEN` (minimum 32 characters), and required protected `WIN_ML_OWNER_APPROVAL_PUBLIC_KEY` plus `WIN_ML_OWNER_REVIEWER_ID` configuration. Supported actions are `licence_evidence`, `readiness`, `approve`, `revoke`, `list` and `status`. Request bodies cannot supply the trusted key or token. The endpoint returns 503 when its protected control-plane configuration is absent and does not expose GET.
+
+This is a source-level control review only. The endpoint is not enabled by this audit; no owner approval secrets were configured, no signed approval was registered and no training was run.
+
