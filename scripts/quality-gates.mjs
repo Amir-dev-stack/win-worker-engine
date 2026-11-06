@@ -1123,6 +1123,21 @@ add("Football coverage is grouped by competition and season with explicit odds-p
   footballSeasonCoverageTests.includes("ambiguous reused event IDs"),
   "Coverage reports are partitioned by competition-season. Opening/intermediate/closing counts require explicit source phase labels and pre-kickoff timestamps; ambiguous event IDs are left unassigned.");
 
+const footballOddsQuality = await read("netlify/lib/ml-football-odds-quality.mts");
+const footballOddsQualityTests = await read("scripts/ml-football-odds-quality.test.mjs");
+add("Football odds quality checks freshness, market completeness, price integrity and timestamped movement",
+  footballOddsQuality.includes("assessWinFootballOddsQuality") &&
+  footballOddsQuality.includes("stale_snapshots_excluded") &&
+  footballOddsQuality.includes("incomplete_market_outcome_groups") &&
+  footballOddsQuality.includes("market_overround_out_of_bounds") &&
+  footballOddsQuality.includes("suspicious_price_moves_flagged_for_review") &&
+  footballOddsQuality.includes("expected_cadence_gaps") &&
+  footballOddsQuality.includes("bookmakerIndependenceVerified: false") &&
+  footballOddsQuality.includes("trainingApprovalGranted: false") &&
+  footballOddsQualityTests.includes("incomplete outcomes, duplicate IDs, stale and post-kickoff") &&
+  footballOddsQualityTests.includes("suspicious moves without deleting observations") &&
+  footballOddsQualityTests.includes("only when an expected cadence is supplied"),
+  "Odds diagnostics require explicit bookmaker/source/outcome identity, only apply freshness/cadence rules when configured, flag overround and suspicious movements for review, and never infer bookmaker independence or training readiness.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
