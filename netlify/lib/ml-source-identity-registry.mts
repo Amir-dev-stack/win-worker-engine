@@ -56,8 +56,36 @@ function isStrictClock(value: unknown): value is string {
       (value.includes(".") ? value : value.replace("Z", ".000Z"));
 }
 
+
+export function validateWinReviewedSourceIdentityCatalogue(
+  catalogue: readonly WinReviewedSourceIdentityV1[],
+  now: string
+): string[] {
+  const errors: string[] = [];
+  const providerIds = new Set<string>();
+  const ownerGroups = new Map<string, string>();
+  const groupOwners = new Map<string, string>();
+  for (const identity of catalogue) {
+    errors.push(...validateWinReviewedSourceIdentity(identity, now));
+    if (providerIds.has(identity.providerId)) errors.push("duplicate_provider_id:" + identity.providerId);
+    providerIds.add(identity.providerId);
+    const knownGroup = ownerGroups.get(identity.upstreamOwnerId);
+    if (knownGroup && knownGroup !== identity.independenceGroup) {
+      errors.push("upstream_owner_mapped_to_multiple_groups:" + identity.upstreamOwnerId);
+    }
+    ownerGroups.set(identity.upstreamOwnerId, identity.independenceGroup);
+    const knownOwner = groupOwners.get(identity.independenceGroup);
+    if (knownOwner && knownOwner !== identity.upstreamOwnerId) {
+      errors.push("independence_group_maps_to_multiple_owners:" + identity.independenceGroup);
+    }
+    groupOwners.set(identity.independenceGroup, identity.upstreamOwnerId);
+  }
+  return [...new Set(errors)];
+}
+
 export function resolveWinReviewedSourceIdentity(providerId: string, now: string) {
   if (!nonEmpty(providerId)) return null;
+  if (validateWinReviewedSourceIdentityCatalogue(REVIEWED_SOURCE_IDENTITIES, now).length) return null;
   const identity = REVIEWED_SOURCE_IDENTITIES.find(item => item.providerId === providerId);
   if (!identity || validateWinReviewedSourceIdentity(identity, now).length) return null;
   return { ...identity };
