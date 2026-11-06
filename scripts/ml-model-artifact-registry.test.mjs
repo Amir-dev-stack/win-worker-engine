@@ -105,3 +105,18 @@ test("model artifact retrieval fails closed after stored record tampering", asyn
     error instanceof WinMLModelArtifactRegistryError || /model_artifact/.test(error.message)
   );
 });
+
+test("model artifact registry rejects impossible registration and evaluation dates", async () => {
+  await resetRecords();
+  const { artifact, evaluation, testRows, evaluatedAt } = setup();
+  await registerWinMLDatasetManifest(manifest);
+  await assert.rejects(() => registerWinMLModelArtifact({
+    artifact, evaluation, testRows, evaluatedAt,
+    registeredAt: "2026-02-31T00:00:00.000Z"
+  }), /model_artifact_registration_metadata_invalid/);
+  await assert.rejects(() => registerWinMLModelArtifact({
+    artifact, evaluation, testRows,
+    evaluatedAt: "2026-02-31T00:00:00.000Z",
+    registeredAt: "2027-01-03T00:00:00.000Z"
+  }), /model_artifact_test_evaluation_evidence_invalid/);
+});
