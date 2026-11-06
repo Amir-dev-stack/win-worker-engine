@@ -14,6 +14,10 @@ test("validates pre-kickoff 1X2 completeness and reports bookmaker/source labels
   const report = assessWinFootballOddsQuality({ fixtures, snapshots, expectedMarkets });
   assert.equal(report.validPreKickoffSnapshotCount, 3);
   assert.equal(report.incompleteMarketGroupCount, 0);
+  assert.equal(report.marketGroupDiagnostics.length, 1);
+  assert.equal(report.marketGroupDiagnostics[0].expectedOutcomeCount, 3);
+  assert.equal(report.marketGroupDiagnostics[0].observedOutcomeCount, 3);
+  assert.equal(report.marketGroupDiagnostics[0].overround, 1 / 2 + 1 / 3.4 + 1 / 4);
   assert.equal(report.overroundOutOfBounds.length, 0);
   assert.deepEqual(report.bookmakerIds, ["book-a"]);
   assert.deepEqual(report.sourceIds, ["feed-a"]);
