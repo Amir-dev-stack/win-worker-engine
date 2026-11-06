@@ -33,6 +33,49 @@ function response(body: unknown, status = 200) {
  * Owner-only approval control plane. It fails closed unless all three protected
  * Netlify variables exist. Request bodies can never supply credentials or keys.
  */
+export async function readOwnerApprovalRequestBody(req: Request): Promise<{ body: Record<string, any> } | Response> {
+  const contentType = req.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase();
+  if (contentType !== "application/json") return response({ error: "application_json_required" }, 415);
+  const declaredLength = Number(req.headers.get("content-length") || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
+    return response({ error: "request_body_too_large" }, 413);
+  }
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  if (req.body) {
+    const reader = req.body.getReader();
+    try {
+      while (true) {
+        const part = await reader.read();
+        if (part.done) break;
+        totalBytes += part.value.byteLength;
+        if (totalBytes > MAX_BODY_BYTES) {
+          await reader.cancel();
+          return response({ error: "request_body_too_large" }, 413);
+        }
+        chunks.push(part.value);
+      }
+    } catch {
+      return response({ error: "request_body_unreadable" }, 400);
+    } finally {
+      reader.releaseLock();
+    }
+  }
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  let raw: string;
+  try { raw = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
+  catch { return response({ error: "request_body_invalid_utf8" }, 400); }
+  let body: any;
+  try { body = JSON.parse(raw); }
+  catch { return response({ error: "invalid_json" }, 400); }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return response({ error: "json_object_required" }, 400);
+  }
+  return { body };
+}
+
 export default async (req: Request) => {
   if (req.method !== "POST") return response({ error: "method_not_allowed" }, 405);
 
@@ -43,20 +86,9 @@ export default async (req: Request) => {
     return response({ error: "owner_approval_control_plane_not_configured" }, 503);
   }
   if (!ownerTokenMatches(req, ownerToken)) return response({ error: "unauthorized" }, 401);
-  if (!req.headers.get("content-type")?.toLowerCase().includes("application/json")) {
-    return response({ error: "application_json_required" }, 415);
-  }
-
-  let raw: string;
-  try { raw = await req.text(); }
-  catch { return response({ error: "request_body_unreadable" }, 400); }
-  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
-    return response({ error: "request_body_too_large" }, 413);
-  }
-
-  let body: any;
-  try { body = JSON.parse(raw); }
-  catch { return response({ error: "invalid_json" }, 400); }
+  const parsedRequest = await readOwnerApprovalRequestBody(req);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
 
   const trustedConfig = { publicKeyPem, reviewerId };
   try {
