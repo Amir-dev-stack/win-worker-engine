@@ -6,6 +6,7 @@ const kickoffAt = "2026-11-10T18:00:00.000Z";
 const predictionCutoff = "2026-11-10T17:00:00.000Z";
 const decisionQuote = {
   quoteId: "decision-1", sourceId: "feed-a", sourceRecordId: "raw-decision-1",
+  sourceRevision: "a".repeat(40), licenceId: "CC-BY-4.0", snapshotRole: "decision",
   eventId: "event-1", marketId: "1x2", selectionId: "home", period: "full_event",
   line: null, bookmakerId: "book-a", venueType: "sportsbook", priceType: "decimal_back",
   decimalOdds: 2.2, sourceObservedAt: "2026-11-10T16:59:00.000Z",
@@ -13,7 +14,7 @@ const decisionQuote = {
   availabilityStatus: "open", live: false
 };
 const closingQuote = {
-  ...decisionQuote, quoteId: "close-1", sourceRecordId: "raw-close-1",
+  ...decisionQuote, quoteId: "close-1", sourceRecordId: "raw-close-1", snapshotRole: "closing",
   decimalOdds: 2.0, sourceObservedAt: "2026-11-10T17:55:00.000Z",
   ingestedAt: "2026-11-10T17:55:05.000Z"
 };
@@ -45,6 +46,17 @@ test("rejects mismatched bookmaker, source, market, selection or line", () => {
       predictionCutoff, kickoffAt, evaluationMode: "live"
     }), e => e instanceof WinCLVError && e.code === "clv_quote_identity_mismatch");
   }
+});
+
+test("requires the source to identify the official decision and closing snapshots", () => {
+  assert.throws(() => calculateWinClosingLineValue({
+    decisionQuote: { ...decisionQuote, snapshotRole: "closing" }, closingQuote,
+    predictionCutoff, kickoffAt, evaluationMode: "live"
+  }), e => e instanceof WinCLVError && e.code === "clv_snapshot_role_invalid");
+  assert.throws(() => calculateWinClosingLineValue({
+    decisionQuote, closingQuote: { ...closingQuote, snapshotRole: "decision" },
+    predictionCutoff, kickoffAt, evaluationMode: "live"
+  }), e => e instanceof WinCLVError && e.code === "clv_snapshot_role_invalid");
 });
 
 test("rejects closing prices that are not strictly after the decision cutoff", () => {
