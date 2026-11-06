@@ -132,3 +132,8 @@ The queue intentionally leaves source identity, bookmaker identity semantics, ma
 The odds-quality assessor can now compare a provider observation's declared event start time with the independently supplied fixture kickoff. The comparison is activated only when the caller supplies an explicit maximum skew in minutes. If that contract is active, an observation without a provider event-start timestamp is excluded from the assessed pre-match set, and an observation outside the permitted skew is separately counted and retained in mismatch diagnostics. Malformed provider start timestamps are invalid observations. When no skew contract is supplied, WIN does not invent a tolerance or silently reject records based on an assumed schedule precision.
 
 The normalized observed-market bridge forwards the source's `startsAt` field into this check. This catches stale or mismatched event-time metadata without rewriting the original record. It does not prove that the fixture itself is correct or that the source's event identity is independently verified.
+
+
+## Research dashboard visibility
+
+The authenticated `/api/research-status` response now includes the result-source review queue, odds-source contract review queue and football source-inventory counts. The research dashboard displays the number of result and odds providers awaiting review, the football-first subset and the count of football sources that remain disconnected. This is visibility only: it does not expose an approval action, activate ingestion, or change any provider's status.
