@@ -25,6 +25,8 @@ test("licence evidence cannot be reused for a different licence, reviewer or alt
 test("expired, future, malformed and incorrectly signed licence reviews fail closed", () => {
  assert.ok(verifyWinMLLicenceEvidence(signed({ ...payload, reviewExpiresAt: "2026-11-07T00:00:00.000Z" }), key, expected).reasons.includes("licence_review_expired"));
  assert.ok(verifyWinMLLicenceEvidence(signed({ ...payload, reviewedAt: "2026-11-11T00:00:00.000Z" }), key, expected).reasons.includes("licence_review_not_yet_valid"));
+ assert.ok(verifyWinMLLicenceEvidence(signed({ ...payload, reviewedAt: "2026-02-30T09:00:00.000Z" }), key, expected).reasons.includes("licence_review_time_window_invalid"));
+ assert.ok(verifyWinMLLicenceEvidence(signed({ ...payload, sourceUrl: "https://reviewer:secret@example.test/licence" }), key, expected).reasons.includes("licence_evidence_source_url_invalid"));
  const other = generateKeyPairSync("ed25519");
  assert.ok(verifyWinMLLicenceEvidence(signed(), other.publicKey.export({ type: "spki", format: "pem" }).toString(), expected).reasons.includes("licence_evidence_signature_invalid"));
  assert.ok(verifyWinMLLicenceEvidence({ ...signed(), signatureBase64: "not-base64!" }, key, expected).reasons.includes("licence_evidence_signature_encoding_invalid"));
