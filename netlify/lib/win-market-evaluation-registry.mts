@@ -5,7 +5,7 @@ import { getWinMLModelArtifact } from "./ml-model-artifact-registry.mts";
 import { assertProviderImportAllowed } from "./data-provider-registry.mts";
 import type { WinMLModelEvaluationV1 } from "./ml-model-contract.mts";
 
-export const WIN_MARKET_EVALUATION_VERSION = "win.market.evaluation.v2" as const;
+export const WIN_MARKET_EVALUATION_VERSION = "win.market.evaluation.v3" as const;
 const COLLECTION = "library/win-market-evaluations";
 const CLASSES = ["home", "draw", "away"] as const;
 
@@ -14,7 +14,6 @@ export type WinMarketEvaluationRow = {
   kickoffAt: string;
   predictionCutoff: string;
   marketSnapshotAt: string;
-  resultAvailableAt: string;
   sourceRecordId: string;
   probabilities: [number, number, number];
   outcome: "home" | "draw" | "away";
@@ -156,8 +155,12 @@ function validateRows(rows: WinMarketEvaluationRow[], evaluatedAt: string) {
     const kickoff = Date.parse(row.kickoffAt);
     const cutoff = Date.parse(row.predictionCutoff);
     const snapshot = Date.parse(row.marketSnapshotAt);
-    const result = Date.parse(row.resultAvailableAt);
-    if (!(snapshot <= cutoff && cutoff < kickoff && kickoff <= result && result <= Date.parse(evaluatedAt))) {
+    const rowKeys = Object.keys(row).sort();
+    const expectedKeys = ["eventId", "kickoffAt", "marketSnapshotAt", "outcome", "predictionCutoff", "probabilities", "sourceRecordId"];
+    if (rowKeys.length !== expectedKeys.length || rowKeys.some((key, index) => key !== expectedKeys[index])) {
+      throw new WinMarketEvaluationError("market_evaluation_row_invalid");
+    }
+    if (!(snapshot <= cutoff && cutoff < kickoff && kickoff <= Date.parse(evaluatedAt))) {
       throw new WinMarketEvaluationError("market_evaluation_point_in_time_invalid");
     }
     if (!Array.isArray(row.probabilities) || row.probabilities.length !== 3 ||
@@ -220,6 +223,10 @@ export async function registerWinMarketEvaluation(args: {
   const model = await getWinMLModelArtifact(modelId, modelVersion);
   if (!model) throw new WinMarketEvaluationError("market_evaluation_model_artifact_missing");
   const evaluation = model.evaluation;
+  if (!isStrictIsoTimestamp(evaluation?.testWindow?.to) ||
+      Date.parse(evaluatedAt) < Date.parse(evaluation.testWindow.to)) {
+    throw new WinMarketEvaluationError("market_evaluation_labels_not_yet_available");
+  }
   assertWinMarketCohortMatchesModel(testRows, evaluation);
   validateSourceRecordBindings(testRows, sourceDataset, provider.id);
   const computed = validateRows(testRows, evaluatedAt);
