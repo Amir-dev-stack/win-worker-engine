@@ -143,7 +143,7 @@ returns trigger language plpgsql as $win$
 begin
   raise exception 'WIN odds evidence is append-only; insert a corrected source record instead';
 end;
-$$;
+$win$;
 
 drop trigger if exists win_odds_quote_no_update on public.win_odds_quote_snapshots;
 create trigger win_odds_quote_no_update
