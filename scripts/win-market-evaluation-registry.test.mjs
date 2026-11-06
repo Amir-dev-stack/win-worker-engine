@@ -289,4 +289,20 @@ test("market evaluation registry binds immutable market scores to the registered
     assert.equal(verifiedBlend.status, "blocked");
     assert.equal(verifiedBlend.probabilities, null);
   }
+
+  const tamperedSourceRecords = sourceRecords.map((record, index) => index === 0
+    ? { ...record, closing: { ...record.closing, homeWinProbability: 0.51 } }
+    : record);
+  await put("library/model-lab/market-consensus-datasets", "consensus-" + args.sourceId, {
+    providerId: args.sourceId,
+    sourceRevision: args.sourceRevision,
+    rawChecksum: "e".repeat(64),
+    totalRows: tamperedSourceRecords.length,
+    records: tamperedSourceRecords,
+    recordsSha256: hashWinMLProvenance(sourceRecords).sha256,
+    marketDataType: "consensus_market_lines",
+    origin: "provider_historical_data"
+  });
+  await assert.rejects(() => getWinMarketEvaluation(evaluationId),
+    /market_evaluation_source_dataset_binding_mismatch/);
 });
