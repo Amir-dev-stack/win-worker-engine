@@ -562,7 +562,9 @@ add("WIN football point-in-time features reject duplicate identities and future 
   mlFootballFeatures.includes('row?.scoreBasis === "regulation_time"') &&
   mlFootballFeaturesTests.includes("point-in-time features exclude results with extra-time score semantics") &&
   mlFootballFeatures.includes("rowKickoff >= cutoff") &&
-  mlFootballFeaturesTests.includes("point-in-time feature builder rejects duplicate or missing historical identities"),
+  mlFootballFeatures.includes("availableAt < rowKickoff") &&
+  mlFootballFeaturesTests.includes("point-in-time feature builder rejects duplicate or missing historical identities") &&
+  mlFootballFeaturesTests.includes("same-day matches require an earlier kickoff and a result available by the prediction cutoff"),
   "Historical features require unique source/event identities and source-recorded result availability before the prediction cutoff.");
 add("WIN 1X2 candidate labels preserve settlement and target identity",
   mlFootballTraining.includes("buildWinFootball1X2TrainingCandidates") &&
