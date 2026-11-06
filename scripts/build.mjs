@@ -65,6 +65,7 @@ const required = [
   "netlify/functions/public-source-discovery.mts",
   "netlify/functions/research-source-candidates.mts",
   "netlify/lib/consensus-market-adapter.mts",
+  "scripts/consensus-market-snapshot-timestamp.test.mjs",
   "netlify/functions/consensus-market-sync.mts",
   "netlify/lib/sharpapi-sample-adapter.mts",
   "netlify/functions/sharpapi-sample-sync.mts",
