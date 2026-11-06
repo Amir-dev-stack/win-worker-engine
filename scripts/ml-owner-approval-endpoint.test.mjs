@@ -128,6 +128,7 @@ test("owner approval endpoint fails closed and accepts only a separately authent
     assert.ok([...memoryStore.records.keys()].every(key =>
       key.startsWith("library/ml-dataset-manifests/") ||
       key.startsWith("library/ml-licence-review-evidence/") ||
+      key.startsWith("library/ml-licence-review-evidence-ids/") ||
       key.startsWith("library/ml-owner-training-approvals/")));
   } finally {
     if (previousFlag === undefined) delete process.env.WIN_STORE_TEST_MODE;
