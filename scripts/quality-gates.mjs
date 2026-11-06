@@ -695,6 +695,24 @@ add("Human settlement evidence submissions use deterministic identity and atomic
   humanSettlementIdentityTests.includes("separates coupon, evidence and outcome"),
   "Concurrent retries of the same coupon/evidence/outcome tuple must converge on one immutable settlement claim instead of racing a list-then-write duplicate check.");
 
+const lessonReviewApi = await read("netlify/functions/library.mts");
+const lessonReviewIdentity = await read("netlify/lib/lesson-review-submission.mts");
+const lessonReviewIdentityTests = await read("scripts/lesson-review-submission.test.mjs");
+const lessonReviewSubmissionBlock = lessonReviewApi.slice(
+  lessonReviewApi.indexOf('case "validate_lesson"'),
+  lessonReviewApi.indexOf('default:')
+);
+add("Lesson review submissions are idempotent per lesson revision and recover through conditional writes",
+  lessonReviewApi.includes("getWithMetadata") &&
+  lessonReviewSubmissionBlock.includes("lessonReviewSubmissionId") &&
+  lessonReviewSubmissionBlock.includes("putIfNew(\"library/lesson-review-cases\"") &&
+  lessonReviewSubmissionBlock.includes("putIfMatch(\"library/lessons\"") &&
+  !lessonReviewSubmissionBlock.includes("list<any>(\"library/lesson-review-cases\"") &&
+  lessonReviewIdentity.includes("createHash(\"sha256\")") &&
+  lessonReviewIdentityTests.includes("identical lesson revision submissions share") &&
+  lessonReviewIdentityTests.includes("rejected or otherwise revised lesson"),
+  "Identical submissions against one lesson revision must converge on one review case; rejected/revised lessons must receive a distinct identity, with lesson linkage updated using ETag compare-and-swap.");
+
 const packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
