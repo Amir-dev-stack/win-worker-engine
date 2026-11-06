@@ -57,25 +57,22 @@ Important limitations:
 ## 4. Next contract tests — priority order
 
 ### A. Result submission concurrency and recovery
-Use only an isolated in-memory store and stubbed dependencies. Add deterministic barriers and failure injection at each write boundary.
 
-Required cases:
-1. two simultaneous submissions for the same prediction and same outcome;
-2. repeated identical submission after a completed write;
-3. conflicting second outcome after an accepted result;
-4. failure after result record write and before each downstream learning projection;
-5. retry after partial failure resumes missing projections without duplicate lesson/settlement records;
-6. a governed prediction-result correction path is designed and tested separately; the current independent coupon/lesson reviewer is not treated as that path.
+Implemented in `scripts/results-isolated-retry.test.mjs` against the isolated in-memory store:
+1. simultaneous same-outcome submissions converge on one result ID and one claim;
+2. simultaneous conflicting outcomes produce one accepted result and one HTTP 409;
+3. a failure after claim creation but before canonical result persistence is recovered by the same-outcome retry;
+4. a failure after canonical result persistence but before the settled-result projection is repaired on retry;
+5. repeated identical submissions retain the same canonical result ID and learning projections;
+6. conflicting later outcomes remain blocked with HTTP 409.
 
-Expected properties:
-- at most one canonical result claim wins;
-- retries are idempotent;
-- projections are repairable/reconcilable;
-- conflicting outcomes are not silently overwritten;
-- partial completion is visible and recoverable;
-- no production Blobs or Neon adapter is reachable during the test.
+The tests exercise the actual `/api/results` handler and test-only store adapter. They do not execute against Netlify Blobs.
 
-The claim protocol is implemented against the isolated adapter fixture. Provider-side atomicity and a separate prediction-result correction workflow remain open; do not enable production reliance until both are verified.
+Still open:
+- verify the pinned provider implementation in an explicitly approved non-production Netlify environment;
+- implement and test the separately designed prediction-result correction workflow. See `docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md`. The existing independent coupon/lesson reviewer is not a prediction-result correction endpoint.
+
+Expected properties are covered by the isolated tests, but provider-side execution and correction workflow are not complete. Do not enable production reliance until those gaps are closed.
 
 ### B. Storage adapter contract
 Extend the existing isolated `win-store.test.mjs` adapter checks to cover:
