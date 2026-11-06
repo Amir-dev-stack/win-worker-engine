@@ -836,6 +836,18 @@ add("Consensus market imports pin immutable upstream revisions and avoid re-down
   consensusRevisionTests.includes("pins both tree and raw downloads"),
   "Consensus datasets must be tied to an immutable Hugging Face commit and unchanged revisions must reuse the verified local snapshot instead of downloading and rewriting the full dataset each run.");
 
+const openFootballRevisionTests = await read("scripts/public-data-source-policy.test.mjs");
+add("OpenFootball historical imports pin immutable Git revisions and reuse unchanged snapshots",
+  adapter.includes("isPinnedOpenFootballRevision") && adapter.includes("/commits/master") &&
+  adapter.includes('API + "?ref=" + sourceRevision') &&
+  adapter.includes('RAW + "/" + sourceRevision + "/"') &&
+  adapter.includes('previous?.sourceRevision === sourceRevision') &&
+  adapter.includes('previous?.status === "completed"') &&
+  adapter.includes("sourceCommitUrl") &&
+  openFootballRevisionTests.includes("OpenFootball historical imports require immutable Git commit revisions") &&
+  openFootballRevisionTests.includes("pins contents and raw URLs"),
+  "OpenFootball history must be tied to an immutable Git commit; a completed unchanged source revision should reuse the stored snapshot rather than rewrite every season on each run.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;

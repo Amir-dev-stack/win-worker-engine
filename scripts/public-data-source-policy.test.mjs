@@ -8,6 +8,7 @@ import {
   assertProviderImportAllowed
 } from "../netlify/lib/data-provider-registry.mts";
 import { CONSENSUS_SOURCES, isPinnedDatasetRevision } from "../netlify/lib/consensus-market-adapter.mts";
+import { isPinnedOpenFootballRevision } from "../netlify/lib/openfootball-adapter.mts";
 
 test("TipsAudit is discoverable but cannot enter automated data ingestion", () => {
   const candidate = DATA_PROVIDER_REGISTRY.find(x => x.id === "tipsaudit-track-record-public");
@@ -182,4 +183,24 @@ test("consensus adapter pins both tree and raw downloads and skips unchanged rev
   assert.ok(adapter.includes("sourceCommitUrl"));
   assert.ok(!adapter.includes("/tree/main?recursive=true"));
   assert.ok(!adapter.includes("/resolve/main/"));
+});
+
+test("OpenFootball historical imports require immutable Git commit revisions", () => {
+  assert.equal(isPinnedOpenFootballRevision("0123456789abcdef0123456789abcdef01234567"), true);
+  assert.equal(isPinnedOpenFootballRevision("master"), false);
+  assert.equal(isPinnedOpenFootballRevision("main"), false);
+  assert.equal(isPinnedOpenFootballRevision("short"), false);
+});
+
+test("OpenFootball historical adapter pins contents and raw URLs and reuses completed unchanged snapshots", async () => {
+  const adapter = await readFile(new URL("../netlify/lib/openfootball-adapter.mts", import.meta.url), "utf8");
+  assert.ok(adapter.includes("/commits/master"));
+  assert.ok(adapter.includes('API + "?ref=" + sourceRevision'));
+  assert.ok(adapter.includes('API + "/" + season + "?ref=" + sourceRevision'));
+  assert.ok(adapter.includes('RAW + "/" + sourceRevision + "/"'));
+  assert.ok(adapter.includes('previous?.sourceRevision === sourceRevision'));
+  assert.ok(adapter.includes('previous?.status === "completed"'));
+  assert.ok(adapter.includes('status: "unchanged"'));
+  assert.ok(adapter.includes("sourceCommitUrl"));
+  assert.ok(!adapter.includes("football.json/master/"));
 });
