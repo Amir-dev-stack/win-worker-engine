@@ -792,6 +792,8 @@ const mlMarketBlendTests = await read("scripts/ml-market-anchored-blend.test.mjs
 add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and research-only",
   mlMarketBlend.includes("MAX_MODEL_WEIGHT = 0.20") &&
   mlMarketBlend.includes("MAX_MARKET_SNAPSHOT_AGE_MS = 6 * 60 * 60 * 1000") &&
+  mlMarketBlend.includes("market_overround_out_of_bounds") &&
+  mlMarketBlend.includes("calendar.getUTCDate() !== d") &&
   mlMarketBlend.includes("marketTestCohortSha256 !== evaluation.testCohortSha256") &&
   mlMarketBlend.includes("model_does_not_beat_market_on_both_metrics") &&
   mlMarketBlend.includes("model_calibration_gate_failed") &&
@@ -801,7 +803,9 @@ add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and re
   mlMarketBlendTests.includes("caps ML influence at twenty percent") &&
   mlMarketBlendTests.includes("mismatched held-out cohort and insufficient sample size") &&
   mlMarketBlendTests.includes("stale or post-cutoff market quotes") &&
-  mlMarketBlendTests.includes("poor calibration and evaluation performed before held-out labels"),
+  mlMarketBlendTests.includes("poor calibration and evaluation performed before held-out labels") &&
+  mlMarketBlendTests.includes("caps even a very strong research model at twenty percent influence") &&
+  mlMarketBlendTests.includes("implausible market overround and impossible calendar timestamps"),
   "The research blend must require a shared held-out cohort, at least 100 test rows, model improvement on both Brier and log loss, ECE <= 0.05, labels available by evaluation time, a market quote no older than six hours, and never allow more than 20% model influence or authorize production/betting.");
 
 const failed = checks.filter(x => !x.ok);
