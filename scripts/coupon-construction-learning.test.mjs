@@ -79,3 +79,11 @@ test("invalid records are excluded rather than assigned fabricated probabilities
   assert.equal(result.exclusions.invalid_record, 1);
   assert.equal(result.ranked[0].settledTickets, 119);
 });
+
+test("duplicate ticket identities are counted and excluded", () => {
+  const data = rows({ count: 120 });
+  data[1].ticketId = data[0].ticketId;
+  const result = evaluateCouponConstructionCohorts(data);
+  assert.equal(result.exclusions.duplicate_ticket_id, 1);
+  assert.equal(result.ranked[0].settledTickets, 119);
+});

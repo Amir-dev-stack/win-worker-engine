@@ -55,8 +55,15 @@ export function evaluateCouponConstructionCohorts(
   };
 
   for (const row of input) {
-    if (!row || typeof row.ticketId !== "string" || !row.ticketId.trim() ||
-        seen.has(row.ticketId) || typeof row.sport !== "string" || !row.sport.trim() ||
+    if (!row || typeof row.ticketId !== "string" || !row.ticketId.trim()) {
+      exclusions.invalid_record++;
+      continue;
+    }
+    if (seen.has(row.ticketId)) {
+      exclusions.duplicate_ticket_id++;
+      continue;
+    }
+    if (typeof row.sport !== "string" || !row.sport.trim() ||
         !["single", "multiple", "system", "bet_builder", "other"].includes(row.format) ||
         typeof row.marketMix !== "string" || !row.marketMix.trim() ||
         !Number.isSafeInteger(row.legCount) || row.legCount < 1 ||
@@ -71,10 +78,6 @@ export function evaluateCouponConstructionCohorts(
       exclusions.invalid_record++;
       continue;
     }
-    if (seen.has(row.ticketId)) {
-      exclusions.duplicate_ticket_id++;
-      continue;
-    }
     seen.add(row.ticketId);
     if (row.chronologicalHoldout !== true) {
       exclusions.non_holdout_record++;
@@ -87,7 +90,8 @@ export function evaluateCouponConstructionCohorts(
       exclusions.invalid_joint_probability_evidence++;
       continue;
     }
-    const key = [row.sport, row.format, row.marketMix, row.legCount].join("|");
+    const key = [row.sport, row.format, row.marketMix, row.legCount, row.jointProbabilityMethod,
+      row.jointModelValidationSha256 || "no-joint-model"].join("|");
     const group = groups.get(key) || [];
     group.push(row);
     groups.set(key, group);
