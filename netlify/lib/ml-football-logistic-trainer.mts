@@ -472,13 +472,14 @@ export function buildWinMLFootball1X2EvaluationRecord(
   const trainedAt = timestamp(metadata.trainedAt);
   const fitDataCutoff = timestamp(artifact.fitDataCutoff);
   const validationStart = timestamp(artifact.validationWindow.from);
+  const validationEnd = timestamp(artifact.validationWindow.to);
   const testStart = timestamp(testEvaluation.testWindow.from);
   const testEnd = timestamp(testEvaluation.testWindow.to);
   const evaluatedAt = timestamp(testEvaluation.evaluatedAt);
   if (trainedAt === null || fitDataCutoff === null || validationStart === null ||
-      testStart === null || testEnd === null || evaluatedAt === null ||
+      validationEnd === null || testStart === null || testEnd === null || evaluatedAt === null ||
       trainedAt < fitDataCutoff || trainedAt >= validationStart ||
-      testStart <= timestamp(artifact.validationWindow.to)! || evaluatedAt < testEnd) {
+      testStart <= validationEnd || evaluatedAt < testEnd) {
     throw new Error("model_evaluation_chronology_invalid");
   }
   return {
