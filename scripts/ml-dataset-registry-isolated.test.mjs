@@ -92,6 +92,17 @@ test("ML dataset registry is isolated, immutable, idempotent and keeps approval 
     assert.equal(inventory[0].approvedForTraining, false,
       "cataloguing a research-only dataset must not silently approve training");
 
+    memoryStore.records.set("library/ml-dataset-manifests/invalid-calendar-date", {
+      value: manifest({
+        datasetId: "invalid-calendar-date",
+        retrievedAt: "2026-02-31T12:00:00.000Z"
+      }),
+      etag: "invalid-calendar-date-etag"
+    });
+    const validatedInventory = await registry.listWinMLDatasetManifests(10);
+    assert.equal(validatedInventory.some(item => item.datasetId === "invalid-calendar-date"), false,
+      "corrupt stored manifests must not enter the visible ML dataset inventory");
+
 
     const concurrentId = "concurrent-football-2026";
     const competing = await Promise.allSettled([
