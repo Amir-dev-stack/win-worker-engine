@@ -1,6 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 
 const required = [
+  ".github/workflows/win-quality.yml",
   "public/index.html",
   "public/app.js",
   "netlify/functions/health.mts",
