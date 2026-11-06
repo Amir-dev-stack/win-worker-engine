@@ -67,6 +67,14 @@ test("owner approval registry records signed evidence once, reports it active, a
     assert.deepEqual(await registry.registerWinMLLicenceReviewEvidence(
       licenceEvidence, trustedConfig, "2026-11-10T12:00:00.000Z"
     ), { recorded: false, idempotent: true, evidenceId: licencePayload.evidenceId, evidenceSha256: licenceEvidenceHash });
+    const conflictingLicencePayload = { ...licencePayload, rationale: "A conflicting review reuses this evidence ID." };
+    const conflictingLicence = {
+      payload: conflictingLicencePayload, signatureBase64: signPayload(conflictingLicencePayload)
+    };
+    await assert.rejects(
+      registry.registerWinMLLicenceReviewEvidence(conflictingLicence, trustedConfig, "2026-11-10T12:00:00.000Z"),
+      error => error.code === "licence_evidence_id_immutable_conflict"
+    );
     const approvalPayload = {
       approvalVersion: "win.ml.owner-training-approval.v1",
       approvalId: "owner-registry-approval-1", datasetId, datasetContentSha256: datasetHash,
@@ -141,6 +149,7 @@ test("owner approval registry records signed evidence once, reports it active, a
     assert.ok([...memoryStore.records.keys()].every(key =>
       key.startsWith("library/ml-dataset-manifests/") ||
       key.startsWith("library/ml-licence-review-evidence/") ||
+      key.startsWith("library/ml-licence-review-evidence-ids/") ||
       key.startsWith("library/ml-owner-training-approvals/") ||
       key.startsWith("library/ml-owner-training-revocations/")));
   } finally {
