@@ -941,6 +941,7 @@ add("Coupon dashboard distinguishes verified combined odds from theoretical pric
 const couponCorrelationGate = await read("netlify/lib/coupon-correlation-gate.mts");
 const couponCorrelationTests = await read("scripts/coupon-correlation-gate.test.mjs");
 const couponRunner = await read("netlify/functions/worker-runner.mts");
+const couponCandidateTests = await read("scripts/worker-coupon-candidates.test.mjs");
 add("D6 emits probability-first draftable proposals instead of a hard no-bet filter",
   ai.includes("estimatedWinProbabilityPercent") &&
   ai.includes("wholeCouponWinProbabilityPercent") &&
@@ -966,7 +967,6 @@ add("Coupon board displays per-leg percentages and distinguishes heuristic risk 
   app.includes("Whole-coupon probability:") &&
   app.includes("not a calibrated loss probability"),
   "The dashboard must show leg percentages with their unverified basis and keep heuristic risk separate from win/loss probability.");
-const couponCandidateTests = await read("scripts/worker-coupon-candidates.test.mjs");
 add("Multi-leg coupon drafts remain available while unvalidated joint probabilities are clearly withheld",
   couponRunner.includes("evaluateCouponCorrelation(legChecks)") &&
   couponRunner.includes("couponDraftAllowed: legs.length > 0") &&
