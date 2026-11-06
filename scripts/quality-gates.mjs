@@ -1043,6 +1043,19 @@ add("WIN football result corroboration requires two source-diverse, immutable, c
   footballResultReconciliationTests.includes("bad provenance, chronology and score basis"),
   "Independent result corroboration is an audit-only classification: it hashes both source records, rejects same-provider/same-group evidence and chronology/identity defects, flags score conflicts, and never grants training permission.");
 
+const footballResultEvidenceRegistry = await read("netlify/lib/ml-football-result-evidence-registry.mts");
+const footballResultEvidenceRegistryTests = await read("scripts/ml-football-result-evidence-registry-isolated.test.mjs");
+add("WIN football result evidence registry is immutable, tamper-evident and research-only",
+  footballResultEvidenceRegistry.includes('const COLLECTION = "library/ml-football-result-evidence"') &&
+  footballResultEvidenceRegistry.includes("putIfNew") &&
+  footballResultEvidenceRegistry.includes("result_evidence_immutable_conflict") &&
+  footballResultEvidenceRegistry.includes("result_evidence_record_hash_mismatch") &&
+  footballResultEvidenceRegistry.includes("trainingApprovalGranted: false") &&
+  footballResultEvidenceRegistry.includes("reconcileWinFootballResultEvidence") &&
+  footballResultEvidenceRegistryTests.includes("persists immutable matching and conflicting pairs") &&
+  footballResultEvidenceRegistryTests.includes("refuses unverifiable pairs and rejects tampered stored evidence"),
+  "Durable evidence storage accepts only valid two-source comparisons, preserves matches and conflicts immutably, verifies records on read, and never grants training approval.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
