@@ -122,3 +122,19 @@ test("rejects malformed prices, timestamps, identities and unknown outcomes", ()
   assert.equal(report.invalidSnapshotCount, 4);
   assert.equal(report.validPreKickoffSnapshotCount, 0);
 });
+
+
+test("reports bookmaker availability separately from historical price validity", () => {
+  const withStatuses = [
+    { ...snapshots[0], availabilityStatus: "open" },
+    { ...snapshots[1], availabilityStatus: "suspended" },
+    { ...snapshots[2], availabilityStatus: "closed" },
+    { ...snapshots[0], snapshotId: "home-unknown", capturedAt: "2026-11-10T16:59:00.000Z", availabilityStatus: "unknown" }
+  ];
+  const report = assessWinFootballOddsQuality({ fixtures, expectedMarkets, snapshots: withStatuses });
+  assert.equal(report.validPreKickoffSnapshotCount, 4);
+  assert.deepEqual(report.availabilityStatusCounts, { open: 1, suspended: 1, closed: 1, unknown: 1 });
+  assert.ok(report.reasons.includes("non_open_or_unknown_availability_snapshots_present"));
+  assert.equal(report.bookmakerIndependenceVerified, false);
+  assert.equal(report.trainingApprovalGranted, false);
+});
