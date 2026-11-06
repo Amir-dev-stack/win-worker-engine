@@ -121,6 +121,7 @@ The duplicate-invocation gap identified above has been addressed in source:
 - Each run receives a lease under `library/scheduled-run-leases/`, keyed by SHA-256 of the run ID.
 - Initial ownership uses `putIfNew`; expired-lease reclamation and release use ETag-conditional `putIfMatch`.
 - A live lease blocks a duplicate invocation. Only the invocation holding the matching lease ID may release it.
+- An existing active lease with malformed expiry metadata fails closed as contention; it is not silently reclaimed.
 - A process crash leaves the lease to expire (default 30 minutes); a later invocation can reclaim it. Lease duration is bounded to at most 60 minutes.
 - The scheduled runner acquires the lease after validating the run and checking whether it is already complete. A duplicate sees HTTP 202 with `already_running`; bounded contention errors fail closed with HTTP 503.
 - The lease is released in `finally` after normal completion or handled failure. If release fails or the process crashes, expiry is the recovery path.
