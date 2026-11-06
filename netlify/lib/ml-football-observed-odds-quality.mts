@@ -23,7 +23,8 @@ export function assessWinObservedFootballOddsQuality(args: {
   const eligible = records.filter(row =>
     row?.sportId === "football" &&
     row?.live === false &&
-    row?.eventTimeSemantics === "scheduled_event_start"
+    row?.eventTimeSemantics === "scheduled_event_start" &&
+    row?.bookmakerType !== "prediction_market"
   );
   const snapshots = eligible.map(row => ({
     snapshotId: row.sourceRecordId,
