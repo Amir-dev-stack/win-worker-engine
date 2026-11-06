@@ -43,7 +43,7 @@ test("single-leg coupon remains qualified and exposes its own price", () => {
 
 test("incomplete multi-leg evidence is still retained as an incomplete draft", () => {
   const result = collect({ id: "incomplete-1", status: "QUALIFIED", legs: [
-    { eventId: "event-1", event: "Home vs Away", market: "1X2", selection: "Home", odds: 2 }
+    { eventId: "event-1", event: "Home vs Away", market: "1X2", selection: "Home" }
   ] });
   assert.equal(result.status, "DRAFTABLE");
   assert.equal(result.couponDraftAllowed, true);
