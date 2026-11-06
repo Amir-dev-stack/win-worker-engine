@@ -119,3 +119,7 @@ The coupon board now displays `DRAFTABLE` candidates, separates the confirmed `c
 ### Leg-level percentage provenance
 
 D6's structured leg output now asks for an estimated win percentage (0–100), probability basis, confidence, rationale and evidence references. The worker retains valid numeric estimates but marks every free-text LLM estimate as unverified and uncalibrated; even a model/market label supplied by the LLM is not accepted as registry verification. A single-leg estimate may be shown as the coupon estimate with that caveat. Multi-leg whole-coupon probability remains null until a validated joint model is available. The dashboard displays the estimate, its confidence and rationale separately from the heuristic risk score.
+
+### Leg-probability calibration research
+
+A separate chronological leg-probability evaluator now compares frozen percentage estimates with independently evidenced settled outcomes. It groups by sport, market, probability basis and confidence, and reports Brier score, log loss, calibration gap, expected calibration error, reliability bins and a 95% Wilson interval. Only chronological holdout records with valid forecast/settlement evidence hashes and point-in-time ordering are accepted. Pushes and voids are excluded from win/loss scoring. A cohort needs at least 100 settled observations to become eligible for comparative research. The evaluator never changes an estimate, calibrates a model, grants production approval or enables betting; historical calibration is evidence to review, not a promise of future accuracy.
