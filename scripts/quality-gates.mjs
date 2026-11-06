@@ -617,13 +617,18 @@ add("WIN model fitting is blocked by a server-side execution gate and immutable 
   "Training requires protected server flags, the server-owned plan identity and the signed dataset/licence/owner readiness chain. The current plan remains disabled; the gate cannot authorize promotion or betting.");
  
 const winMarketEvaluationRegistry = await read("netlify/lib/win-market-evaluation-registry.mts");
+const winMarketEvaluationRegistryTests = await read("scripts/win-market-evaluation-registry.test.mjs");
 add("WIN market benchmark is bound to the registered ML artifact's exact held-out events and event-level cutoffs",
   winMarketEvaluationRegistry.includes("getWinMLModelArtifact(modelId, modelVersion)") &&
   winMarketEvaluationRegistry.includes("assertWinMarketCohortMatchesModel(testRows, evaluation)") &&
   winMarketEvaluationRegistry.includes("market_evaluation_prediction_cutoff_mismatch") &&
   winMarketEvaluationRegistry.includes("modelEvaluationSha256") &&
   winMarketEvaluationRegistry.includes("putIfNew(COLLECTION, evaluationId, record)") &&
-  winMarketEvaluationRegistry.includes("market_evaluation_model_binding_mismatch"),
+  winMarketEvaluationRegistry.includes("market_evaluation_model_binding_mismatch") &&
+  winMarketEvaluationRegistryTests.includes("requires exact registered held-out event identities and cutoffs") &&
+  winMarketEvaluationRegistryTests.includes("rejects a different event cohort") &&
+  winMarketEvaluationRegistryTests.includes("rejects per-event prediction cutoff drift") &&
+  winMarketEvaluationRegistryTests.includes("rejects duplicate model cutoff identities"),
   "Market metrics are accepted only for the exact registered model test cohort and each event's frozen prediction cutoff; market evidence remains immutable and shadow-only.");
 
 const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
