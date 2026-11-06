@@ -45,7 +45,7 @@ function setup() {
     featureSchemaVersion: "win.football.form.v1", trainingRows: rows(0, 60), validationRows: rows(60, 30),
     config: { learningRate: 0.1, epochs: 500, l2: 0.001 }
   });
-  const heldOut = evaluateWinMLFootball1X2LogisticModel(trained.artifact, rows(91, 30), "2027-01-01T00:00:00.000Z");
+  const heldOut = evaluateWinMLFootball1X2LogisticModel(trained.artifact, rows(91, 30), "2027-01-03T00:00:00.000Z");
   const evaluation = buildWinMLFootball1X2EvaluationRecord(trained.artifact, heldOut, {
     modelVersion: "0.1.0", trainingRunId: "synthetic-run", featureBuilderCommitSha: "d".repeat(40),
     sourceCommitSha: "e".repeat(40), trainedAt: "2026-03-01T07:00:00.000Z"
@@ -76,6 +76,7 @@ test("model artifact registry immutably binds artifact, evaluation and registere
   assert.equal(loaded.productionPromotionAllowed, false);
 });
 test("model artifact registry rejects dataset hash drift and immutable version conflicts", async () => {
+  await resetRecords();
   const { artifact, evaluation } = setup();
   await registerWinMLDatasetManifest(manifest);
   await assert.rejects(() => registerWinMLModelArtifact({
