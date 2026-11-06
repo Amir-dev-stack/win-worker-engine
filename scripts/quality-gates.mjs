@@ -1130,6 +1130,8 @@ add("Football odds quality checks freshness, market completeness, price integrit
   footballOddsQuality.includes("stale_snapshots_excluded") &&
   footballOddsQuality.includes("incomplete_market_outcome_groups") &&
   footballOddsQuality.includes("market_overround_out_of_bounds") &&
+  footballOddsQuality.includes("marketGroupDiagnostics") &&
+  footballOddsQualityTests.includes("structured bookmaker market coverage output") &&
   footballOddsQuality.includes("suspicious_price_moves_flagged_for_review") &&
   footballOddsQuality.includes("expected_cadence_gaps") &&
   footballOddsQuality.includes("market_outcome_timestamp_skew_exceeds_limit") &&
