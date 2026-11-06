@@ -409,6 +409,9 @@ const mlFootballTrainer = await read("netlify/lib/ml-football-logistic-trainer.m
 const mlFootballTrainerTests = await read("scripts/ml-football-logistic-trainer.test.mjs");
 add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer with frozen shadow-only artifacts",
   mlFootballTrainer.includes("trainWinMLFootball1X2LogisticModel") &&
+  mlFootballTrainer.includes("evaluateWinMLFootball1X2LogisticModel") &&
+  mlFootballTrainer.includes("held_out_test_not_after_validation_label_availability") &&
+  mlFootballTrainer.includes("baselineProbabilities") &&
   mlFootballTrainer.includes("training_validation_chronology_invalid") &&
   mlFootballTrainer.includes("labelAvailableAt") &&
   mlFootballTrainer.includes("predictionCutoff") &&
@@ -425,6 +428,7 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainer.includes("automatedBettingAllowed: false") &&
   mlFootballTrainerTests.includes("learns a synthetic 1X2 pattern") &&
   mlFootballTrainerTests.includes("trainer is deterministic") &&
+  mlFootballTrainerTests.includes("later held-out test partition") &&
   mlFootballTrainerTests.includes("prediction rejects modified artifacts") &&
   mlFootballTrainerTests.includes("model_artifact_split_manifest_hash_mismatch") &&
   mlFootballTrainerTests.includes("model_artifact_training_config_hash_mismatch") &&
