@@ -125,12 +125,61 @@ test("result submission retry repairs a partial projection in an isolated store"
     const conflict = await conflictResponse.json();
     assert.equal(conflict.existingOutcome, "won");
 
+    // Concurrent same-outcome requests must converge on one atomic claim.
+    await put("predictions", "result-race-same", {
+      id: "result-race-same", runId: "isolated-run",
+      brief: { sport: "football", event: "Race Same Fixture" }, coupons: []
+    });
+    const sameRace = await Promise.all([
+      submit("result-race-same", "won"),
+      submit("result-race-same", "won")
+    ]);
+    assert.ok(sameRace.every(response => response.status === 200 || response.status === 201));
+    const sameBodies = await Promise.all(sameRace.map(response => response.json()));
+    assert.equal(sameBodies[0].id, sameBodies[1].id);
+    assert.equal((await list("results", 100)).filter(item => item.predictionId === "result-race-same").length, 1);
+    assert.equal((await list("library/result-submission-claims", 100)).filter(item => item.predictionId === "result-race-same").length, 1);
+
+    // Conflicting concurrent outcomes have one winner; the loser must receive 409.
+    await put("predictions", "result-race-conflict", {
+      id: "result-race-conflict", runId: "isolated-run",
+      brief: { sport: "football", event: "Race Conflict Fixture" }, coupons: []
+    });
+    const conflictRace = await Promise.all([
+      submit("result-race-conflict", "won"),
+      submit("result-race-conflict", "lost")
+    ]);
+    assert.equal(conflictRace.filter(response => response.status === 409).length, 1);
+    assert.equal(conflictRace.filter(response => response.status === 200 || response.status === 201).length, 1);
+    const conflictBodies = await Promise.all(conflictRace.map(response => response.json()));
+    const accepted = conflictBodies.find((body, index) => conflictRace[index].status !== 409);
+    const rejected = conflictBodies.find((body, index) => conflictRace[index].status === 409);
+    assert.ok(["won", "lost"].includes(accepted.outcome));
+    assert.equal(rejected.existingOutcome, accepted.outcome);
+    assert.equal((await list("results", 100)).filter(item => item.predictionId === "result-race-conflict").length, 1);
+
+    // A crash after claim creation but before canonical result persistence is recoverable.
+    await put("predictions", "result-claim-recovery", {
+      id: "result-claim-recovery", runId: "isolated-run",
+      brief: { sport: "football", event: "Claim Recovery Fixture" }, coupons: []
+    });
+    memoryStore.failOnce("results/");
+    await assert.rejects(() => submit("result-claim-recovery", "won"), /Injected isolated storage failure/);
+    assert.equal((await list("library/result-submission-claims", 100))
+      .filter(item => item.predictionId === "result-claim-recovery").length, 1);
+    const recoveredResponse = await submit("result-claim-recovery", "won");
+    assert.equal(recoveredResponse.status, 200);
+    const recovered = await recoveredResponse.json();
+    assert.equal(recovered.outcome, "won");
+    assert.equal((await list("results", 100)).filter(item => item.predictionId === "result-claim-recovery").length, 1);
+
     assert.ok(memoryStore.writes.every(key =>
       key.startsWith("predictions/") ||
       key.startsWith("results/") ||
       key.startsWith("library/settled-results/") ||
       key.startsWith("library/lessons/") ||
-      key.startsWith("library/settlement-learning/")
+      key.startsWith("library/settlement-learning/") ||
+      key.startsWith("library/result-submission-claims/")
     ), "the test must write only synthetic records to the isolated in-memory adapter");
   } finally {
     if (previousFlag === undefined) delete process.env.WIN_STORE_TEST_MODE;
