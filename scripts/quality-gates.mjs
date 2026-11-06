@@ -801,13 +801,13 @@ add("Lesson review submissions are idempotent per lesson revision and recover th
   lessonReviewIdentityTests.includes("rejected or otherwise revised lesson"),
   "Identical submissions against one lesson revision must converge on one review case; rejected/revised lessons must receive a distinct identity, with lesson linkage updated using ETag compare-and-swap.");
 
-const mlPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
-const mlShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
+const mlOwnerGatedPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
+const mlOwnerGatedShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
 add("WIN shadow inference revalidates signed owner approval from protected config on every artifact read",
   mlModelArtifactRegistry.includes("evaluateWinMLTrainingReadinessFromProtectedConfig") &&
   mlModelArtifactRegistry.includes("ownerApprovalEvidenceReady") &&
-  mlPredictionContract.includes("ownerApprovalEvidenceReady") &&
-  mlShadowPrediction.includes("registered.ownerApprovalEvidenceReady") &&
+  mlOwnerGatedPredictionContract.includes("ownerApprovalEvidenceReady") &&
+  mlOwnerGatedShadowPrediction.includes("registered.ownerApprovalEvidenceReady") &&
   mlOwnerApprovalRegistry.includes("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") &&
   mlOwnerApprovalRegistry.includes("WIN_ML_OWNER_REVIEWER_ID") &&
   mlModelArtifactRegistryTests.includes("refuses approval references without protected server configuration"),
