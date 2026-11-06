@@ -411,6 +411,7 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainer.includes("trainWinMLFootball1X2LogisticModel") &&
   mlFootballTrainer.includes("evaluateWinMLFootball1X2LogisticModel") &&
   mlFootballTrainer.includes("held_out_test_not_after_validation_label_availability") &&
+  mlFootballTrainer.includes("held_out_test_labels_not_available_as_of_evaluation") &&
   mlFootballTrainer.includes("baselineProbabilities") &&
   mlFootballTrainer.includes("training_validation_chronology_invalid") &&
   mlFootballTrainer.includes("labelAvailableAt") &&
@@ -429,6 +430,7 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainerTests.includes("learns a synthetic 1X2 pattern") &&
   mlFootballTrainerTests.includes("trainer is deterministic") &&
   mlFootballTrainerTests.includes("later held-out test partition") &&
+  mlFootballTrainerTests.includes("held_out_test_labels_not_available_as_of_evaluation") &&
   mlFootballTrainerTests.includes("prediction rejects modified artifacts") &&
   mlFootballTrainerTests.includes("model_artifact_split_manifest_hash_mismatch") &&
   mlFootballTrainerTests.includes("model_artifact_training_config_hash_mismatch") &&
