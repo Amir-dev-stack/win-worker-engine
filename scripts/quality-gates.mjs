@@ -796,6 +796,7 @@ add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and re
   mlMarketBlend.includes("Math.abs(values.reduce((sum, number) => sum + number, 0) - 1) <= 1e-6") &&
   mlMarketBlend.includes("evaluation.modelBrier > 2") &&
   mlMarketBlend.includes("calendar.getUTCDate() !== d") &&
+  mlMarketBlend.includes(String.raw`const match = /^(\d{4})-(\d{2})-(\d{2})T` ) &&
   mlMarketBlend.includes("marketTestCohortSha256 !== evaluation.testCohortSha256") &&
   mlMarketBlend.includes("model_does_not_beat_market_on_both_metrics") &&
   mlMarketBlend.includes("MIN_RELATIVE_MARKET_IMPROVEMENT = 0.01") &&
