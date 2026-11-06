@@ -941,7 +941,32 @@ add("Coupon dashboard distinguishes verified combined odds from theoretical pric
 const couponCorrelationGate = await read("netlify/lib/coupon-correlation-gate.mts");
 const couponCorrelationTests = await read("scripts/coupon-correlation-gate.test.mjs");
 const couponRunner = await read("netlify/functions/worker-runner.mts");
-add("D6 emits probability-first draftable proposals instead of a hard no-bet filter",\n  ai.includes("estimatedWinProbabilityPercent") &&\n  ai.includes("wholeCouponWinProbabilityPercent") &&\n  ai.includes("probabilityConfidence") &&\n  ai.includes("status\\": \\"QUALIFIED\\"|\\\"DRAFTABLE\\"") &&\n  !ai.includes("WAIT / REMOVE / NO BET") &&\n  !ai.includes("Low-Risk Gate as a hard eligibility check"),\n  "D6 must retain incomplete proposals, label leg probability estimates and keep whole-coupon probability null without a validated joint model; it must not decide no-bet for the user.");\n\nadd("Coupon candidate pipeline preserves percentages without treating LLM labels as verified model outputs",\n  couponRunner.includes("estimatedWinProbabilityPercent") &&\n  couponRunner.includes("probabilityCalibrated: false") &&\n  couponRunner.includes("unverified_claim") &&\n  couponRunner.includes("wholeCouponWinProbabilityPercent") &&\n  couponRunner.includes("unvalidated_joint_probability_not_estimated") &&\n  couponCandidateTests.includes("probability provenance and calibration labels") &&\n  couponCandidateTests.includes("unverified model labels from an LLM are not treated as verified probabilities"),\n  "LLM-provided probability percentages must retain provenance, remain explicitly uncalibrated/unverified, and never become a multi-leg joint probability by multiplication.");\n\nadd("Coupon board displays per-leg percentages and distinguishes heuristic risk from calibrated probability",\n  app.includes("Estimated leg win %") &&\n  app.includes("Uncalibrated agent estimate") &&\n  app.includes("Whole-coupon probability:") &&\n  app.includes("not a calibrated loss probability"),\n  "The dashboard must show leg percentages with their unverified basis and keep heuristic risk separate from win/loss probability.");\nconst couponCandidateTests = await read("scripts/worker-coupon-candidates.test.mjs");
+add("D6 emits probability-first draftable proposals instead of a hard no-bet filter",
+  ai.includes("estimatedWinProbabilityPercent") &&
+  ai.includes("wholeCouponWinProbabilityPercent") &&
+  ai.includes("probabilityConfidence") &&
+  ai.includes("status\\": \\"QUALIFIED\\"|\\\"DRAFTABLE\\"") &&
+  !ai.includes("WAIT / REMOVE / NO BET") &&
+  !ai.includes("Low-Risk Gate as a hard eligibility check"),
+  "D6 must retain incomplete proposals, label leg probability estimates and keep whole-coupon probability null without a validated joint model; it must not decide no-bet for the user.");
+
+add("Coupon candidate pipeline preserves percentages without treating LLM labels as verified model outputs",
+  couponRunner.includes("estimatedWinProbabilityPercent") &&
+  couponRunner.includes("probabilityCalibrated: false") &&
+  couponRunner.includes("unverified_claim") &&
+  couponRunner.includes("wholeCouponWinProbabilityPercent") &&
+  couponRunner.includes("unvalidated_joint_probability_not_estimated") &&
+  couponCandidateTests.includes("probability provenance and calibration labels") &&
+  couponCandidateTests.includes("unverified model labels from an LLM are not treated as verified probabilities"),
+  "LLM-provided probability percentages must retain provenance, remain explicitly uncalibrated/unverified, and never become a multi-leg joint probability by multiplication.");
+
+add("Coupon board displays per-leg percentages and distinguishes heuristic risk from calibrated probability",
+  app.includes("Estimated leg win %") &&
+  app.includes("Uncalibrated agent estimate") &&
+  app.includes("Whole-coupon probability:") &&
+  app.includes("not a calibrated loss probability"),
+  "The dashboard must show leg percentages with their unverified basis and keep heuristic risk separate from win/loss probability.");
+const couponCandidateTests = await read("scripts/worker-coupon-candidates.test.mjs");
 add("Multi-leg coupon drafts remain available while unvalidated joint probabilities are clearly withheld",
   couponRunner.includes("evaluateCouponCorrelation(legChecks)") &&
   couponRunner.includes("couponDraftAllowed: legs.length > 0") &&
