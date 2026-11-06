@@ -52,9 +52,10 @@ const prediction = (overrides = {}) => ({
   ...overrides
 });
 
-test("valid trained-model prediction is eligible only for shadow evaluation", () => {
+test("standalone prediction contract stays blocked without signed owner readiness evidence", () => {
   const result = validateWinMLPrediction(manifest, evaluation, prediction());
-  assert.equal(result.status, "eligible_for_shadow_only");
+  assert.equal(result.status, "blocked");
+  assert.ok(result.reasons.includes("trusted_owner_approval_evidence_missing"));
   assert.equal(result.productionUseAllowed, false);
   assert.equal(result.automatedBettingAllowed, false);
 });
