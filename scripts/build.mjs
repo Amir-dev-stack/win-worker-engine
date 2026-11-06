@@ -49,6 +49,7 @@ const required = [
   "netlify/lib/bounded-json-request.mts",
   "scripts/independent-review-request.test.mjs",
   "scripts/independent-review-recovery.test.mjs",
+  "scripts/library-settlement-recovery.test.mjs",
   "scripts/bounded-json-request.test.mjs",
   "netlify/lib/data-provider-registry.mts",
   "netlify/lib/openfootball-adapter.mts",
