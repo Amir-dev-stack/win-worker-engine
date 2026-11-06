@@ -111,3 +111,7 @@ The worker's coupon-candidate collector now treats dependence diagnostics as an 
 - `combinedOdds` is retained only for a qualified single-leg candidate in this path. The user remains responsible for confirming the actual bookmaker price and deciding whether to bet.
 
 This corrects the earlier worker behavior that merged correlation blockers into the coupon's hard blocker list and changed every multi-leg proposal to `BLOCKED`. Quantitative approval remains withheld; proposal availability is not.
+
+### Coupon-board presentation
+
+The coupon board now displays `DRAFTABLE` candidates, separates the confirmed `combinedOdds` field from the theoretical product of leg prices, and labels the latter as not a bookmaker-quoted accumulator price. It also shows when whole-coupon probability is not reliably quantifiable, displays dependence warnings separately from data blockers, and calls out incomplete leg evidence. This preserves proposal visibility while preventing a draft from being mistaken for a probability-qualified or executable bet.
