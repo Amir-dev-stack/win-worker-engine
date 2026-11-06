@@ -19,7 +19,7 @@ export function canonicalizeWinMLProvenance(value: unknown): string {
       active.add(item);
       const ownKeys = Reflect.ownKeys(item);
       if (ownKeys.some(key => typeof key === "symbol" ||
-          (key !== "length" && !/^(0|[1-9]\\d*)$/.test(key)))) {
+          (key !== "length" && !/^(0|[1-9]\d*)$/.test(key)))) {
         throw new Error("ml_provenance_array_extra_properties");
       }
       const values: string[] = [];
