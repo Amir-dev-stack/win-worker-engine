@@ -92,7 +92,7 @@ test("retrospective backfills can use source-timestamped close quotes without pr
     predictionCutoff, kickoffAt, evaluationMode: "retrospective"
   });
   assert.equal(result.evaluationMode, "retrospective");
-  assert.equal(result.oddsRatioClv, 0.1);
+  assert.ok(Math.abs(result.oddsRatioClv - 0.1) < 1e-12);
   assert.throws(() => calculateWinClosingLineValue({
     decisionQuote, closingQuote: { ...closingQuote, ingestedAt: "2026-11-11T09:00:00.000Z" },
     predictionCutoff, kickoffAt, evaluationMode: "live"
