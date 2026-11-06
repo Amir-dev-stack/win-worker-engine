@@ -989,6 +989,12 @@ add("WIN manual worker runs are serialized and cannot replay completed work",
   (await read("netlify/lib/scheduled-run-lease.mts")).includes("putIfMatch") &&
   (await read("scripts/scheduled-run-lease-isolated.test.mjs")).includes("scheduled learning run lease elects one concurrent owner and blocks duplicates"),
   "Manual research runs share the atomic run lease, release only their own lease in finally, reject duplicate concurrent requests and prevent completed runs from being re-executed.");
+add("WIN autonomous department and debate agents use bounded per-run concurrency",
+  ai.includes("mapWithConcurrency(remainingDepartments, 2") &&
+  ai.includes("mapWithConcurrency(roles, 2") &&
+  (await read("netlify/lib/async-concurrency.mts")).includes("concurrency > 32") &&
+  (await read("scripts/async-concurrency.test.mjs")).includes("never exceeds its concurrency limit and preserves input order"),
+  "The initial scout remains first; the remaining departments and four adversarial reviewers run in stable order with no more than two active LLM workers per phase.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
