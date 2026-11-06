@@ -81,7 +81,8 @@ test("incomplete candidates remain draftable and retain missing-evidence warning
   });
   assert.equal(result.record.status, "DRAFTABLE");
   assert.equal(result.record.couponDraftAllowed, true);
-  assert.equal(result.record.dataQualityStatus, "complete");
+  assert.equal(result.record.dataQualityStatus, "incomplete");
+  assert.ok(result.record.blockers.some(x => x.includes("verified decimal odds missing")));
   assert.equal(result.record.legs[0].odds, null);
 });
 
