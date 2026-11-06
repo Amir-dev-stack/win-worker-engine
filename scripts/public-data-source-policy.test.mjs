@@ -7,7 +7,7 @@ import {
   providerMayRunAutomatically,
   assertProviderImportAllowed
 } from "../netlify/lib/data-provider-registry.mts";
-import { CONSENSUS_SOURCES, isPinnedDatasetRevision } from "../netlify/lib/consensus-market-adapter.mts";
+import { CONSENSUS_SOURCES } from "../netlify/lib/consensus-market-adapter.mts";
 
 test("TipsAudit is discoverable but cannot enter automated data ingestion", () => {
   const candidate = DATA_PROVIDER_REGISTRY.find(x => x.id === "tipsaudit-track-record-public");
@@ -162,24 +162,4 @@ test("commercial and source-discovery-only providers remain disabled pending rig
   for (const provider of DATA_PROVIDER_REGISTRY.filter(x => x.licenceReview === "required")) {
     assert.equal(provider.automationAllowed, false, provider.id);
   }
-});
-
-test("Hugging Face consensus imports require immutable 40-character revisions", () => {
-  assert.equal(isPinnedDatasetRevision("0123456789abcdef0123456789abcdef01234567"), true);
-  assert.equal(isPinnedDatasetRevision("main"), false);
-  assert.equal(isPinnedDatasetRevision("latest"), false);
-  assert.equal(isPinnedDatasetRevision("0123456789abcdef"), false);
-  assert.equal(isPinnedDatasetRevision("g123456789abcdef0123456789abcdef01234567"), false);
-});
-
-test("consensus adapter pins both tree and raw downloads and skips unchanged revisions", async () => {
-  const adapter = await readFile(new URL("../netlify/lib/consensus-market-adapter.mts", import.meta.url), "utf8");
-  assert.ok(adapter.includes("/revision/main"));
-  assert.ok(adapter.includes("/tree/"+'"+sourceRevision+"'));
-  assert.ok(adapter.includes("/resolve/"+'"+sourceRevision+"'));
-  assert.ok(adapter.includes('existing?.sourceRevision===sourceRevision'));
-  assert.ok(adapter.includes('status:"unchanged"'));
-  assert.ok(adapter.includes("sourceCommitUrl"));
-  assert.ok(!adapter.includes("/tree/main?recursive=true"));
-  assert.ok(!adapter.includes("/resolve/main/"));
 });

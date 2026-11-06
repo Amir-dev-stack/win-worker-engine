@@ -120,7 +120,6 @@ async function syncOne(source:typeof CONSENSUS_SOURCES[number]){
   };
  }).filter(r=>r.eventStart&&r.homeTeam&&r.awayTeam);
  const checksum=createHash("sha256").update(raw).digest("hex");
- const datasetId="consensus-"+source.id;
  const dataset={
   id:datasetId,providerId:source.id,repository:source.repo,sourceRevision,sourceCommitUrl:"https://huggingface.co/datasets/"+source.repo+"/commit/"+sourceRevision,sport:source.sport,
   sourceUrl:url,sourceLicence:"CC-BY-4.0",licenceReference:"https://creativecommons.org/licenses/by/4.0/",
@@ -131,7 +130,7 @@ async function syncOne(source:typeof CONSENSUS_SOURCES[number]){
   attribution:"Dataset by minmaxxxer, via Hugging Face. CC BY 4.0."
  };
  await put("library/model-lab/market-consensus-datasets",datasetId,dataset);
- return {providerId:source.id,repository:source.repo,rows:records.length,settledRows:dataset.settledRows,rawChecksum:checksum,status:"imported"};
+ return {providerId:source.id,repository:source.repo,rows:records.length,settledRows:dataset.settledRows,rawChecksum:checksum,sourceRevision,status:"imported"};
 }
 
 export async function syncConsensusMarketDatasets(){

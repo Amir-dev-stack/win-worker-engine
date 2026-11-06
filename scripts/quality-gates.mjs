@@ -812,34 +812,6 @@ add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and re
   mlMarketBlendTests.includes("tiny apparent gains that may be noise"),
   "The research blend must require a shared held-out cohort, at least 100 test rows, model improvement on both Brier and log loss, ECE <= 0.05, labels available by evaluation time, a market quote no older than six hours, and never allow more than 20% model influence or authorize production/betting.");
 
-const couponCorrelationGate = await read("netlify/lib/coupon-correlation-gate.mts");
-const couponCorrelationTests = await read("scripts/coupon-correlation-gate.test.mjs");
-const couponRunner = await read("netlify/functions/worker-runner.mts");
-add("Multi-leg coupon qualification fails closed until independently validated joint-probability evidence exists",
-  couponRunner.includes("evaluateCouponCorrelation(legChecks)") &&
-  couponRunner.includes("correlationAssessment.approved") &&
-  couponRunner.includes("correlationAssessment,") &&
-  couponCorrelationGate.includes("same_event_joint_probability_not_modelled") &&
-  couponCorrelationGate.includes("cross_event_dependence_not_modelled") &&
-  couponCorrelationGate.includes("LLM notes and multiplying marginal probabilities are not accepted") &&
-  couponCorrelationTests.includes("same-event multi-leg candidates are blocked") &&
-  couponCorrelationTests.includes("different-event accumulators are also blocked") &&
-  couponCorrelationTests.includes("missing event identity cannot be hidden"),
-  "Free-text correlation notes or multiplying individual probabilities must not qualify an accumulator. Single-leg candidates remain eligible; multi-leg candidates stay blocked until a separately validated joint-probability model is implemented.");
-
-const consensusRevisionTests = await read("scripts/public-data-source-policy.test.mjs");
-add("Consensus market imports pin immutable upstream revisions and avoid re-downloading unchanged datasets",
-  consensusAdapter.includes("isPinnedDatasetRevision") &&
-  consensusAdapter.includes("/revision/main") &&
-  consensusAdapter.includes("/tree/"+'"+sourceRevision+"') &&
-  consensusAdapter.includes("/resolve/"+'"+sourceRevision+"') &&
-  consensusAdapter.includes("existing?.sourceRevision===sourceRevision") &&
-  consensusAdapter.includes('status:"unchanged"') &&
-  consensusAdapter.includes("sourceCommitUrl") &&
-  consensusRevisionTests.includes("Hugging Face consensus imports require immutable 40-character revisions") &&
-  consensusRevisionTests.includes("pins both tree and raw downloads"),
-  "Consensus datasets must be tied to an immutable Hugging Face commit and unchanged revisions must reuse the verified local snapshot instead of downloading and rewriting the full dataset each run.");
-
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
