@@ -75,15 +75,15 @@ Still open:
 Expected properties are covered by the isolated tests, but provider-side execution and correction workflow are not complete. Do not enable production reliance until those gaps are closed.
 
 ### B. Storage adapter contract
-Extend the existing isolated `win-store.test.mjs` adapter checks to cover:
-- strong read after successful conditional write;
-- conditional create races;
-- conditional update races;
-- pagination cursor/order and bounded read concurrency;
-- missing, malformed and legacy JSON records;
-- primary failure and secondary mirror failure behavior;
-- mirror read precedence and reconciliation;
-- deletion semantics and no accidental fallback resurrection.
+
+Implemented in `scripts/win-store.test.mjs` against the isolated in-memory adapter:
+- read-after-write checks following successful conditional writes;
+- conditional create and compare-and-swap update races, each with exactly one winner;
+- paginated bounded reads, early stop at the requested limit, zero/negative limit behavior and bounded parallel reads;
+- missing records, valid legacy JSON and malformed JSON (parse failures remain visible);
+- delete followed by get/list checks to prevent accidental fixture-level resurrection.
+
+The current branch has no Neon mirror adapter, so primary/secondary mirror failure and mirror-precedence tests remain deferred until the relevant storage implementation is integrated. The test fixture does not prove provider-level semantics.
 
 Preserve the current ETag and read semantics. No provider routing change in this stage.
 
