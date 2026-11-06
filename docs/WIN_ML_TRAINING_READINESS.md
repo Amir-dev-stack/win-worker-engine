@@ -34,3 +34,10 @@ The trainer emits a content-hashed artifact, exact split/config hashes, and vali
 The Ed25519 signature proves that the configured reviewer signed the exact canonical attestation. It does not prove that the source document is authentic, complete, current, or legally interpreted correctly. A qualified human must inspect the source terms and determine whether the specific proposed training, storage, derivative-model, commercial, attribution, and automated-use activities are permitted. The source-document SHA-256 binds the attestation to the reviewed bytes; it is not a substitute for retaining and auditing those bytes under the applicable policy.
 
 No source data is fetched by this control plane. It does not import real sports data, execute training, call an AI provider, spend money, promote a model, deploy production code, or place bets.
+
+
+## Training execution boundary
+
+The deterministic logistic trainer is a pure computation module, not an execution endpoint. Any future server runner must first use `ml-training-execution-gate.mts`. The gate reads feature and execution approvals only from protected Netlify environment configuration, accepts only the server-owned experiment plan object, and rechecks the immutable dataset manifest, signed licence evidence, owner approval and revocation state. Request bodies cannot supply the flags, public key or reviewer identity.
+
+The current football 1X2 plan remains `fittingAllowed: false`; therefore the gate is intentionally fail-closed and no training run can start. Even an evidence-ready result is not sufficient by itself: a separately reviewed release change is required. Model promotion and automated betting remain disabled. No production route invokes the trainer.
