@@ -159,10 +159,17 @@ export function assessWinFootballOddsQuality(args: {
             overround < min || overround > max) overroundOutOfBounds.push({ groupId: quoteId, overround });
       }
     }
-    for (let i = 1; i < rows.length; i++) {
-      const previous = rows[i - 1];
-      const current = rows[i];
-      if (previous.outcomeId === current.outcomeId) {
+    const timelines = new Map<string, WinFootballOddsQualitySnapshot[]>();
+    for (const row of rows) {
+      if (!timelines.has(row.outcomeId)) timelines.set(row.outcomeId, []);
+      timelines.get(row.outcomeId)!.push(row);
+    }
+    for (const timeline of timelines.values()) {
+      timeline.sort((a, b) => Date.parse(a.capturedAt) - Date.parse(b.capturedAt) ||
+        a.snapshotId.localeCompare(b.snapshotId));
+      for (let i = 1; i < timeline.length; i++) {
+        const previous = timeline[i - 1];
+        const current = timeline[i];
         const relativeMove = Math.abs(current.decimalOdds - previous.decimalOdds) / previous.decimalOdds;
         if (jumpValid && relativeMove >= jumpThreshold) {
           suspiciousPriceMoves.push({ quoteId, fromSnapshotId: previous.snapshotId, toSnapshotId: current.snapshotId, relativeMove });
