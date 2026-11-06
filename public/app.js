@@ -85,6 +85,11 @@ function renderCouponBoardCard(item, mode) {
  const state=escapeHtml(mode==="candidate"?(item.status||"BLOCKED"):(item.outcome||"pending").toUpperCase());
  const date=item.settledAt||item.createdAt||item.archivedAt||item.updatedAt;
  const odds=item.combinedOdds===null||item.combinedOdds===undefined?"Not verified":Number(item.combinedOdds).toFixed(2);
+ const indicativeOdds=item.theoreticalOddsProduct===null||item.theoreticalOddsProduct===undefined?null:Number(item.theoreticalOddsProduct).toFixed(2);
+ const probabilityStatus=item.jointProbabilityAvailable===true?"Single-leg probability available":"Whole-coupon probability: not reliably quantifiable";
+ const probabilityWarnings=Array.isArray(item.probabilityWarnings)&&item.probabilityWarnings.length
+  ?'<p class="detail-meta"><b>Probability warning:</b> '+escapeHtml(item.probabilityWarnings.join(" · "))+'</p>':"";
+ const dataQuality=item.dataQualityStatus==="incomplete"?'<p class="report-error"><b>Incomplete evidence:</b> some leg details still need verification.</p>':"";
  const selections=Array.isArray(item.legs)?item.legs:(Array.isArray(item.selections)?item.selections:[]);
  const rows=selections.map((selection,index)=>{
   const event=escapeHtml(selection.event||selection.match||"Event not specified");
@@ -104,7 +109,8 @@ function renderCouponBoardCard(item, mode) {
  const placement=item.executionStatus==="not_placed_by_WIN"||item.placementStatus==="not_placed_by_WIN"
   ?'<p class="detail-meta">Research candidate only · not placed by WIN</p>':"";
  const details=table||text||blockers?'<details><summary>View full coupon ('+selections.length+' selections)</summary>'+table+text+blockers+'</details>':'<p class="detail-meta">No structured selections were stored for this record.</p>';
- return '<article class="coupon-board-card"><div class="report-title"><b>'+title+'</b><span class="decision">'+state+'</span></div><small>'+origin+' · '+escapeHtml(item.sport||"Sport unspecified")+' · '+escapeHtml(item.competition||"Competition unspecified")+(date?' · '+escapeHtml(new Date(date).toLocaleString()):"")+'</small><p>Combined odds: <b>'+odds+'</b> · '+selections.length+' selections</p>'+placement+(note?'<p class="detail-meta">'+escapeHtml(note)+'</p>':"")+details+'</article>';
+ const priceNote=indicativeOdds!==null?'<p class="detail-meta">Theoretical leg-price product: <b>'+indicativeOdds+'</b> · not a bookmaker-quoted accumulator price.</p>':"";
+ return '<article class="coupon-board-card"><div class="report-title"><b>'+title+'</b><span class="decision">'+state+'</span></div><small>'+origin+' · '+escapeHtml(item.sport||"Sport unspecified")+' · '+escapeHtml(item.competition||"Competition unspecified")+(date?' · '+escapeHtml(new Date(date).toLocaleString()):"")+'</small><p>Combined odds: <b>'+odds+'</b> · '+selections.length+' selections</p>'+priceNote+'<p class="detail-meta">'+escapeHtml(probabilityStatus)+'</p>'+probabilityWarnings+dataQuality+placement+(note?'<p class="detail-meta">'+escapeHtml(note)+'</p>':"")+details+'</article>';
 }
 async function refreshCouponBoards(){
  const status=$("#couponBoardStatus");
