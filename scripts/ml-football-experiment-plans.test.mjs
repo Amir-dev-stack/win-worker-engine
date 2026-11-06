@@ -163,8 +163,7 @@ test("preflight requires chronological partition counts and enforces each minimu
     training: 700, validation: 150, test: 150
   }, { market: "1x2", featureSchemaVersion: "win.football.form.v1" });
   assert.equal(ready.status, "blocked");
-  assert.ok(ready.reasons.includes("owner_training_approval_missing"));
-  assert.ok(ready.reasons.includes("licence_does_not_permit_training"));
+  assert.ok(ready.reasons.includes("trusted_owner_approval_evidence_missing"));
   assert.equal(ready.fittingAllowed, false);
 });
 
