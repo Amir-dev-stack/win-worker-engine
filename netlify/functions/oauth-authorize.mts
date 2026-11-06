@@ -1,4 +1,5 @@
 import type { Config } from "@netlify/functions";
+import { readOAuthFormBody } from "../lib/oauth-request.mts";
 import { randomUUID } from "node:crypto";
 import {
   WIN_ISSUER, WIN_RESOURCE, WIN_SCOPES, randomSecret, saveOAuthRecord,
@@ -66,11 +67,12 @@ export default async (req: Request) => {
     const challenge = url.searchParams.get("code_challenge") || "";
     const method = url.searchParams.get("code_challenge_method") || "";
     const audience = url.searchParams.get("resource") || "";
-    const scopes = scopesFrom(url.searchParams.get("scope") || "");
+    const scopeValue = url.searchParams.get("scope") || "";
+    const scopes = scopeValue.length <= 512 ? scopesFrom(scopeValue) : null;
     const client = await readOAuthRecord<ClientRecord>("clients", clientId);
 
     // Never redirect to a URI that was not registered for this exact client.
-    if (!client || !client.redirectUris.includes(redirectUri) || !state) {
+    if (!client || clientId.length > 128 || redirectUri.length > 2048 || !client.redirectUris.includes(redirectUri) || !state || state.length > 1024) {
       return new Response("Invalid OAuth client, redirect URI, or state.", { status: 400 });
     }
     if (responseType !== "code" || !/^[A-Za-z0-9_-]{43}$/.test(challenge) ||
@@ -97,9 +99,10 @@ export default async (req: Request) => {
   }
 
   if (req.method === "POST") {
-    const form = await req.formData();
-    const txn = String(form.get("txn") || "");
-    const ownerToken = String(form.get("ownerToken") || "");
+    const parsedForm = await readOAuthFormBody(req, 8 * 1024);
+    if (parsedForm instanceof Response) return parsedForm;
+    const txn = parsedForm.params.get("txn") || "";
+    const ownerToken = parsedForm.params.get("ownerToken") || "";
     const auth = await readOAuthRecord<AuthRequest>("requests", txn);
     if (!auth || auth.expiresAt <= Date.now()) {
       return new Response("Authorization request expired. Start connecting WIN again.", { status: 400 });
