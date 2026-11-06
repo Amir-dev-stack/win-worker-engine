@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import {
   WIN_ML_DATASET_MANIFEST_VERSION,
   validateWinMLDatasetManifest,
-  type WinMLDatasetManifestV1
+  type WinMLDatasetManifestV1,
+  isPinnedWinMLSourceRevision
 } from "./ml-data-contract.mts";
 import { isStrictIsoTimestamp } from "./strict-timestamp.mts";
 
@@ -16,6 +17,7 @@ export type WinFootballImportSource = {
   competition: string;
   season: string;
   sourceUrl: string;
+  sourceRevision: string;
   licenceId: string;
   attributionRequired: boolean;
   attributionText?: string;
@@ -99,6 +101,7 @@ export function importWinFootballResultsBytes(
   }
   if (typeof source?.attributionRequired !== "boolean") sourceErrors.push("attribution_permission_required");
   if (source?.attributionRequired && !nonEmpty(source?.attributionText)) sourceErrors.push("required_attribution_missing");
+  if (!isPinnedWinMLSourceRevision(source?.sourceRevision)) sourceErrors.push("source_revision_invalid");
   if (!validTimestamp(source?.retrievedAt)) sourceErrors.push("retrieved_at_invalid");
   if (sourceErrors.length) throw new WinFootballImportError("football_import_source_metadata_invalid", sourceErrors);
 
@@ -173,6 +176,7 @@ export function importWinFootballResultsBytes(
     competition: source.competition,
     season: source.season,
     sourceUrl: source.sourceUrl,
+    sourceRevision: source.sourceRevision,
     licenceId: source.licenceId,
     attributionRequired: source.attributionRequired,
     ...(source.attributionText ? { attributionText: source.attributionText } : {}),
