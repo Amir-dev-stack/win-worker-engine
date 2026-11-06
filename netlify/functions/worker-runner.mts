@@ -135,8 +135,9 @@ export function collectCouponCandidates(reports: any[]) {
           : "unavailable",
         probabilityConfidence: ["high","medium","low"].includes(leg?.probabilityConfidence) ? leg.probabilityConfidence : "unrated",
         probabilityRationale: typeof leg?.probabilityRationale === "string" ? leg.probabilityRationale.slice(0, 600) : "",
-        probabilityEvidenceRefs: Array.isArray(leg?.probabilityEvidenceRefs)
-          ? leg.probabilityEvidenceRefs.filter((x: any) => typeof x === "string").slice(0, 10) : [],
+        probabilityEvidenceRefs: (Array.isArray(leg?.probabilityEvidenceRefs) ? leg.probabilityEvidenceRefs
+          : Array.isArray(leg?.evidenceRefs) ? leg.evidenceRefs : [])
+          .filter((x: any) => typeof x === "string").slice(0, 10),
         probabilityCalibrated: false,
         sourceUrl: typeof leg?.sourceUrl === "string" && (leg.sourceUrl.startsWith("https://") || leg.sourceUrl.startsWith("http://")) ? leg.sourceUrl : null,
         observedAt: typeof leg?.observedAt === "string" ? leg.observedAt : null,
