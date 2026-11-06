@@ -30,8 +30,8 @@ test("evaluates 100 chronological holdout leg estimates with proper scores and r
   assert.equal(cohort.settledObservations, 100);
   assert.equal(cohort.observedWinRate, 0.7);
   assert.ok(Math.abs(cohort.meanPredictedProbability - 0.7) < 1e-12);
-  assert.equal(cohort.calibrationGap, 0);
-  assert.equal(cohort.expectedCalibrationError, 0);
+  assert.ok(Math.abs(cohort.calibrationGap) < 1e-12);
+  assert.ok(Math.abs(cohort.expectedCalibrationError) < 1e-12);
   assert.equal(cohort.reliabilityBins.length, 10);
   assert.equal(cohort.probabilityCalibrationGranted, false);
   assert.equal(cohort.productionApprovalGranted, false);
