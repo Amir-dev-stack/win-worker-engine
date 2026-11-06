@@ -9,6 +9,8 @@ export default async (req: Request) => {
     return denied;
   }
 
+  if (req.method !== "GET") return new Response("Method not allowed", { status: 405, headers: { "cache-control": "no-store" } });
+
   const budget = await getAIbudgetStatus();
   const [schedulerState, cycles, runs] = await Promise.all([
     get<any>("scheduler-state", "balanced-hourly"),
