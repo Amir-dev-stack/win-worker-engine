@@ -39,6 +39,16 @@ test("flags incomplete outcomes, duplicate IDs, stale and post-kickoff observati
   assert.equal(report.incompleteMarketGroupCount, 1);
 });
 
+test("snapshot identifiers are unique within a source, not across unrelated publishers", () => {
+  const secondSource = snapshots.map(row => ({ ...row, sourceId: "feed-b" }));
+  const report = assessWinFootballOddsQuality({
+    fixtures, expectedMarkets, snapshots: [...snapshots, ...secondSource]
+  });
+  assert.equal(report.duplicateSnapshotCount, 0);
+  assert.equal(report.validPreKickoffSnapshotCount, 6);
+  assert.equal(report.incompleteMarketGroupCount, 0);
+});
+
 test("flags implausible overround and suspicious moves without deleting observations", () => {
   const report = assessWinFootballOddsQuality({
     fixtures, expectedMarkets,
