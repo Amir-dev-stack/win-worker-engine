@@ -139,7 +139,7 @@ create trigger win_clv_evaluation_validate
 
 -- Prevent routine UPDATE/DELETE from rewriting historical quote evidence.
 create or replace function public.win_reject_odds_evidence_mutation()
-returns trigger language plpgsql as $win$$
+returns trigger language plpgsql as $win$
 begin
   raise exception 'WIN odds evidence is append-only; insert a corrected source record instead';
 end;
