@@ -72,7 +72,7 @@ test("owner approval registry records signed evidence once, reports it active, a
       approvalId: "owner-registry-approval-1", datasetId, datasetContentSha256: datasetHash,
       licenceId: "CC0-1.0", licenceEvidenceSha256: licenceEvidenceHash,
       scope: "training", reviewerId: "owner:amir",
-      approvedAt: "2026-11-06T09:00:00.000Z", expiresAt: "2026-12-06T09:00:00.000Z"
+      approvedAt: "2026-11-06T09:00:00.000Z", expiresAt: "2028-12-06T09:00:00.000Z"
     };
     const approval = { payload: approvalPayload, signatureBase64: signPayload(approvalPayload) };
     assert.deepEqual(await registry.registerWinMLOwnerTrainingApproval(approval, trustedConfig, "2026-11-10T12:00:00.000Z"),
@@ -104,7 +104,13 @@ test("owner approval registry records signed evidence once, reports it active, a
         error.details.includes("registered_licence_evidence_missing")
     );
 
-    const changedPayload = { ...approvalPayload, expiresAt: "2027-01-06T09:00:00.000Z" };
+    const expiredLicenceReadiness = await registry.evaluateWinMLTrainingReadiness(
+      datasetId, approvalPayload.approvalId, trustedConfig, "2027-12-06T12:00:00.000Z"
+    );
+    assert.equal(expiredLicenceReadiness.evidenceReady, false);
+    assert.ok(expiredLicenceReadiness.reasons.includes("licence_review_expired"));
+
+    const changedPayload = { ...approvalPayload, expiresAt: "2029-01-06T09:00:00.000Z" };
     const changed = { payload: changedPayload, signatureBase64: signPayload(changedPayload) };
     await assert.rejects(registry.registerWinMLOwnerTrainingApproval(changed, trustedConfig, "2026-11-10T12:00:00.000Z"),
       error => error.code === "owner_approval_id_immutable_conflict");
