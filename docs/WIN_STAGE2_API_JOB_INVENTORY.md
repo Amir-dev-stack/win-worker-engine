@@ -162,3 +162,12 @@ The `/api/results` handler now uses `readResultSubmissionBody` before reading an
 - Adds the test to build-required files and adds a quality-gate assertion for the request-boundary contract.
 
 These are source changes and synthetic tests; no current-head CI execution is claimed. Existing result-submission claim/idempotency behavior is otherwise unchanged. Provider-side store atomicity and correction workflow remain separate open verification items.
+
+
+### Owner-approval request-body boundary hardening (2026-11-06)
+- Replaced post-buffer size checking with incremental request-stream reading capped at 64 KiB, including early declared-content-length rejection.
+- Owner approval now rejects invalid UTF-8, malformed JSON and non-object JSON before action dispatch.
+- Content-Type validation now compares the parsed media type exactly to `application/json`; values such as `application/jsonp` and `application/json-evil` are rejected.
+- Applied the same exact media-type check to `/api/results`.
+- Added endpoint and parser regressions for streamed oversize requests, invalid UTF-8, malformed/non-object JSON and misleading media types.
+- No approval credentials, signed approvals, training execution or provider activation were changed.
