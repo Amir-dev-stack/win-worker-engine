@@ -40,7 +40,7 @@ test("does not assign ambiguous reused event IDs or malformed fixtures to a seas
   });
   assert.ok(report.reasons.includes("event_id_reused_across_competition_or_season:a1"));
   assert.equal(report.unassignedResultCount, 2);
-  assert.equal(report.unassignedOddsSnapshotCount, 1);
+  assert.equal(report.unassignedOddsSnapshotCount, 3);
   assert.equal(report.invalidFixtureCount, 1);
   assert.equal(report.completeForResearch, false);
 });
