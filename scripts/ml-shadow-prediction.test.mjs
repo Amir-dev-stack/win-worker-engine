@@ -90,3 +90,11 @@ test("shadow inference rejects impossible calendar dates", async () => {
     ...base, eventStart: "2027-02-30T19:00:00.000Z"
   }), /shadow_prediction_time_window_invalid/);
 });
+
+test("shadow inference accepts valid ISO timestamps before resolving the model", async () => {
+  await assert.rejects(() => buildWinMLShadowPrediction({
+    ...base,
+    predictionCutoff: "2027-04-01T17:00:00.123Z",
+    generatedAt: "2027-04-01T17:00:00.456Z"
+  }), /shadow_prediction_model_not_registered/);
+});
