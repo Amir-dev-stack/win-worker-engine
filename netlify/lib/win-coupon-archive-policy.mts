@@ -1,3 +1,5 @@
+import { isStrictIsoTimestamp } from "./strict-timestamp.mts";
+
 const clean = (value: unknown, max = 3000): string =>
   typeof value === "string" ? value.trim().slice(0, max) : "";
 const safeArray = (value: unknown, max = 100): any[] =>
@@ -49,18 +51,25 @@ export function buildWinCouponArchiveCandidate(args: {
     settlementRule: clean(leg?.settlementRule, 500) || null,
     blockers: safeArray(leg?.blockers, 20)
   }));
-  const blockers = safeArray(candidate?.blockers, 200).map((item: any) => clean(item, 300)).filter(Boolean);
+  const evidenceBlockers = safeArray(candidate?.blockers, 200).map((item: any) => clean(item, 300)).filter(Boolean);
+  for (const [legIndex, leg] of legs.entries()) {
+    const prefix = "Leg " + (legIndex + 1) + ": ";
+    if (leg.event === "Unspecified event") evidenceBlockers.push(prefix + "event identity missing");
+    if (!leg.eventId) evidenceBlockers.push(prefix + "stable event ID missing");
+    if (leg.market === "Unspecified market") evidenceBlockers.push(prefix + "market missing");
+    if (leg.selection === "Unspecified selection") evidenceBlockers.push(prefix + "selection missing");
+    if (leg.odds === null) evidenceBlockers.push(prefix + "verified decimal odds missing");
+    if (!leg.sourceUrl || !leg.sourceUrl.startsWith("https://")) evidenceBlockers.push(prefix + "HTTPS odds source missing");
+    if (!isStrictIsoTimestamp(leg.observedAt)) evidenceBlockers.push(prefix + "strict odds observation timestamp missing");
+    if (!isStrictIsoTimestamp(leg.eventStart) || !/(?:Z|[+-]\d{2}:\d{2})$/i.test(leg.eventStart || ""))
+      evidenceBlockers.push(prefix + "timezone-qualified kickoff timestamp missing");
+    if (!leg.settlementRule) evidenceBlockers.push(prefix + "settlement rule missing");
+    for (const blocker of leg.blockers) evidenceBlockers.push(prefix + clean(blocker, 250));
+  }
+  const blockers = [...new Set(evidenceBlockers)];
   if (!runResearchPassed) blockers.push("Full research, independent review or risk-assessment gate did not complete; retain as draft-only.");
   const fullyQualified = runResearchPassed && candidate?.status === "QUALIFIED" &&
-    legs.length === 1 && blockers.length === 0 &&
-    legs.every((leg: any) =>
-      leg.event !== "Unspecified event" && leg.market !== "Unspecified market" &&
-      leg.selection !== "Unspecified selection" && leg.odds !== null && Boolean(leg.sourceUrl) &&
-      Boolean(leg.observedAt) && Number.isFinite(Date.parse(leg.observedAt)) &&
-      Boolean(leg.eventStart) && Number.isFinite(Date.parse(leg.eventStart)) &&
-      /(?:Z|[+-]\d{2}:\d{2})$/i.test(leg.eventStart) &&
-      Boolean(leg.settlementRule) && leg.blockers.length === 0
-    );
+    legs.length === 1 && blockers.length === 0;
   const record = {
     id: candidateId, recordType: "win_coupon_candidate", origin: "win",
     runId, label: clean(candidate?.label, 250) || "WIN coupon candidate " + (index + 1),
@@ -69,7 +78,8 @@ export function buildWinCouponArchiveCandidate(args: {
     competition: clean(competition, 200) || null,
     status: fullyQualified ? "QUALIFIED" : legs.length > 0 ? "DRAFTABLE" : "BLOCKED",
     couponDraftAllowed: legs.length > 0,
-    dataQualityStatus: blockers.length === 0 ? "complete" : "incomplete",
+    dataQualityStatus: evidenceBlockers.length === 0 ? "complete" : "incomplete",
+    researchGateStatus: runResearchPassed ? "passed" : "pending",
     combinedOdds: fullyQualified && Number.isFinite(candidate?.combinedOdds) ? candidate.combinedOdds : null,
     theoreticalOddsProduct: Number.isFinite(candidate?.theoreticalOddsProduct) ? candidate.theoreticalOddsProduct : null,
     wholeCouponWinProbabilityPercent: legs.length === 1 ? legs[0].estimatedWinProbabilityPercent : null,
