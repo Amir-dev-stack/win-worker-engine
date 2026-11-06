@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildWinMLShadowPrediction, WinMLShadowPredictionError } from "../netlify/lib/ml-shadow-prediction.mts";
+import { buildWinMLShadowPrediction, recordWinMLShadowPrediction, WinMLShadowPredictionError } from "../netlify/lib/ml-shadow-prediction.mts";
 import { installIsolatedTestStore } from "../netlify/lib/store.mts";
 
 process.env.WIN_STORE_TEST_MODE = "1";
@@ -59,4 +59,34 @@ test("shadow inference rejects missing feature provenance and malformed numeric 
 
 test("shadow inference resolves only a registered model identity, never a caller-supplied artifact", async () => {
   await assert.rejects(() => buildWinMLShadowPrediction(base), /shadow_prediction_model_not_registered/);
+});
+
+test("shadow prediction audit refuses caller-forged predictions without a registered model", async () => {
+  await assert.rejects(() => recordWinMLShadowPrediction({
+    contractVersion: "win.ml.prediction.v1",
+    origin: "trained_model",
+    usage: "shadow_only",
+    predictionRunId: "forged-run",
+    eventId: "event-1",
+    eventStart: base.eventStart,
+    predictionCutoff: base.predictionCutoff,
+    generatedAt: base.generatedAt,
+    sport: "association_football",
+    market: "1x2",
+    modelId: "unregistered-model",
+    modelVersion: "1.0.0",
+    algorithm: "logistic_regression",
+    artifactSha256: "a".repeat(64),
+    datasetId: "dataset-1",
+    datasetContentSha256: "b".repeat(64),
+    featureSchemaVersion: "schema-v1",
+    featureVectorSha256: "c".repeat(64),
+    probabilities: { home: 0.4, draw: 0.3, away: 0.3 }
+  }), /shadow_prediction_model_not_registered/);
+});
+
+test("shadow inference rejects impossible calendar dates", async () => {
+  await assert.rejects(() => buildWinMLShadowPrediction({
+    ...base, eventStart: "2027-02-30T19:00:00.000Z"
+  }), /shadow_prediction_time_window_invalid/);
 });
