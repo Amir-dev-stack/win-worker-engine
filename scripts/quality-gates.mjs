@@ -883,6 +883,15 @@ add("WIN measures same-slate favourite pair dependence as a bounded research-onl
   marketCalibrationTests.includes("same-slate diagnostic refuses small samples"),
   "Same-UTC-day distinct-event favourite pairs may be compared against the product of marginal consensus probabilities, but the diagnostic is bounded, sample-gated and explicitly cannot qualify coupons or authorize production use.");
 
+const marketCalibration = await read("netlify/lib/market-calibration.mts");
+add("Market calibration reports are content-addressed and immutable",
+  marketCalibration.includes('import { list, get, putIfNew } from "./store.mts"') &&
+  marketCalibration.includes("hashWinMLProvenance(report).sha256") &&
+  marketCalibration.includes("putIfNew(\"library/model-lab/market-calibration-reports\"") &&
+  marketCalibration.includes("market_calibration_immutable_record_conflict") &&
+  !marketCalibration.includes('put("library/model-lab/market-calibration-reports"'),
+  "Market calibration runs must not overwrite prior evidence; report content is hashed, stored with putIfNew, and verified on idempotent retry.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
