@@ -102,3 +102,14 @@ Added `POST /api/ml-owner-approval` with three actions: `approve`, `revoke` and 
 The endpoint does not accept any of those values from the request. It uses constant-time token comparison, requires JSON, caps the body at 64 KiB, disables response caching and fails with service-unavailable when configuration is absent. A bounded `list` action provides an owner-authenticated audit inventory of up to 100 approval records and revalidates each entry against its current dataset, expiry, signature and revocation state. This is separate from the general `WIN_INTERNAL_TOKEN`; possessing the general internal token does not grant owner approval authority.
 
 **Not activated:** no environment variables or private signing key have been configured by this work, no approval has been issued, and no real dataset was approved. Until the dedicated token, public key and reviewer identity are provisioned securely, the endpoint returns `503 owner_approval_control_plane_not_configured`. Training readiness remains independently fail-closed.
+
+
+## Immutable market-evaluation source-row provenance (2026-11-06)
+
+Market-evaluation rows now require a unique `sourceRecordId` that points to one normalized record in the imported consensus-market dataset. A source record cannot be reused for two evaluation events. Registration checks that the referenced record belongs to the approved football provider and that its source event kickoff, explicitly source-recorded market-snapshot timestamp, closing HOME/DRAW/AWAY probabilities and completed score-derived outcome exactly agree with the evaluation row. Missing source IDs, duplicate references, mismatched snapshots/probabilities/results, and invalid source timestamps fail closed.
+
+The consensus importer now stores a canonical SHA-256 over the normalized `records` array separately from the raw CSV checksum. The market-evaluation envelope binds both hashes, the pinned provider revision and the model artifact/evaluation. Reads recompute the normalized-record hash and reject drift. If a legacy or modified normalized dataset lacks a matching records hash, the importer does not bless its existing records by hashing them in place; it re-fetches the pinned raw revision and rebuilds the normalized dataset first.
+
+`resultAvailableAt` remains a separate label-availability assertion and is not inferred from the market-line record's retrieval time. The new source-row checks establish that the market probabilities and outcome correspond to the imported normalized record; they do not independently prove the provider's real-world timestamp methodology, data licence, or the correctness of an external source's content.
+
+Regression coverage uses synthetic source records and the isolated store. It does not prove live provider ingestion, Netlify Blobs atomicity, or real-world predictive performance. Model fitting, production promotion and automated betting remain disabled.
