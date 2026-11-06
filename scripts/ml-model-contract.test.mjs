@@ -53,6 +53,12 @@ const evaluation = (overrides = {}) => ({
   trainingRows: 700,
   validationRows: 150,
   testRows: 150,
+  testEventIds: Array.from({ length: 150 }, (_, index) => "event-" + index),
+  testCohortSha256: "b".repeat(64),
+  testEventCutoffs: Array.from({ length: 150 }, (_, index) => ({
+    eventId: "event-" + index, predictionCutoff: "2024-10-31T12:00:00.000Z"
+  })),
+  testRowsSha256: "c".repeat(64),
   baselineMetrics: { brier: 0.21, logLoss: 0.60 },
   modelMetrics: { brier: 0.19, logLoss: 0.55 },
   expectedCalibrationError: 0.03,
