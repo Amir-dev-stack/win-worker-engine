@@ -1,4 +1,5 @@
 import { requireAuth } from "../lib/auth.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 import { reserveAIRequest, settleAIRequest, releaseAIRequest } from "../lib/ai-budget.mts";
 
 const MODELS_URL = "https://api.openai.com/v1/models";
@@ -19,12 +20,9 @@ export default async (req: Request) => {
     return json({ error: "Method not allowed. Use POST." }, 405);
   }
 
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: "Invalid JSON body." }, 400);
-  }
+  const parsedRequest = await readBoundedJsonObject(req, 8 * 1024);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
 
   if (!["validate_api_key", "validate_model_response"].includes(body?.action)) {
     return json({ error: "Unsupported diagnostic action." }, 400);
