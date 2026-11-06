@@ -361,9 +361,15 @@ add("WIN signed owner approvals and revocations are stored immutably and checked
   mlOwnerApprovalRegistry.includes("owner_approval_reviewer_not_authorized") &&
   mlOwnerApprovalRegistry.includes("owner_revocation_already_recorded") &&
   mlOwnerApprovalRegistry.includes("getWinMLOwnerTrainingApprovalStatus") &&
+  mlOwnerApprovalRegistry.includes("registerWinMLLicenceReviewEvidence") &&
+  mlOwnerApprovalRegistry.includes("verifyRegisteredLicenceEvidence") &&
+  mlOwnerApprovalRegistry.includes("evaluateWinMLTrainingReadiness") &&
+  mlOwnerApprovalRegistry.includes("modelFittingAllowed: false") &&
   mlOwnerApprovalRegistryTests.includes("reports it active, and revokes it immutably") &&
-  mlOwnerApprovalRegistryTests.includes("recording owner approval must not silently unlock model training"),
-  "The registry uses immutable conditional writes, trusted signer configuration, dataset/hash/licence matching and explicit revocation status; readiness remains fail-closed.");
+  mlOwnerApprovalRegistryTests.includes("recording owner approval must not silently unlock model training") &&
+  mlOwnerApprovalRegistryTests.includes("readiness.evidenceReady, true") &&
+  mlOwnerApprovalRegistryTests.includes("revokedReadiness.evidenceReady, false"),
+  "Signed licence evidence is immutably registered by canonical hash and rechecked during approval status; the composite readiness audit validates dataset, licence, owner approval and revocation while keeping fitting disabled.");
 
 const mlOwnerApprovalEndpoint = await read("netlify/functions/ml-owner-approval.mts");
 const mlOwnerApprovalEndpointTests = await read("scripts/ml-owner-approval-endpoint.test.mjs");
@@ -374,11 +380,14 @@ add("WIN owner approval endpoint requires a separate protected token, trusted pu
   mlOwnerApprovalEndpoint.includes("timingSafeEqual") &&
   mlOwnerApprovalEndpoint.includes("MAX_BODY_BYTES") &&
   mlOwnerApprovalEndpoint.includes('path: "/api/ml-owner-approval"') &&
+  mlOwnerApprovalEndpoint.includes('body?.action === "licence_evidence"') &&
+  mlOwnerApprovalEndpoint.includes('body?.action === "readiness"') &&
   !mlOwnerApprovalEndpoint.includes("body.publicKeyPem") &&
   !mlOwnerApprovalEndpoint.includes("body.ownerToken") &&
   mlOwnerApprovalEndpointTests.includes("requires protected configuration and bounded JSON requests") &&
-  mlOwnerApprovalEndpointTests.includes("separately authenticated signed approval"),
-  "The owner control plane fails closed without dedicated server-side secrets, rejects invalid credentials and oversized/non-JSON requests, and never accepts keys or tokens from request data.");
+  mlOwnerApprovalEndpointTests.includes("separately authenticated signed approval") &&
+  mlOwnerApprovalEndpointTests.includes("readinessBody.modelFittingAllowed, false"),
+  "The protected owner endpoint registers signed licence evidence and exposes a read-only composite readiness check without accepting caller-supplied keys or enabling fitting.");
 
 const mlFootballFeatures = await read("netlify/lib/ml-football-features.mts");
 const mlFootballFeaturesTests = await read("scripts/ml-football-features.test.mjs");
