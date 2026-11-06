@@ -74,3 +74,9 @@ The source identity layer now has a read-only review queue derived from the serv
 - Tests assert complete provider coverage, fail-closed identity fields and football-first ordering.
 
 This is an auditable work queue, not an approval mechanism. It does not connect providers, fetch or ingest data, change licence status, permit training, or populate the reviewed identity catalogue. Publisher ownership must be established from primary evidence and curated in server-owned code by an authorised reviewer. Caller-supplied names or independence labels remain untrusted.
+
+## Football-first source coverage inventory (2026-11-06)
+
+The source-review module now exposes a second, read-only inventory for every provider registered for football. It preserves each provider's declared data domains and groups them into fixtures/results, odds/markets, team/player statistics, predictions/probabilities, lineups/availability and other context. This is intended to support the actual coupon research workflow: a fixture/result feed alone is not enough to assess a selection; WIN also needs timestamped odds and relevant match context. The inventory retains each provider's access mode, licence-review status, historical-support claim and automation flag. Every entry explicitly remains `registry_only_not_connected` and `not_approved` for training. In particular, sources whose licence review is required or whose automation is disabled remain blocked; coverage classification is not evidence of data quality, live availability, legal permission or predictive value.
+
+Regression tests compare the inventory against the complete football provider registry, preserve all declared domains, and assert that odds, results, statistics and prediction categories are visible without implying readiness.
