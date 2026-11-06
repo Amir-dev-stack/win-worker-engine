@@ -19,6 +19,7 @@ const required = [
   "netlify/functions/oauth-register.mts",
   "netlify/functions/oauth-token.mts",
   "netlify/functions/worker-runner.mts",
+  "scripts/worker-coupon-candidates.test.mjs",
   "netlify/functions/hourly-monitor.mts",
   "netlify/functions/scheduled-scout-runner.mts",
   "netlify/lib/scheduled-run-lease.mts",
