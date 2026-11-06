@@ -273,7 +273,9 @@ async function askWorker(
   let budgetSettled = false;
   try {
     const maxOutputTokens = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 600 : 1000;
-    const maxToolCalls = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 1 : 2;
+    // The Agents SDK runs at most two model turns. Reserve for the full possible
+    // total: the per-response max_tool_calls is enforced on each turn.
+    const maxToolCalls = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 2 : 4;
     const requestBudgetId = crypto.randomUUID();
     budgetId = requestBudgetId;
     const budget = await reserveAIRequest({
