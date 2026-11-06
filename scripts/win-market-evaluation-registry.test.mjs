@@ -147,7 +147,7 @@ test("market evaluation registry binds immutable market scores to the registered
     registeredAt: "2027-01-03T00:00:00.000Z"
   });
 
-  const marketRows = testRows.map(row => ({
+  const marketRows = testRows.map((row, index) => ({
     eventId: row.eventId,
     kickoffAt: row.eventStart,
     predictionCutoff: row.predictionCutoff,
