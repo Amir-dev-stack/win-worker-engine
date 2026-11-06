@@ -93,6 +93,8 @@ const required = [
   "scripts/ml-source-review-queue.test.mjs",
   "netlify/lib/ml-football-coverage-assessment.mts",
   "scripts/ml-football-coverage-assessment.test.mjs",
+  "netlify/lib/ml-football-season-coverage.mts",
+  "scripts/ml-football-season-coverage.test.mjs",
   "netlify/lib/ml-football-result-reconciliation.mts",
   "scripts/ml-football-result-reconciliation.test.mjs",
   "netlify/lib/ml-football-result-evidence-registry.mts",
