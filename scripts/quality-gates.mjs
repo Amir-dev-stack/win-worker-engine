@@ -416,6 +416,9 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainer.includes("fitDataCutoff") &&
   mlFootballTrainer.includes("training_compute_budget_exceeded") &&
   mlFootballTrainer.includes("model_artifact_hash_mismatch") &&
+  mlFootballTrainer.includes("splitManifestSha256") &&
+  mlFootballTrainer.includes("model_artifact_split_manifest_hash_mismatch") &&
+  mlFootballTrainer.includes("trainingConfigSha256") &&
   mlFootballTrainer.includes("heldOutTestRequired: true") &&
   mlFootballTrainer.includes('usage: "shadow_only"') &&
   mlFootballTrainer.includes("productionPromotionAllowed: false") &&
@@ -423,6 +426,8 @@ add("WIN has a deterministic, bounded football 1X2 multinomial logistic trainer 
   mlFootballTrainerTests.includes("learns a synthetic 1X2 pattern") &&
   mlFootballTrainerTests.includes("trainer is deterministic") &&
   mlFootballTrainerTests.includes("prediction rejects modified artifacts") &&
+  mlFootballTrainerTests.includes("model_artifact_split_manifest_hash_mismatch") &&
+  mlFootballTrainerTests.includes("model_artifact_training_config_hash_mismatch") &&
   mlFootballTrainerTests.includes("training_label_availability_invalid") &&
   mlFootballTrainerTests.includes("training_feature_provenance_invalid"),
   "The pure trainer fits only a chronological training partition, uses training-only normalization, reports validation metrics against a class-frequency baseline, hashes its artifact, and requires a separate held-out test. No production route or real dataset is wired to it.");
