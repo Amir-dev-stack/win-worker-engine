@@ -150,6 +150,7 @@ test("signed owner approval unlocks only registered human shadow review and revo
     );
     await assert.rejects(
       registerWinMLOwnerTrainingApproval(invalidApproval("signed-shadow-expired", {
+        approvedAt: "2025-01-01T00:00:00.000Z",
         expiresAt: "2026-01-01T00:00:00.000Z"
       }), trustedConfig, now),
       error => error.code === "owner_approval_evidence_invalid" &&
@@ -161,7 +162,7 @@ test("signed owner approval unlocks only registered human shadow review and revo
     await assert.rejects(
       registerWinMLOwnerTrainingApproval(forgedApproval, trustedConfig, now),
       error => error.code === "owner_approval_evidence_invalid" &&
-        error.details.includes("owner_approval_signature_encoding_invalid")
+        error.details.includes("owner_approval_signature_invalid")
     );
 
     const otherDatasetId = "signed-shadow-other-dataset";
