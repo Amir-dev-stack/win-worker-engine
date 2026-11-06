@@ -61,3 +61,16 @@ WIN now separates a provider's declared name/group from independently reviewed u
 - Reviews must be renewed before expiry. A missing, malformed, expired or changed evidence record must remain unverified.
 
 **Current operational effect:** all football result pairs are presently blocked from the durable corroboration registry because no provider ownership records have been reviewed and curated yet. The pure score-comparison helper remains an audit classifier, but it is not proof of source independence. No existing historical result pair is grandfathered into trusted corroboration, and no training approval is granted by this feature.
+
+## Server-owned publisher identity review queue (2026-11-06)
+
+The source identity layer now has a read-only review queue derived from the server-owned provider catalogue:
+
+- Every registered provider with a result/settlement data domain is represented; the queue is not limited to sources already connected or imported.
+- Football result sources are marked as the first review track. Other sports remain visible as later tracks so the eventual system can expand without pretending those feeds are validated today.
+- Each entry exposes the provider's registered name, website, sport IDs and result domains, plus the evidence required for review.
+- Upstream owner, exact feed-product identity and independence group remain null; review status remains unreviewed and identityVerified remains false until primary evidence has actually been assessed.
+- The queue is derived from the provider catalogue at runtime, so a newly registered result provider cannot silently escape the review list.
+- Tests assert complete provider coverage, fail-closed identity fields and football-first ordering.
+
+This is an auditable work queue, not an approval mechanism. It does not connect providers, fetch or ingest data, change licence status, permit training, or populate the reviewed identity catalogue. Publisher ownership must be established from primary evidence and curated in server-owned code by an authorised reviewer. Caller-supplied names or independence labels remain untrusted.
