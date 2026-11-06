@@ -61,6 +61,7 @@ test("market benchmark rejects duplicate model cutoff identities and malformed c
 import { installIsolatedTestStore, remove } from "../netlify/lib/store.mts";
 import { registerWinMLDatasetManifest } from "../netlify/lib/ml-dataset-registry.mts";
 import { registerWinMLModelArtifact } from "../netlify/lib/ml-model-artifact-registry.mts";
+import { getWinMLMarketBlendEvaluationEvidence } from "../netlify/lib/ml-market-blend-evidence.mts";
 import {
   registerWinMarketEvaluation,
   getWinMarketEvaluation
@@ -171,4 +172,10 @@ test("market evaluation registry binds immutable market scores to the registered
   const loaded = await getWinMarketEvaluation(evaluationId);
   assert.equal(loaded.recordSha256, first.record.recordSha256);
   assert.equal(loaded.datasetContentSha256, train.artifact.datasetContentSha256);
+  const blendEvidence = await getWinMLMarketBlendEvaluationEvidence({
+    modelId, modelVersion, marketEvaluationId: evaluationId
+  });
+  assert.equal(blendEvidence.testRows, 100);
+  assert.equal(blendEvidence.testCohortSha256, blendEvidence.marketTestCohortSha256);
+  assert.equal(blendEvidence.marketEvaluationId, evaluationId);
 });
