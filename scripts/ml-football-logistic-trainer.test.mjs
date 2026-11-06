@@ -77,6 +77,7 @@ test("frozen logistic artifact evaluates only a later held-out test partition", 
   const beforeValidationLabel = rows(90, 30);
   beforeValidationLabel[0].eventStart = "2026-03-31T03:00:00.000Z";
   beforeValidationLabel[0].predictionCutoff = "2026-03-31T02:00:00.000Z";
+  for (const feature of Object.values(beforeValidationLabel[0].features)) feature.availableAt = "2026-03-31T01:00:00.000Z";
   assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, beforeValidationLabel, "2027-01-01T00:00:00.000Z"),
     /held_out_test_not_after_validation_label_availability/);
   assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, rows(91, 30), "2026-04-02T05:00:00.000Z"),
