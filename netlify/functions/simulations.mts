@@ -1,4 +1,5 @@
 import { requireAuth } from "../lib/auth.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 import { createSimulationRun, createBetBuilderSimulationRun } from "../lib/simulation.mts";
 import { list } from "../lib/store.mts";
 export default async(req:Request)=>{
@@ -12,7 +13,9 @@ export default async(req:Request)=>{
   return Response.json({category,runId,count:records.length,items:records.slice(0,200)});
  }
  if(req.method!=="POST")return new Response("Method not allowed",{status:405});
- let body:any;try{body=await req.json();}catch{return Response.json({error:"Expected JSON body"},{status:400});}
+ const parsedRequest = await readBoundedJsonObject(req, 64 * 1024);
+ if (parsedRequest instanceof Response) return parsedRequest;
+ const body = parsedRequest.body;
  try{
   const run=body?.couponType==="bet_builder"?await createBetBuilderSimulationRun(body):await createSimulationRun(body);
   const trigger=await fetch(new URL("/.netlify/functions/simulation-runner",new URL(req.url)),{method:"POST",headers:{"content-type":"application/json","authorization":req.headers.get("authorization")??""},body:JSON.stringify({runId:run.id,runType:run.runType||"accumulator"})});
