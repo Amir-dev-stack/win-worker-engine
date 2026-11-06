@@ -19,6 +19,10 @@ test("WIN odds evidence is append-only and prediction decisions bind to exact qu
   assert.ok(sql.includes("win_validate_prediction_quote_binding"));
   assert.ok(sql.includes("win_validate_clv_evaluation"));
   assert.ok(sql.includes("closing quote does not match decision evidence"));
+  assert.ok(sql.includes("new.prediction_cutoff >= q.event_start_at"));
+  assert.ok(sql.includes("c.event_start_at <> d.event_start_at"));
+  assert.ok(sql.includes("new.odds_ratio_clv - (d.decimal_odds / c.decimal_odds - 1)"));
+  assert.ok(sql.includes("new.implied_probability_delta - (1 / c.decimal_odds - 1 / d.decimal_odds)"));
   assert.ok(sql.includes("before update or delete on public.win_odds_quote_snapshots"));
   assert.ok(sql.includes("before update or delete on public.win_clv_evaluations"));
 });
