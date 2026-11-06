@@ -60,20 +60,8 @@ test("football result evidence registry persists immutable matching and conflict
     assert.equal([...memoryStore.records.keys()].length, 2);
     assert.ok([...memoryStore.records.keys()].every(key =>
       key.startsWith("library/ml-football-result-evidence/")));
-  } finally {
-    if (previousFlag === undefined) delete process.env.WIN_STORE_TEST_MODE;
-    else process.env.WIN_STORE_TEST_MODE = previousFlag;
-  }
-});
-
-test("registry refuses unverifiable pairs and rejects tampered stored evidence", async () => {
-  const previousFlag = process.env.WIN_STORE_TEST_MODE;
-  process.env.WIN_STORE_TEST_MODE = "1";
-  const memoryStore = createMemoryStore();
-  try {
-    const store = await import("../netlify/lib/store.mts");
-    store.installIsolatedTestStore(memoryStore);
-    const registry = await import("../netlify/lib/ml-football-result-evidence-registry.mts");
+    
+    // Reuse the same process-wide adapter: store.mts intentionally forbids replacement.
     await assert.rejects(
       registry.registerWinFootballResultEvidence({
         primary, corroborating: { ...corroborating, providerId: primary.providerId },
@@ -84,9 +72,9 @@ test("registry refuses unverifiable pairs and rejects tampered stored evidence",
     const saved = await registry.registerWinFootballResultEvidence({
       primary, corroborating, createdAt: "2026-11-02T00:00:00.000Z"
     });
-    const key = "library/ml-football-result-evidence/" + saved.evidenceId;
-    const stored = memoryStore.records.get(key);
-    stored.value.primary.homeGoals = 9;
+    const storageKey = "library/ml-football-result-evidence/" + saved.evidenceId;
+    const tampered = memoryStore.records.get(storageKey);
+    tampered.value.primary.homeGoals = 9;
     await assert.rejects(
       registry.getWinFootballResultEvidence(saved.evidenceId),
       error => ["result_evidence_reconciliation_mismatch", "result_evidence_record_hash_mismatch"].includes(error.code)
@@ -100,3 +88,4 @@ test("registry refuses unverifiable pairs and rejects tampered stored evidence",
     else process.env.WIN_STORE_TEST_MODE = previousFlag;
   }
 });
+
