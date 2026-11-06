@@ -25,7 +25,7 @@ function fixture() {
     evaluation
   };
   const payload = {
-    version: "win.market.evaluation.v2",
+    version: "win.market.evaluation.v3",
     evaluationId: "fixture-market-evaluation",
     modelId: "fixture-model",
     modelVersion: "1.0.0",
