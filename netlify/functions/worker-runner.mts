@@ -255,8 +255,22 @@ export default async (req: Request) => {
   const parsedRequest = await readBoundedJsonObject(req, 16 * 1024);
   if (parsedRequest instanceof Response) return parsedRequest;
   const body = parsedRequest.body;
-  const run = await get<any>("runs", body.runId);
+  const runId = typeof body?.runId === "string" ? body.runId.trim() : "";
+  if (!runId || runId.length > 180) {
+    return Response.json({ error: "valid_run_id_required" }, { status: 400 });
+  }
+  const run = await get<any>("runs", runId);
   if (!run) return new Response("Run not found", { status: 404 });
+  if (run.status === "completed") {
+    return Response.json({ error: "run_already_completed" }, { status: 409 });
+  }
+  const lease = await claimWinScheduledRunLease(run.id);
+  if (!lease.claimed) {
+    return Response.json({
+      error: lease.reason === "already_running" ? "run_already_in_progress" : "run_execution_lease_unavailable",
+      reason: lease.reason
+    }, { status: 409 });
+  }
 
   const startedAt = new Date().toISOString();
   await put("runs", run.id, { ...run, status: "scouting", startedAt, updatedAt: startedAt });
@@ -443,6 +457,9 @@ export default async (req: Request) => {
         originalError: String(error), recordedAt: new Date().toISOString()
       });
     }
+  } finally {
+    // Only this invocation can release its own lease; stale workers cannot release a newer claim.
+    await releaseWinScheduledRunLease(run.id, lease.leaseId).catch(() => false);
   }
   return new Response(null, { status: 202 });
 };
