@@ -66,7 +66,7 @@ These are provenance requirements, not a substitute for retained training logs, 
 
 The only permitted use is `shadow_only`. Production use and automated betting are always false. LLM worker reports remain text research outputs and market-consensus calibration remains a benchmark; neither is a trained-model prediction. This contract validates the declared provenance envelope but cannot prove that a model binary actually executed. An inference runtime must compute and retain the feature-vector hash and execution log before emitting the envelope.
 
-Current implementation still has no real trainer, model artifact registry, authoritative settlement-rule registry or inference runtime. The existing football candidate builder accepts a caller-supplied settlement-rule ID string; it does not independently resolve or verify that rule against an official source. Therefore candidate labels remain research artifacts until settlement semantics and source provenance are independently verified.
+WIN now has a deterministic logistic-regression trainer foundation, immutable model artifact registry and guarded shadow-inference module. These are still research foundations: no real dataset has been imported or fitted, no live prediction endpoint is exposed, and no authoritative settlement-rule registry exists. The football candidate builder accepts a caller-supplied settlement-rule ID string; it does not independently resolve or verify that rule against an official source. Candidate labels therefore remain research artifacts until settlement semantics and source provenance are independently verified.
 
 
 ## Canonical provenance hashing
