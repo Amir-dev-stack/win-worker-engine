@@ -657,7 +657,8 @@ add("WIN market benchmark is bound to the registered ML artifact's exact held-ou
   winMarketEvaluationRegistry.includes('source.closing?.marketSnapshotTimestampStatus !== "source_timestamp"') &&
   winMarketEvaluationRegistry.includes("hashWinMLProvenance(sourceDataset.records).sha256 !== record.sourceDatasetRecordsSha256") &&
   consensusMarketAdapter.includes("recordsSha256:hashWinMLProvenance(records).sha256") &&
-  consensusMarketAdapter.includes("integrityHashUpdated:existing.recordsSha256!==recordsSha256") &&
+  consensusMarketAdapter.includes("if(existing.recordsSha256===recordsSha256)") &&
+  consensusMarketAdapter.includes("Legacy or drifted normalized records are never blessed in place") &&
   winMarketEvaluationRegistry.includes("market_evaluation_source_dataset_binding_mismatch") &&
   winMarketEvaluationRegistryTests.includes("market_evaluation_source_dataset_binding_invalid") &&
   winMarketEvaluationRegistryTests.includes("requires exact registered held-out event identities and cutoffs") &&
