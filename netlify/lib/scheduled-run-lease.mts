@@ -52,8 +52,11 @@ export async function claimWinScheduledRunLease(
       return { claimed: false, reason: "contention" };
     }
     const expiry = Date.parse(existing.leaseExpiresAt || "");
-    if (existing.leaseId && Number.isFinite(expiry) && expiry > nowMs) {
-      return { claimed: false, reason: "already_running" };
+    if (existing.leaseId) {
+      if (typeof existing.leaseId !== "string" || !Number.isFinite(expiry)) {
+        return { claimed: false, reason: "contention" };
+      }
+      if (expiry > nowMs) return { claimed: false, reason: "already_running" };
     }
     const replaced = await putIfMatch(COLLECTION, id, next, current.etag);
     if (replaced?.modified) return { claimed: true, leaseId };
