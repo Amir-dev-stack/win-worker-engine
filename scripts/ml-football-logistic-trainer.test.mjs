@@ -66,18 +66,20 @@ test("deterministic multinomial trainer learns a synthetic 1X2 pattern and emits
 
 test("frozen logistic artifact evaluates only a later held-out test partition", () => {
   const result = train();
-  const evaluation = evaluateWinMLFootball1X2LogisticModel(result.artifact, rows(91, 30));
+  const evaluation = evaluateWinMLFootball1X2LogisticModel(result.artifact, rows(91, 30), "2027-01-01T00:00:00.000Z");
   assert.equal(evaluation.heldOutTest, true);
   assert.equal(evaluation.testRows, 30);
   assert.ok(evaluation.modelMetrics.brier < evaluation.baselineMetrics.brier);
   assert.ok(evaluation.modelMetrics.logLoss < evaluation.baselineMetrics.logLoss);
   assert.equal(evaluation.productionPromotionAllowed, false);
   assert.equal(evaluation.automatedBettingAllowed, false);
-  assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, rows(90, 30)),
+  assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, rows(90, 30), "2027-01-01T00:00:00.000Z"),
     /held_out_test_not_after_validation_label_availability/);
+  assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, rows(91, 30), "2026-04-02T05:00:00.000Z"),
+    /held_out_test_labels_not_available_as_of_evaluation/);
   const duplicated = rows(91, 30);
   duplicated[0].eventId = "synthetic-0";
-  assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, duplicated),
+  assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, duplicated, "2027-01-01T00:00:00.000Z"),
     /training_event_identity_missing_or_duplicate/);
 });
 
