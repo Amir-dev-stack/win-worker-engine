@@ -9,7 +9,7 @@ WIN is intended to support all sports in its registered sport catalogue. Footbal
 1. Complete the football market taxonomy and settlement contract.
 2. Build football data normalization, odds snapshots, point-in-time features and market-specific labels.
 3. Implement and test football statistical baselines and market derivations.
-4. Validate football evaluation, calibration, odds-band analysis, risk and NO BET behavior end to end.
+4. Validate football evaluation, calibration, odds-band analysis, risk estimates and human-decision behavior end to end.
 5. Expand to the other registered sports using shared infrastructure and independent sport-specific contracts.
 
 ## Betting-style and odds policy

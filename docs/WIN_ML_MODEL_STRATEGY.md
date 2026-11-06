@@ -65,7 +65,7 @@ Autonomous means the pipeline can ingest, retrain, evaluate, alert and propose a
 - No model without a meaningful baseline and chronological out-of-sample evidence.
 - Minimum sample is market-specific; 30 observations is an exploratory floor in existing experiments, not sufficient proof for production promotion.
 - No leakage from post-event data, closing odds unavailable at decision time, future lineups or later corrections.
-- No probability output when mandatory inputs are stale, absent or outside training support; return explicit unavailable/NO BET.
+- No probability output when mandatory inputs are stale, absent or outside training support; mark that model output unavailable and disclose why; this does not suppress a requested coupon, and the agents advise the user while the user retains the final decision.
 - Calibrate multiclass football 1X2 as a coherent three-class distribution.
 - Distinguish probability accuracy from betting profitability. Accuracy/hit rate alone is not a promotion metric.
 - Evaluate correlation and dependence before combining selections into coupons.

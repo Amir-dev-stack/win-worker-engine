@@ -148,7 +148,7 @@ WIN's product scope includes all sports in its registered sport catalogue. Footb
 
 The canonical football market coverage and acceptance contract is documented in docs/WIN_FOOTBALL_FIRST_MARKET_COVERAGE.md. It includes match results, result combinations, goals, periods, corners, cards, player/team props, Bet Builders, multiples/system products and live/in-play markets where verified source coverage and settlement rules exist.
 
-**Odds policy correction:** no minimum combined odds (including 2.50), no maximum odds, and no forced accumulator format. WIN analyses singles and all supported ticket styles across odds ranges. Odds bands are evaluation cohorts, not blanket selection filters. Unsupported, stale, weakly evidenced or risk-failing cases return NO BET / unavailable.
+**Odds policy correction:** no minimum combined odds (including 2.50), no maximum odds, and no forced accumulator format. WIN analyses singles and all supported ticket styles across odds ranges. Odds bands are evaluation cohorts, not blanket selection filters. Unsupported, stale, weakly evidenced or risk-failing cases remain visible in the requested coupon with explicit warnings, an unavailable risk estimate when necessary, and agent advice; the user decides whether to bet.
 
 The current football 1X2 model/evaluation modules are a narrow first vertical, not the complete WIN market contract. Preserve existing v1 artifacts and add a backward-compatible generalized market contract before expanding model outputs and evaluation.
 

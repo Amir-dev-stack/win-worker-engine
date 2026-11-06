@@ -46,7 +46,7 @@ This is a source-code inventory, not proof that every provider credential, sched
 6. **Evidence verifier** — checks source URLs, timestamps, source authority, scope, contradictions and structured-output schema.
 7. **Independent challenge** — preserves FOR, AGAINST, quantitative and integrity reviews as distinct assignments; disagreement is recorded rather than averaged away.
 8. **Memory and knowledge transfer** — retrieves relevant prior cases and stores observations separately from independently validated lessons.
-9. **Global Master** — issues recommend / reject / WAIT / NO BET with explicit evidence gaps and decision trace.
+9. **Global Master** — issues a risk estimate, evidence gaps, uncertainty, and a clear recommendation (for or against betting) with a decision trace; it never makes the user's final bet/no-bet decision or suppresses a requested coupon.
 
 ### B. LLM provider adapter contract
 
@@ -133,7 +133,7 @@ Autonomous learning means continuous evidence collection, evaluation, issue dete
 - Bound concurrency, request size, token use, tool calls, storage reads and compute duration.
 - Separate personal data and credentials from model-training datasets and prompts.
 - Preserve audit trail for prompt/model/provider changes, task decisions, human approvals and model promotion.
-- A failed provider, missing evidence, stale mandatory feature or budget controller error must degrade safely to WAIT / unavailable / NO BET.
+- A failed provider, missing evidence, stale mandatory feature or budget controller error must mark the affected model output unavailable, explain the data failure, and preserve the requested coupon proposal with explicit warnings and agent advice.
 - No automated bookmaker bet placement.
 
 ## 7. Staged implementation plan
