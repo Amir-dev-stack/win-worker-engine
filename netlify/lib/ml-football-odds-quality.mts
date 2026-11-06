@@ -31,6 +31,7 @@ export type WinFootballOddsQualityReport = {
   incoherentMarketTimestampGroups: string[];
   suspiciousPriceMoves: Array<{ quoteId: string; fromSnapshotId: string; toSnapshotId: string; relativeMove: number }>;
   cadenceGaps: Array<{ quoteId: string; from: string; to: string; gapMinutes: number }>;
+  marketGroupDiagnostics: Array<{ eventId: string; marketId: string; bookmakerId: string; sourceId: string; line: string | number | null; expectedOutcomeCount: number; observedOutcomeCount: number; missingOutcomeIds: string[]; earliestCapturedAt: string; latestCapturedAt: string; overround: number | null; overroundSkippedForTimestampSkew: boolean }>;
   bookmakerIds: string[];
   sourceIds: string[];
   bookmakerIndependenceVerified: false;
@@ -137,6 +138,7 @@ export function assessWinFootballOddsQuality(args: {
   const incoherentMarketTimestampGroups: string[] = [];
   const suspiciousPriceMoves: WinFootballOddsQualityReport["suspiciousPriceMoves"] = [];
   const cadenceGaps: WinFootballOddsQualityReport["cadenceGaps"] = [];
+  const marketGroupDiagnostics: WinFootballOddsQualityReport["marketGroupDiagnostics"] = [];
   for (const [quoteId, rows] of groups) {
     rows.sort((a, b) => Date.parse(a.capturedAt) - Date.parse(b.capturedAt) ||
       a.snapshotId.localeCompare(b.snapshotId));
@@ -144,21 +146,35 @@ export function assessWinFootballOddsQuality(args: {
     for (const row of rows) latestByOutcome.set(row.outcomeId, row);
     const market = expectedMarkets.get(rows[0].marketId)!;
     const missing = market.outcomeIds.filter(id => !latestByOutcome.has(id));
+    const latestRows = [...latestByOutcome.values()];
+    const allTimes = rows.map(row => Date.parse(row.capturedAt));
+    const earliestCapturedAt = new Date(Math.min(...allTimes)).toISOString();
+    const latestCapturedAt = new Date(Math.max(...allTimes)).toISOString();
+    const times = latestRows.map(row => Date.parse(row.capturedAt));
+    const skewMinutes = times.length ? (Math.max(...times) - Math.min(...times)) / 60000 : 0;
+    const overroundSkippedForTimestampSkew = missing.length === 0 &&
+      outcomeSkewValid && maxOutcomeSkew !== undefined && skewMinutes > maxOutcomeSkew;
+    let overround: number | null = null;
     if (missing.length) missingMarketOutcomeGroups.push(quoteId + ":" + missing.join(","));
-    else {
-      const latestRows = [...latestByOutcome.values()];
-      const times = latestRows.map(row => Date.parse(row.capturedAt));
-      const skewMinutes = (Math.max(...times) - Math.min(...times)) / 60000;
-      if (outcomeSkewValid && maxOutcomeSkew !== undefined && skewMinutes > maxOutcomeSkew) {
-        incoherentMarketTimestampGroups.push(quoteId);
-      } else {
-        const overround = latestRows.reduce((sum, row) => sum + 1 / row.decimalOdds, 0);
-        const min = market.minOverround ?? 0.8;
-        const max = market.maxOverround ?? 1.5;
-        if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= min ||
-            overround < min || overround > max) overroundOutOfBounds.push({ groupId: quoteId, overround });
-      }
+    else if (overroundSkippedForTimestampSkew) {
+      incoherentMarketTimestampGroups.push(quoteId);
+    } else {
+      overround = latestRows.reduce((sum, row) => sum + 1 / row.decimalOdds, 0);
+      const min = market.minOverround ?? 0.8;
+      const max = market.maxOverround ?? 1.5;
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max <= min ||
+          overround < min || overround > max) overroundOutOfBounds.push({ groupId: quoteId, overround });
     }
+    const [eventId, marketId, bookmakerId, sourceId, line] = JSON.parse(quoteId) as [string, string, string, string, string | number | null];
+    marketGroupDiagnostics.push({
+      eventId, marketId, bookmakerId, sourceId, line,
+      expectedOutcomeCount: market.outcomeIds.length,
+      observedOutcomeCount: latestByOutcome.size,
+      missingOutcomeIds: missing,
+      earliestCapturedAt, latestCapturedAt,
+      overround,
+      overroundSkippedForTimestampSkew
+    });
     const timelines = new Map<string, WinFootballOddsQualitySnapshot[]>();
     for (const row of rows) {
       if (!timelines.has(row.outcomeId)) timelines.set(row.outcomeId, []);
@@ -196,6 +212,7 @@ export function assessWinFootballOddsQuality(args: {
     invalidSnapshotCount, duplicateSnapshotCount, staleSnapshotCount, postKickoffSnapshotCount,
     missingMarketOutcomeGroups, incompleteMarketGroupCount: missingMarketOutcomeGroups.length,
     overroundOutOfBounds, incoherentMarketTimestampGroups, suspiciousPriceMoves, cadenceGaps,
+    marketGroupDiagnostics: marketGroupDiagnostics.sort((a, b) => a.eventId.localeCompare(b.eventId) || a.marketId.localeCompare(b.marketId) || a.bookmakerId.localeCompare(b.bookmakerId) || a.sourceId.localeCompare(b.sourceId)),
     bookmakerIds: [...new Set(valid.map(s => s.bookmakerId))].sort(),
     sourceIds: [...new Set(valid.map(s => s.sourceId))].sort(),
     bookmakerIndependenceVerified: false,
