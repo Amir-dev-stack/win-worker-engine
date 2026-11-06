@@ -980,6 +980,15 @@ add("Market calibration reports are content-addressed and immutable",
   !marketCalibration.includes('put("library/model-lab/market-calibration-reports"'),
   "Market calibration runs must not overwrite prior evidence; report content is hashed, stored with putIfNew, and verified on idempotent retry.");
 
+add("WIN manual worker runs are serialized and cannot replay completed work",
+  worker.includes("claimWinScheduledRunLease(run.id)") &&
+  worker.includes("releaseWinScheduledRunLease(run.id, lease.leaseId)") &&
+  worker.includes("run_already_in_progress") &&
+  worker.includes("run_already_completed") &&
+  worker.includes("finally") &&
+  (await read("netlify/lib/scheduled-run-lease.mts")).includes("putIfMatch") &&
+  (await read("scripts/scheduled-run-lease-isolated.test.mjs")).includes("scheduled learning run lease elects one concurrent owner and blocks duplicates"),
+  "Manual research runs share the atomic run lease, release only their own lease in finally, reject duplicate concurrent requests and prevent completed runs from being re-executed.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
