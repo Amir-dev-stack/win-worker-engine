@@ -427,6 +427,9 @@ export function evaluateWinMLFootball1X2LogisticModel(
     },
     modelMetrics,
     baselineMetrics,
+    testEventIds: sorted.map(row => row.eventId),
+    testCohortSha256: sha256(canonicalizeWinMLProvenance(sorted.map(row => row.eventId))),
+    testRowsSha256: sha256(canonicalizeWinMLProvenance(testRows)),
     heldOutTest: true as const,
     promotionAllowed: false as const,
     productionPromotionAllowed: false as const,
@@ -500,6 +503,8 @@ export function buildWinMLFootball1X2EvaluationRecord(
     trainingRows: artifact.trainingRows,
     validationRows: artifact.validationRows,
     testRows: testEvaluation.testRows,
+    testCohortSha256: testEvaluation.testCohortSha256,
+    testRowsSha256: testEvaluation.testRowsSha256,
     baselineMetrics: {
       brier: testEvaluation.baselineMetrics.brier,
       logLoss: testEvaluation.baselineMetrics.logLoss
