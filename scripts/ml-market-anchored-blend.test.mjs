@@ -174,3 +174,16 @@ test("rejects unnormalized ML probabilities and out-of-range evaluation metrics"
   assert.equal(impossibleMetric.status, "blocked");
   assert.ok(impossibleMetric.reasons.includes("held_out_evaluation_metrics_invalid"));
 });
+
+test("rejects tiny apparent gains that may be noise on the held-out cohort", () => {
+  const result = calculateWinMLMarketAnchoredBlend(input({
+    evaluation: {
+      ...input().evaluation,
+      modelLogLoss: 1.025,
+      modelBrier: 0.603
+    }
+  }));
+  assert.equal(result.status, "blocked");
+  assert.ok(result.reasons.includes("market_improvement_below_minimum_threshold"));
+  assert.equal(result.probabilities, null);
+});
