@@ -107,10 +107,10 @@ test("shared WIN store enforces isolated adapter, paginated limits and condition
     assert.deepEqual(await store.get("sample", "legacy-json"),
       { legacy: true, schemaVersion: 1 },
       "a valid legacy JSON record remains readable without an invented migration");
-    adapter.setRaw("sample/malformed-json", "{not-valid-json");
-    await assert.rejects(() => store.get("sample", "malformed-json"), SyntaxError,
+    adapter.setRaw("malformed-sample/malformed-json", "{not-valid-json");
+    await assert.rejects(() => store.get("malformed-sample", "malformed-json"), SyntaxError,
       "malformed JSON must surface as a parse failure rather than becoming an empty record");
-    await assert.rejects(() => store.list("sample", 100), SyntaxError,
+    await assert.rejects(() => store.list("malformed-sample", 100), SyntaxError,
       "a malformed record in a bounded list must not be silently dropped");
 
     const createRace = await Promise.all(Array.from({ length: 12 }, (_, index) =>
