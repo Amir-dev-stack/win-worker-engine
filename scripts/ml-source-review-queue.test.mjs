@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DATA_PROVIDER_REGISTRY } from "../netlify/lib/data-provider-registry.mts";
-import { getWinSourceReviewQueue } from "../netlify/lib/ml-source-review-queue.mts";
+import { getWinSourceReviewQueue, getWinOddsSourceReviewQueue } from "../netlify/lib/ml-source-review-queue.mts";
 
 const RESULT_DOMAIN_PATTERN = /(^|_)(results?|settled_results?|match_results?)(_|$)/i;
 
@@ -62,4 +62,43 @@ test("football inventory separates odds, results, context and prediction data wi
   assert.equal(locked.licenceReview, "required");
   assert.equal(locked.automationAllowed, false);
   assert.ok(locked.coverageAreas.includes("odds_and_markets"));
+});
+
+
+const ODDS_DOMAIN_PATTERN = /(odds?|markets?|prices?|spreads?|totals?|handicaps?|btts|closing_lines)/i;
+
+test("odds source review queue includes every registered provider declaring odds or market data", () => {
+  const expected = DATA_PROVIDER_REGISTRY
+    .filter(provider => provider.dataDomains.some(domain => ODDS_DOMAIN_PATTERN.test(domain)))
+    .map(provider => provider.id).sort();
+  const queue = getWinOddsSourceReviewQueue();
+  assert.deepEqual(queue.map(entry => entry.providerId).sort(), expected);
+  assert.ok(queue.length > 0);
+});
+
+test("odds-source queue leaves identity, market semantics, timestamps, availability and cadence unverified", () => {
+  const queue = getWinOddsSourceReviewQueue();
+  for (const entry of queue) {
+    assert.equal(entry.reviewStatus, "unreviewed");
+    assert.equal(entry.sourceIdentityVerified, false);
+    assert.equal(entry.bookmakerIdentitySemanticsVerified, false);
+    assert.equal(entry.marketOutcomeSemanticsVerified, false);
+    assert.equal(entry.timestampSemanticsVerified, false);
+    assert.equal(entry.availabilitySemanticsVerified, false);
+    assert.equal(entry.upstreamOwnerId, null);
+    assert.equal(entry.feedProductId, null);
+    assert.equal(entry.bookmakerIdentityContract, null);
+    assert.equal(entry.expectedCadenceMinutes, null);
+    assert.ok(entry.evidenceRequired.includes("bookmaker_or_exchange_identity_and_alias_mapping"));
+    assert.ok(entry.evidenceRequired.includes("capture_timestamp_timezone_and_event_kickoff_semantics"));
+    assert.ok(entry.evidenceRequired.includes("capture_cadence_contract_or_explicitly_no_cadence_claim"));
+  }
+});
+
+test("football odds providers are prioritised ahead of later-sport odds providers", () => {
+  const queue = getWinOddsSourceReviewQueue();
+  assert.ok(queue.some(entry => entry.rolloutTrack === "football_first"));
+  assert.ok(queue.some(entry => entry.rolloutTrack === "later_sport"));
+  assert.ok(queue.filter(entry => entry.sportIds.includes("football"))
+    .every(entry => entry.rolloutTrack === "football_first"));
 });
