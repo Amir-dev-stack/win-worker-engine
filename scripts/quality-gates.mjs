@@ -417,7 +417,11 @@ add("WIN production OpenAI agent calls have bounded cooperative cancellation",
   llmExecutionTests.includes("shared bounded executor preserves operation errors") &&
   agentsSdk.includes("signal?: AbortSignal") &&
   agentsSdk.includes("signal: input.signal") &&
-  agentsSdk.includes("modelSettings: { store: false, maxTokens: input.maxOutputTokens }") &&
+  agentsSdk.includes("parallelToolCalls: false") &&
+  agentsSdk.includes("providerData: { max_tool_calls: input.maxToolCallsPerResponse }") &&
+  agentsSdkAdapter.includes("maxToolCallsPerResponse: Math.ceil(request.limits.maxToolCalls / 2)") &&
+  agentsSdkAdapterTests.includes("bounded per-response tool cap") &&
+  ai.includes("? 2 : 4") &&
   agentsSdkAdapter.includes("maxOutputTokens: request.limits.maxOutputTokens") &&
   agentsSdkAdapterTests.includes("assert.equal(received.maxOutputTokens, 200)"),
   "The production provider adapter passes a 90-second cancellation signal into the Agents SDK; uncertain calls are conservatively settled and never automatically replayed.");
