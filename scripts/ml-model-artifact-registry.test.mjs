@@ -82,7 +82,7 @@ test("model artifact registry rejects dataset hash drift and immutable version c
   await assert.rejects(() => registerWinMLModelArtifact({
     artifact: { ...artifact, datasetContentSha256: "b".repeat(64) }, evaluation, testRows, evaluatedAt,
     registeredAt: "2027-01-03T00:00:00.000Z"
-  }), /model_artifact_evaluation_binding_mismatch/);
+  }), /model_artifact_hash_mismatch/);
   await registerWinMLModelArtifact({ artifact, evaluation, testRows, evaluatedAt, registeredAt: "2027-01-03T00:00:00.000Z" });
   await assert.rejects(() => registerWinMLModelArtifact({
     artifact, evaluation, testRows, evaluatedAt,
