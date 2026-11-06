@@ -1026,6 +1026,23 @@ add("WIN autonomous department and debate agents use bounded per-run concurrency
   (await read("netlify/lib/async-concurrency.mts")).includes("concurrency > 32") &&
   (await read("scripts/async-concurrency.test.mjs")).includes("never exceeds its concurrency limit and preserves input order"),
   "The initial scout remains first; the remaining departments and four adversarial reviewers run in stable order with no more than two active LLM workers per phase.");
+const footballResultReconciliation = await read("netlify/lib/ml-football-result-reconciliation.mts");
+const footballResultReconciliationTests = await read("scripts/ml-football-result-reconciliation.test.mjs");
+add("WIN football result corroboration requires two source-diverse, immutable, chronology-valid records",
+  footballResultReconciliation.includes("independenceGroup") &&
+  footballResultReconciliation.includes("providers_must_differ") &&
+  footballResultReconciliation.includes("independence_groups_must_differ") &&
+  footballResultReconciliation.includes("regulation_score_mismatch") &&
+  footballResultReconciliation.includes("trainingApprovalGranted: false") &&
+  footballResultReconciliation.includes("recordSha256") &&
+  footballResultReconciliation.includes("resultAvailableAt") &&
+  footballResultReconciliationTests.includes("source-diverse matching results") &&
+  footballResultReconciliationTests.includes("different scores are flagged as a conflict") &&
+  footballResultReconciliationTests.includes("same provider or declared independence group") &&
+  footballResultReconciliationTests.includes("event identity mismatch") &&
+  footballResultReconciliationTests.includes("bad provenance, chronology and score basis"),
+  "Independent result corroboration is an audit-only classification: it hashes both source records, rejects same-provider/same-group evidence and chronology/identity defects, flags score conflicts, and never grants training permission.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
