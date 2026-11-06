@@ -63,12 +63,15 @@ export function assertWinMarketCohortMatchesModel(
       evaluation.testEventCutoffs.some(item => !validId(item?.eventId) || !isStrictIsoTimestamp(item?.predictionCutoff))) {
     throw new WinMarketEvaluationError("market_evaluation_model_cutoffs_invalid");
   }
+  const modelEventIds = new Set(evaluation.testEventIds);
   const modelCutoffs = new Map(evaluation.testEventCutoffs.map(item => [item.eventId, item.predictionCutoff]));
   const rowIds = rows.map(row => row?.eventId);
-  if (new Set(rowIds).size !== rowIds.length ||
-      hashWinMLProvenance([...rowIds].sort()).sha256 !== evaluation.testCohortSha256 ||
+  const rowIdSet = new Set(rowIds);
+  if (rowIds.some(id => !validId(id)) || rowIdSet.size !== rowIds.length ||
+      modelEventIds.size !== evaluation.testEventIds.length ||
+      hashWinMLProvenance([...rowIdSet].sort()).sha256 !== evaluation.testCohortSha256 ||
       evaluation.testEventIds.length !== rowIds.length ||
-      evaluation.testEventIds.some(id => !rowIds.includes(id)) ||
+      [...modelEventIds].some(id => !rowIdSet.has(id)) ||
       rowIds.some(id => !modelCutoffs.has(id))) {
     throw new WinMarketEvaluationError("market_evaluation_model_cohort_mismatch");
   }
