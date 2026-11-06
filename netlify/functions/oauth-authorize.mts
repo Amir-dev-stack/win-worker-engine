@@ -3,7 +3,7 @@ import { readOAuthFormBody } from "../lib/oauth-request.mts";
 import { randomUUID } from "node:crypto";
 import {
   WIN_ISSUER, WIN_RESOURCE, WIN_SCOPES, randomSecret, saveOAuthRecord,
-  readOAuthRecord, validateOwnerToken, hashSecret
+  readOAuthRecord, readOAuthRecordWithMetadata, consumeOAuthRecord, validateOwnerToken, hashSecret
 } from "../lib/oauth-store.mts";
 
 type ClientRecord = { clientId: string; clientName: string; redirectUris: string[] };
@@ -14,12 +14,18 @@ type AuthRequest = {
 };
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]!));
+export function describeOAuthScopes(scope: string): string {
+  const requested = new Set(scope.split(/\s+/).filter(Boolean));
+  const permissions: string[] = [];
+  if (requested.has("win:audit")) permissions.push("Read-only diagnostics: observatory status, historical dataset metadata, calibration and settlement records, reviewer operations and learning history.");
+  if (requested.has("win:read")) permissions.push("Read WIN research records, predictions, tips and library data.");
+  if (requested.has("win:research")) permissions.push("Start research runs and submit research/library records. This does not place bets or access an STS account.");
+  if (requested.has("offline_access")) permissions.push("Keep the connection active using refresh tokens.");
+  return permissions.length ? permissions.join(" ") : "No WIN data or research permissions requested.";
+}
+
 const page = (txn: string, client: string, scope: string, error = "") => {
-  const requested = scope.split(/\s+/);
-  const auditOnly = requested.includes("win:audit") && !requested.includes("win:read") && !requested.includes("win:research");
-  const permissionText = auditOnly
-    ? "Read-only WIN diagnostics: live observatory, historical dataset metadata, calibration and settlement records, reviewer operations, learning history and read-only research-run records. Cannot start research, write records, approve coupons or place bets."
-    : "Can read WIN research records and start research runs. It cannot place bets or access your STS account.";
+  const permissionText = describeOAuthScopes(scope);
   return `<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Connect WIN</title>
@@ -103,8 +109,9 @@ export default async (req: Request) => {
     if (parsedForm instanceof Response) return parsedForm;
     const txn = parsedForm.params.get("txn") || "";
     const ownerToken = parsedForm.params.get("ownerToken") || "";
-    const auth = await readOAuthRecord<AuthRequest>("requests", txn);
-    if (!auth || auth.expiresAt <= Date.now()) {
+    const storedAuth = await readOAuthRecordWithMetadata<AuthRequest>("requests", txn);
+    const auth = storedAuth?.value;
+    if (!auth || !storedAuth || auth.expiresAt <= Date.now()) {
       return new Response("Authorization request expired. Start connecting WIN again.", { status: 400 });
     }
     const client = await readOAuthRecord<ClientRecord>("clients", auth.clientId);
@@ -138,9 +145,22 @@ export default async (req: Request) => {
       audience: auth.audience, scopes: auth.scopes, createdAt: Date.now(),
       expiresAt: codeExpiresAt
     });
-    await saveOAuthRecord("requests", txn, {
+    const claimed = await consumeOAuthRecord("requests", txn, {
       ...auth, consumedAt: Date.now(), completedCode: code, codeExpiresAt
-    });
+    }, storedAuth.etag);
+    if (!claimed) {
+      // Concurrent browser submissions may each stage a short-lived code, but
+      // only the request-record CAS winner is ever returned to the client.
+      const winner = await readOAuthRecord<AuthRequest>("requests", txn);
+      if (winner?.consumedAt && winner.completedCode && winner.codeExpiresAt && winner.codeExpiresAt > Date.now()) {
+        const callback = new URL(winner.redirectUri);
+        callback.searchParams.set("code", winner.completedCode);
+        callback.searchParams.set("state", winner.state);
+        callback.searchParams.set("iss", WIN_ISSUER);
+        return Response.redirect(callback.toString(), 303);
+      }
+      return new Response("Authorization request was already consumed. Start connecting WIN again.", { status: 409 });
+    }
     const callback = new URL(auth.redirectUri);
     callback.searchParams.set("code", code);
     callback.searchParams.set("state", auth.state);
