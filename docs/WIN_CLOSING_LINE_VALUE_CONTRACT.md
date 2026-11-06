@@ -81,4 +81,4 @@ No live provider was called, no credentials or spending were enabled, no model w
 
 Database triggers reject updates/deletes and validate that the decision quote was open and ingested by the prediction cutoff. A closing quote must match the same event, market, selection, period, line, bookmaker, source revision, licence and venue; it must be observed after the cutoff and before kickoff. The database also independently checks the stored CLV arithmetic.
 
-**Deployment boundary:** this is a migration file only. It has not been applied to Neon or any production database. It requires review and an explicit target-branch decision before application.
+**Deployment boundary:** the migration has been applied and exercised on the isolated Neon branch `win-memory-schema-test` in project `win-memory`. It has not been applied to the `production` branch or any production database. Five database triggers were confirmed active. Synthetic tests verified a valid decision/closing quote flow, rejection of a mismatched bookmaker and a late decision quote, and rollback of all synthetic rows. Production application remains a separate approval step.
