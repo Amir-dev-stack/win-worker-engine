@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20.12.2"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "build": "node scripts/build.mjs && node scripts/quality-gates.mjs",
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest",
-    "@netlify/blobs": "latest",
+    "@netlify/blobs": "11.1.7",
     "@netlify/functions": "latest",
     "zod": "latest",
     "@openai/agents": "0.21.0"
