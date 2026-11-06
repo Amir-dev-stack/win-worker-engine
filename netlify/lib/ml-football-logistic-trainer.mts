@@ -389,7 +389,8 @@ export function predictWinMLFootball1X2(
 /** Evaluates a frozen artifact on a later, non-overlapping test partition. */
 export function evaluateWinMLFootball1X2LogisticModel(
   artifact: WinMLFootballLogisticArtifactV1,
-  testRows: WinMLFootballNumericRow[]
+  testRows: WinMLFootballNumericRow[],
+  evaluatedAt: string
 ) {
   if (!artifact || !Array.isArray(artifact.featureNames) || !Array.isArray(testRows) ||
       testRows.length < 1 || testRows.length > 10_000) {
@@ -401,8 +402,13 @@ export function evaluateWinMLFootball1X2LogisticModel(
     ...artifact.splitManifest.trainingEventIds,
     ...artifact.splitManifest.validationEventIds
   ]);
+  const evaluatedAtMs = timestamp(evaluatedAt);
+  if (evaluatedAtMs === null) throw new Error("held_out_test_evaluation_timestamp_invalid");
   const errors = validateRows(testRows, artifact.featureNames, seen);
   if (errors.length) throw new Error([...new Set(errors)].join(","));
+  if (testRows.some(row => Date.parse(row.labelAvailableAt) > evaluatedAtMs)) {
+    throw new Error("held_out_test_labels_not_available_as_of_evaluation");
+  }
   const sorted = [...testRows].sort((a, b) => Date.parse(a.eventStart) - Date.parse(b.eventStart));
   const validationEnd = timestamp(artifact.validationWindow.to);
   const testStart = timestamp(sorted[0].eventStart);
@@ -417,6 +423,7 @@ export function evaluateWinMLFootball1X2LogisticModel(
   });
   const baselineMetrics = metrics(testRows, () => artifact.baselineProbabilities);
   return {
+    evaluatedAt,
     testRows: testRows.length,
     testWindow: {
       from: sorted[0].eventStart,
