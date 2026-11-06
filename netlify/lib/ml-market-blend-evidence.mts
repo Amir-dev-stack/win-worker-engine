@@ -5,6 +5,7 @@ import {
   type WinMarketEvaluationRecord
 } from "./win-market-evaluation-registry.mts";
 import { isStrictIsoTimestamp } from "./strict-timestamp.mts";
+import { hashWinMLProvenance } from "./ml-provenance.mts";
 
 export type WinMLMarketBlendEvaluationEvidence = {
   modelEvaluationId: string;
@@ -38,6 +39,10 @@ export function composeWinMLMarketBlendEvaluationEvidence(
   }
   const evaluation = model.evaluation;
   const labelsAvailableAt = evaluation?.testWindow?.to;
+  if (hashWinMLProvenance(evaluation).sha256 !== model.provenance.evaluationSha256 ||
+      evaluation.artifactSha256 !== model.artifact.artifactSha256) {
+    throw new WinMLMarketBlendEvidenceError("market_blend_model_evaluation_hash_mismatch");
+  }
   if (market.modelId !== evaluation?.modelId ||
       market.modelVersion !== evaluation?.modelVersion ||
       market.modelArtifactSha256 !== model.artifact.artifactSha256 ||
