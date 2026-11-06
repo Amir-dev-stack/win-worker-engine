@@ -134,3 +134,29 @@ test("rejects invalid odds, model probability vectors and post-cutoff model trai
   assert.equal(trainedLater.status, "blocked");
   assert.ok(trainedLater.reasons.includes("model_trained_after_prediction_cutoff"));
 });
+
+test("caps even a very strong research model at twenty percent influence", () => {
+  const result = calculateWinMLMarketAnchoredBlend(input({
+    evaluation: {
+      ...input().evaluation,
+      modelLogLoss: 0.70,
+      modelBrier: 0.40
+    }
+  }));
+  assert.equal(result.status, "research_only");
+  assert.equal(result.modelWeight, 0.20);
+});
+
+test("rejects implausible market overround and impossible calendar timestamps", () => {
+  const overround = calculateWinMLMarketAnchoredBlend(input({
+    market: { ...input().market, decimalOdds: { home: 1.1, draw: 1.2, away: 1.3 } }
+  }));
+  assert.equal(overround.status, "blocked");
+  assert.ok(overround.reasons.includes("market_overround_out_of_bounds"));
+
+  const impossibleDate = calculateWinMLMarketAnchoredBlend(input({
+    event: { ...input().event, kickoff: "2026-11-31T18:00:00.000Z" }
+  }));
+  assert.equal(impossibleDate.status, "blocked");
+  assert.ok(impossibleDate.reasons.includes("prediction_cutoff_invalid"));
+});
