@@ -265,3 +265,10 @@ For each route, the existing authentication check precedes body parsing. The int
 - The source inventory is not a live deployment or schedule-health report. No production function, OAuth flow, scheduled job or provider was invoked during this pass.
 
 This follow-up is a source review and documentation update only. It does not claim tests or build execution for the current PR head.
+
+
+### Human settlement submission idempotency (2026-11-06)
+- Replaced the list-then-write duplicate check in `/api/human-coupon-settlements` with a deterministic SHA-256 identity over the same coupon ID, evidence URL and claimed outcome tuple.
+- The endpoint now claims the case with `putIfNew`. Concurrent identical submissions converge on one stored case; retries return that existing case with `duplicate: true`. A conflicting or unreadable occupied identity fails closed with HTTP 409.
+- Added regression coverage for deterministic identity and separation across coupon, evidence and outcome values. The test is required by the build and the atomic create-once wiring is checked by an architecture quality gate.
+- This closes the duplicate POST race for identical human-settlement claims. It does not make independent-review processing atomic, prove provider-side Blobs semantics, or convert submitted claims into verified outcomes.
