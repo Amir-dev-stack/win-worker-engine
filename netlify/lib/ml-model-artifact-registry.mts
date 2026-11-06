@@ -4,7 +4,10 @@ import { evaluateWinMLPromotionReadiness, type WinMLModelEvaluationV1 } from "./
 import { hashWinMLProvenance } from "./ml-provenance.mts";
 import {
   predictWinMLFootball1X2,
-  type WinMLFootballLogisticArtifactV1
+  evaluateWinMLFootball1X2LogisticModel,
+  buildWinMLFootball1X2EvaluationRecord,
+  type WinMLFootballLogisticArtifactV1,
+  type WinMLFootballNumericRow
 } from "./ml-football-logistic-trainer.mts";
 
 const COLLECTION = "library/ml-model-artifacts";
@@ -88,13 +91,33 @@ export async function registerWinMLModelArtifact(args: {
   artifact: WinMLFootballLogisticArtifactV1;
   evaluation: WinMLModelEvaluationV1;
   registeredAt: string;
+  evaluatedAt: string;
+  testRows: WinMLFootballNumericRow[];
 }) {
-  const { artifact, evaluation, registeredAt } = args || ({} as any);
+  const { artifact, evaluation, registeredAt, evaluatedAt, testRows } = args || ({} as any);
   validateBinding(artifact, evaluation);
   if (!validId(evaluation.modelId) || !validId(evaluation.modelVersion) ||
       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(registeredAt || "") ||
       !Number.isFinite(Date.parse(registeredAt))) {
     throw new WinMLModelArtifactRegistryError("model_artifact_registration_metadata_invalid");
+  }
+  if (!/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$/.test(evaluatedAt || "") ||
+      !Number.isFinite(Date.parse(evaluatedAt)) || Date.parse(registeredAt) < Date.parse(evaluatedAt) ||
+      !Array.isArray(testRows)) {
+    throw new WinMLModelArtifactRegistryError("model_artifact_test_evaluation_evidence_invalid");
+  }
+  // Recompute held-out metrics from supplied test rows before storing. The
+  // rows are not persisted; only the resulting versioned evaluation is kept.
+  const recomputedTest = evaluateWinMLFootball1X2LogisticModel(artifact, testRows, evaluatedAt);
+  const recomputedEvaluation = buildWinMLFootball1X2EvaluationRecord(artifact, recomputedTest, {
+    modelVersion: evaluation.modelVersion,
+    trainingRunId: evaluation.trainingRunId,
+    featureBuilderCommitSha: evaluation.featureBuilderCommitSha,
+    sourceCommitSha: evaluation.sourceCommitSha,
+    trainedAt: evaluation.trainedAt
+  });
+  if (hashWinMLProvenance(recomputedEvaluation).sha256 !== hashWinMLProvenance(evaluation).sha256) {
+    throw new WinMLModelArtifactRegistryError("model_artifact_held_out_evaluation_mismatch");
   }
   const manifest = await getWinMLDatasetManifest(artifact.datasetId);
   if (!manifest || manifest.contentSha256 !== artifact.datasetContentSha256) {
