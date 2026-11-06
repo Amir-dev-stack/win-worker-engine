@@ -96,6 +96,26 @@ test("shared WIN store enforces isolated adapter, paginated limits and condition
     assert.notEqual(updated.etag, initial.etag);
     assert.equal(await store.getWithMetadata("library/coupons", "missing"), null);
 
+    const createRace = await Promise.all(Array.from({ length: 12 }, (_, index) =>
+      store.putIfNew("library/coupons", "create-race", { winner: index })
+    ));
+    assert.equal(createRace.filter(result => result.modified).length, 1,
+      "an atomic onlyIfNew race must have exactly one winner");
+    assert.equal(createRace.filter(result => !result.modified).length, 11,
+      "all competing create attempts must observe the existing record");
+
+    const raceInitial = await store.getWithMetadata("library/coupons", "update-race");
+    assert.equal(raceInitial, null);
+    await store.put("library/coupons", "update-race", { revision: 0 });
+    const raceEtag = (await store.getWithMetadata("library/coupons", "update-race")).etag;
+    const updateRace = await Promise.all(Array.from({ length: 12 }, (_, index) =>
+      store.putIfMatch("library/coupons", "update-race", { revision: index + 1 }, raceEtag)
+    ));
+    assert.equal(updateRace.filter(result => result.modified).length, 1,
+      "only one compare-and-swap update may win for a shared ETag");
+    assert.equal(updateRace.filter(result => !result.modified).length, 11,
+      "stale competing ETag updates must fail closed");
+
     for (let index = 0; index < 24; index++) {
       await store.put("sample", "record-" + String(index).padStart(2, "0"), { index });
     }
