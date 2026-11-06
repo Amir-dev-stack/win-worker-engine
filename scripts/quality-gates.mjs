@@ -957,7 +957,7 @@ add("Coupon candidate pipeline preserves percentages without treating LLM labels
   couponRunner.includes("unverified_claim") &&
   couponRunner.includes("wholeCouponWinProbabilityPercent") &&
   couponRunner.includes("unvalidated_joint_probability_not_estimated") &&
-  couponCandidateTests.includes("probability provenance and calibration labels") &&
+  couponCandidateTests.includes("estimatedWinProbabilityPercent") &&
   couponCandidateTests.includes("unverified model labels from an LLM are not treated as verified probabilities"),
   "LLM-provided probability percentages must retain provenance, remain explicitly uncalibrated/unverified, and never become a multi-leg joint probability by multiplication.");
 
