@@ -770,6 +770,20 @@ add("Independent coupon review retries repair interrupted settlement and learnin
   independentReviewRecoveryTests.includes("the settlement-learning projection must be completed once"),
   "Independent-review recovery must resume the same approved settlement after a partial write, reuse stable projection identities, and complete the operation without duplicating history or learning records.");
 
+
+const librarySettlementRecoveryTests = await read("scripts/library-settlement-recovery.test.mjs");
+const librarySettlement = await read("netlify/lib/library.mts");
+add("WIN-origin coupon settlements use immutable outcome claims and idempotent crash recovery",
+  librarySettlement.includes('library/coupon-settlement-claims') &&
+  librarySettlement.includes('win.coupon-settlement-claim.v1') &&
+  librarySettlement.includes("putIfNew") &&
+  librarySettlement.includes("settlement-review-") &&
+  librarySettlement.includes("manual reconciliation or the explicit correction workflow is required") &&
+  librarySettlementRecoveryTests.includes("repair interrupted learning writes without duplicate history") &&
+  librarySettlementRecoveryTests.includes("a conflicting resubmission must not overwrite the original settlement") &&
+  librarySettlementRecoveryTests.includes("legacy-settled-without-claim"),
+  "Each WIN-origin coupon has one immutable settlement decision. Identical retries reuse its payload and stable history identity; conflicting outcomes and legacy settled records without claims fail closed.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
