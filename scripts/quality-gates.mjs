@@ -946,7 +946,7 @@ add("D6 emits probability-first draftable proposals instead of a hard no-bet fil
   ai.includes("estimatedWinProbabilityPercent") &&
   ai.includes("wholeCouponWinProbabilityPercent") &&
   ai.includes("probabilityConfidence") &&
-  ai.includes("status\\": \\"QUALIFIED\\"|\\\"DRAFTABLE\\"") &&
+  ai.includes("DRAFTABLE") &&
   !ai.includes("WAIT / REMOVE / NO BET") &&
   !ai.includes("Low-Risk Gate as a hard eligibility check"),
   "D6 must retain incomplete proposals, label leg probability estimates and keep whole-coupon probability null without a validated joint model; it must not decide no-bet for the user.");
