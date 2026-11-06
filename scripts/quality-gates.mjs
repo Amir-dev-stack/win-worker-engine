@@ -5091,16 +5091,34 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
 const strictTimestamp = await read("netlify/lib/strict-timestamp.mts");
 const strictTimestampTests = await read("scripts/strict-timestamp.test.mjs");
 const importerTests = await read("scripts/ml-football-importer.test.mjs");
-add("ML ingestion and chronology reject impossible timestamps and mixed dataset scope",
+const strictTimestampConsumers = await Promise.all([
+  read("netlify/lib/ml-data-contract.mts"),
+  read("netlify/lib/ml-football-importer.mts"),
+  read("netlify/lib/ml-football-features.mts"),
+  read("netlify/lib/ml-football-experiment-plans.mts"),
+  read("netlify/lib/ml-football-logistic-trainer.mts"),
+  read("netlify/lib/ml-market-anchored-blend.mts"),
+  read("netlify/lib/ml-model-contract.mts"),
+  read("netlify/lib/ml-model-artifact-registry.mts"),
+  read("netlify/lib/ml-owner-approval.mts"),
+  read("netlify/lib/ml-prediction-contract.mts"),
+  read("netlify/lib/ml-shadow-prediction.mts"),
+  read("netlify/lib/ml-licence-evidence.mts")
+]);
+add("All ML timestamp boundaries use strict calendar validation and datasets have one competition/season",
   strictTimestamp.includes("daysInMonth") &&
   strictTimestamp.includes("parseStrictIsoTimestamp") &&
-  (await read("netlify/lib/ml-data-contract.mts")).includes("isStrictIsoTimestamp") &&
+  strictTimestampConsumers.every(content => content.includes("strict-timestamp.mts")) &&
   (await read("netlify/lib/ml-football-importer.mts")).includes("season_mismatch") &&
   (await read("netlify/lib/ml-football-importer.mts")).includes("competition_mismatch") &&
+  (await read("netlify/lib/ml-dataset-registry.mts")).includes("validateWinMLDatasetManifest(manifest).length === 0") &&
   strictTimestampTests.includes("2026-02-31") &&
   importerTests.includes("season_mismatch") &&
-  importerTests.includes("competition_mismatch"),
-  "Manifest, importer, feature and chronological split timestamps must reject calendar rollover; a single dataset manifest cannot silently contain multiple seasons or competitions.");
+  importerTests.includes("competition_mismatch") &&
+  (await read("scripts/ml-model-contract.test.mjs")).includes("2026-02-31") &&
+  (await read("scripts/ml-prediction-contract.test.mjs")).includes("2026-02-31") &&
+  (await read("scripts/ml-model-artifact-registry.test.mjs")).includes("2026-02-31"),
+  "Dataset, feature, trainer, prediction, approval, licence and model-artifact timestamps reject calendar rollover; imported manifests cannot silently mix seasons or competitions.");
 
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
