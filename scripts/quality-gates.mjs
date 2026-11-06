@@ -861,6 +861,17 @@ add("OpenFootball World Cup history pins immutable Git revisions and reuses unch
   worldCupRevisionTests.includes("World Cup historical adapter pins raw data"),
   "World Cup historical data must be fetched from an immutable Git commit, carry source revision provenance, and reuse completed snapshots when the upstream revision has not changed.");
 
+const worldCupBoundedResponseTests = await read("scripts/public-data-source-policy.test.mjs");
+add("World Cup imports enforce upstream timeouts, streamed response caps and strict UTF-8 decoding",
+  worldCupAdapter.includes("AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)") &&
+  worldCupAdapter.includes("readBoundedWorldCupResponse(response)") &&
+  worldCupAdapter.includes("MAX_REVISION_RESPONSE_BYTES=256_000") &&
+  worldCupAdapter.includes("MAX_DATASET_RESPONSE_BYTES=4_000_000") &&
+  worldCupAdapter.includes("worldcup_response_invalid_utf8") &&
+  worldCupBoundedResponseTests.includes("World Cup upstream responses enforce declared and streamed byte limits") &&
+  worldCupBoundedResponseTests.includes("World Cup upstream requests have a bounded timeout"),
+  "World Cup provider requests must time out after 12 seconds, cap revision metadata at 256 KiB and datasets at 4 MB while streaming, and reject invalid UTF-8 before JSON parsing.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;

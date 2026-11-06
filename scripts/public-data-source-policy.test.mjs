@@ -9,7 +9,7 @@ import {
 } from "../netlify/lib/data-provider-registry.mts";
 import { CONSENSUS_SOURCES, isPinnedDatasetRevision } from "../netlify/lib/consensus-market-adapter.mts";
 import { isPinnedOpenFootballRevision } from "../netlify/lib/openfootball-adapter.mts";
-import { isPinnedOpenFootballWorldCupRevision } from "../netlify/lib/openfootball-worldcup-adapter.mts";
+import { isPinnedOpenFootballWorldCupRevision, readBoundedWorldCupResponse } from "../netlify/lib/openfootball-worldcup-adapter.mts";
 
 test("TipsAudit is discoverable but cannot enter automated data ingestion", () => {
   const candidate = DATA_PROVIDER_REGISTRY.find(x => x.id === "tipsaudit-track-record-public");
@@ -224,4 +224,22 @@ test("World Cup historical adapter pins raw data and reuses a completed unchange
   assert.ok(adapter.includes("sourceCommitUrl"));
   assert.ok(adapter.includes('sourceRevision,sourceCommitUrl'));
   assert.ok(!adapter.includes("worldcup.json/master/"));
+});
+
+test("World Cup upstream responses enforce declared and streamed byte limits", async () => {
+  const declaredTooLarge = new Response("{}", { headers: { "content-length": "100" } });
+  await assert.rejects(() => readBoundedWorldCupResponse(declaredTooLarge, 10), /worldcup_dataset_over_limit/);
+  const streamedTooLarge = new Response(new Uint8Array(11));
+  await assert.rejects(() => readBoundedWorldCupResponse(streamedTooLarge, 10), /worldcup_dataset_over_limit/);
+  const valid = new Response('{"ok":true}');
+  assert.equal(await readBoundedWorldCupResponse(valid, 20), '{"ok":true}');
+  const invalidUtf8 = new Response(new Uint8Array([0xc3, 0x28]));
+  await assert.rejects(() => readBoundedWorldCupResponse(invalidUtf8, 10), /worldcup_response_invalid_utf8/);
+});
+test("World Cup upstream requests have a bounded timeout", async () => {
+  const adapter = await readFile(new URL("../netlify/lib/openfootball-worldcup-adapter.mts", import.meta.url), "utf8");
+  assert.ok(adapter.includes("UPSTREAM_TIMEOUT_MS=12_000"));
+  assert.ok(adapter.includes("AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)"));
+  assert.ok(adapter.includes("MAX_REVISION_RESPONSE_BYTES=256_000"));
+  assert.ok(adapter.includes("MAX_DATASET_RESPONSE_BYTES=4_000_000"));
 });

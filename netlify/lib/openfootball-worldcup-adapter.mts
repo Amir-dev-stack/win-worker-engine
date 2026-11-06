@@ -10,6 +10,31 @@ const PATHS=[
 const RAW_BASE="https://raw.githubusercontent.com/openfootball/worldcup.json";
 const GITHUB_API="https://api.github.com/repos/openfootball/worldcup.json";
 export function isPinnedOpenFootballWorldCupRevision(value:unknown):value is string{return typeof value==="string"&&/^[a-f0-9]{40}$/i.test(value);}
+
+const UPSTREAM_TIMEOUT_MS=12_000;
+const MAX_REVISION_RESPONSE_BYTES=256_000;
+const MAX_DATASET_RESPONSE_BYTES=4_000_000;
+
+export async function readBoundedWorldCupResponse(response:Response,maxBytes=MAX_DATASET_RESPONSE_BYTES):Promise<string>{
+ const declared=Number(response.headers.get("content-length"));
+ if(Number.isFinite(declared)&&declared>maxBytes)throw Error("worldcup_dataset_over_limit");
+ if(!response.body)throw Error("worldcup_response_body_missing");
+ const reader=response.body.getReader(),chunks:Uint8Array[]=[];
+ let total=0;
+ try{
+  while(true){
+   const part=await reader.read();
+   if(part.done)break;
+   total+=part.value.byteLength;
+   if(total>maxBytes){await reader.cancel();throw Error("worldcup_dataset_over_limit");}
+   chunks.push(part.value);
+  }
+ }finally{reader.releaseLock();}
+ const bytes=new Uint8Array(total);let offset=0;
+ for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+ try{return new TextDecoder("utf-8",{fatal:true}).decode(bytes);}
+ catch{throw Error("worldcup_response_invalid_utf8");}
+}
 const validScore=(v:any)=>Array.isArray(v)&&v.length===2&&v.every((n:any)=>Number.isInteger(n)&&n>=0&&n<=30);
 const arr=(v:any)=>Array.isArray(v)?v:[];
 function scorerEvents(match:any){
@@ -37,9 +62,9 @@ function bookingEvents(match:any){
 }
 async function syncOne(path:typeof PATHS[number],sourceRevision:string){
  const url=RAW_BASE+"/"+sourceRevision+"/"+path.year+"/"+path.file;
- const response=await fetch(url,{headers:{"user-agent":"WIN-ResearchEngine/1.0"}});
+ const response=await fetch(url,{headers:{"user-agent":"WIN-ResearchEngine/1.0"},signal:AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)});
  if(!response.ok)throw Error("worldcup_dataset_http_"+response.status);
- const raw=await response.text();if(raw.length>4_000_000)throw Error("worldcup_dataset_over_4mb");
+ const raw=await readBoundedWorldCupResponse(response);
  const parsed=JSON.parse(raw),matches=arr(parsed.matches);
  if(!matches.length)throw Error("worldcup_dataset_has_no_matches");
  const records=matches.flatMap((m:any,index:number)=>{
@@ -77,9 +102,9 @@ async function syncOne(path:typeof PATHS[number],sourceRevision:string){
 export async function syncOpenFootballWorldCupData(){
  assertProviderImportAllowed("openfootball-worldcup-json",["fixtures","results","player_events"]);
  const startedAt=new Date().toISOString();
- const revisionResponse=await fetch(GITHUB_API+"/commits/master",{headers:{"user-agent":"WIN-ResearchEngine/1.0","accept":"application/vnd.github+json"}});
+ const revisionResponse=await fetch(GITHUB_API+"/commits/master",{headers:{"user-agent":"WIN-ResearchEngine/1.0","accept":"application/vnd.github+json"},signal:AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)});
  if(!revisionResponse.ok)throw Error("worldcup_revision_http_"+revisionResponse.status);
- const revisionPayload:any=await revisionResponse.json();
+ const revisionPayload:any=JSON.parse(await readBoundedWorldCupResponse(revisionResponse,MAX_REVISION_RESPONSE_BYTES));
  const sourceRevision=revisionPayload?.sha;
  if(!isPinnedOpenFootballWorldCupRevision(sourceRevision))throw Error("worldcup_source_revision_not_pinned");
  const previous=await get<any>("scheduler-state","openfootball-worldcup-daily-sync");
