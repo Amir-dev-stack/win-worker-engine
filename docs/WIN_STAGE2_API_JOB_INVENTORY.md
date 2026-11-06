@@ -61,14 +61,21 @@ Cron declarations prove only what is in source. They do not prove that Netlify h
 
 ## 3. Functions requiring trigger-chain review
 
-These function files do not have an explicit `config.path` in the audited source or need additional trigger classification:
+These 15 function files do not have an explicit `config.path` in the audited source or need additional trigger classification:
 
+- `consensus-market-sync.mts`
+- `coverage-monitor.mts`
+- `hourly-monitor.mts`
+- `learning-data-jobs.mts`
 - `oauth-metadata.mts`
 - `observed-market-settlement.mts`
+- `openfootball-sync.mts`
 - `openfootball-worldcup-sync.mts`
 - `post-match-followup.mts`
 - `post-match-runner.mts`
+- `public-source-discovery.mts`
 - `scheduled-scout-runner.mts`
+- `sharpapi-sample-sync.mts`
 - `simulation-runner.mts`
 - `worker-runner.mts`
 
