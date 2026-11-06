@@ -184,3 +184,10 @@ These are source changes and synthetic tests; no current-head CI execution is cl
 - Authorization state/client/redirect/scope fields and token client/code/redirect/verifier/refresh-token fields receive explicit bounds.
 - Dynamic registration now rejects malformed optional grant/response-type declarations rather than silently accepting non-array values or arrays that omit the authorization-code grant.
 - These are source-level and isolated parser-contract changes. OAuth provider round-trip, browser UX, deployed callback compatibility and rate-limit enforcement still require separate verification.
+
+
+### OAuth consent and authorization-code race follow-up (2026-11-06)
+- Replaced the generic consent description with scope-specific permission text. A `win:read` grant no longer claims it can start research; `offline_access` is described as refresh-token continuity; audit remains read-only.
+- Authorization POST now stages a short-lived code and atomically consumes the authorization transaction using the stored ETag. If two browser submissions race, only the code committed by the compare-and-swap winner is returned; a losing staged code is an unreachable short-lived orphan.
+- Existing browser retry behavior is preserved: a retry after successful consumption receives the same committed code until its short expiry.
+- Added a focused consent-description test and architecture-gate assertions. The CAS uses the existing conditional-write contract; live Netlify Blobs race verification remains outstanding.
