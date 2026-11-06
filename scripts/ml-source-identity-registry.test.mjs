@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   validateWinReviewedSourceIdentity,
+  validateWinReviewedSourceIdentityCatalogue,
   resolveWinReviewedSourceIdentity,
   validateWinFootballSourcePairIdentity
 } from "../netlify/lib/ml-source-identity-registry.mts";
@@ -44,4 +45,16 @@ test("unpopulated server catalogue never treats caller-declared provider groups 
     "primary_provider_identity_unreviewed",
     "corroborating_provider_identity_unreviewed"
   ]);
+});
+
+test("catalogue rejects duplicate providers and inconsistent owner/group mappings", () => {
+  assert.ok(validateWinReviewedSourceIdentityCatalogue([
+    identity, { ...identity, providerId: "provider-a-copy", upstreamOwnerId: "publisher-b" }
+  ], now).includes("independence_group_maps_to_multiple_owners:publisher-a"));
+  assert.ok(validateWinReviewedSourceIdentityCatalogue([
+    identity, { ...identity, feedProductId: "second-feed" }
+  ], now).includes("duplicate_provider_id:provider-a"));
+  assert.ok(validateWinReviewedSourceIdentityCatalogue([
+    identity, { ...identity, providerId: "provider-a-copy", independenceGroup: "publisher-b" }
+  ], now).includes("upstream_owner_mapped_to_multiple_groups:publisher-a"));
 });
