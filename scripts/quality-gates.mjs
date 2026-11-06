@@ -849,7 +849,6 @@ add("OpenFootball historical imports pin immutable Git revisions and reuse uncha
   "OpenFootball history must be tied to an immutable Git commit; a completed unchanged source revision should reuse the stored snapshot rather than rewrite every season on each run.");
 
 const worldCupRevisionTests = await read("scripts/public-data-source-policy.test.mjs");
-const worldCupAdapter = await read("netlify/lib/openfootball-worldcup-adapter.mts");
 add("OpenFootball World Cup history pins immutable Git revisions and reuses unchanged completed snapshots",
   worldCupAdapter.includes("isPinnedOpenFootballWorldCupRevision") &&
   worldCupAdapter.includes('/commits/master') &&

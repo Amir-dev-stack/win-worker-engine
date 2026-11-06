@@ -9,6 +9,7 @@ import {
 } from "../netlify/lib/data-provider-registry.mts";
 import { CONSENSUS_SOURCES, isPinnedDatasetRevision } from "../netlify/lib/consensus-market-adapter.mts";
 import { isPinnedOpenFootballRevision } from "../netlify/lib/openfootball-adapter.mts";
+import { isPinnedOpenFootballWorldCupRevision } from "../netlify/lib/openfootball-worldcup-adapter.mts";
 
 test("TipsAudit is discoverable but cannot enter automated data ingestion", () => {
   const candidate = DATA_PROVIDER_REGISTRY.find(x => x.id === "tipsaudit-track-record-public");
