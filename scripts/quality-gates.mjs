@@ -3,14 +3,14 @@ import { readFile } from "node:fs/promises";
 const read = path => readFile(path, "utf8");
 const checks = [];
 const add = (name, ok, detail) => checks.push({ name, ok: Boolean(ok), detail });
-const [coverage, coverageApi, monitor, hourlyMonitor, settlement, independentReview, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library, settlementBridge, settlementFn, sourceDiscovery, sourceDiscoveryFn, sourceReviewFn, agentEvolution, scheduledRunner, aiBudget, health, budgetApi, openaiKeyCheck, departmentSmokeTest, predictionsApi, resultsApi, libraryApi, runsApi, storeApi] = await Promise.all([
+const [coverage, coverageApi, monitor, hourlyMonitor, settlement, independentReview, source, worker, ai, pkg, build, html, app, providers, adapter, modelLab, syncFn, statusFn, consensusAdapter, consensusSnapshotTests, consensusSync, sharpAdapter, sharpSync, calibration, workerOrg, scheduledAgentRunner, worldCupAdapter, worldCupSync, library, settlementBridge, settlementFn, sourceDiscovery, sourceDiscoveryFn, sourceReviewFn, agentEvolution, scheduledRunner, aiBudget, health, budgetApi, openaiKeyCheck, departmentSmokeTest, predictionsApi, resultsApi, libraryApi, runsApi, storeApi] = await Promise.all([
   read("netlify/lib/coverage.mts"), read("netlify/functions/coverage.mts"),
   read("netlify/functions/coverage-monitor.mts"), read("netlify/functions/hourly-monitor.mts"), read("netlify/functions/human-coupon-settlements.mts"), read("netlify/functions/independent-review.mts"),
   read("netlify/lib/source-intelligence.mts"), read("netlify/functions/worker-runner.mts"),
   read("netlify/lib/ai.mts"), read("package.json"), read("scripts/build.mjs"), read("public/index.html"), read("public/app.js"),
   read("netlify/lib/data-provider-registry.mts"), read("netlify/lib/openfootball-adapter.mts"), read("netlify/lib/model-lab.mts"),
   read("netlify/functions/openfootball-sync.mts"), read("netlify/functions/research-status.mts"),
-  read("netlify/lib/consensus-market-adapter.mts"), read("netlify/functions/consensus-market-sync.mts"),
+  read("netlify/lib/consensus-market-adapter.mts"), read("scripts/consensus-market-snapshot-timestamp.test.mjs"), read("netlify/functions/consensus-market-sync.mts"),
   read("netlify/lib/sharpapi-sample-adapter.mts"), read("netlify/functions/sharpapi-sample-sync.mts"), read("netlify/lib/market-calibration.mts"), read("netlify/lib/worker-org.mts"), read("netlify/functions/scheduled-scout-runner.mts"),
   read("netlify/lib/openfootball-worldcup-adapter.mts"), read("netlify/functions/openfootball-worldcup-sync.mts"), read("netlify/lib/library.mts"),
   read("netlify/lib/observed-market-settlement.mts"), read("netlify/functions/observed-market-settlement.mts"),
@@ -190,6 +190,14 @@ add("Model Lab uses chronological held-out data", modelLab.includes("chronologic
 add("Research status endpoint is authenticated", statusFn.includes("requireAuth") && statusFn.includes("/api/research-status"), "Provider and Model Lab status is private.");
 add("Provider registry distinguishes candidates from approved sources", providers.includes("licenceReview") && providers.includes("automationAllowed"), "Commercial feeds remain disabled pending credentials and terms approval.");
 add("Consensus market datasets are licence-labelled and isolated", consensusAdapter.includes("CC-BY-4.0") && consensusAdapter.includes("library/model-lab/market-consensus-datasets") && consensusAdapter.includes("bookmakerIdentityIncluded:false"), "Consensus market lines are not mislabelled as individual bookmaker odds.");
+add("Consensus market snapshots preserve only source-reported timestamps and never invent timing",
+  consensusAdapter.includes("readSourceMarketSnapshotTimestamp") &&
+  consensusAdapter.includes("marketSnapshotTimestampStatus:marketSnapshot.status") &&
+  consensusAdapter.includes("isStrictIsoTimestamp(value)") &&
+  !consensusAdapter.includes("marketSnapshotAt:retrievedAt") &&
+  consensusSnapshotTests.includes("not replaced with retrieval time or kickoff time") &&
+  consensusSnapshotTests.includes("impossible or non-ISO source timestamps remain ineligible"),
+  "Historical closing probabilities without an explicit source timestamp cannot be treated as point-in-time pre-kickoff market evidence.");
 add("Consensus market sync is scheduled without AI", consensusSync.includes("17 5 * * *") && !consensusSync.includes("runWinAgent"), "Daily public dataset refresh uses no AI budget.");
 add("SharpAPI sample importer preserves observed multi-book odds", sharpAdapter.includes("validateObservedMarket") && sharpAdapter.includes("bookmakerIdentityPreserved:true") && sharpAdapter.includes("CC-BY-4.0"), "Static odds snapshots retain book/source, market, price and timestamp.");
 add("SharpAPI importer is bounded and scheduled weekly", sharpAdapter.includes("source_file_over_5mb") && sharpSync.includes("37 6 * * 1"), "Static snapshots are not misrepresented as a live feed.");
