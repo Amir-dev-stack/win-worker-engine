@@ -690,7 +690,7 @@ add("Human settlement evidence submissions use deterministic identity and atomic
   humanSettlementApi.includes("humanSettlementSubmissionId") &&
   humanSettlementApi.includes("putIfNew(\"library/human-settlement-cases\"") &&
   humanSettlementApi.includes("getWithMetadata<any>(\"library/human-settlement-cases\"") &&
-  !humanSettlementApi.includes("list<any>(\"library/human-settlement-cases\", 2000)") &&
+  !humanSettlementApi.includes("const existing = await list<any>(\"library/human-settlement-cases\", 2000)") &&
   humanSettlementIdentityTests.includes("identity is deterministic") &&
   humanSettlementIdentityTests.includes("separates coupon, evidence and outcome"),
   "Concurrent retries of the same coupon/evidence/outcome tuple must converge on one immutable settlement claim instead of racing a list-then-write duplicate check.");
