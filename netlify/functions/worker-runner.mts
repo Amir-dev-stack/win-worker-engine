@@ -273,9 +273,8 @@ export default async (req: Request) => {
   }
 
   const startedAt = new Date().toISOString();
-  await put("runs", run.id, { ...run, status: "scouting", startedAt, updatedAt: startedAt });
-
   try {
+    await put("runs", run.id, { ...run, status: "scouting", startedAt, updatedAt: startedAt });
     const libraryReview = await getMandatoryLearningPack(run.brief);
     const modelLabResearchPack = await getModelLabResearchPack(run.brief);
     // Attach a small, relevant slice of prior frozen records for Department 7.
