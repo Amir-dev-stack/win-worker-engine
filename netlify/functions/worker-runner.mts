@@ -125,6 +125,17 @@ export function collectCouponCandidates(reports: any[]) {
         market: typeof leg?.market === "string" ? leg.market : "Unspecified market",
         selection: typeof leg?.selection === "string" ? leg.selection : "Unspecified selection",
         odds: typeof leg?.odds === "number" && Number.isFinite(leg.odds) && leg.odds > 1 ? leg.odds : null,
+        estimatedWinProbabilityPercent: typeof leg?.estimatedWinProbabilityPercent === "number" &&
+          Number.isFinite(leg.estimatedWinProbabilityPercent) && leg.estimatedWinProbabilityPercent >= 0 &&
+          leg.estimatedWinProbabilityPercent <= 100 ? leg.estimatedWinProbabilityPercent : null,
+        probabilityType: leg?.probabilityType === "agent_heuristic" ? "agent_heuristic_unverified"
+          : leg?.probabilityType === "unavailable" || leg?.estimatedWinProbabilityPercent == null ? "unavailable"
+          : "unverified_claim",
+        probabilityConfidence: ["high","medium","low"].includes(leg?.probabilityConfidence) ? leg.probabilityConfidence : "unrated",
+        probabilityRationale: typeof leg?.probabilityRationale === "string" ? leg.probabilityRationale.slice(0, 600) : "",
+        probabilityEvidenceRefs: Array.isArray(leg?.probabilityEvidenceRefs)
+          ? leg.probabilityEvidenceRefs.filter((x: any) => typeof x === "string").slice(0, 10) : [],
+        probabilityCalibrated: false,
         sourceUrl: typeof leg?.sourceUrl === "string" && (leg.sourceUrl.startsWith("https://") || leg.sourceUrl.startsWith("http://")) ? leg.sourceUrl : null,
         observedAt: typeof leg?.observedAt === "string" ? leg.observedAt : null,
         startTime: exactKickoff,
@@ -173,9 +184,19 @@ export function collectCouponCandidates(reports: any[]) {
       theoreticalOddsProduct,
       theoreticalOddsProductWarning: theoreticalOddsProduct === null ? null
         : "Mathematical product of individual decimal prices only; not a bookmaker-quoted accumulator price or a joint win probability.",
-      jointProbabilityAvailable: singleLeg && correlationAssessment.approved,
-      probabilityStatus: singleLeg && correlationAssessment.approved
-        ? "single_leg_marginal" : "marginal_only_joint_unavailable",
+      jointProbabilityAvailable: singleLeg && correlationAssessment.approved &&
+        legChecks[0]?.estimatedWinProbabilityPercent !== null,
+      wholeCouponWinProbabilityPercent: singleLeg
+        ? legChecks[0]?.estimatedWinProbabilityPercent ?? null : null,
+      wholeCouponProbabilityMethod: singleLeg
+        ? "single_leg_probability_equals_leg_probability" : "unvalidated_joint_probability_not_estimated",
+      probabilityStatus: singleLeg
+        ? (legChecks[0]?.estimatedWinProbabilityPercent === null ? "single_leg_probability_unavailable" : "single_leg_agent_estimate_unverified")
+        : "marginal_only_joint_unavailable",
+      riskPercent: typeof coupon?.riskPercent === "number" && Number.isFinite(coupon.riskPercent) &&
+        coupon.riskPercent >= 0 && coupon.riskPercent <= 100 ? coupon.riskPercent : null,
+      riskMethod: typeof coupon?.riskMethod === "string" ? coupon.riskMethod.slice(0, 300) : "unverified_agent_risk_estimate",
+      riskCalibrated: false,
       riskFactors: Array.isArray(coupon?.riskFactors) ? coupon.riskFactors : [],
       correlationNotes: Array.isArray(coupon?.correlationNotes) ? coupon.correlationNotes : [],
       correlationAssessment,
