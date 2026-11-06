@@ -108,7 +108,7 @@ export function buildWinFootballPointInTimeFeatures(args: {
       Number.isSafeInteger(row?.awayGoals) && row.awayGoals >= 0;
     if (!row || row.eventId === args.target.eventId || row.homeTeamId === row.awayTeamId ||
         rowKickoff === null || availableAt === null || !validScores ||
-        rowKickoff >= cutoff || availableAt > cutoff) {
+        availableAt < rowKickoff || rowKickoff >= cutoff || availableAt > cutoff) {
       excluded++;
       continue;
     }
