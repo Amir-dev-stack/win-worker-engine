@@ -106,3 +106,27 @@ test("offline importer requires source-recorded result availability after kickof
   assert.throws(() => importWinFootballResultsBytes(payload([{ ...valid, resultAvailableAt: "2026-11-06T00:00:00.000Z" }]), source),
     error => error.details.includes("record_0:result_available_after_source_retrieval"));
 });
+
+test("offline importer rejects impossible calendar timestamps and mixed dataset scope", () => {
+  const valid = {
+    sourceRecordId: "row-1", eventId: "match-1", kickoff: "2026-10-01T18:00:00.000Z",
+    resultAvailableAt: "2026-10-01T20:00:00.000Z",
+    competitionId: "league-a", season: "2025-2026", homeTeamId: "a", awayTeamId: "b",
+    homeGoals: 1, awayGoals: 0, scoreBasis: "regulation_time", status: "finished"
+  };
+  assert.throws(
+    () => importWinFootballResultsBytes(payload([{ ...valid, kickoff: "2026-02-31T18:00:00.000Z" }]), source),
+    error => error.code === "football_import_rows_invalid" && error.details.includes("record_0:kickoff_invalid")
+  );
+  assert.throws(
+    () => importWinFootballResultsBytes(payload([{ ...valid, season: "2024-2025" }]), source),
+    error => error.code === "football_import_rows_invalid" && error.details.includes("record_0:season_mismatch")
+  );
+  assert.throws(
+    () => importWinFootballResultsBytes(payload([
+      valid,
+      { ...valid, sourceRecordId: "row-2", eventId: "match-2", competitionId: "league-b" }
+    ]), source),
+    error => error.code === "football_import_rows_invalid" && error.details.includes("record_1:competition_mismatch")
+  );
+});
