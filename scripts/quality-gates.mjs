@@ -872,6 +872,17 @@ add("World Cup imports enforce upstream timeouts, streamed response caps and str
   worldCupBoundedResponseTests.includes("World Cup upstream requests have a bounded timeout"),
   "World Cup provider requests must time out after 12 seconds, cap revision metadata at 256 KiB and datasets at 4 MB while streaming, and reject invalid UTF-8 before JSON parsing.");
 
+const marketCalibrationTests = await read("scripts/market-calibration.test.mjs");
+add("WIN measures same-slate favourite pair dependence as a bounded research-only diagnostic",
+  calibration.includes("evaluateSameSlateFavouritePairs") &&
+  calibration.includes("sameSlatePairDependence") &&
+  calibration.includes("MAX_PAIRS=100_000") &&
+  calibration.includes("jointModelQualificationAllowed:false") &&
+  calibration.includes("couponQualificationAllowed:false") &&
+  marketCalibrationTests.includes("same-slate dependence diagnostic measures empirical pair outcomes") &&
+  marketCalibrationTests.includes("same-slate diagnostic refuses small samples"),
+  "Same-UTC-day distinct-event favourite pairs may be compared against the product of marginal consensus probabilities, but the diagnostic is bounded, sample-gated and explicitly cannot qualify coupons or authorize production use.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;

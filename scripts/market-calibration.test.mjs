@@ -50,3 +50,42 @@ test("two-way and 1X2 markets remain unscored below the minimum sample threshold
   assert.equal(report.moneyline.minimum,30);
   assert.equal(report.couponSimulation.status,"insufficient_sample");
 });
+
+test("same-slate dependence diagnostic measures empirical pair outcomes without authorizing coupons", async () => {
+  const { evaluateSameSlateFavouritePairs } = await import("../netlify/lib/market-calibration.mts");
+  const rows = [];
+  for (let day = 1; day <= 40; day++) {
+    const date = new Date(Date.UTC(2025, 0, day)).toISOString();
+    rows.push({ eventId: "a-" + day, eventStart: date, p: 0.6, won: true });
+    rows.push({ eventId: "b-" + day, eventStart: date, p: 0.6, won: true });
+    rows.push({ eventId: "c-" + day, eventStart: date, p: 0.6, won: false });
+  }
+  const result = evaluateSameSlateFavouritePairs(rows);
+  assert.equal(result.status, "diagnostic_only");
+  assert.equal(result.pairCount, 120);
+  assert.equal(result.slateCount, 40);
+  assert.ok(Math.abs(result.meanPredictedJointHitProbability - 0.36) < 1e-12);
+  assert.ok(Math.abs(result.realizedJointHitRate - 1 / 3) < 1e-12);
+  assert.ok(result.calibrationGap < 0);
+  assert.equal(result.jointModelQualificationAllowed, false);
+  assert.equal(result.couponQualificationAllowed, false);
+  assert.equal(result.productionUseAllowed, false);
+});
+
+test("same-slate diagnostic refuses small samples, duplicate event identities and oversized computation", async () => {
+  const { evaluateSameSlateFavouritePairs } = await import("../netlify/lib/market-calibration.mts");
+  const small = evaluateSameSlateFavouritePairs([
+    { eventId: "a", eventStart: "2025-01-01T10:00:00Z", p: 0.5, won: true },
+    { eventId: "b", eventStart: "2025-01-01T11:00:00Z", p: 0.5, won: false }
+  ]);
+  assert.equal(small.status, "insufficient_sample");
+  const duplicate = evaluateSameSlateFavouritePairs(Array.from({ length: 120 }, (_, i) => ({
+    eventId: "same", eventStart: "2025-01-01T00:00:00Z", p: 0.5, won: i % 2 === 0
+  })));
+  assert.equal(duplicate.status, "insufficient_sample");
+  const huge = evaluateSameSlateFavouritePairs(Array.from({ length: 500 }, (_, i) => ({
+    eventId: "event-" + i, eventStart: "2025-01-01T00:00:00Z", p: 0.5, won: i % 2 === 0
+  })));
+  assert.equal(huge.status, "sample_cap_exceeded");
+  assert.equal(huge.pairCount, 0);
+});
