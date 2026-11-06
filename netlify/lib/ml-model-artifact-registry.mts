@@ -80,10 +80,14 @@ function verifyRecord(record: StoredRecord) {
       record.evaluation.testEventCutoffs.length !== record.evaluation.testRows ||
       record.evaluation.testEventCutoffs.some(item => !item || typeof item.eventId !== "string" || !isStrictIsoTimestamp(item.predictionCutoff)) ||
       new Set(record.evaluation.testEventCutoffs.map(item => item.eventId)).size !== record.evaluation.testEventCutoffs.length ||
-      record.evaluation.testEventCutoffs.some(item => !record.evaluation.testEventIds.includes(item.eventId)) ||
       new Set(record.evaluation.testEventIds).size !== record.evaluation.testEventIds.length ||
       hashWinMLProvenance([...record.evaluation.testEventIds].sort()).sha256 !== record.evaluation.testCohortSha256 ||
       !/^[a-f0-9]{64}$/i.test(record.recordSha256 || "")) {
+    throw new WinMLModelArtifactRegistryError("model_artifact_record_invalid");
+  }
+  const testEventIds = new Set(record.evaluation.testEventIds);
+  const cutoffEventIds = new Set(record.evaluation.testEventCutoffs.map(item => item.eventId));
+  if ([...testEventIds].some(id => !cutoffEventIds.has(id))) {
     throw new WinMLModelArtifactRegistryError("model_artifact_record_invalid");
   }
   validateBinding(record.artifact, record.evaluation);
