@@ -148,7 +148,7 @@ function validateRows(rows: WinMarketEvaluationRow[], evaluatedAt: string) {
   for (const row of sorted) {
     if (!row || !validId(row.eventId) || seen.has(row.eventId) ||
         !CLASSES.includes(row.outcome) ||
-        ![row.kickoffAt, row.predictionCutoff, row.marketSnapshotAt, row.resultAvailableAt].every(isStrictIsoTimestamp)) {
+        ![row.kickoffAt, row.predictionCutoff, row.marketSnapshotAt].every(isStrictIsoTimestamp)) {
       throw new WinMarketEvaluationError("market_evaluation_row_invalid");
     }
     seen.add(row.eventId);
