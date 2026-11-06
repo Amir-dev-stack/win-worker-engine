@@ -42,6 +42,8 @@ const required = [
   "netlify/functions/coverage-monitor.mts",
   "netlify/functions/human-coupon-settlements.mts",
   "netlify/functions/independent-review.mts",
+  "netlify/lib/independent-review-request.mts",
+  "scripts/independent-review-request.test.mjs",
   "netlify/lib/data-provider-registry.mts",
   "netlify/lib/openfootball-adapter.mts",
   "netlify/lib/model-lab.mts",
