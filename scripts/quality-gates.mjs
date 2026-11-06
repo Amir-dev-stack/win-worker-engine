@@ -1142,6 +1142,16 @@ add("Football-first source identity review queue covers every result provider wi
   sourceReviewQueueTests.includes("football result candidates are the first review track"),
   "Every registered results provider is visible for review; football is prioritised, later sports remain queued, and no publisher identity or independence group is inferred.");
 
+add("Football-first odds-source contract queue covers every odds provider without inventing identity or cadence",
+  sourceReviewQueue.includes("getWinOddsSourceReviewQueue") &&
+  sourceReviewQueue.includes("ODDS_EVIDENCE_REQUIRED") &&
+  sourceReviewQueue.includes("expectedCadenceMinutes: null") &&
+  sourceReviewQueue.includes("availabilitySemanticsVerified: false") &&
+  sourceReviewQueueTests.includes("includes every registered provider declaring odds or market data") &&
+  sourceReviewQueueTests.includes("leaves identity, market semantics, timestamps, availability and cadence unverified") &&
+  sourceReviewQueueTests.includes("football odds providers are prioritised ahead of later-sport odds providers"),
+  "Every registered odds provider is queued for review of publisher ownership, bookmaker identity, market/outcome semantics, timestamps, availability, cadence and rights. No missing contract is guessed.");
+
 const footballSourceInventory = await read("netlify/lib/ml-source-review-queue.mts");
 const footballSourceInventoryTests = await read("scripts/ml-source-review-queue.test.mjs");
 add("Football-first source inventory separates results, odds, statistics and predictions without granting readiness",
