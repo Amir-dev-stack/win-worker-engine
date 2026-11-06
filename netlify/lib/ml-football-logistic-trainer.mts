@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { canonicalizeWinMLProvenance } from "./ml-provenance.mts";
+import type { WinMLModelEvaluationV1 } from "./ml-model-contract.mts";
 
 export const WIN_ML_FOOTBALL_LOGISTIC_ARTIFACT_VERSION = "win.ml.football.logistic.artifact.v1" as const;
 export const WIN_ML_FOOTBALL_1X2_CLASSES = ["HOME", "DRAW", "AWAY"] as const;
@@ -32,6 +33,7 @@ export type WinMLFootballLogisticArtifactV1 = {
   weights: number[][];
   baselineProbabilities: number[];
   trainingRows: number;
+  validationRows: number;
   trainingWindow: { from: string; to: string };
   validationWindow: { from: string; to: string };
   fitDataCutoff: string;
@@ -269,6 +271,7 @@ export function trainWinMLFootball1X2LogisticModel(args: {
     weights,
     baselineProbabilities: classCounts,
     trainingRows: trainingRows.length,
+    validationRows: validationRows.length,
     trainingWindow,
     validationWindow,
     fitDataCutoff,
@@ -311,6 +314,7 @@ export function predictWinMLFootball1X2(
       typeof artifact.datasetId !== "string" || !artifact.datasetId.trim() ||
       !/^[a-f0-9]{64}$/i.test(artifact.datasetContentSha256 || "") ||
       !Number.isSafeInteger(artifact.trainingRows) || artifact.trainingRows < 3 ||
+      !Number.isSafeInteger(artifact.validationRows) || artifact.validationRows < 1 ||
       !artifact.trainingConfig || !Number.isFinite(artifact.trainingConfig.learningRate) ||
       artifact.trainingConfig.learningRate <= 0 || artifact.trainingConfig.learningRate > 1 ||
       !Number.isSafeInteger(artifact.trainingConfig.epochs) || artifact.trainingConfig.epochs < 1 ||
@@ -323,7 +327,7 @@ export function predictWinMLFootball1X2(
       artifact.splitManifest.trainingEventIds.some(id => typeof id !== "string" || !id.trim()) ||
       artifact.splitManifest.validationEventIds.some(id => typeof id !== "string" || !id.trim()) ||
       artifact.splitManifest.trainingEventIds.length !== artifact.trainingRows ||
-      artifact.splitManifest.validationEventIds.length < 1 ||
+      artifact.splitManifest.validationEventIds.length !== artifact.validationRows ||
       new Set([...artifact.splitManifest.trainingEventIds, ...artifact.splitManifest.validationEventIds]).size !==
         artifact.splitManifest.trainingEventIds.length + artifact.splitManifest.validationEventIds.length ||
       !Array.isArray(artifact.normalization?.means) ||
@@ -424,6 +428,7 @@ export function evaluateWinMLFootball1X2LogisticModel(
   const baselineMetrics = metrics(testRows, () => artifact.baselineProbabilities);
   return {
     evaluatedAt,
+    artifactSha256: artifact.artifactSha256,
     testRows: testRows.length,
     testWindow: {
       from: sorted[0].eventStart,
@@ -435,5 +440,81 @@ export function evaluateWinMLFootball1X2LogisticModel(
     promotionAllowed: false as const,
     productionPromotionAllowed: false as const,
     automatedBettingAllowed: false as const
+  };
+}
+
+/**
+ * Creates the existing versioned evaluation contract from a frozen artifact
+ * and its later held-out test report. This does not approve the dataset or
+ * promote the model; the normal owner/licence gate still applies.
+ */
+export function buildWinMLFootball1X2EvaluationRecord(
+  artifact: WinMLFootballLogisticArtifactV1,
+  testEvaluation: ReturnType<typeof evaluateWinMLFootball1X2LogisticModel>,
+  metadata: {
+    modelVersion: string;
+    trainingRunId: string;
+    featureBuilderCommitSha: string;
+    sourceCommitSha: string;
+    trainedAt: string;
+  }
+): WinMLModelEvaluationV1 {
+  if (!artifact || !testEvaluation || testEvaluation.heldOutTest !== true ||
+      testEvaluation.artifactSha256 !== artifact.artifactSha256) {
+    throw new Error("model_evaluation_artifact_binding_invalid");
+  }
+  if (!metadata || typeof metadata.modelVersion !== "string" || !metadata.modelVersion.trim() ||
+      typeof metadata.trainingRunId !== "string" || !metadata.trainingRunId.trim() ||
+      !/^[a-f0-9]{40}$/i.test(metadata.featureBuilderCommitSha || "") ||
+      !/^[a-f0-9]{40}$/i.test(metadata.sourceCommitSha || "")) {
+    throw new Error("model_evaluation_provenance_metadata_invalid");
+  }
+  const trainedAt = timestamp(metadata.trainedAt);
+  const fitDataCutoff = timestamp(artifact.fitDataCutoff);
+  const validationStart = timestamp(artifact.validationWindow.from);
+  const testStart = timestamp(testEvaluation.testWindow.from);
+  const testEnd = timestamp(testEvaluation.testWindow.to);
+  const evaluatedAt = timestamp(testEvaluation.evaluatedAt);
+  if (trainedAt === null || fitDataCutoff === null || validationStart === null ||
+      testStart === null || testEnd === null || evaluatedAt === null ||
+      trainedAt < fitDataCutoff || trainedAt >= validationStart ||
+      testStart <= timestamp(artifact.validationWindow.to)! || evaluatedAt < testEnd) {
+    throw new Error("model_evaluation_chronology_invalid");
+  }
+  return {
+    evaluationVersion: "win.ml.model.evaluation.v1",
+    modelId: artifact.modelId,
+    modelVersion: metadata.modelVersion,
+    sport: "association_football",
+    market: "1x2",
+    algorithm: "logistic_regression",
+    datasetId: artifact.datasetId,
+    datasetContentSha256: artifact.datasetContentSha256,
+    featureSchemaVersion: artifact.featureSchemaVersion,
+    featureNames: [...artifact.featureNames],
+    featureBuilderCommitSha: metadata.featureBuilderCommitSha,
+    trainingConfigSha256: artifact.trainingConfigSha256,
+    splitManifestSha256: artifact.splitManifestSha256,
+    trainingRunId: metadata.trainingRunId,
+    targetDefinition: "regulation_time_1x2_settlement",
+    trainingWindow: { ...artifact.trainingWindow },
+    validationWindow: { ...artifact.validationWindow },
+    testWindow: { ...testEvaluation.testWindow },
+    trainedAt: metadata.trainedAt,
+    fitDataCutoff: artifact.fitDataCutoff,
+    trainingRows: artifact.trainingRows,
+    validationRows: artifact.validationRows,
+    testRows: testEvaluation.testRows,
+    baselineMetrics: {
+      brier: testEvaluation.baselineMetrics.brier,
+      logLoss: testEvaluation.baselineMetrics.logLoss
+    },
+    modelMetrics: {
+      brier: testEvaluation.modelMetrics.brier,
+      logLoss: testEvaluation.modelMetrics.logLoss
+    },
+    expectedCalibrationError: testEvaluation.modelMetrics.expectedCalibrationError,
+    artifactSha256: artifact.artifactSha256,
+    sourceCommitSha: metadata.sourceCommitSha
   };
 }
