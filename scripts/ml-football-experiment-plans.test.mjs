@@ -198,3 +198,16 @@ test("preflight rejects candidate labels and feature schemas that do not match t
   );
   assert.ok(unsupportedPair.reasons.includes("experiment_market_algorithm_mismatch"));
 });
+
+test("chronological splitter rejects impossible dates that JavaScript would normalize", async () => {
+  const { splitWinMLExamplesChronologically } = await import("../netlify/lib/ml-football-experiment-plans.mts");
+  const examples = Array.from({ length: 6 }, (_, index) => ({
+    eventId: "calendar-" + index,
+    eventStart: new Date(Date.UTC(2026, 0, index + 1, 12)).toISOString(),
+    predictionCutoff: new Date(Date.UTC(2026, 0, index + 1, 11)).toISOString()
+  }));
+  assert.throws(() => splitWinMLExamplesChronologically([
+    ...examples.slice(0, 5),
+    { ...examples[5], eventStart: "2026-02-31T12:00:00.000Z" }
+  ]), /chronological_split_example_invalid/);
+});
