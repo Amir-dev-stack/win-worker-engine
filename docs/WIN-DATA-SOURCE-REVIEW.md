@@ -108,3 +108,7 @@ Snapshot identifiers are checked for duplication within each declared source, so
 ### Normalized observed-market bridge
 
 A read-only bridge now maps WIN's normalized `ObservedMarket` records into the football odds-quality assessor. It retains provider ID as the source label, bookmaker ID, event, canonical market plus period, selection identity, line, source-record ID, observation timestamp and decimal price. Only records explicitly marked as football, non-live, non-prediction-market and scheduled-event-start are included; live, non-football and non-scheduled market rows are counted as excluded context. Expected market outcomes must be supplied explicitly by the caller, including exact selection identifiers. The bridge does not infer market outcomes from market names, rewrite provider records, connect feeds, or approve source independence/training.
+
+### Structured market-group diagnostics
+
+The odds-quality report now includes one structured diagnostic per event/market/bookmaker/source/line group: expected and observed outcome counts, missing outcome identifiers, earliest/latest capture timestamps, calculated overround where valid, and whether overround was withheld for configured timestamp skew. These rows make coverage gaps attributable to a specific source and bookmaker without aggregating unlike lines or claiming source independence. The diagnostic is descriptive; it does not establish that a bookmaker offered every market at the same time unless the configured timestamp-skew rule is satisfied.
