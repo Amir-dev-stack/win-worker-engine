@@ -1,5 +1,6 @@
 import { executeWinLLMWithPolicy } from "./llm-execution.mts";
 import { createOpenAIWinLLMAdapter } from "./agents-sdk-adapter.mts";
+import { mapWithConcurrency } from "./async-concurrency.mts";
 import { WIN_LLM_CONTRACT_VERSION } from "./llm-contract.mts";
 import { WIN_DEPARTMENTS, buildWorkerNetwork } from "./worker-org.mts";
 import { reserveAIRequest, settleAIRequest } from "./ai-budget.mts";
@@ -375,9 +376,9 @@ export async function runIndependentWorkers(brief: any, runId: string) {
   };
 
   const remainingDepartments = departmentAssignments.slice(1);
-  const rest = await Promise.all(remainingDepartments.map(department =>
+  const rest = await mapWithConcurrency(remainingDepartments, 2, department =>
     askWorker(department.role, "department", routedBrief, undefined, department)
-  ));
+  );
   const reports = [scout, ...rest];
   const failed = reports.filter(r => r.status !== "completed" || !r.report.trim());
   const departmentStatuses = WIN_DEPARTMENTS.map(department => {
@@ -403,7 +404,7 @@ export async function runDebate(brief: unknown, reports: WorkerReport[]) {
     "Markets, price and settlement red-team auditor",
     "Quantitative evidence and correlation challenger"
   ];
-  return Promise.all(roles.map(role => askWorker(role, "debate", { brief, departmentReports: reports }, reports)));
+  return mapWithConcurrency(roles, 2, role => askWorker(role, "debate", { brief, departmentReports: reports }, reports));
 }
 
 export async function runGlobalMaster(brief: unknown, reports: WorkerReport[], debate: WorkerReport[], workerNetwork: unknown) {
