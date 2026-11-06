@@ -97,7 +97,7 @@ test("model artifact registration rejects caller-forged held-out metrics", async
 });
 test("model artifact retrieval fails closed after stored record tampering", async () => {
   await resetRecords();
-  const { artifact, evaluation } = setup();
+  const { artifact, evaluation, testRows, evaluatedAt } = setup();
   await registerWinMLDatasetManifest(manifest);
   await registerWinMLModelArtifact({ artifact, evaluation, testRows, evaluatedAt, registeredAt: "2027-01-03T00:00:00.000Z" });
   await testStore.setJSON("library/ml-model-artifacts/registry-synthetic-model::0.1.0", { recordVersion: "tampered" });
