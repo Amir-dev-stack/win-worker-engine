@@ -69,3 +69,16 @@ Not yet implemented:
 - Independent provider integration verification.
 
 No live provider was called, no credentials or spending were enabled, no model was trained, and no betting or production route was changed. The PR remains draft until the user explicitly approves merge or production activation.
+
+
+## Persistent evidence schema
+
+`database/migrations/20261107_win_odds_evidence.sql` adds three append-only Neon/Postgres tables:
+
+- `win_odds_quote_snapshots`: source-pinned, licensed, timestamped bookmaker quote records and raw payload.
+- `win_prediction_quote_bindings`: immutable binding from each prediction to the exact decision-time quote, model artifact and feature snapshot.
+- `win_clv_evaluations`: evidence-only CLV result records.
+
+Database triggers reject updates/deletes and validate that the decision quote was open and ingested by the prediction cutoff. A closing quote must match the same event, market, selection, period, line, bookmaker, source revision, licence and venue; it must be observed after the cutoff and before kickoff. The database also independently checks the stored CLV arithmetic.
+
+**Deployment boundary:** this is a migration file only. It has not been applied to Neon or any production database. It requires review and an explicit target-branch decision before application.
