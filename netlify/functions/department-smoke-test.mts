@@ -1,4 +1,5 @@
 import { requireAuth } from "../lib/auth.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 import { reserveAIRequest, settleAIRequest, releaseAIRequest } from "../lib/ai-budget.mts";
 import { WIN_DEPARTMENTS } from "../lib/worker-org.mts";
 import { list, put } from "../lib/store.mts";
@@ -39,9 +40,9 @@ export default async (req: Request) => {
 
   if (req.method !== "POST") return json({ error: "Method not allowed." }, 405);
 
-  let body: any;
-  try { body = await req.json(); }
-  catch { return json({ error: "Invalid JSON body." }, 400); }
+  const parsedRequest = await readBoundedJsonObject(req, 8 * 1024);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
 
   if (body?.action !== "smoke_test" || typeof body?.departmentId !== "string") {
     return json({ error: "Provide action=smoke_test and a valid departmentId." }, 400);
