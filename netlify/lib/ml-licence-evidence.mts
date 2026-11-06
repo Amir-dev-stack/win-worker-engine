@@ -8,8 +8,17 @@ export type WinMLLicenceEvidenceV1 = {
 };
 export type WinMLSignedLicenceEvidenceV1 = { payload: WinMLLicenceEvidenceV1; signatureBase64: string };
 function timestamp(value: unknown): number | null {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
-  const parsed = Date.parse(value); return Number.isFinite(parsed) ? parsed : null;
+  if (typeof value !== "string") return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
+  if (!match) return null;
+  const [, year, month, day, hour, minute, second, , , offsetHour, offsetMinute] = match;
+  const y = Number(year), m = Number(month), d = Number(day);
+  const calendar = new Date(Date.UTC(y, m - 1, d));
+  if (calendar.getUTCFullYear() !== y || calendar.getUTCMonth() !== m - 1 || calendar.getUTCDate() !== d ||
+      Number(hour) > 23 || Number(minute) > 59 || Number(second) > 59 ||
+      (offsetHour !== undefined && (Number(offsetHour) > 23 || Number(offsetMinute) > 59))) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 /** Hashes the exact canonical review payload, not the source document itself. */
 export function hashWinMLLicenceEvidence(payload: WinMLLicenceEvidenceV1): string {
@@ -26,7 +35,12 @@ export function verifyWinMLLicenceEvidence(
   if (payload?.licenceId !== expected?.licenceId) reasons.push("licence_evidence_licence_mismatch");
   if (payload?.reviewedUse !== "training") reasons.push("licence_training_permission_not_attested");
   if (payload?.reviewerId !== expected?.reviewerId || !payload?.reviewerId?.trim()) reasons.push("licence_evidence_reviewer_mismatch");
-  if (!/^https:\/\//i.test(payload?.sourceUrl || "")) reasons.push("licence_evidence_source_url_invalid");
+  try {
+    const source = new URL(payload?.sourceUrl || "");
+    if (source.protocol !== "https:" || !source.hostname || source.username || source.password) {
+      reasons.push("licence_evidence_source_url_invalid");
+    }
+  } catch { reasons.push("licence_evidence_source_url_invalid"); }
   if (!/^[a-f0-9]{64}$/i.test(payload?.sourceDocumentSha256 || "")) reasons.push("licence_source_document_hash_invalid");
   if (typeof payload?.rationale !== "string" || payload.rationale.trim().length < 12) reasons.push("licence_review_rationale_required");
   const reviewedAt = timestamp(payload?.reviewedAt), expiresAt = timestamp(payload?.reviewExpiresAt);
