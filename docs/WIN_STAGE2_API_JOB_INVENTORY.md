@@ -199,3 +199,10 @@ These are source changes and synthetic tests; no current-head CI execution is cl
 - Added an architecture quality gate that enumerates every `registerTool` block and requires its declared OAuth scope to match an in-handler scope guard. New tools cannot silently omit this dual declaration/check.
 - Tightened audit consent wording to state explicitly that the scope cannot start research, write records, approve coupons or place bets.
 - This remains source-level inspection; OAuth callback compatibility, provider-side storage races and deployed rate-limit enforcement are not proven by the static gate.
+
+
+### Independent-review request boundary (2026-11-06)
+- The `/api/independent-review` POST handler previously parsed the request body before checking either the owner token or separate reviewer credential and had no request-size cap.
+- It now checks GET/POST method first, authenticates the caller before reading the POST body, then accepts only `application/json` and reads at most 64 KiB incrementally. Declared length, actual streamed bytes, strict UTF-8, JSON syntax and object shape are validated.
+- Owner credentials may create/rotate the separate reviewer credential, but cannot submit review decisions. Review decisions still require the separate reviewer credential.
+- Added isolated parser tests, build requirements and a quality gate for auth-before-body ordering. No reviewer credential was created or rotated by this change.
