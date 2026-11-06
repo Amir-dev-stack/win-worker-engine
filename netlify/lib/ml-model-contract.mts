@@ -113,6 +113,8 @@ export function evaluateWinMLPromotionReadiness(
   if (!sha256(evaluation?.artifactSha256)) reasons.push("model_artifact_hash_invalid");
   if (!sha256(evaluation?.trainingConfigSha256)) reasons.push("training_config_hash_invalid");
   if (!sha256(evaluation?.splitManifestSha256)) reasons.push("split_manifest_hash_invalid");
+  if (!sha256(evaluation?.testCohortSha256)) reasons.push("test_cohort_hash_invalid");
+  if (!sha256(evaluation?.testRowsSha256)) reasons.push("test_rows_hash_invalid");
   if (!/^[a-f0-9]{40}$/i.test(evaluation?.sourceCommitSha || "")) reasons.push("source_commit_sha_invalid");
   if (!/^[a-f0-9]{40}$/i.test(evaluation?.featureBuilderCommitSha || "")) reasons.push("feature_builder_commit_sha_invalid");
 
