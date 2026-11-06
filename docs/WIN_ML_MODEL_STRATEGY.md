@@ -97,3 +97,13 @@ Autonomous means the pipeline can ingest, retrain, evaluate, alert and propose a
 ## Current status
 
 This is the recommended target strategy, not a claim that these models are already trained, deployed or validated. The first implementation milestone is a reproducible baseline experiment using audited, licensed, point-in-time historical data. Until that is completed, WIN must not describe itself as having an autonomous validated ML prediction model.
+
+## Football-first scope and all-market coverage (2026-11-06)
+
+Football is the first complete implementation and validation target across WIN's full registered-sports scope. Its market coverage includes match and period results, double chance/DNB/handicaps, score and goal derivatives, team totals, BTTS, corners, cards, player/team props, Bet Builders, singles, accumulators, system bets and live/in-play markets where verified data and settlement rules support them. See docs/WIN_FOOTBALL_FIRST_MARKET_COVERAGE.md.
+
+The model strategy must not stop at 1X2 and total goals. Keep target distributions and model families market-specific: binary, multiclass, count, score matrix, player-stat distribution and joint/conditional Bet Builder outputs are not interchangeable. Derive markets from football score distributions only where mathematically valid; otherwise build a separate target/model with adequate event-level data.
+
+No minimum combined odds threshold (including 2.50), maximum odds threshold or forced accumulator format is allowed. Evaluate singles, multiples, systems, Bet Builders and in-play markets across odds bands. Odds bands are reporting/calibration cohorts, not eligibility limits. Evaluate actual prices at the decision timestamp and model dependencies between combined selections. Return NO BET when evidence, price, calibration, sample support or risk gates fail.
+
+Preserve the existing v1 evaluation contract and artifacts. Add a generalized versioned contract for future markets; do not silently reinterpret old 1X2/total-goals records or lower model-quality thresholds to manufacture coverage.

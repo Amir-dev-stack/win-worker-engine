@@ -208,3 +208,13 @@ The initial D1 scout remains sequential because its report constructs the dynami
 ## Worker-run execution leases (2026-11-06)
 
 Manual research runs now claim the same atomic run-ID lease used by scheduled learning before starting the scout/debate pipeline. A concurrent duplicate receives a conflict response, completed runs cannot be replayed, and the invocation releases only its own lease in a `finally` block. The lease uses ETag compare-and-swap for claims/reclaims and owner-specific release, so a stale worker cannot release a newer owner's claim. Failed runs remain eligible for an intentional retry after the prior lease is released or expires.
+
+## Football-first delivery priority and complete market scope (2026-11-06)
+
+All sports in WIN's registered catalogue remain in scope. Football is the first sport to receive complete market taxonomy, point-in-time data contracts, market-specific targets, settlement handling, statistical baselines and end-to-end validation. Only after those football gates pass should the shared infrastructure be extended sport by sport.
+
+Football scope is not limited to 1X2 and total goals. It includes result/handicap markets, score and goal derivatives, periods, corners, cards, team/player props, Bet Builders, singles, multiples, system products and live/in-play markets where verified source coverage and settlement rules exist. See docs/WIN_FOOTBALL_FIRST_MARKET_COVERAGE.md.
+
+Do not impose a minimum combined odds threshold (2.50 or otherwise), a maximum odds threshold, or a forced accumulator format. Analyse individual and combined ticket odds across ranges; use odds bands for calibration and performance reporting only. Model confidence, data support, price availability, dependence and risk determine recommendations. Otherwise return NO BET / unavailable.
+
+The existing 1X2 and total-goals model contract is a narrow initial implementation. Keep v1 immutable for stored artifacts; add a generalized versioned sport/market/target contract and migrate incrementally. Do not weaken chronological, provenance, sample-size, licence, owner-approval or shadow-only gates.

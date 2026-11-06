@@ -141,3 +141,13 @@ Exit gate: every persistent collection and direct storage path has an identified
 - Never overwrite user data, run production backfill, change production environment variables, merge PRs or deploy production without explicit approval.
 - Keep changes small, reversible and documented.
 - Report what was actually tested, what was skipped, what remains unverified and the exact next decision.
+
+## Football-first, all-sports product scope (2026-11-06)
+
+WIN's product scope includes all sports in its registered sport catalogue. Football is the first complete implementation and end-to-end testing vertical; other sports follow using shared infrastructure with their own sport- and market-specific models and settlement rules.
+
+The canonical football market coverage and acceptance contract is documented in docs/WIN_FOOTBALL_FIRST_MARKET_COVERAGE.md. It includes match results, result combinations, goals, periods, corners, cards, player/team props, Bet Builders, multiples/system products and live/in-play markets where verified source coverage and settlement rules exist.
+
+**Odds policy correction:** no minimum combined odds (including 2.50), no maximum odds, and no forced accumulator format. WIN analyses singles and all supported ticket styles across odds ranges. Odds bands are evaluation cohorts, not blanket selection filters. Unsupported, stale, weakly evidenced or risk-failing cases return NO BET / unavailable.
+
+The current football 1X2 model/evaluation modules are a narrow first vertical, not the complete WIN market contract. Preserve existing v1 artifacts and add a backward-compatible generalized market contract before expanding model outputs and evaluation.
