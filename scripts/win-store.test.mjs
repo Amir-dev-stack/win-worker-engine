@@ -22,13 +22,17 @@ function createPagedMemoryStore() {
       records.set(key, { value: clone(value), etag });
       return { modified: true, etag };
     },
+    setRaw(key, raw) {
+      records.set(key, { raw, etag: "memory-raw-etag-" + (++revision) });
+    },
     async get(key) {
       activeReads++;
       this.maxConcurrentReads = Math.max(this.maxConcurrentReads, activeReads);
       try {
         await Promise.resolve();
         const item = records.get(key);
-        return item ? clone(item.value) : null;
+        if (!item) return null;
+        return item.raw !== undefined ? JSON.parse(item.raw) : clone(item.value);
       } finally {
         activeReads--;
       }
@@ -45,7 +49,9 @@ function createPagedMemoryStore() {
     },
     async getWithMetadata(key) {
       const item = records.get(key);
-      return item ? { data: clone(item.value), etag: item.etag } : null;
+      if (!item) return null;
+      const data = item.raw !== undefined ? JSON.parse(item.raw) : clone(item.value);
+      return { data, etag: item.etag };
     }
   };
 }
@@ -95,6 +101,17 @@ test("shared WIN store enforces isolated adapter, paginated limits and condition
     assert.equal(updated.value.state, "reviewed");
     assert.notEqual(updated.etag, initial.etag);
     assert.equal(await store.getWithMetadata("library/coupons", "missing"), null);
+    assert.equal(await store.get("library/coupons", "missing"), null,
+      "a missing JSON record must resolve to null");
+    adapter.setRaw("sample/legacy-json", '{"legacy":true,"schemaVersion":1}');
+    assert.deepEqual(await store.get("sample", "legacy-json"),
+      { legacy: true, schemaVersion: 1 },
+      "a valid legacy JSON record remains readable without an invented migration");
+    adapter.setRaw("sample/malformed-json", "{not-valid-json");
+    await assert.rejects(() => store.get("sample", "malformed-json"), SyntaxError,
+      "malformed JSON must surface as a parse failure rather than becoming an empty record");
+    await assert.rejects(() => store.list("sample", 100), SyntaxError,
+      "a malformed record in a bounded list must not be silently dropped");
 
     const createRace = await Promise.all(Array.from({ length: 12 }, (_, index) =>
       store.putIfNew("library/coupons", "create-race", { winner: index })
@@ -144,6 +161,8 @@ test("shared WIN store enforces isolated adapter, paginated limits and condition
     assert.equal((await store.get("library/coupons", "appended")).state, "appended");
     await store.remove("library/coupons", "appended");
     assert.equal(await store.get("library/coupons", "appended"), null);
+    assert.equal((await store.list("library/coupons", 100)).some(item => item.state === "appended"), false,
+      "a deleted record must not reappear in a subsequent list read");
   } finally {
     if (previousFlag === undefined) delete process.env.WIN_STORE_TEST_MODE;
     else process.env.WIN_STORE_TEST_MODE = previousFlag;
