@@ -72,3 +72,16 @@ test("1X2 labels reject arbitrary caller-supplied settlement identifiers", () =>
   })).includes("settlement_aware_label_invalid"));
   assert.equal(WIN_ML_FOOTBALL_1X2_SETTLEMENT_RULE_ID, "win.football.regulation_time_1x2.v1");
 });
+
+test("ML data contract rejects impossible calendar timestamps", () => {
+  for (const retrievedAt of [
+    "2026-02-29T12:00:00.000Z",
+    "2026-02-31T12:00:00.000Z",
+    "2026-11-06T24:00:00.000Z"
+  ]) {
+    assert.ok(
+      validateWinMLDatasetManifest(manifest({ retrievedAt })).includes("retrieved_at_invalid"),
+      retrievedAt
+    );
+  }
+});
