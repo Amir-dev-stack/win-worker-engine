@@ -1,5 +1,6 @@
 import { requireAuth } from "../lib/auth.mts";
 import { get, list, put } from "../lib/store.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 
 const clean = (value: unknown, max = 2000) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const outcomes = new Set(["won", "lost", "void", "partial", "cancelled"]);
@@ -15,8 +16,9 @@ export default async (req: Request) => {
     return Response.json({ count: filtered.length, items: filtered.slice(0, 300) }, { headers: { "cache-control": "no-store" } });
   }
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  let body: any;
-  try { body = await req.json(); } catch { return Response.json({ error: "Expected JSON body" }, { status: 400 }); }
+  const parsedRequest = await readBoundedJsonObject(req, 16 * 1024);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
   const couponId = clean(body?.couponId, 180);
   const claimedOutcome = clean(body?.claimedOutcome, 30).toLowerCase();
   const evidenceUrl = clean(body?.evidenceUrl, 1500);
