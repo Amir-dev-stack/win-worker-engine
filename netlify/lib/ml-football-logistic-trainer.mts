@@ -297,9 +297,16 @@ export function predictWinMLFootball1X2(
       !/^[a-f0-9]{64}$/i.test(artifact.datasetContentSha256 || "") ||
       !Number.isSafeInteger(artifact.trainingRows) || artifact.trainingRows < 3 ||
       !artifact.trainingConfig || !Number.isFinite(artifact.trainingConfig.learningRate) ||
-      !Number.isSafeInteger(artifact.trainingConfig.epochs) || !Number.isFinite(artifact.trainingConfig.l2) ||
+      artifact.trainingConfig.learningRate <= 0 || artifact.trainingConfig.learningRate > 1 ||
+      !Number.isSafeInteger(artifact.trainingConfig.epochs) || artifact.trainingConfig.epochs < 1 ||
+      artifact.trainingConfig.epochs > 5_000 || !Number.isFinite(artifact.trainingConfig.l2) ||
+      artifact.trainingConfig.l2 < 0 || artifact.trainingConfig.l2 > 10 ||
+      !/^[a-f0-9]{64}$/i.test(artifact.trainingConfigSha256 || "") ||
+      !/^[a-f0-9]{64}$/i.test(artifact.splitManifestSha256 || "") ||
       !artifact.splitManifest || !Array.isArray(artifact.splitManifest.trainingEventIds) ||
       !Array.isArray(artifact.splitManifest.validationEventIds) ||
+      artifact.splitManifest.trainingEventIds.some(id => typeof id !== "string" || !id.trim()) ||
+      artifact.splitManifest.validationEventIds.some(id => typeof id !== "string" || !id.trim()) ||
       artifact.splitManifest.trainingEventIds.length !== artifact.trainingRows ||
       artifact.splitManifest.validationEventIds.length < 1 ||
       new Set([...artifact.splitManifest.trainingEventIds, ...artifact.splitManifest.validationEventIds]).size !==
