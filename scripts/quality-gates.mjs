@@ -564,6 +564,16 @@ add("WIN model artifact registry immutably binds model, dataset, evaluation and 
   "A single immutable record binds the verified model artifact, evaluation contract and registered dataset hash; reads re-verify hashes and never authorize production promotion or betting.");
 
 const resultCorrectionDesign = await read("docs/WIN_PREDICTION_RESULT_CORRECTION_DESIGN.md");
+const apiJobInventory = await read("docs/WIN_STAGE2_API_JOB_INVENTORY.md");
+add("Stage 2 API inventory includes the protected ML owner-approval route and its control-plane boundary",
+  apiJobInventory.includes("`/api/ml-owner-approval`") &&
+  apiJobInventory.includes("WIN_ML_OWNER_APPROVAL_TOKEN") &&
+  apiJobInventory.includes("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") &&
+  apiJobInventory.includes("WIN_ML_OWNER_REVIEWER_ID") &&
+  apiJobInventory.includes("no signed approval was registered"),
+  "Keep the dedicated owner-only ML approval endpoint visible in the source-level route/security inventory.");
+
+
 add("Prediction-result corrections remain append-only, independently reviewed and fail closed",
   resultCorrectionDesign.includes("The original submission and its claim remain immutable forever.") &&
   resultCorrectionDesign.includes("submitter credential and reviewer credential must differ") &&
