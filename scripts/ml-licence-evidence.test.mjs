@@ -21,6 +21,9 @@ test("licence evidence cannot be reused for a different licence, reviewer or alt
  assert.ok(verifyWinMLLicenceEvidence(signed(), key, { ...expected, reviewerId: "other" }).reasons.includes("licence_evidence_reviewer_mismatch"));
  assert.ok(verifyWinMLLicenceEvidence(signed(), key, { ...expected, evidenceSha256: "b".repeat(64) }).reasons.includes("licence_evidence_hash_mismatch"));
  assert.ok(verifyWinMLLicenceEvidence(signed({ ...payload, reviewedUse: "research_only" }), key, expected).reasons.includes("licence_training_permission_not_attested"));
+ assert.ok(verifyWinMLLicenceEvidence(signed({ ...payload, reviewerId: 7 }), key, expected).reasons.includes("licence_evidence_reviewer_mismatch"));
+ assert.ok(verifyWinMLLicenceEvidence(signed({ ...payload, licenceId: "" }), key, expected).reasons.includes("licence_evidence_licence_id_invalid"));
+ assert.ok(verifyWinMLLicenceEvidence(signed({ ...payload, sourceUrl: 7 }), key, expected).reasons.includes("licence_evidence_source_url_invalid"));
 });
 test("expired, future, malformed and incorrectly signed licence reviews fail closed", () => {
  assert.ok(verifyWinMLLicenceEvidence(signed({ ...payload, reviewExpiresAt: "2026-11-07T00:00:00.000Z" }), key, expected).reasons.includes("licence_review_expired"));
