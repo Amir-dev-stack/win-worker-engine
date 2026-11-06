@@ -47,3 +47,17 @@ Current-season datasets are partial snapshots and can have small sample sizes. T
 ## Importer provenance hardening (2026-11-06)
 
 The offline football-results importer now requires a pinned immutable `sourceRevision`; mutable aliases such as `main`, `master`, `latest`, `head` and `current` are rejected. The imported manifest records that revision and the SHA-256 of the exact input bytes, requires timezone-qualified strict timestamps, rejects impossible calendar dates, and prevents one manifest from mixing seasons or competition IDs. Credential-bearing source URLs are rejected. These controls improve reproducibility and fail-closed data quality; they do not approve this candidate, establish third-party rights, or independently verify source-reported results.
+
+
+## Reviewed publisher identity and result corroboration (2026-11-06)
+
+WIN now separates a provider's declared name/group from independently reviewed upstream ownership.
+
+- `netlify/lib/ml-source-identity-registry.mts` is a server-owned catalogue. Each future entry must bind an exact provider ID to its upstream legal/publishing owner, feed/API product, independence group, reviewer, review timestamp, expiry, immutable evidence URL and SHA-256 evidence hash.
+- The catalogue is intentionally **empty** until source ownership evidence is actually reviewed. Provider IDs and independence groups supplied in result records are not trusted metadata.
+- Result-evidence registration and reads now require both providers to resolve from this catalogue, require the evidence record's group to match the reviewed group, reject expired/future reviews, and reject two feeds with the same upstream owner or independence group.
+- A source can be independent only where the underlying publisher/owner is distinct. Separate APIs, websites, brands, resellers, data formats or provider IDs are not sufficient if they republish the same upstream result feed.
+- Before adding a catalogue entry, a reviewer must inspect primary documentation or contractual/legal evidence identifying the publisher and the feed's upstream provenance; archive the exact reviewed evidence, calculate its SHA-256, record the reviewer and review window, and confirm no common upstream owner with the proposed corroborating source.
+- Reviews must be renewed before expiry. A missing, malformed, expired or changed evidence record must remain unverified.
+
+**Current operational effect:** all football result pairs are presently blocked from the durable corroboration registry because no provider ownership records have been reviewed and curated yet. The pure score-comparison helper remains an audit classifier, but it is not proof of source independence. No existing historical result pair is grandfathered into trusted corroboration, and no training approval is granted by this feature.
