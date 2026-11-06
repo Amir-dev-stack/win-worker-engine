@@ -146,6 +146,10 @@ export function trainWinMLFootball1X2LogisticModel(args: {
   const validationRows = args.validationRows;
   const featureNames = Object.keys(trainingRows[0].features || {}).sort();
   if (featureNames.length === 0 || featureNames.length > 128) throw new Error("training_feature_count_out_of_bounds");
+  if (trainingRows.length * featureNames.length * config.epochs > 25_000_000 ||
+      validationRows.length * featureNames.length > 5_000_000) {
+    throw new Error("training_compute_budget_exceeded");
+  }
   const seen = new Set<string>();
   errors.push(...validateRows(trainingRows, featureNames, seen));
   errors.push(...validateRows(validationRows, featureNames, seen));
@@ -254,12 +258,27 @@ export function predictWinMLFootball1X2(
   if (!artifact || artifact.artifactVersion !== WIN_ML_FOOTBALL_LOGISTIC_ARTIFACT_VERSION ||
       !Array.isArray(artifact.featureNames) || !Array.isArray(artifact.weights) ||
       artifact.weights.length !== WIN_ML_FOOTBALL_1X2_CLASSES.length ||
+      !Array.isArray(artifact.classes) ||
+      artifact.classes.some((value, index) => value !== WIN_ML_FOOTBALL_1X2_CLASSES[index]) ||
       artifact.normalization?.means?.length !== artifact.featureNames.length ||
-      artifact.normalization?.scales?.length !== artifact.featureNames.length) {
+      artifact.normalization?.scales?.length !== artifact.featureNames.length ||
+      artifact.weights.some(row => !Array.isArray(row) || row.length !== artifact.featureNames.length + 1 ||
+        row.some(value => typeof value !== "number" || !Number.isFinite(value))) ||
+      artifact.normalization.means.some(value => typeof value !== "number" || !Number.isFinite(value)) ||
+      artifact.normalization.scales.some(value => typeof value !== "number" || !Number.isFinite(value) || value <= 0)) {
     throw new Error("model_artifact_invalid");
   }
+  const { artifactSha256, ...artifactPayload } = artifact;
+  if (!/^[a-f0-9]{64}$/i.test(artifactSha256 || "") ||
+      sha256(canonicalizeWinMLProvenance(artifactPayload)) !== artifactSha256) {
+    throw new Error("model_artifact_hash_mismatch");
+  }
+  const sortedFeatureNames = [...artifact.featureNames].sort();
+  if (artifact.featureNames.some((name, index) => name !== sortedFeatureNames[index])) {
+    throw new Error("model_artifact_feature_schema_invalid");
+  }
   const keys = Object.keys(features || {}).sort();
-  if (keys.length !== artifact.featureNames.length || keys.some((key, index) => key !== [...artifact.featureNames].sort()[index])) {
+  if (keys.length !== artifact.featureNames.length || keys.some((key, index) => key !== artifact.featureNames[index])) {
     throw new Error("prediction_feature_schema_mismatch");
   }
   const normalized = artifact.featureNames.map((name, index) => {
