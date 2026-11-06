@@ -677,12 +677,14 @@ const verifiedMarketBlend = await read("netlify/lib/ml-market-anchored-blend-ver
 add("WIN market blend runtime obtains metrics only from registered immutable evidence",
   verifiedMarketBlend.includes("getWinMLMarketBlendEvaluationEvidence") &&
   verifiedMarketBlend.includes("getWinMLModelArtifact") &&
-  verifiedMarketBlend.includes("input.model?.artifactSha256 !== model.artifact.artifactSha256") &&
-  verifiedMarketBlend.includes("input.model?.datasetContentSha256 !== evidence.datasetContentSha256") &&
-  verifiedMarketBlend.includes("calculateWinMLMarketAnchoredBlend({ ...input, evaluation: evidence })") &&
-  verifiedMarketBlend.includes("probability vector is still caller-supplied") &&
-  winMarketEvaluationRegistryTests.includes("Deliberately forged caller metrics must be overwritten by registry evidence"),
-  "The verified wrapper replaces caller metrics with registry evidence and binds the model artifact/dataset; event probabilities remain explicitly unverified caller input.");
+  verifiedMarketBlend.includes("getWinMLShadowPredictionRecord(predictionRunId)") &&
+  verifiedMarketBlend.includes("market_blend_registered_shadow_prediction_binding_mismatch") &&
+  verifiedMarketBlend.includes("probabilities: prediction.probabilities") &&
+  verifiedMarketBlend.includes("prediction.featureVectorSha256 !== input.model.featureVectorSha256") &&
+  !verifiedMarketBlend.includes("probability vector is still caller-supplied") &&
+  winMarketEvaluationRegistryTests.includes("Deliberately forged caller metrics must be overwritten by registry evidence") &&
+  winMarketEvaluationRegistryTests.includes("trustedProbabilityBlend"),
+  "The verified wrapper loads the immutable model, market evidence and exact registered shadow prediction; caller probabilities are overwritten and event/model/cutoff/feature hashes must match.");
 
 const mlModelArtifactRegistry = await read("netlify/lib/ml-model-artifact-registry.mts");
 const mlModelArtifactRegistryTests = await read("scripts/ml-model-artifact-registry.test.mjs");
