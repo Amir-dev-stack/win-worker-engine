@@ -51,3 +51,19 @@ test("preserves open, suspended, closed and unknown bookmaker availability", () 
   assert.deepEqual(report.availabilityStatusCounts, { open: 1, suspended: 1, closed: 1, unknown: 1 });
   assert.ok(report.reasons.includes("non_open_or_unknown_availability_snapshots_present"));
 });
+
+
+test("passes observed kickoff metadata into the optional fixture-start consistency gate", () => {
+  const rows = records.slice(0, 3).map(row => ({ ...row }));
+  rows[1] = { ...rows[1], startsAt: "2026-11-10T18:20:00.000Z" };
+  rows[2] = { ...rows[2], startsAt: undefined };
+  const report = assessWinObservedFootballOddsQuality({
+    fixtures,
+    records: rows,
+    expectedMarkets,
+    maxFixtureStartSkewMinutes: 5
+  });
+  assert.equal(report.validPreKickoffSnapshotCount, 1);
+  assert.equal(report.fixtureStartMismatchCount, 1);
+  assert.equal(report.fixtureStartTimeUnavailableCount, 1);
+});
