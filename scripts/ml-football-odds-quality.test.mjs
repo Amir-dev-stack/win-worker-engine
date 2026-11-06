@@ -10,7 +10,7 @@ const snapshots = [
   { snapshotId: "a1", eventId: "match-1", marketId: "1x2", outcomeId: "away", bookmakerId: "book-a", sourceId: "feed-a", capturedAt: "2026-11-10T17:00:00.000Z", decimalOdds: 4.0 }
 ];
 
-test("validates pre-kickoff 1X2 completeness and reports bookmaker/source labels without claiming independence", () => {
+test("validates pre-kickoff 1X2 completeness and reports structured bookmaker market coverage output", () => {
   const report = assessWinFootballOddsQuality({ fixtures, snapshots, expectedMarkets });
   assert.equal(report.validPreKickoffSnapshotCount, 3);
   assert.equal(report.incompleteMarketGroupCount, 0);
