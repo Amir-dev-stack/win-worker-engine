@@ -113,9 +113,24 @@ Audited against the current PR tree after the request-boundary hardening commit:
 - The validation is isolated in `readScheduledScoutRunId` and covered by `scripts/scheduled-scout-request.test.mjs` for accepted IDs, method rejection, content-type rejection, malformed/missing/invalid IDs, and oversized bodies.
 - The endpoint still requires the internal bearer token before request parsing and remains gated by `WIN_AI_BUDGET_APPROVED`, the persistent spending lock and existing AI-budget checks before research execution.
 
-Open issue identified during this review:
+## 8. Scheduled-run execution ownership and crash recovery (2026-11-06)
 
-- The runner's early completion check is not an execution lock. Two authenticated invocations for the same run can both observe a non-completed run and proceed concurrently. The per-agent task lease protects that task's lease, but does not establish exclusive ownership of the overall learning run. A separate atomic run-claim/lease with stale recovery and tests is still required before claiming duplicate-trigger safety.
-- This source audit does not prove that Netlify's scheduler is active, that the background function is inaccessible through every possible route, or that the updated handler has executed in CI.
+The duplicate-invocation gap identified above has been addressed in source:
+
+- New module: `netlify/lib/scheduled-run-lease.mts`.
+- Each run receives a lease under `library/scheduled-run-leases/`, keyed by SHA-256 of the run ID.
+- Initial ownership uses `putIfNew`; expired-lease reclamation and release use ETag-conditional `putIfMatch`.
+- A live lease blocks a duplicate invocation. Only the invocation holding the matching lease ID may release it.
+- A process crash leaves the lease to expire (default 30 minutes); a later invocation can reclaim it. Lease duration is bounded to at most 60 minutes.
+- The scheduled runner acquires the lease after validating the run and checking whether it is already complete. A duplicate sees HTTP 202 with `already_running`; bounded contention errors fail closed with HTTP 503.
+- The lease is released in `finally` after normal completion or handled failure. If release fails or the process crashes, expiry is the recovery path.
+- `scripts/scheduled-run-lease-isolated.test.mjs` covers concurrent ownership, duplicate rejection, owner-only release, expiry/reclaim and stale-worker protection.
+- `scripts/scheduled-scout-request.test.mjs` covers the request boundary. Both tests are included in the build's required-file list and the lease contract is included in architecture quality gates.
+
+Limitations remain explicit:
+- The tests use the isolated in-memory adapter; they do not prove provider-side Netlify Blobs atomicity.
+- There is no lease heartbeat. The 30-minute default exceeds the current expected background-run window, but if real executions can exceed that duration, a heartbeat/renewal contract should be added before increasing workload.
+- No CI run is visible for the current PR head, so these new tests and quality gates remain unexecuted.
+- This does not prove that Netlify's scheduler is active or establish the deployed invocation history.
 
 No live invocation, production schedule change, provider call, deployment or credential change was made.
