@@ -31,7 +31,7 @@ const primary = {
 const corroborating = { ...primary, providerId: "provider-b", independenceGroup: "publisher-b",
   sourceRecordId: "b-1", recordSha256: "b".repeat(64) };
 
-test("football result evidence registry persists immutable matching and conflicting pairs", async () => {
+test("football result evidence registry persists immutable matching and conflicting pairs, refuses unverifiable pairs and rejects tampered stored evidence", async () => {
   const previousFlag = process.env.WIN_STORE_TEST_MODE;
   process.env.WIN_STORE_TEST_MODE = "1";
   const memoryStore = createMemoryStore();
