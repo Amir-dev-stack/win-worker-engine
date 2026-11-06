@@ -582,6 +582,23 @@ add("Prediction-result corrections remain append-only, independently reviewed an
   resultCorrectionDesign.includes("unreviewed or rejected correction never enters model training data"),
   "A governed correction path must preserve the original claim, require a separate reviewer and keep unreviewed corrections out of training.");
 
+const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
+const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
+const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
+const scheduledRunner = await read("netlify/functions/scheduled-scout-runner.mts");
+add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
+  scheduledRunner.includes("claimWinScheduledRunLease") &&
+  scheduledRunner.includes("releaseWinScheduledRunLease") &&
+  scheduledRunner.includes("readScheduledScoutRunId") &&
+  scheduledRunLease.includes("putIfNew") &&
+  scheduledRunLease.includes("putIfMatch") &&
+  scheduledRunLease.includes("MAX_CAS_ATTEMPTS") &&
+  scheduledRunLeaseTests.includes("elects one concurrent owner") &&
+  scheduledRunLeaseTests.includes("expired run lease must be reclaimable") &&
+  scheduledRequestTests.includes("rejects oversized bodies") &&
+  scheduledRequestTests.includes("rejects non-POST methods"),
+  "A scheduled runner must reject malformed/oversized requests, serialize duplicate run execution with conditional leases, and permit stale-lease recovery without allowing stale workers to release a newer lease.");
+
 const packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
   packageManifest.dependencies?.["@netlify/blobs"] === "11.1.7" &&
