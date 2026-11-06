@@ -129,6 +129,60 @@ test("signed owner approval unlocks only registered human shadow review and revo
     const approval = { payload: approvalPayload, signatureBase64: signPayload(approvalPayload) };
     await registerWinMLOwnerTrainingApproval(approval, trustedConfig, now);
 
+    // Exercise approval failures against the same registry used by artifact registration.
+    const invalidApproval = (approvalIdValue, overrides = {}, signature = null) => {
+      const payload = { ...approvalPayload, approvalId: approvalIdValue, ...overrides };
+      return { payload, signatureBase64: signature || signPayload(payload) };
+    };
+    await assert.rejects(
+      registerWinMLOwnerTrainingApproval(invalidApproval("signed-shadow-wrong-hash", {
+        datasetContentSha256: "b".repeat(64)
+      }), trustedConfig, now),
+      error => error.code === "owner_approval_evidence_invalid" &&
+        error.details.includes("owner_approval_dataset_hash_mismatch")
+    );
+    await assert.rejects(
+      registerWinMLOwnerTrainingApproval(invalidApproval("signed-shadow-wrong-licence", {
+        licenceId: "LICENCE-NOT-IN-MANIFEST"
+      }), trustedConfig, now),
+      error => error.code === "owner_approval_evidence_invalid" &&
+        error.details.includes("owner_approval_licence_mismatch")
+    );
+    await assert.rejects(
+      registerWinMLOwnerTrainingApproval(invalidApproval("signed-shadow-expired", {
+        expiresAt: "2026-01-01T00:00:00.000Z"
+      }), trustedConfig, now),
+      error => error.code === "owner_approval_evidence_invalid" &&
+        error.details.includes("owner_approval_expired")
+    );
+    const forgedApproval = invalidApproval("signed-shadow-invalid-signature", {
+      expiresAt: "2029-01-01T00:00:00.000Z"
+    }, "Zm9yZ2Vk");
+    await assert.rejects(
+      registerWinMLOwnerTrainingApproval(forgedApproval, trustedConfig, now),
+      error => error.code === "owner_approval_evidence_invalid" &&
+        error.details.includes("owner_approval_signature_encoding_invalid")
+    );
+
+    const otherDatasetId = "signed-shadow-other-dataset";
+    await registerWinMLDatasetManifest({
+      ...manifest, datasetId: otherDatasetId, contentSha256: "f".repeat(64)
+    });
+    const wrongDatasetApprovalPayload = {
+      ...approvalPayload,
+      approvalId: "signed-shadow-wrong-dataset",
+      datasetId: otherDatasetId,
+      datasetContentSha256: "f".repeat(64)
+    };
+    await registerWinMLOwnerTrainingApproval({
+      payload: wrongDatasetApprovalPayload,
+      signatureBase64: signPayload(wrongDatasetApprovalPayload)
+    }, trustedConfig, now);
+    const wrongDatasetReadiness = await import("../netlify/lib/ml-owner-approval-registry.mts")
+      .then(module => module.evaluateWinMLTrainingReadiness(datasetId, "signed-shadow-wrong-dataset", trustedConfig, now));
+    assert.equal(wrongDatasetReadiness.evidenceReady, false);
+    assert.ok(wrongDatasetReadiness.reasons.includes("owner_approval_dataset_mismatch"));
+
     const trainingRows = rows(0, 500);
     const validationRows = rows(501, 100);
     const testRows = rows(602, 100);
