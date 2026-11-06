@@ -143,3 +143,10 @@ test("offline importer requires a pinned immutable source revision", () => {
   const imported = importWinFootballResultsBytes(payload(), source);
   assert.equal(imported.manifest.sourceRevision, source.sourceRevision);
 });
+
+test("offline importer rejects credential-bearing source URLs", () => {
+  assert.throws(() => importWinFootballResultsBytes(payload(), {
+    ...source, sourceUrl: "https://user:password@example.test/results.json"
+  }), error => error.code === "football_import_source_metadata_invalid" &&
+    error.details.includes("source_url_credentials_or_host_invalid"));
+});
