@@ -27,7 +27,7 @@ The synchronous dataset/training-example contract remains fail-closed. This audi
 
 WIN also contains a pure, deterministic multinomial logistic-regression implementation for football 1X2. It is not connected to a production route or automatic training job. Its inputs must include an event-specific prediction cutoff, feature availability timestamps and source IDs, and label-availability timestamps. It fits normalization parameters only on the training partition and rejects future features, unsettled labels, duplicate events, schema drift, overlapping training/validation chronology, non-finite values, and excessive compute requests.
 
-The trainer emits a content-hashed artifact and validation metrics against a training-class-frequency baseline. Validation metrics are not held-out test evidence. A separate chronological test partition and the existing evaluation/promotion contract remain mandatory. The experiment plan still declares `fittingAllowed: false`; this implementation does not activate real-data fitting, production predictions, or betting.
+The trainer emits a content-hashed artifact, exact split/config hashes, and validation metrics against a training-class-frequency baseline. A separate evaluator accepts only a later, non-overlapping held-out test partition and reports test Brier/log-loss/ECE against the same training-derived baseline. Validation metrics are never substituted for test metrics. The existing evaluation/promotion contract remains mandatory. The experiment plan still declares `fittingAllowed: false`; this implementation does not activate real-data fitting, production predictions, or betting.
 
 ## Cryptographic and legal limits
 
