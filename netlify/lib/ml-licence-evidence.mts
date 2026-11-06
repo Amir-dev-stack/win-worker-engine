@@ -1,5 +1,6 @@
 import { createHash, verify as verifySignature } from "node:crypto";
 import { canonicalizeWinMLProvenance } from "./ml-provenance.mts";
+import { parseStrictIsoTimestamp } from "./strict-timestamp.mts";
 export const WIN_ML_LICENCE_EVIDENCE_VERSION = "win.ml.licence-review.v1" as const;
 export type WinMLLicenceEvidenceV1 = {
   evidenceVersion: typeof WIN_ML_LICENCE_EVIDENCE_VERSION; evidenceId: string; licenceId: string;
@@ -8,17 +9,7 @@ export type WinMLLicenceEvidenceV1 = {
 };
 export type WinMLSignedLicenceEvidenceV1 = { payload: WinMLLicenceEvidenceV1; signatureBase64: string };
 function timestamp(value: unknown): number | null {
-  if (typeof value !== "string") return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
-  if (!match) return null;
-  const [, year, month, day, hour, minute, second, , , offsetHour, offsetMinute] = match;
-  const y = Number(year), m = Number(month), d = Number(day);
-  const calendar = new Date(Date.UTC(y, m - 1, d));
-  if (calendar.getUTCFullYear() !== y || calendar.getUTCMonth() !== m - 1 || calendar.getUTCDate() !== d ||
-      Number(hour) > 23 || Number(minute) > 59 || Number(second) > 59 ||
-      (offsetHour !== undefined && (Number(offsetHour) > 23 || Number(offsetMinute) > 59))) return null;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  return parseStrictIsoTimestamp(value);
 }
 /** Hashes the exact canonical review payload, not the source document itself. */
 export function hashWinMLLicenceEvidence(payload: WinMLLicenceEvidenceV1): string {
