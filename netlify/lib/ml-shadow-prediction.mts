@@ -142,9 +142,11 @@ export async function recordWinMLShadowPrediction(prediction: WinMLPredictionV1)
   if (result?.modified) return { recorded: true, idempotent: false, recordSha256 };
   const existing = await get<typeof record>(COLLECTION, prediction.predictionRunId);
   if (existing && existing.recordVersion === RECORD_VERSION &&
-      existing.predictionSha256 === payload.predictionSha256 &&
-      existing.recordSha256 === recordSha256) {
-    return { recorded: false, idempotent: true, recordSha256 };
+      existing.predictionSha256 === payload.predictionSha256) {
+    const { recordSha256: storedHash, ...storedPayload } = existing;
+    if (storedHash === hashWinMLProvenance(storedPayload).sha256) {
+      return { recorded: false, idempotent: true, recordSha256: storedHash };
+    }
   }
   throw new WinMLShadowPredictionError("shadow_prediction_immutable_conflict");
 }
