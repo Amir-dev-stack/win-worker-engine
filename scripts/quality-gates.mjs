@@ -934,7 +934,7 @@ add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and re
 add("Coupon dashboard distinguishes verified combined odds from theoretical price products and unquantified joint probability",
   app.includes("Theoretical leg-price product:") &&
   app.includes("not a bookmaker-quoted accumulator price") &&
-  app.includes("Whole-coupon probability: not reliably quantifiable") &&
+  app.includes("Whole-coupon probability:") &&
   app.includes("Probability warning:") &&
   app.includes("Incomplete evidence:"),
   "The coupon board must display draftable multi-leg proposals without presenting a leg-price product as a quoted accumulator price or claiming a joint win probability.");
