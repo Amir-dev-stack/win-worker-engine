@@ -116,10 +116,14 @@ export function evaluateWinMLPromotionReadiness(
   if (!sha256(evaluation?.trainingConfigSha256)) reasons.push("training_config_hash_invalid");
   if (!sha256(evaluation?.splitManifestSha256)) reasons.push("split_manifest_hash_invalid");
   if (!sha256(evaluation?.testCohortSha256)) reasons.push("test_cohort_hash_invalid");
+  if (!Array.isArray(evaluation?.testEventIds) || evaluation.testEventIds.length !== evaluation?.testRows ||
+      evaluation.testEventIds.some(id => !nonEmpty(id)) ||
+      new Set(evaluation.testEventIds).size !== evaluation.testEventIds.length) reasons.push("test_event_ids_invalid");
   if (!Array.isArray(evaluation?.testEventCutoffs) || evaluation.testEventCutoffs.length !== evaluation?.testRows ||
       evaluation.testEventCutoffs.some(item => !nonEmpty(item?.eventId) || !timestamp(item?.predictionCutoff)) ||
       new Set(evaluation.testEventCutoffs.map(item => item.eventId)).size !== evaluation.testEventCutoffs.length ||
-      evaluation.testEventCutoffs.some(item => !evaluation.testEventIds?.includes(item.eventId))) reasons.push("test_event_cutoffs_invalid");
+      evaluation.testEventCutoffs.some(item => !evaluation.testEventIds?.includes(item.eventId)) ||
+      evaluation.testEventIds?.some(id => !evaluation.testEventCutoffs.some(item => item.eventId === id))) reasons.push("test_event_cutoffs_invalid");
   if (!sha256(evaluation?.testRowsSha256)) reasons.push("test_rows_hash_invalid");
   if (!/^[a-f0-9]{40}$/i.test(evaluation?.sourceCommitSha || "")) reasons.push("source_commit_sha_invalid");
   if (!/^[a-f0-9]{40}$/i.test(evaluation?.featureBuilderCommitSha || "")) reasons.push("feature_builder_commit_sha_invalid");
