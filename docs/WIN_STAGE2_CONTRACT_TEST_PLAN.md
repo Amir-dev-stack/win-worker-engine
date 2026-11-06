@@ -33,7 +33,9 @@ Deferred until the PR #9/#10 storage implementation is integrated:
 
 The isolated `scripts/win-store.test.mjs` contract fixture now exercises simultaneous `putIfNew` attempts for one key and simultaneous `putIfMatch` attempts using one shared ETag. It asserts exactly one winner and that all stale/competing attempts fail closed. The architecture quality gate requires these cases to remain present.
 
-Important limitation: these are isolated adapter-contract tests. They validate WIN's wrapper behavior against the expected atomic semantics of the adapter fixture; they do not independently prove Netlify Blobs' provider-side atomicity or Neon transaction behavior. Provider integration verification remains open and must be done with non-production test resources only after an explicitly approved test environment exists.
+Netlify's current API documentation describes `onlyIfNew` and `onlyIfMatch` as atomic conditional writes. The repository now pins `@netlify/blobs@11.1.7`; its 2026-10-27 changelog includes a fix for a race with concurrent conditional writes. The package engine floor is Node 22.12.0, matching the SDK's runtime requirement. References: https://docs.netlify.com/build/data-and-storage/netlify-blobs/ and https://github.com/netlify/primitives/blob/main/packages/blobs/CHANGELOG.md.
+
+Important limitation: the tests remain isolated adapter-contract tests. They do not execute against a real Netlify Blobs store, verify deployed environment resolution, or test concurrent requests through Netlify Functions. Provider integration verification remains open and must use non-production test resources only after an explicitly approved test environment exists.
 
 ## 3. Result-submission claim and recovery
 
