@@ -41,6 +41,7 @@ const bytes = new TextEncoder().encode(JSON.stringify({
     sourceRecordId: "row-1", eventId: "match-1",
     kickoff: "2026-10-01T18:00:00.000Z",
     resultAvailableAt: "2026-10-01T20:00:00.000Z",
+    scoreBasis: "regulation_time",
     competitionId: "synthetic", season: "2025-26",
     homeTeamId: "home", awayTeamId: "away",
     homeGoals: 2, awayGoals: 0, status: "finished"
@@ -79,6 +80,7 @@ test("research import workflow registers only manifest metadata and is idempoten
         sourceRecordId: "row-1", eventId: "match-1",
         kickoff: "2026-10-01T18:00:00.000Z",
         resultAvailableAt: "2026-10-01T20:00:00.000Z",
+        scoreBasis: "regulation_time",
         competitionId: "synthetic", season: "2025-26",
         homeTeamId: "home", awayTeamId: "away",
         homeGoals: 3, awayGoals: 0, status: "finished"
