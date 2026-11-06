@@ -113,3 +113,12 @@ The consensus importer now stores a canonical SHA-256 over the normalized `recor
 `resultAvailableAt` remains a separate label-availability assertion and is not inferred from the market-line record's retrieval time. The new source-row checks establish that the market probabilities and outcome correspond to the imported normalized record; they do not independently prove the provider's real-world timestamp methodology, data licence, or the correctness of an external source's content.
 
 Regression coverage uses synthetic source records and the isolated store. It does not prove live provider ingestion, Netlify Blobs atomicity, or real-world predictive performance. Model fitting, production promotion and automated betting remain disabled.
+
+
+## Registered shadow inference is the only event-level ML input to the market blend (2026-11-06)
+
+The verified market-blend wrapper now requires a `predictionRunId` and loads the matching immutable shadow-prediction record itself. It binds the prediction to the requested model/version, artifact hash, dataset hash, event ID, kickoff, prediction cutoff, generation time, training time and feature-vector hash. Caller-provided probabilities are ignored and replaced with the probabilities in the registered prediction. A missing or mismatched record blocks the blend.
+
+Shadow audit records now use record version v2 and persist the exact point-in-time feature payload (numeric values, source IDs and availability timestamps). Before writing and again when reading a record, WIN reloads the registered artifact and recomputes inference from that payload; it checks the feature schema, availability cutoff, feature-vector hash and exact HOME/DRAW/AWAY probabilities. This prevents a caller from registering a fabricated probability vector merely by constructing a valid-looking prediction envelope.
+
+The positive binding logic has isolated synthetic tests. The integrated market-registry test verifies that a missing shadow record blocks the blend. **Current operational boundary:** model readiness still requires trusted owner/licence approval evidence, and the current training plan remains disabled. No model was trained or promoted, no live prediction record was created, and the blend remains unavailable until an independently approved shadow model exists. Production use and automated betting remain false.
