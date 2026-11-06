@@ -62,7 +62,7 @@ create table if not exists public.win_clv_evaluations (
 
 -- Validate that the prediction-time quote was genuinely available at its cutoff.
 create or replace function public.win_validate_prediction_quote_binding()
-returns trigger language plpgsql as $
+returns trigger language plpgsql as $win$
 declare q public.win_odds_quote_snapshots%rowtype;
 begin
   select * into q from public.win_odds_quote_snapshots where quote_id = new.decision_quote_id;
@@ -72,12 +72,13 @@ begin
      or q.is_live
      or q.source_observed_at > new.prediction_cutoff
      or q.ingested_at > new.prediction_cutoff
-     or q.source_observed_at >= q.event_start_at then
+     or q.source_observed_at >= q.event_start_at
+     or new.prediction_cutoff >= q.event_start_at then
     raise exception 'WIN decision quote was not valid and available at prediction cutoff';
   end if;
   return new;
 end;
-$;
+$win$;
 
 drop trigger if exists win_prediction_quote_binding_validate on public.win_prediction_quote_bindings;
 create trigger win_prediction_quote_binding_validate
@@ -86,7 +87,7 @@ create trigger win_prediction_quote_binding_validate
 
 -- Validate exact market identity and close timing before accepting a CLV record.
 create or replace function public.win_validate_clv_evaluation()
-returns trigger language plpgsql as $
+returns trigger language plpgsql as $win$
 declare
   d public.win_odds_quote_snapshots%rowtype;
   c public.win_odds_quote_snapshots%rowtype;
@@ -110,6 +111,7 @@ begin
      or c.source_observed_at <= cutoff_at
      or c.source_observed_at <= d.source_observed_at
      or c.source_observed_at >= c.event_start_at
+     or c.event_start_at <> d.event_start_at
      or c.event_id <> d.event_id
      or c.market_id <> d.market_id
      or c.selection_id <> d.selection_id
@@ -121,12 +123,14 @@ begin
      or c.licence_id <> d.licence_id
      or c.venue_type <> d.venue_type
      or c.price_type <> d.price_type
+     or abs(new.odds_ratio_clv - (d.decimal_odds / c.decimal_odds - 1)) > 0.00000001
+     or abs(new.implied_probability_delta - (1 / c.decimal_odds - 1 / d.decimal_odds)) > 0.00000001
      or (new.evaluation_mode = 'live' and c.ingested_at > c.event_start_at) then
     raise exception 'WIN closing quote does not match decision evidence or valid close timing';
   end if;
   return new;
 end;
-$;
+$win$;
 
 drop trigger if exists win_clv_evaluation_validate on public.win_clv_evaluations;
 create trigger win_clv_evaluation_validate
@@ -135,7 +139,7 @@ create trigger win_clv_evaluation_validate
 
 -- Prevent routine UPDATE/DELETE from rewriting historical quote evidence.
 create or replace function public.win_reject_odds_evidence_mutation()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql as $win$$
 begin
   raise exception 'WIN odds evidence is append-only; insert a corrected source record instead';
 end;
