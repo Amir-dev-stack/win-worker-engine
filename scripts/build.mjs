@@ -100,6 +100,8 @@ const required = [
   "netlify/lib/ml-model-contract.mts",
   "netlify/lib/ml-prediction-contract.mts",
   "netlify/lib/ml-market-anchored-blend.mts",
+  "netlify/lib/coupon-correlation-gate.mts",
+  "scripts/coupon-correlation-gate.test.mjs",
   "scripts/ml-market-anchored-blend.test.mjs",
   "netlify/lib/ml-provenance.mts",
   "netlify/lib/ml-owner-approval.mts",
