@@ -106,6 +106,9 @@ test("held-out results create the existing versioned evaluation contract without
   assert.equal(evaluation.trainingRows, 60);
   assert.equal(evaluation.validationRows, 30);
   assert.equal(evaluation.testRows, 30);
+  assert.equal(evaluation.testCohortSha256, heldOut.testCohortSha256);
+  assert.equal(evaluation.testRowsSha256, heldOut.testRowsSha256);
+  assert.equal(heldOut.testEventIds.length, 30);
   assert.equal(evaluation.artifactSha256, result.artifact.artifactSha256);
   assert.equal(evaluation.fitDataCutoff, result.artifact.fitDataCutoff);
   assert.throws(() => buildWinMLFootball1X2EvaluationRecord(result.artifact, {
