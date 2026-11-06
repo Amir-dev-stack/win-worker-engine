@@ -56,3 +56,59 @@ export function getWinSourceReviewQueue(): WinSourceReviewQueueEntry[] {
     }))
     .sort((a, b) => a.rolloutTrack.localeCompare(b.rolloutTrack) || a.providerId.localeCompare(b.providerId));
 }
+
+
+export type WinFootballSourceCoverageArea =
+  | "fixtures_and_results"
+  | "odds_and_markets"
+  | "team_and_player_statistics"
+  | "predictions_and_probabilities"
+  | "lineups_and_availability"
+  | "other";
+
+export type WinFootballSourceInventoryEntry = {
+  providerId: string;
+  providerName: string;
+  website: string;
+  accessMode: ProviderRecord["accessMode"];
+  licenceReview: ProviderRecord["licenceReview"];
+  automationAllowed: boolean;
+  historicalSupport: ProviderRecord["historicalSupport"];
+  dataDomains: string[];
+  coverageAreas: WinFootballSourceCoverageArea[];
+  connectionStatus: "registry_only_not_connected";
+  trainingStatus: "not_approved";
+};
+
+function classifyFootballDomain(domain: string): WinFootballSourceCoverageArea {
+  if (/(fixture|result|settled_result|match_result)/i.test(domain)) return "fixtures_and_results";
+  if (/(odds|market|price|spread|totals|handicap|btts)/i.test(domain)) return "odds_and_markets";
+  if (/(statistic|standing|ranking|performance|event|goal|booking|substitution)/i.test(domain)) return "team_and_player_statistics";
+  if (/(prediction|probabilit|forecast|consensus)/i.test(domain)) return "predictions_and_probabilities";
+  if (/(lineup|injur|availability|squad|player)/i.test(domain)) return "lineups_and_availability";
+  return "other";
+}
+
+/**
+ * Football-first source inventory for coupon research planning.
+ * Registry metadata describes candidates only: no entry implies a live connection,
+ * validated coverage, legal clearance, or permission to train.
+ */
+export function getWinFootballSourceInventory(): WinFootballSourceInventoryEntry[] {
+  return DATA_PROVIDER_REGISTRY
+    .filter(provider => provider.sports.includes("football"))
+    .map(provider => ({
+      providerId: provider.id,
+      providerName: provider.name,
+      website: provider.website,
+      accessMode: provider.accessMode,
+      licenceReview: provider.licenceReview,
+      automationAllowed: provider.automationAllowed,
+      historicalSupport: provider.historicalSupport,
+      dataDomains: [...provider.dataDomains].sort(),
+      coverageAreas: [...new Set(provider.dataDomains.map(classifyFootballDomain))].sort(),
+      connectionStatus: "registry_only_not_connected" as const,
+      trainingStatus: "not_approved" as const
+    }))
+    .sort((a, b) => a.providerId.localeCompare(b.providerId));
+}
