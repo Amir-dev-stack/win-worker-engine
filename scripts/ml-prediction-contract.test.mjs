@@ -98,3 +98,10 @@ test("prediction is blocked when the model evaluation is not eligible", () => {
   }, prediction());
   assert.ok(result.reasons.includes("prediction_model_evaluation_not_eligible"));
 });
+
+test("prediction contract rejects impossible event calendar timestamps", () => {
+  const result = validateWinMLPrediction(manifest, evaluation, prediction({
+    eventStart: "2026-02-31T18:00:00.000Z"
+  }));
+  assert.ok(result.reasons.includes("prediction_timestamps_invalid"));
+});
