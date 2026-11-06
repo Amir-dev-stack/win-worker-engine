@@ -54,11 +54,12 @@ export function composeWinMLMarketBlendEvaluationEvidence(
   }
   const metrics = [
     evaluation.modelMetrics?.logLoss, evaluation.modelMetrics?.brier,
-    market.metrics.logLoss, market.metrics.brier,
-    evaluation.expectedCalibrationError
+    market.metrics.logLoss, market.metrics.brier
   ];
   if (metrics.some(value => typeof value !== "number" || !Number.isFinite(value) || value <= 0) ||
-      evaluation.expectedCalibrationError > 1) {
+      typeof evaluation.expectedCalibrationError !== "number" ||
+      !Number.isFinite(evaluation.expectedCalibrationError) ||
+      evaluation.expectedCalibrationError < 0 || evaluation.expectedCalibrationError > 1) {
     throw new WinMLMarketBlendEvidenceError("market_blend_evidence_metrics_invalid");
   }
   return {
