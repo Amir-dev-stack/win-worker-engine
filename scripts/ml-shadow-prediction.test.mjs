@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { buildWinMLShadowPrediction, WinMLShadowPredictionError } from "../netlify/lib/ml-shadow-prediction.mts";
 import { installIsolatedTestStore } from "../netlify/lib/store.mts";
 
+process.env.WIN_STORE_TEST_MODE = "1";
 const records = new Map();
 installIsolatedTestStore({
   async setJSON(key, value, options = {}) {
@@ -15,7 +16,6 @@ installIsolatedTestStore({
   async delete(key) { records.delete(key); },
   async getWithMetadata(key) { return records.has(key) ? { data: structuredClone(records.get(key)), etag: "test-etag" } : null; }
 });
-process.env.WIN_STORE_TEST_MODE = "1";
 
 const base = {
   predictionRunId: "shadow-run-1",
