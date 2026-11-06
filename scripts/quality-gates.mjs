@@ -5109,12 +5109,16 @@ add("All ML timestamp boundaries use strict calendar validation and datasets hav
   strictTimestamp.includes("daysInMonth") &&
   strictTimestamp.includes("parseStrictIsoTimestamp") &&
   strictTimestampConsumers.every(content => content.includes("strict-timestamp.mts")) &&
+  strictTimestampConsumers[0].includes("isPinnedWinMLSourceRevision") &&
+  (await read("netlify/lib/ml-football-importer.mts")).includes("sourceRevision: source.sourceRevision") &&
   (await read("netlify/lib/ml-football-importer.mts")).includes("season_mismatch") &&
   (await read("netlify/lib/ml-football-importer.mts")).includes("competition_mismatch") &&
   (await read("netlify/lib/ml-dataset-registry.mts")).includes("validateWinMLDatasetManifest(manifest).length === 0") &&
   strictTimestampTests.includes("2026-02-31") &&
+  importerTests.includes("source_revision_invalid") &&
   importerTests.includes("season_mismatch") &&
   importerTests.includes("competition_mismatch") &&
+  (await read("scripts/ml-data-contract.test.mjs")).includes("source_revision_invalid") &&
   (await read("scripts/ml-model-contract.test.mjs")).includes("2026-02-31") &&
   (await read("scripts/ml-prediction-contract.test.mjs")).includes("2026-02-31") &&
   (await read("scripts/ml-model-artifact-registry.test.mjs")).includes("2026-02-31"),
