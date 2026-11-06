@@ -109,7 +109,7 @@ This is a source-level control review only. The endpoint is not enabled by this 
 Audited against the current PR tree after the request-boundary hardening commit:
 
 - `scheduled-scout-runner.mts` is a Netlify background function with no explicit public `config.path`; it is invoked internally by `hourly-monitor.mts` using `POST` and the protected `WIN_INTERNAL_TOKEN`.
-- The handler now rejects non-POST methods, requires JSON content type, caps the raw request body at 16 KiB, parses JSON only after the size check, and requires a trimmed non-empty `runId` of at most 180 characters.
+- The handler now rejects non-POST methods, requires JSON content type, checks declared content length and enforces a streaming 16 KiB body cap before buffering, rejects invalid UTF-8, parses JSON only after the size check, and requires a trimmed non-empty `runId` of at most 180 characters.
 - The validation is isolated in `readScheduledScoutRunId` and covered by `scripts/scheduled-scout-request.test.mjs` for accepted IDs, method rejection, content-type rejection, malformed/missing/invalid IDs, and oversized bodies.
 - The endpoint still requires the internal bearer token before request parsing and remains gated by `WIN_AI_BUDGET_APPROVED`, the persistent spending lock and existing AI-budget checks before research execution.
 
