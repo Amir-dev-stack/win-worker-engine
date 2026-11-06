@@ -16,11 +16,36 @@ export async function readScheduledScoutRunId(req: Request): Promise<{ runId: st
   if (!req.headers.get("content-type")?.toLowerCase().includes("application/json")) {
     return Response.json({ error: "application_json_required" }, { status: 415 });
   }
-  let raw: string;
-  try { raw = await req.text(); }
-  catch { return Response.json({ error: "request_body_unreadable" }, { status: 400 }); }
-  if (new TextEncoder().encode(raw).byteLength > MAX_REQUEST_BODY_BYTES) {
+  const declaredLength = Number(req.headers.get("content-length") || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BODY_BYTES) {
     return Response.json({ error: "request_body_too_large" }, { status: 413 });
+  }
+  let raw = "";
+  if (req.body) {
+    const reader = req.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    try {
+      while (true) {
+        const part = await reader.read();
+        if (part.done) break;
+        totalBytes += part.value.byteLength;
+        if (totalBytes > MAX_REQUEST_BODY_BYTES) {
+          await reader.cancel();
+          return Response.json({ error: "request_body_too_large" }, { status: 413 });
+        }
+        chunks.push(part.value);
+      }
+    } catch {
+      return Response.json({ error: "request_body_unreadable" }, { status: 400 });
+    } finally {
+      reader.releaseLock();
+    }
+    const bytes = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+    try { raw = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
+    catch { return Response.json({ error: "request_body_invalid_utf8" }, { status: 400 }); }
   }
   let body: any;
   try { body = JSON.parse(raw); }
