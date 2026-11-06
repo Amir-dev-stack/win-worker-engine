@@ -1147,6 +1147,8 @@ add("Normalized observed football odds map into quality diagnostics without admi
   observedFootballOddsBridge.includes("assessWinObservedFootballOddsQuality") &&
   observedFootballOddsBridge.includes("eventTimeSemantics === \"scheduled_event_start\"") &&
   observedFootballOddsBridge.includes("row?.live === false") &&
+  observedFootballOddsBridge.includes('row?.bookmakerType !== "prediction_market"') &&
+  observedFootballOddsBridgeTests.includes("prediction-market exclusion"),
   observedFootballOddsBridge.includes("row?.sportId === \"football\"") &&
   observedFootballOddsBridgeTests.includes("maps normalized observed football rows into pre-match odds diagnostics") &&
   observedFootballOddsBridgeTests.includes("preserves explicit market periods"),
