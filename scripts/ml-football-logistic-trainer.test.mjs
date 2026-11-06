@@ -183,4 +183,9 @@ test("retrospective offline evaluation may be assembled after historical validat
   });
   assert.equal(evaluation.trainedAt, "2026-04-01T00:00:00.000Z");
   assert.equal(evaluation.testRows, 30);
+  assert.throws(() => buildWinMLFootball1X2EvaluationRecord(result.artifact, heldOut, {
+    modelVersion: "0.1.2", trainingRunId: "synthetic-too-late-run",
+    featureBuilderCommitSha: "d".repeat(40), sourceCommitSha: "e".repeat(40),
+    trainedAt: "2026-04-03T00:00:00.000Z"
+  }), /model_evaluation_chronology_invalid/);
 });
