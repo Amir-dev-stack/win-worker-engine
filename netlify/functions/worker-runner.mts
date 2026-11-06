@@ -128,9 +128,11 @@ export function collectCouponCandidates(reports: any[]) {
         estimatedWinProbabilityPercent: typeof leg?.estimatedWinProbabilityPercent === "number" &&
           Number.isFinite(leg.estimatedWinProbabilityPercent) && leg.estimatedWinProbabilityPercent >= 0 &&
           leg.estimatedWinProbabilityPercent <= 100 ? leg.estimatedWinProbabilityPercent : null,
-        probabilityType: leg?.probabilityType === "agent_heuristic" ? "agent_heuristic_unverified"
-          : leg?.probabilityType === "unavailable" || leg?.estimatedWinProbabilityPercent == null ? "unavailable"
-          : "unverified_claim",
+        probabilityType: typeof leg?.estimatedWinProbabilityPercent === "number" &&
+          Number.isFinite(leg.estimatedWinProbabilityPercent) && leg.estimatedWinProbabilityPercent >= 0 &&
+          leg.estimatedWinProbabilityPercent <= 100
+          ? (leg?.probabilityType === "agent_heuristic" ? "agent_heuristic_unverified" : "unverified_claim")
+          : "unavailable",
         probabilityConfidence: ["high","medium","low"].includes(leg?.probabilityConfidence) ? leg.probabilityConfidence : "unrated",
         probabilityRationale: typeof leg?.probabilityRationale === "string" ? leg.probabilityRationale.slice(0, 600) : "",
         probabilityEvidenceRefs: Array.isArray(leg?.probabilityEvidenceRefs)
