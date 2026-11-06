@@ -1218,7 +1218,7 @@ add("Football odds quality checks freshness, market completeness, price integrit
   footballOddsQuality.includes("fixture_start_time_unavailable_excluded") &&
   footballOddsQualityTests.includes("source event start time against the fixture") &&
   (await read("netlify/lib/ml-football-observed-odds-quality.mts")).includes("eventStartAt: row.startsAt") &&
-  observedFootballOddsBridgeTests.includes("fixture-start consistency gate"),
+  (await read("scripts/ml-football-observed-odds-quality.test.mjs")).includes("fixture-start consistency gate"),
   "Odds diagnostics require explicit bookmaker/source/outcome identity, only apply freshness/cadence rules when configured, flag overround and suspicious movements for review, and never infer bookmaker independence or training readiness.");
 const legProbabilityCalibration = await read("netlify/lib/ml-leg-probability-calibration.mts");
 const legProbabilityCalibrationTests = await read("scripts/ml-leg-probability-calibration.test.mjs");
