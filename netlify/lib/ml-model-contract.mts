@@ -1,3 +1,4 @@
+import { parseStrictIsoTimestamp } from "./strict-timestamp.mts";
 import {
   evaluateWinMLDatasetReadiness,
   type WinMLDatasetManifestV1
@@ -48,10 +49,7 @@ function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 function timestamp(value: unknown): number | null {
-  if (!nonEmpty(value)) return null;
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  return parseStrictIsoTimestamp(value);
 }
 function sha256(value: unknown): value is string {
   return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
