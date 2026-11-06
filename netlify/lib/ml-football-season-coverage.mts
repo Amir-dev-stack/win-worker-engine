@@ -59,8 +59,8 @@ export function assessWinFootballCoverageByCompetitionSeason(args: {
       reasons.push("fixture_competition_season_or_kickoff_invalid");
       continue;
     }
-    const key = fixture.competitionId + "::" + fixture.season;
-    const unique = key + "::" + fixture.eventId;
+    const key = JSON.stringify([fixture.competitionId, fixture.season]);
+    const unique = JSON.stringify([fixture.competitionId, fixture.season, fixture.eventId]);
     if (fixtureKeys.has(unique)) {
       invalidFixtureCount++;
       reasons.push("duplicate_fixture:" + unique);
@@ -78,7 +78,7 @@ export function assessWinFootballCoverageByCompetitionSeason(args: {
       reasons.push("event_id_reused_across_competition_or_season:" + fixture.eventId);
       fixtureGroupByEvent.delete(fixture.eventId);
     } else if (!reasons.includes("event_id_reused_across_competition_or_season:" + fixture.eventId)) {
-      fixtureGroupByEvent.set(fixture.eventId, fixture.competitionId + "::" + fixture.season);
+      fixtureGroupByEvent.set(fixture.eventId, JSON.stringify([fixture.competitionId, fixture.season]));
     }
   }
 
@@ -103,7 +103,7 @@ export function assessWinFootballCoverageByCompetitionSeason(args: {
   const markets = Array.isArray(args?.requiredMarketIds) ? args.requiredMarketIds : [];
   const groups: WinFootballSeasonCoverageGroup[] = [];
   for (const [key, fixtures] of fixtureGroups) {
-    const [competitionId, season] = key.split("::");
+    const [competitionId, season] = JSON.parse(key) as [string, string];
     const groupResults = resultsByGroup.get(key) || [];
     const groupOdds = oddsByGroup.get(key) || [];
     const assessment = assessWinFootballHistoricalCoverage({
