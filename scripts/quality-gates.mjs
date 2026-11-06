@@ -492,6 +492,20 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImportTests.includes("permittedUse, \"research_only\""),
   "The importer hashes caller-supplied bytes, applies strict row and payload bounds, performs no network fetch, and never grants training permission.");
 
+const winCiWorkflow = await read(".github/workflows/win-quality.yml");
+add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
+  winCiWorkflow.includes("pull_request:") &&
+  winCiWorkflow.includes("workflow_dispatch:") &&
+  winCiWorkflow.includes('node-version: "22"') &&
+  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm test") &&
+  winCiWorkflow.includes("npm run build") &&
+  winCiWorkflow.includes("permissions:") &&
+  winCiWorkflow.includes("contents: read") &&
+  !winCiWorkflow.includes("NETLIFY_AUTH_TOKEN") &&
+  !winCiWorkflow.includes("NETLIFY_SITE_ID"),
+  "The CI job runs tests and build checks with read-only repository permissions; it does not deploy or access production secrets.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
