@@ -1,5 +1,6 @@
 import type { Config } from "@netlify/functions";
 import { authorized } from "../lib/auth.mts";
+import { claimWinScheduledRunLease, releaseWinScheduledRunLease } from "../lib/scheduled-run-lease.mts";
 import { get, put } from "../lib/store.mts";
 import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mts";
 import { runScheduledLearning } from "../lib/ai.mts";
@@ -83,12 +84,19 @@ export default async (req: Request) => {
     return new Response(null, { status: 202 });
   }
 
+  const runLease = await claimWinScheduledRunLease(run.id);
+  if (!runLease.claimed) {
+    if (runLease.reason === "already_running") {
+      return Response.json({ status: "already_running", runId: run.id }, { status: 202 });
+    }
+    return Response.json({ error: "scheduled_run_claim_unavailable", reason: runLease.reason }, { status: 503 });
+  }
+
   const startedAt = new Date().toISOString();
   const stages: any[] = [];
   let agentTask: any = null;
-  await put("runs", run.id, { ...run, status: "scouting", startedAt, updatedAt: startedAt, learningReportVersion: 2 });
-
   try {
+    await put("runs", run.id, { ...run, status: "scouting", startedAt, updatedAt: startedAt, learningReportVersion: 2 });
     const reviewStarted = new Date().toISOString();
     const libraryReview = await getMandatoryLearningPack(run.brief);
     const modelLabResearchPack = await getModelLabResearchPack(run.brief);
@@ -257,6 +265,10 @@ export default async (req: Request) => {
       learningStatus: "failed_no_learning_claimed"
     });
     try { await archiveRunToLibrary(failed); } catch { /* failure remains recorded */ }
+  } finally {
+    // A process crash leaves the lease to expire; a normal completion or
+    // handled failure releases only the lease still owned by this invocation.
+    try { await releaseWinScheduledRunLease(run.id, runLease.leaseId); } catch { /* expiry provides recovery */ }
   }
   return new Response(null, { status: 202 });
 };
