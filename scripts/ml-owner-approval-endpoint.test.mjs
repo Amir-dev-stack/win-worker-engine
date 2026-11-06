@@ -138,7 +138,7 @@ test("owner approval endpoint fails closed and accepts only a separately authent
   }
 });
 
-test("owner approval endpoint requires protected configuration and bounded JSON requests", async () => {
+test("owner approval endpoint requires protected configuration and bounded streaming JSON requests", async () => {
   const previousNetlify = globalThis.Netlify;
   const token = "owner-control-token-" + "x".repeat(40);
   const publicKeyPem = generateKeyPairSync("ed25519").publicKey.export({ type: "spki", format: "pem" }).toString();
@@ -161,6 +161,28 @@ test("owner approval endpoint requires protected configuration and bounded JSON 
       method: "POST", headers: { authorization: "Bearer " + token, "content-type": "text/plain" }, body: "{}"
     }));
     assert.equal(wrongType.status, 415);
+    for (const contentType of ["application/jsonp", "application/json-evil"]) {
+      const wrongMediaType = await endpoint(new Request("https://win.test/api/ml-owner-approval", {
+        method: "POST", headers: { authorization: "Bearer " + token, "content-type": contentType }, body: "{}"
+      }));
+      assert.equal(wrongMediaType.status, 415);
+    }
+    const malformed = await endpoint(new Request("https://win.test/api/ml-owner-approval", {
+      method: "POST", headers: { authorization: "Bearer " + token, "content-type": "application/json" }, body: "{"
+    }));
+    assert.equal(malformed.status, 400);
+    const nonObject = await endpoint(new Request("https://win.test/api/ml-owner-approval", {
+      method: "POST", headers: { authorization: "Bearer " + token, "content-type": "application/json" }, body: "[]"
+    }));
+    assert.equal(nonObject.status, 400);
+    const invalidUtf8 = await endpoint(new Request("https://win.test/api/ml-owner-approval", {
+      method: "POST", headers: { authorization: "Bearer " + token, "content-type": "application/json" }, body: new Uint8Array([0xff, 0xfe])
+    }));
+    assert.equal(invalidUtf8.status, 400);
+    const streamedTooLarge = await endpoint(new Request("https://win.test/api/ml-owner-approval", {
+      method: "POST", headers: { authorization: "Bearer " + token, "content-type": "application/json" }, body: " ".repeat(70_000)
+    }));
+    assert.equal(streamedTooLarge.status, 413);
     const tooLarge = await endpoint(new Request("https://win.test/api/ml-owner-approval", {
       method: "POST", headers: { authorization: "Bearer " + token, "content-type": "application/json" }, body: JSON.stringify({ data: "x".repeat(70_000) })
     }));
