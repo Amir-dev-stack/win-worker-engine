@@ -106,7 +106,7 @@ export function assessWinFootballOddsQuality(args: {
       invalidSnapshotCount++;
       continue;
     }
-    const duplicateKey = identity(s.snapshotId);
+    const duplicateKey = identity(s.sourceId, s.snapshotId);
     if (seen.has(duplicateKey)) {
       duplicateSnapshotCount++;
       continue;
