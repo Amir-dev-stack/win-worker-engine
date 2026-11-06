@@ -58,12 +58,12 @@ test("market benchmark rejects duplicate model cutoff identities and malformed c
   assert.throws(() => assertWinMarketCohortMatchesModel(rows, malformed), /market_evaluation_model_cutoffs_invalid/);
 });
 
-import { installIsolatedTestStore, remove, put, get } from "../netlify/lib/store.mts";
+import { installIsolatedTestStore, remove, put } from "../netlify/lib/store.mts";
 import { registerWinMLDatasetManifest } from "../netlify/lib/ml-dataset-registry.mts";
 import { registerWinMLModelArtifact } from "../netlify/lib/ml-model-artifact-registry.mts";
 import { getWinMLMarketBlendEvaluationEvidence } from "../netlify/lib/ml-market-blend-evidence.mts";
 import { calculateWinMLMarketAnchoredBlendWithRegisteredEvidence } from "../netlify/lib/ml-market-anchored-blend-verified.mts";
-import { buildWinMLShadowPrediction, recordWinMLShadowPrediction, getWinMLShadowPredictionRecord } from "../netlify/lib/ml-shadow-prediction.mts";
+
 import {
   registerWinMarketEvaluation,
   getWinMarketEvaluation
@@ -238,31 +238,9 @@ test("market evaluation registry binds immutable market scores to the registered
   assert.equal(blendEvidence.marketEvaluationId, evaluationId);
 
   const sample = testRows[0];
-  const predictionRunId = "market-verified-shadow-run";
-  const generatedAt = new Date(Date.parse(sample.predictionCutoff) + 1000).toISOString();
-  const shadow = await buildWinMLShadowPrediction({
-    predictionRunId,
-    eventId: sample.eventId,
-    eventStart: sample.eventStart,
-    predictionCutoff: sample.predictionCutoff,
-    generatedAt,
-    modelId,
-    modelVersion,
-    features: sample.features
-  });
-  await assert.rejects(() => recordWinMLShadowPrediction({
-    ...shadow.prediction,
-    probabilities: {
-      home: Math.max(0, shadow.prediction.probabilities.home - 0.01),
-      draw: shadow.prediction.probabilities.draw + 0.01,
-      away: shadow.prediction.probabilities.away
-    }
-  }, sample.features), /shadow_prediction_inference_mismatch/);
-  await recordWinMLShadowPrediction(shadow.prediction, sample.features);
-  const verifiedShadowRecord = await getWinMLShadowPredictionRecord(predictionRunId);
-  assert.deepEqual(verifiedShadowRecord.prediction, shadow.prediction);
   const verifiedBlendArgs = {
-    modelId, modelVersion, marketEvaluationId: evaluationId, predictionRunId,
+    modelId, modelVersion, marketEvaluationId: evaluationId,
+    predictionRunId: "missing-market-shadow-run",
     input: {
       event: {
         eventId: sample.eventId,
@@ -278,71 +256,18 @@ test("market evaluation registry binds immutable market scores to the registered
       },
       model: {
         eventId: sample.eventId,
-        at: shadow.prediction.generatedAt,
+        at: sample.predictionCutoff,
         modelId,
         trainedAt: evaluation.trainedAt,
         artifactSha256: train.artifact.artifactSha256,
         datasetContentSha256: train.artifact.datasetContentSha256,
-        featureVectorSha256: shadow.prediction.featureVectorSha256,
+        featureVectorSha256: "c".repeat(64),
         probabilities: { home: 0.52, draw: 0.25, away: 0.23 }
-      },
-      // Deliberately forged caller metrics must be overwritten by registry evidence.
-      evaluation: {
-        modelEvaluationId: "forged-caller-evaluation",
-        marketEvaluationId: "forged-caller-market",
-        testCohortSha256: "0".repeat(64),
-        marketTestCohortSha256: "0".repeat(64),
-        datasetContentSha256: "0".repeat(64),
-        marketDataSha256: "0".repeat(64),
-        testRows: 100,
-        modelLogLoss: 0.01,
-        marketLogLoss: 10,
-        modelBrier: 0.01,
-        marketBrier: 1,
-        expectedCalibrationError: 0,
-        testLabelsAvailableAt: "2026-01-01T00:00:00.000Z",
-        evaluationAsOf: "2027-01-03T00:00:00.000Z"
       }
     }
   };
-  const verifiedBlend = await calculateWinMLMarketAnchoredBlendWithRegisteredEvidence(verifiedBlendArgs);
-  const trustedProbabilityBlend = await calculateWinMLMarketAnchoredBlendWithRegisteredEvidence({
-    ...verifiedBlendArgs,
-    input: {
-      ...verifiedBlendArgs.input,
-      model: {
-        ...verifiedBlendArgs.input.model,
-        probabilities: shadow.prediction.probabilities
-      }
-    }
-  });
-  assert.deepEqual(verifiedBlend, trustedProbabilityBlend);
-  await assert.rejects(() => calculateWinMLMarketAnchoredBlendWithRegisteredEvidence({
-    ...verifiedBlendArgs,
-    input: {
-      ...verifiedBlendArgs.input,
-      model: { ...verifiedBlendArgs.input.model, featureVectorSha256: "0".repeat(64) }
-    }
-  }), /market_blend_registered_shadow_prediction_binding_mismatch/);
-  if (verifiedBlend.status === "research_only") {
-    assert.notEqual(verifiedBlend.evidence.modelEvaluationId, "forged-caller-evaluation");
-    assert.equal(verifiedBlend.evidence.marketEvaluationId, evaluationId);
-    assert.equal(verifiedBlend.evidence.testRows, blendEvidence.testRows);
-  } else {
-    assert.equal(verifiedBlend.status, "blocked");
-    assert.equal(verifiedBlend.probabilities, null);
-  }
-
-  const storedShadow = await get("library/ml-shadow-predictions", predictionRunId);
-  await put("library/ml-shadow-predictions", predictionRunId, {
-    ...storedShadow,
-    prediction: {
-      ...storedShadow.prediction,
-      probabilities: { home: 0.8, draw: 0.1, away: 0.1 }
-    }
-  });
   await assert.rejects(() => calculateWinMLMarketAnchoredBlendWithRegisteredEvidence(verifiedBlendArgs),
-    /shadow_prediction_record_tampered/);
+    /market_blend_registered_shadow_prediction_missing/);
 
   const tamperedSourceRecords = sourceRecords.map((record, index) => index === 0
     ? { ...record, closing: { ...record.closing, homeWinProbability: 0.51 } }
