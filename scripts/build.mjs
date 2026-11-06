@@ -41,6 +41,7 @@ const required = [
   "netlify/functions/coverage.mts",
   "netlify/functions/coverage-monitor.mts",
   "netlify/functions/human-coupon-settlements.mts",
+  "scripts/human-settlement-idempotency.test.mjs",
   "netlify/functions/independent-review.mts",
   "netlify/lib/independent-review-request.mts",
   "netlify/lib/bounded-json-request.mts",
