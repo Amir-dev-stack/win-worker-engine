@@ -492,6 +492,22 @@ add("WIN football results importer is offline, bounded and research-only by defa
   mlFootballImportTests.includes("permittedUse, \"research_only\""),
   "The importer hashes caller-supplied bytes, applies strict row and payload bounds, performs no network fetch, and never grants training permission.");
 
+const mlTrainingExecutionGate = await read("netlify/lib/ml-training-execution-gate.mts");
+const mlTrainingExecutionGateTests = await read("scripts/ml-training-execution-gate.test.mjs");
+const mlFootballExperimentPlans = await read("netlify/lib/ml-football-experiment-plans.mts");
+add("WIN model fitting is blocked by a server-side execution gate and immutable approved plan",
+  mlTrainingExecutionGate.includes("WIN_ML_FITTING_ENABLED") &&
+  mlTrainingExecutionGate.includes("WIN_ML_EXECUTION_APPROVED") &&
+  mlTrainingExecutionGate.includes("evaluateWinMLTrainingReadiness") &&
+  mlTrainingExecutionGate.includes("training_plan_not_server_approved") &&
+  mlTrainingExecutionGate.includes("experiment_plan_fitting_disabled") &&
+  mlTrainingExecutionGate.includes("productionPromotionAllowed: false") &&
+  mlTrainingExecutionGate.includes("automatedBettingAllowed: false") &&
+  mlFootballExperimentPlans.includes("fittingAllowed: false") &&
+  mlTrainingExecutionGateTests.includes("fails closed while the server plan keeps fitting disabled") &&
+  mlTrainingExecutionGateTests.includes("rejects caller-constructed plans"),
+  "Training requires protected server flags, the server-owned plan identity and the signed dataset/licence/owner readiness chain. The current plan remains disabled; the gate cannot authorize promotion or betting.");
+ 
 const winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
