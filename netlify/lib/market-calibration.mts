@@ -1,4 +1,5 @@
-import { list, put } from "./store.mts";
+import { list, get, putIfNew } from "./store.mts";
+import { hashWinMLProvenance } from "./ml-provenance.mts";
 
 type Observation={id:string;sport:string;eventStart:string;homeTeam:string;awayTeam:string;closing:any;settlements:any;homeScore:number|null;awayScore:number|null;providerId:string;};
 type Trial={p:number;y:number;};
@@ -152,11 +153,17 @@ export function evaluateMarketDataset(dataset:any){
 export async function runMarketCalibrationLab(){
  const datasets=await list<any>("library/model-lab/market-consensus-datasets",100);
  const evaluated=datasets.map(evaluateMarketDataset);
- const id="market-calibration-"+new Date().toISOString().slice(0,10);
+
  const totalEvents=evaluated.reduce((n,x)=>n+x.events,0);
- const report={id,status:totalEvents?"completed":"waiting_for_data",createdAt:new Date().toISOString(),sourceDatasetCount:datasets.length,totalEvents,splitMethod:"chronological_70_30_per_dataset",reports:evaluated,interpretation:"This evaluates closing consensus markets as benchmarks, not a WIN predictive model. Test metrics are out-of-time. It does not establish betting ROI, bookmaker execution price or a profitable edge.",guardrails:["No random train/test split.","No future rows used in training portion.","Football 1X2 requires all three valid class probabilities and an unambiguous three-way result; incomplete class vectors are excluded.","Two-way sports use home/player-one win probability and an unambiguous home/player-one or away/player-two result; draws, pushes, voids and ambiguous outcomes are excluded.","Every market requires at least 30 valid events and uses a chronological 70/30 split.","Consensus fair probabilities are not individual bookmaker prices.","Human Coupon Lab was not read or written."],origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false,calibrationVersion:"sport_aware_two_way_and_1x2_v3"};
- await put("library/model-lab/market-calibration-reports",id,report);
- return report;
+ const report={status:totalEvents?"completed":"waiting_for_data",createdAt:new Date().toISOString(),sourceDatasetCount:datasets.length,totalEvents,splitMethod:"chronological_70_30_per_dataset",reports:evaluated,interpretation:"This evaluates closing consensus markets as benchmarks, not a WIN predictive model. Test metrics are out-of-time. It does not establish betting ROI, bookmaker execution price or a profitable edge.",guardrails:["No random train/test split.","No future rows used in training portion.","Football 1X2 requires all three valid class probabilities and an unambiguous three-way result; incomplete class vectors are excluded.","Two-way sports use home/player-one win probability and an unambiguous home/player-one or away/player-two result; draws, pushes, voids and ambiguous outcomes are excluded.","Every market requires at least 30 valid events and uses a chronological 70/30 split.","Consensus fair probabilities are not individual bookmaker prices.","Human Coupon Lab was not read or written."],origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false,calibrationVersion:"sport_aware_two_way_and_1x2_v3"};
+ const reportDigest=hashWinMLProvenance(report).sha256;
+ const id="market-calibration-"+reportDigest.slice(0,32);
+ const immutableReport={...report,id,reportSha256:reportDigest,storagePolicy:"immutable_content_addressed_v1"};
+ const stored=await putIfNew("library/model-lab/market-calibration-reports",id,immutableReport);
+ if(stored?.modified)return immutableReport;
+ const existing=await get<any>("library/model-lab/market-calibration-reports",id);
+ if(existing&&existing.reportSha256===reportDigest&&hashWinMLProvenance({...Object.fromEntries(Object.entries(existing).filter(([key])=>key!=="id"&&key!=="reportSha256"&&key!=="storagePolicy"))}).sha256===reportDigest)return existing;
+ throw new Error("market_calibration_immutable_record_conflict");
 }
 export async function getMarketCalibrationStatus(){
  const reports=await list<any>("library/model-lab/market-calibration-reports",20);
