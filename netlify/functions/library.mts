@@ -69,7 +69,7 @@ export default async (req: Request) => {
 
         if (current.validationStatus === "pending_independent_review") {
           const pendingId = typeof current.validationReviewCaseId === "string" ? current.validationReviewCaseId : "";
-          const pendingCase = pendingId ? await (await import("../lib/store.mts")).get<any>("library/lesson-review-cases", pendingId) : null;
+          const pendingCase = pendingId ? await get<any>("library/lesson-review-cases", pendingId) : null;
           if (!pendingCase || pendingCase.lessonId !== body.lessonId || pendingCase.reviewStatus !== "pending_independent_review") {
             return Response.json({ error: "Lesson is marked pending but its review case cannot be verified; manual reconciliation is required." }, { status: 409 });
           }
@@ -111,7 +111,7 @@ export default async (req: Request) => {
         const claim = await putIfNew("library/lesson-review-cases", reviewCaseId, reviewCase);
         let acceptedCase = reviewCase;
         if (!claim.modified) {
-          const existing = await (await import("../lib/store.mts")).get<any>("library/lesson-review-cases", reviewCaseId);
+          const existing = await get<any>("library/lesson-review-cases", reviewCaseId);
           if (!existing || existing.lessonId !== body.lessonId || existing.reviewStatus !== "pending_independent_review") {
             return Response.json({ error: "Lesson review submission identity is occupied by an incompatible record; manual reconciliation is required." }, { status: 409 });
           }
@@ -130,7 +130,7 @@ export default async (req: Request) => {
         const lessonWrite = await putIfMatch("library/lessons", body.lessonId, updated, currentSnapshot.etag);
         let acceptedLesson = updated;
         if (!lessonWrite.modified) {
-          const latest = await (await import("../lib/store.mts")).get<any>("library/lessons", body.lessonId);
+          const latest = await get<any>("library/lessons", body.lessonId);
           if (latest?.validationStatus !== "pending_independent_review" || latest?.validationReviewCaseId !== reviewCaseId) {
             return Response.json({ error: "Review case was claimed but the lesson changed concurrently; retry the same submission or reconcile the pending case." }, { status: 409 });
           }
