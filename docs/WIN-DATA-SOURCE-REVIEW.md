@@ -125,3 +125,10 @@ The source-review module now exposes a read-only queue for every registered prov
 Each entry requires primary evidence for publisher ownership and republication chains, the exact feed/dataset product and immutable revision, bookmaker/exchange identity and alias mapping, market/period/line/outcome semantics, decimal-price and implied-probability definitions, timestamp timezone and event-kickoff semantics, availability-state meanings, cadence claims and licence/attribution rights.
 
 The queue intentionally leaves source identity, bookmaker identity semantics, market semantics, timestamp semantics and availability semantics unverified. Expected capture cadence remains null until a source contract or other primary evidence establishes it. The queue does not connect feeds, approve licences, establish independent publishers, or permit training. A provider can appear in the inventory and review queue while remaining disconnected and unusable for automated research ingestion.
+
+
+### Fixture-to-odds event-time consistency
+
+The odds-quality assessor can now compare a provider observation's declared event start time with the independently supplied fixture kickoff. The comparison is activated only when the caller supplies an explicit maximum skew in minutes. If that contract is active, an observation without a provider event-start timestamp is excluded from the assessed pre-match set, and an observation outside the permitted skew is separately counted and retained in mismatch diagnostics. Malformed provider start timestamps are invalid observations. When no skew contract is supplied, WIN does not invent a tolerance or silently reject records based on an assumed schedule precision.
+
+The normalized observed-market bridge forwards the source's `startsAt` field into this check. This catches stale or mismatched event-time metadata without rewriting the original record. It does not prove that the fixture itself is correct or that the source's event identity is independently verified.
