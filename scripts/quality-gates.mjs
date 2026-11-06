@@ -848,6 +848,20 @@ add("OpenFootball historical imports pin immutable Git revisions and reuse uncha
   openFootballRevisionTests.includes("pins contents and raw URLs"),
   "OpenFootball history must be tied to an immutable Git commit; a completed unchanged source revision should reuse the stored snapshot rather than rewrite every season on each run.");
 
+const worldCupRevisionTests = await read("scripts/public-data-source-policy.test.mjs");
+const worldCupAdapter = await read("netlify/lib/openfootball-worldcup-adapter.mts");
+add("OpenFootball World Cup history pins immutable Git revisions and reuses unchanged completed snapshots",
+  worldCupAdapter.includes("isPinnedOpenFootballWorldCupRevision") &&
+  worldCupAdapter.includes('/commits/master') &&
+  worldCupAdapter.includes('RAW_BASE+"/"+sourceRevision+"/"') &&
+  worldCupAdapter.includes('previous?.sourceRevision===sourceRevision') &&
+  worldCupAdapter.includes('previous?.status==="completed"') &&
+  worldCupAdapter.includes('status:"unchanged"') &&
+  worldCupAdapter.includes("sourceCommitUrl") &&
+  worldCupRevisionTests.includes("OpenFootball World Cup imports require immutable Git commit revisions") &&
+  worldCupRevisionTests.includes("World Cup historical adapter pins raw data"),
+  "World Cup historical data must be fetched from an immutable Git commit, carry source revision provenance, and reuse completed snapshots when the upstream revision has not changed.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;

@@ -204,3 +204,23 @@ test("OpenFootball historical adapter pins contents and raw URLs and reuses comp
   assert.ok(adapter.includes("sourceCommitUrl"));
   assert.ok(!adapter.includes("football.json/master/"));
 });
+
+test("OpenFootball World Cup imports require immutable Git commit revisions", () => {
+  assert.equal(isPinnedOpenFootballWorldCupRevision("0123456789abcdef0123456789abcdef01234567"), true);
+  assert.equal(isPinnedOpenFootballWorldCupRevision("master"), false);
+  assert.equal(isPinnedOpenFootballWorldCupRevision("main"), false);
+  assert.equal(isPinnedOpenFootballWorldCupRevision("0123456789abcdef"), false);
+});
+
+test("World Cup historical adapter pins raw data and reuses a completed unchanged snapshot", async () => {
+  const adapter = await readFile(new URL("../netlify/lib/openfootball-worldcup-adapter.mts", import.meta.url), "utf8");
+  assert.ok(adapter.includes("isPinnedOpenFootballWorldCupRevision"));
+  assert.ok(adapter.includes('/commits/master'));
+  assert.ok(adapter.includes('RAW_BASE+"/"+sourceRevision+"/"'));
+  assert.ok(adapter.includes('previous?.sourceRevision===sourceRevision'));
+  assert.ok(adapter.includes('previous?.status==="completed"'));
+  assert.ok(adapter.includes('status:"unchanged"'));
+  assert.ok(adapter.includes("sourceCommitUrl"));
+  assert.ok(adapter.includes('sourceRevision,sourceCommitUrl'));
+  assert.ok(!adapter.includes("worldcup.json/master/"));
+});
