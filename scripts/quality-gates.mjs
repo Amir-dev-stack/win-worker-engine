@@ -955,6 +955,8 @@ add("Coupon candidate pipeline preserves percentages without treating LLM labels
   couponRunner.includes("estimatedWinProbabilityPercent") &&
   couponRunner.includes("probabilityCalibrated: false") &&
   couponRunner.includes("unverified_claim") &&
+  couponRunner.includes("probabilityEvidenceRefs") &&
+  couponCandidateTests.includes("Synthetic test-only estimate") &&
   couponRunner.includes("wholeCouponWinProbabilityPercent") &&
   couponRunner.includes("unvalidated_joint_probability_not_estimated") &&
   couponCandidateTests.includes("estimatedWinProbabilityPercent") &&
