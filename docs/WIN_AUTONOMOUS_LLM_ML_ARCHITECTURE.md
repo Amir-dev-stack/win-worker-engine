@@ -191,3 +191,10 @@ Autonomous learning means continuous evidence collection, evaluation, issue dete
 - No automatic agent self-promotion or model deployment.
 - No new paid provider, subscription, automatic top-up or service dependency without owner approval.
 - No automated bookmaker account access or bet placement.
+
+
+## Bounded LLM tool execution and budget reservation (2026-11-06)
+
+The existing Agents SDK path now forwards a provider-enforced `max_tool_calls` limit on each Responses API turn and disables parallel tool calls. WIN's agent loop is capped at two model turns. Scheduled scout/learning requests reserve for at most two total built-in tool calls (one per turn); regular worker requests reserve for at most four (two per turn). The post-run adapter still checks the observed total and marks an overrun as failed while preserving observed usage for budget settlement.
+
+The distinction matters: OpenAI's `max_tool_calls` applies to one Responses API response, not automatically to the entire multi-turn Agents SDK run. WIN therefore combines the per-response provider limit with a fixed two-turn ceiling and reserves for the maximum possible total. The local ledger remains an estimate, not a substitute for provider-side project limits and alerts. Live execution remains locked until the owner independently configures those controls, disables auto-recharge and explicitly enables the budget gate.
