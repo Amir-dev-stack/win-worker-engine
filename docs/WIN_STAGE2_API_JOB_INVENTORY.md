@@ -148,3 +148,17 @@ A direct job-log inspection verified push-triggered run [#42144616719](https://g
 - `npm run build`: passed, reporting 96 required files and 44 architecture checks.
 
 That is valid CI evidence for commit `8e2e5d1` only. The scheduled-run request/lease changes were committed later, so this historical green run does not verify the current PR head. No current-head execution claim is made.
+
+
+## 10. Result submission request-boundary hardening (2026-11-06)
+
+The `/api/results` handler now uses `readResultSubmissionBody` before reading any settlement fields:
+
+- Requires `application/json`; other content types receive HTTP 415.
+- Rejects a declared content length over 64 KiB and independently enforces a streaming 64 KiB cap before buffering.
+- Rejects invalid UTF-8, malformed JSON, and JSON values that are not objects.
+- Keeps the existing authentication and POST-only checks ahead of body parsing.
+- Adds `scripts/results-request-validation.test.mjs` for accepted JSON, content-type rejection, malformed/non-object JSON, declared and streamed size limits, and invalid UTF-8.
+- Adds the test to build-required files and adds a quality-gate assertion for the request-boundary contract.
+
+These are source changes and synthetic tests; no current-head CI execution is claimed. Existing result-submission claim/idempotency behavior is otherwise unchanged. Provider-side store atomicity and correction workflow remain separate open verification items.
