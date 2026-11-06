@@ -99,7 +99,7 @@ test("model artifact retrieval fails closed after stored record tampering", asyn
   await resetRecords();
   const { artifact, evaluation } = setup();
   await registerWinMLDatasetManifest(manifest);
-  await registerWinMLModelArtifact({ artifact, evaluation, registeredAt: "2027-01-03T00:00:00.000Z" });
+  await registerWinMLModelArtifact({ artifact, evaluation, testRows, evaluatedAt, registeredAt: "2027-01-03T00:00:00.000Z" });
   await testStore.setJSON("library/ml-model-artifacts/registry-synthetic-model::0.1.0", { recordVersion: "tampered" });
   await assert.rejects(() => getWinMLModelArtifact("registry-synthetic-model", "0.1.0"), error =>
     error instanceof WinMLModelArtifactRegistryError || /model_artifact/.test(error.message)
