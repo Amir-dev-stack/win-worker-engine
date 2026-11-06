@@ -75,6 +75,7 @@ test("model artifact registry immutably binds artifact, evaluation and registere
   assert.equal(loaded.evaluation.artifactSha256, artifact.artifactSha256);
   assert.equal(loaded.evaluation.testRowsSha256, loaded.provenance.testRowsSha256);
   assert.match(loaded.evaluation.testCohortSha256, /^[a-f0-9]{64}$/);
+  assert.equal(loaded.evaluation.testEventIds.length, loaded.evaluation.testRows);
   assert.equal(loaded.productionPromotionAllowed, false);
 });
 test("model artifact registry rejects dataset hash drift and immutable version conflicts", async () => {
