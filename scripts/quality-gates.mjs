@@ -656,7 +656,6 @@ add("Prediction-result corrections remain append-only, independently reviewed an
 const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
 const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
 const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
-const scheduledRunner = await read("netlify/functions/scheduled-scout-runner.mts");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -721,7 +720,6 @@ add("Netlify Blobs conditional-write dependency is pinned to the concurrent-writ
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
@@ -817,7 +815,7 @@ add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and re
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
-, winLearningCore.includes("evaluateFullTimeLeg") && winLearningCore.includes("aggregateCouponOutcome") && winLearningCore.includes("deriveReviewedCouponOutcome") && winLearningCore.includes("isEligibleWinForecastCoupon") && winLearningCore.includes("isIndependentlyValidatedLesson") && postMatch.includes("evaluateFullTimeLeg as evaluateLeg") && postMatch.includes("isEligibleWinForecastCoupon") && independentReview.includes("deriveReviewedCouponOutcome as deriveCouponOutcome") && library.includes("isIndependentlyValidatedLesson") && learningObservatory.includes("isIndependentlyValidatedLesson as validatedLesson") && pkg.includes("--experimental-strip-types --test scripts/*.test.mjs") && (await read("scripts/win-learning-core.test.mjs")).includes("Fixtures are pure in-memory values"), "Both result checking and independent review use the tested pure core; unit fixtures cannot write to production storage or call public APIs.");
+{
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&
@@ -1346,7 +1344,6 @@ add("Prediction-result corrections remain append-only, independently reviewed an
 const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
 const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
 const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
-const scheduledRunner = await read("netlify/functions/scheduled-scout-runner.mts");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -1382,7 +1379,6 @@ add("Netlify Blobs conditional-write dependency is pinned to the concurrent-writ
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
@@ -1422,6 +1418,8 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
+}
+{
 
 const independentReviewRequestTests = await read("scripts/independent-review-request.test.mjs");
 const independentReviewHandler = await read("netlify/functions/independent-review.mts");
@@ -1964,7 +1962,6 @@ add("Prediction-result corrections remain append-only, independently reviewed an
 const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
 const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
 const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
-const scheduledRunner = await read("netlify/functions/scheduled-scout-runner.mts");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -2000,7 +1997,6 @@ add("Netlify Blobs conditional-write dependency is pinned to the concurrent-writ
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
@@ -2040,7 +2036,8 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
-, winLearningCore.includes("evaluateFullTimeLeg") && winLearningCore.includes("aggregateCouponOutcome") && winLearningCore.includes("deriveReviewedCouponOutcome") && winLearningCore.includes("isEligibleWinForecastCoupon") && winLearningCore.includes("isIndependentlyValidatedLesson") && postMatch.includes("evaluateFullTimeLeg as evaluateLeg") && postMatch.includes("isEligibleWinForecastCoupon") && independentReview.includes("deriveReviewedCouponOutcome as deriveCouponOutcome") && library.includes("isIndependentlyValidatedLesson") && learningObservatory.includes("isIndependentlyValidatedLesson as validatedLesson") && pkg.includes("--experimental-strip-types --test scripts/*.test.mjs") && (await read("scripts/win-learning-core.test.mjs")).includes("Fixtures are pure in-memory values"), "Both result checking and independent review use the tested pure core; unit fixtures cannot write to production storage or call public APIs.");
+}
+{
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&
@@ -2569,7 +2566,6 @@ add("Prediction-result corrections remain append-only, independently reviewed an
 const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
 const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
 const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
-const scheduledRunner = await read("netlify/functions/scheduled-scout-runner.mts");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -2605,7 +2601,6 @@ add("Netlify Blobs conditional-write dependency is pinned to the concurrent-writ
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
@@ -2645,6 +2640,8 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
+}
+{
 
 add("Authenticated health endpoint is read-only",
   healthEndpoint.includes("requireAuth(req)") &&
@@ -3194,7 +3191,6 @@ add("Prediction-result corrections remain append-only, independently reviewed an
 const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
 const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
 const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
-const scheduledRunner = await read("netlify/functions/scheduled-scout-runner.mts");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -3230,7 +3226,6 @@ add("Netlify Blobs conditional-write dependency is pinned to the concurrent-writ
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
@@ -3270,7 +3265,8 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
-, winLearningCore.includes("evaluateFullTimeLeg") && winLearningCore.includes("aggregateCouponOutcome") && winLearningCore.includes("deriveReviewedCouponOutcome") && winLearningCore.includes("isEligibleWinForecastCoupon") && winLearningCore.includes("isIndependentlyValidatedLesson") && postMatch.includes("evaluateFullTimeLeg as evaluateLeg") && postMatch.includes("isEligibleWinForecastCoupon") && independentReview.includes("deriveReviewedCouponOutcome as deriveCouponOutcome") && library.includes("isIndependentlyValidatedLesson") && learningObservatory.includes("isIndependentlyValidatedLesson as validatedLesson") && pkg.includes("--experimental-strip-types --test scripts/*.test.mjs") && (await read("scripts/win-learning-core.test.mjs")).includes("Fixtures are pure in-memory values"), "Both result checking and independent review use the tested pure core; unit fixtures cannot write to production storage or call public APIs.");
+}
+{
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&
@@ -3799,7 +3795,6 @@ add("Prediction-result corrections remain append-only, independently reviewed an
 const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
 const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
 const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
-const scheduledRunner = await read("netlify/functions/scheduled-scout-runner.mts");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -3835,7 +3830,6 @@ add("Netlify Blobs conditional-write dependency is pinned to the concurrent-writ
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
@@ -3875,6 +3869,8 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
+}
+{
 
 const independentReviewRequestTests = await read("scripts/independent-review-request.test.mjs");
 const independentReviewHandler = await read("netlify/functions/independent-review.mts");
@@ -4417,7 +4413,6 @@ add("Prediction-result corrections remain append-only, independently reviewed an
 const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
 const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
 const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
-const scheduledRunner = await read("netlify/functions/scheduled-scout-runner.mts");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -4453,7 +4448,6 @@ add("Netlify Blobs conditional-write dependency is pinned to the concurrent-writ
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
@@ -4493,7 +4487,8 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
-, winLearningCore.includes("evaluateFullTimeLeg") && winLearningCore.includes("aggregateCouponOutcome") && winLearningCore.includes("deriveReviewedCouponOutcome") && winLearningCore.includes("isEligibleWinForecastCoupon") && winLearningCore.includes("isIndependentlyValidatedLesson") && postMatch.includes("evaluateFullTimeLeg as evaluateLeg") && postMatch.includes("isEligibleWinForecastCoupon") && independentReview.includes("deriveReviewedCouponOutcome as deriveCouponOutcome") && library.includes("isIndependentlyValidatedLesson") && learningObservatory.includes("isIndependentlyValidatedLesson as validatedLesson") && pkg.includes("--experimental-strip-types --test scripts/*.test.mjs") && (await read("scripts/win-learning-core.test.mjs")).includes("Fixtures are pure in-memory values"), "Both result checking and independent review use the tested pure core; unit fixtures cannot write to production storage or call public APIs.");
+}
+{
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&
@@ -5022,7 +5017,6 @@ add("Prediction-result corrections remain append-only, independently reviewed an
 const scheduledRunLease = await read("netlify/lib/scheduled-run-lease.mts");
 const scheduledRunLeaseTests = await read("scripts/scheduled-run-lease-isolated.test.mjs");
 const scheduledRequestTests = await read("scripts/scheduled-scout-request.test.mjs");
-const scheduledRunner = await read("netlify/functions/scheduled-scout-runner.mts");
 add("Scheduled learning runs use atomic owner leases, bounded request validation and stale-lease recovery",
   scheduledRunner.includes("claimWinScheduledRunLease") &&
   scheduledRunner.includes("releaseWinScheduledRunLease") &&
@@ -5058,7 +5052,6 @@ add("Netlify Blobs conditional-write dependency is pinned to the concurrent-writ
   packageManifest.engines?.node === ">=22.12.0",
   "The result-submission claim relies on Blobs onlyIfNew; pin the fixed SDK release and require Node 22.12 or newer.");
 
-const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 const oauthConsentTests = await read("scripts/oauth-consent.test.mjs");
 add("OAuth consent text reflects only requested scopes and authorization codes are claimed with compare-and-swap",
   oauthConsent.includes("describeOAuthScopes") &&
@@ -5098,3 +5091,4 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
+}
