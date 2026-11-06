@@ -15,6 +15,7 @@
     "@modelcontextprotocol/sdk": "latest",
     "@netlify/blobs": "latest",
     "@netlify/functions": "latest",
+    "@neondatabase/serverless": "^1.0.2",
     "zod": "latest",
     "@openai/agents": "0.21.0"
   }

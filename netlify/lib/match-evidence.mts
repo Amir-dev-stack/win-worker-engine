@@ -25,7 +25,7 @@ function rowSides(row){
   return {one:clean(row?.homeTeam||row?.participant1||row?.team1||row?.teamOne),two:clean(row?.awayTeam||row?.participant2||row?.team2||row?.teamTwo)};
 }
 function rowDetails(row){
-  const keys=["fullTimeScore","halfTimeScore","extraTimeScore","penaltyShootoutScore","resultBasis","attendance","venue","round","group","referee","referees","playerEvents","playerStats","playerStatistics","player_stats","player_performances","teamStats","teamStatistics","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","boxScore","boxscore","goals","cards","lineups","lineup","substitutions","scoreBreakdown","sets","periodScores","innings","sourceRecordId"];
+  const keys=["fullTimeScore","halfTimeScore","extraTimeScore","penaltyShootoutScore","resultBasis","attendance","venue","round","group","referee","referees","playerEvents","playerStats","playerStatistics","playerRatings","player_stats","player_performances","teamStats","teamStatistics","halfTimeTeamStatistics","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","boxScore","boxscore","goals","cards","lineups","lineup","substitutions","scoreBreakdown","sets","periodScores","innings","coverage","sourceRecordId"];
   const out=row?.details&&typeof row.details==="object"?{...row.details}:{};
   for(const key of keys)if(row?.[key]!==undefined&&row?.[key]!==null)out[key]=row[key];
   return out;
@@ -36,7 +36,15 @@ function normalizeRows(collections){
     for(const dataset of Array.isArray(datasets)?datasets:[]){
       for(const row of Array.isArray(dataset?.records)?dataset.records:[]){
         if(row?.origin&&row.origin!=="provider_historical_data")continue;
-        const sides=rowSides(row),score=rowScore(row),eventMs=time(row.eventStart||row.kickoffUtc||row.startTimeUtc);
+        const sides=rowSides(row),score=rowScore(row);
+        const rawEventStart=row.eventStart||row.kickoffUtc||row.startTimeUtc;
+        const eventStartText=clean(rawEventStart,60);
+        const dateOnly=row.eventStartPrecision==="date_only"||/^\d{4}-\d{2}-\d{2}$/.test(eventStartText);
+        // Unknown local-time rows are placed at the end of their calendar day so
+        // they cannot leak into a same-day pre-match forecast.
+        const eventMs=dateOnly&&/^\d{4}-\d{2}-\d{2}$/.test(eventStartText)
+          ?Date.parse(eventStartText+"T23:59:59.999Z")
+          :time(rawEventStart);
         if(!sides.one||!sides.two||!eventMs)continue;
         const sport=clean(row.sport||dataset.sport||row.sportId||"unknown",50).toLowerCase();
         const competition=clean(row.competition||row.league||row.tournament||dataset.competition||"",180);
@@ -186,7 +194,7 @@ function matchPostReport(record,nowMs,sport){
   if(record.eventMs>nowMs)return {status:"not_started"};
   if(!record.score)return {status:"awaiting_source_result"};
   const details=record.details||{};
-  const actualStatsKeys=["playerEvents","playerStats","playerStatistics","teamStats","teamStatistics","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","goals","cards","lineups","lineup","substitutions"].filter(k=>details[k]!==undefined);
+  const actualStatsKeys=["playerEvents","playerStats","playerStatistics","playerRatings","teamStats","teamStatistics","halfTimeTeamStatistics","coverage","matchStats","matchStatistics","statistics","stats","events","matchEvents","timeline","playByPlay","plays","goals","cards","lineups","lineup","substitutions"].filter(k=>details[k]!==undefined);
   const statCoverage=inspectStatisticCoverage(sport,details);
   const sourceDetails=record.sourceDetails?.length?record.sourceDetails:[{providerId:record.providerId,sourceUrl:record.sourceUrl,details,sourceLicence:record.sourceLicence,retrievedAt:record.retrievedAt}];
   const playerPerformanceByProvider=sourceDetails.map(source=>({providerId:source.providerId,sourceUrl:source.sourceUrl,...extractPlayerPerformances(source.details,source.providerId)}));
@@ -262,7 +270,7 @@ export function buildMatchEvidencePack(brief,inputs={}){
   return {
     schemaVersion:"match_evidence_v1",generatedAt:new Date(nowMs).toISOString(),
     event:{sport,competition:competition||null,participants:teams,kickoff: kickoffMs?new Date(kickoffMs).toISOString():null},
-    preMatchSnapshot:{asOf:new Date(nowMs).toISOString(),informationCutoff:new Date(cutoff).toISOString(),rule:"Only completed imported matches strictly earlier than the cutoff are used for team form and head-to-head. No future fixture or target-match outcome is used in pre-match calculations.",futureRowsExcluded:records.filter(r=>r.eventMs>cutoff).length},
+    preMatchSnapshot:{asOf:new Date(nowMs).toISOString(),informationCutoff:new Date(cutoff).toISOString(),rule:"Only completed imported matches strictly earlier than the cutoff are used for team form and head-to-head. Date-only records are conservatively placed at the end of their calendar day, so unknown local kick-off times cannot leak same-day results into pre-match calculations. No future fixture or target-match outcome is used.",futureRowsExcluded:records.filter(r=>r.eventMs>cutoff).length},
     teamProfiles:home&&away?{home,away}:null,
     headToHead:h2h,
     competitionContext:{tableStatus:"not_connected",table:null,reason:"No current standings feed is currently connected to this research pack."},

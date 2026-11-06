@@ -9,9 +9,12 @@ import { syncSharpApiSampleMarkets } from "../lib/sharpapi-sample-adapter.mts";
 import { runOpenFootballBaselineLab } from "../lib/model-lab.mts";
 import { settleObservedWorldCupMarkets } from "../lib/observed-market-settlement.mts";
 import { runMarketCalibrationLab } from "../lib/market-calibration.mts";
+import { syncNflversePlayByPlayData } from "../lib/nflverse-pbp-adapter.mts";
+import { syncStatsBombOpenDataResearch, STATSBOMB_RESEARCH_CONFIRMATION } from "../lib/statsbomb-open-data-adapter.mts";
+import { syncSkillCornerBasketballAggregates, SKILLCORNER_RESEARCH_CONFIRMATION } from "../lib/skillcorner-basketball-adapter.mts";
 
-type JobAction = "discover_sources" | "sync_historical_data";
-const actions = new Set<JobAction>(["discover_sources", "sync_historical_data"]);
+type JobAction = "discover_sources" | "sync_historical_data" | "sync_statsbomb_open_data" | "sync_skillcorner_basketball";
+const actions = new Set<JobAction>(["discover_sources", "sync_historical_data", "sync_statsbomb_open_data", "sync_skillcorner_basketball"]);
 
 export default async (req: Request) => {
   const denied = requireAuth(req);
@@ -23,6 +26,12 @@ export default async (req: Request) => {
   catch { return Response.json({ error: "Expected JSON body" }, { status: 400 }); }
   const action = String(body?.action || "") as JobAction;
   if (!actions.has(action)) return Response.json({ error: "Unsupported learning data job." }, { status: 400 });
+  if (action === "sync_statsbomb_open_data" && body?.confirmResearchUse !== STATSBOMB_RESEARCH_CONFIRMATION) {
+    return Response.json({ error: "StatsBomb import requires explicit confirmation for private non-commercial research use." }, { status: 400 });
+  }
+  if (action === "sync_skillcorner_basketball" && body?.confirmResearchUse !== SKILLCORNER_RESEARCH_CONFIRMATION) {
+    return Response.json({ error: "SkillCorner import requires confirmation of source credit and the limited ACB 2025/26 player-season aggregate scope." }, { status: 400 });
+  }
 
   const now = new Date();
   const startedAt = now.toISOString();
@@ -44,13 +53,46 @@ export default async (req: Request) => {
     return Response.json({ accepted: false, status: "already_running", action }, { status: 409 });
   }
   const lockEtag = claim.etag;
-  const stateKey = action === "discover_sources" ? "public-source-discovery" : "manual-historical-data-sync";
+  const stateKey = action === "discover_sources" ? "public-source-discovery" : action === "sync_statsbomb_open_data" ? "statsbomb-open-data" : action === "sync_skillcorner_basketball" ? "skillcorner-open-basketball-acb-2025-26" : "manual-historical-data-sync";
   await put("scheduler-state", stateKey, { status: "running", startedAt, jobId, action, aiCalls: 0 });
 
   try {
     let result: any;
     if (action === "discover_sources") {
       result = await discoverPublicResearchSources();
+    } else if (action === "sync_statsbomb_open_data") {
+      const imported = await syncStatsBombOpenDataResearch({
+        competitionId: body?.competitionId,
+        seasonId: body?.seasonId,
+        maxMatches: body?.maxMatches,
+        confirmResearchUse: body?.confirmResearchUse
+      });
+      result = {
+        status: imported.status,
+        startedAt,
+        completedAt: new Date().toISOString(),
+        steps: [{ name: "statsbomb_open_data_manual_research_import", status: imported.status, result: imported }],
+        datasetsImported: 1,
+        eventRowsImported: imported.matchesImported,
+        aiCalls: 0,
+        humanCouponLabTouched: false,
+        note: "Owner-confirmed, bounded StatsBomb research import. It remains in the historical model lab only; no human coupons, predictions or live betting records were changed."
+      };
+    } else if (action === "sync_skillcorner_basketball") {
+      const imported = await syncSkillCornerBasketballAggregates({
+        confirmResearchUse: body?.confirmResearchUse
+      });
+      result = {
+        status: imported.status,
+        startedAt,
+        completedAt: imported.completedAt,
+        steps: [{ name: "skillcorner_acb_2025_26_player_season_aggregates", status: imported.status, result: imported }],
+        datasetsImported: imported.datasetsImported,
+        eventRowsImported: imported.totalRows,
+        aiCalls: 0,
+        humanCouponLabTouched: false,
+        note: "Owner-confirmed SkillCorner ACB 2025/26 player-team-season aggregates only. These are not match-level results; no raw tracking files, human coupons, predictions or settlement records were imported."
+      };
     } else {
       const steps: any[] = [];
       const execute = async (name: string, work: () => Promise<any>) => {
@@ -62,6 +104,7 @@ export default async (req: Request) => {
         }
       };
       await execute("openfootball_historical_results", syncOpenFootballHistoricalData);
+      await execute("nflverse_american_football_play_by_play", () => syncNflversePlayByPlayData());
       await execute("openfootball_world_cup_and_player_events", syncOpenFootballWorldCupData);
       await execute("consensus_market_history", syncConsensusMarketDatasets);
       await execute("sharpapi_observed_market_snapshots", syncSharpApiSampleMarkets);
@@ -79,7 +122,7 @@ export default async (req: Request) => {
         datasetsImported: steps.reduce((n, x) => n + Number(x.result?.datasetsImported || x.result?.filesFetched || 0), 0),
         eventRowsImported: steps.reduce((n, x) => n + Number(x.result?.matchesImported || x.result?.rowsImported || 0), 0),
         aiCalls: 0, humanCouponLabTouched: false,
-        note: "Only existing source-specific adapters ran. Historical observed-price settlement is limited to eligible pre-match football snapshots that match exact OpenFootball World Cup fixtures and implemented market rules. Market calibration is a consensus benchmark with a chronological 70/30 holdout, not a WIN edge or ROI claim. No discovered source was automatically connected, and no human coupon records were read or changed."
+        note: "Only approved, source-specific adapters ran. Historical observed-price settlement is limited to eligible pre-match football snapshots that match exact OpenFootball World Cup fixtures and implemented market rules. Market calibration is a consensus benchmark with a chronological 70/30 holdout, not a WIN edge or ROI claim. The nflverse adapter imports licensed NFL play-by-play only; it does not add association-football coverage. No discovered candidate source was automatically connected, and no human coupon records were read or changed."
       };
     }
 

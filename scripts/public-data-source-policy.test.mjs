@@ -104,6 +104,25 @@ test("each adapter checks registry policy before its first upstream operation", 
   assert.ok(sharpGate > sharpStart && sharpGate < sharpFetch);
 });
 
+test("SportScore manual API access is gated by its published free-tier terms before network access", async () => {
+  const provider = DATA_PROVIDER_REGISTRY.find(item => item.id === "sportscore-live");
+  assert.ok(provider);
+  assert.equal(provider.accessMode, "open_api");
+  assert.equal(provider.authentication, "none");
+  assert.equal(provider.licenceReview, "documented_open_terms");
+  assert.equal(provider.automationAllowed, false);
+  assert.match(provider.licenceReference, /^https:\/\//);
+  assert.match(provider.attribution, /Powered by SportScore/);
+
+  const adapter = await readFile(new URL("../netlify/lib/sportscore-live-adapter.mts", import.meta.url), "utf8");
+  const functionStart = adapter.indexOf("export async function getSportScoreMatches");
+  const policyGate = adapter.indexOf("assertSportScoreTerms();", functionStart);
+  const upstreamFetch = adapter.indexOf("const response = await fetch(url", functionStart);
+  assert.ok(policyGate > functionStart && policyGate < upstreamFetch);
+  assert.match(adapter, /CACHE_SECONDS = 60/);
+  assert.match(adapter, /SUPPORTED_SPORTS = new Set\(\["football", "basketball", "cricket", "tennis"\]\)/);
+});
+
 test("all 12 consensus datasets have unique, registry-approved sport and market mappings", () => {
   assert.equal(CONSENSUS_SOURCES.length, 12);
   const ids = new Set();

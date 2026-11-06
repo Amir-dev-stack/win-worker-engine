@@ -174,20 +174,44 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     notes:"Candidate only. The repository states CC BY 4.0 and publishes a monthly 1X2 CSV plus daily immutable JSON snapshots, a SHA-256 manifest and OpenTimestamps proofs. Before ingestion, verify that each prediction is present in a snapshot captured before its kick-off and that the snapshot hash matches the manifest; newest timestamp proofs may still be pending. Exclude void rows. Do not treat source-reported results or CLV as independent ground truth. Its documented CLV is raw-price versus raw-price, best-soft fields include exchanges, earlier best-soft history may contain look-ahead, and Betfair venue labelling was mixed through 2026-10-15. Dataset-specific data rights and methodology remain under review; no automatic download or ingestion."
   },
   {
-    id:"api-sports", name:"API-SPORTS (API-Football and other sport APIs)", website:"https://api-sports.io/",
-    sports:["football","basketball","american_football"],
-    dataDomains:["fixtures","results","competition_standings","team_match_statistics","player_match_statistics","player_ratings","play_by_play_events","lineups","injuries","team_season_statistics","player_season_statistics"],
+    id:"api-sports", name:"API-Football (API-SPORTS football API)", website:"https://www.api-football.com/",
+    sports:["football"],
+    dataDomains:["fixtures","results","competition_coverage","competition_standings","team_match_statistics","half_time_team_statistics","player_match_statistics","player_ratings","match_events","lineups","injuries","team_season_statistics","player_season_statistics","pre_match_odds","predictions","head_to_head"],
     accessMode:"licensed_api", historicalSupport:"possible", authentication:"api_key",
     licenceReview:"required", automationAllowed:false,
-    notes:"Deep-statistics commercial API candidate. Official docs describe football fixture team stats, halftime splits, events, lineups, player match statistics and provider-defined ratings; Basketball player game stats; and American-football play-by-play and position-group player statistics. Actual coverage, historical depth, rating definitions, quotas, price and reuse rights must be verified for each sport/competition/season and account before any adapter is enabled."
+    licenceReference:"https://www.api-football.com/terms",
+    attribution:"API-Football / API-SPORTS — football fixtures, statistics, events and provider-calculated player ratings.",
+    notes:"Primary licensed association-football API candidate. Official documentation describes fixture/event/lineup data, team match statistics (shots, possession, corners, cards, goalkeeper saves and passing totals/accuracy), per-player match lines and provider-calculated ratings, injuries, predictions, standings and pre-match odds. Competition/season coverage flags must be retrieved for each fixture; true coverage flags still do not guarantee every record. Standard event feed is goals, cards, substitutions and VAR, not a complete optical tracking or every-pass event stream. xG, shot-coordinate maps and advanced pressure/field-tilt metrics must be marked available only when actually returned for that fixture. No request is permitted until terms/data rights have been approved and the API key plus allowed domains are configured."
+  },
+  {
+    id:"sportscore-live", name:"SportScore free live sports API", website:"https://sportscore.com/developers/",
+    sports:["football","basketball","cricket","tennis"],
+    dataDomains:["live_scores","recent_fixtures","match_status","team_names","competition_metadata","standings","top_scorers","player_statistics"],
+    accessMode:"open_api", historicalSupport:"unknown", authentication:"none",
+    licenceReview:"documented_open_terms", automationAllowed:false,
+    licenceReference:"https://sportscore.com/developers/terms/",
+    attribution:"Visible, crawlable dofollow link: Powered by SportScore — https://sportscore.com/ — required on every surface that displays its data.",
+    notes:"Public widget API is free without a key for personal, open-source, community and early-stage commercial projects with the visible attribution badge. Published terms list ~10,000 requests/24h/IP, allow a 60-second cache and derived analytics, but prohibit bulk raw-response redistribution and use to facilitate match-fixing or illegal gambling. WIN uses user-triggered requests only, one normalized sport response per 60-second cache window, no scheduled polling, and never treats the feed as sole truth or a final financial settlement source."
+  },
+  {
+    id:"skillcorner-open-basketball-acb-2025-26", name:"SkillCorner Open Data — Liga ACB Basketball 2025/26", website:"https://github.com/SkillCorner/opendata-basketball",
+    sports:["basketball"],
+    dataDomains:["player_season_shot_aggregates","player_season_drive_aggregates","player_season_pick_aggregates"],
+    accessMode:"manual_authorized_import", historicalSupport:"documented", authentication:"none",
+    licenceReview:"documented_open_terms", automationAllowed:false,
+    licenceReference:"https://github.com/SkillCorner/opendata-basketball/blob/main/LICENSE",
+    attribution:"SkillCorner Open Data — https://skillcorner.com/ (credit requested by repository README).",
+    notes:"Manual bounded import of three small ACB 2025-2026 player-team-season aggregate CSVs (shots, drives and picks) only. README reports coverage for 293 of 327 ACB games, offense-only aggregates, and 10 detailed match samples. This is not a current-season feed or match-level data. A traded player may have per-team rows plus a season-total row; never sum both. Large 25fps tracking archives and raw match event files are intentionally excluded. Preserve SkillCorner credit."
   },
   {
     id:"statsbomb-open-data", name:"StatsBomb Open Data", website:"https://github.com/hudl/open-data",
     sports:["football"],
     dataDomains:["selected_competitions_historical_matches","match_events","lineups","selected_match_360_data"],
     accessMode:"research_candidate", historicalSupport:"documented", authentication:"none",
-    licenceReview:"required", automationAllowed:false,
-    notes:"Publicly shared event and lineup JSON for selected competitions/seasons, plus 360 data for selected matches. Attribution/brand requirements apply; coverage is selective, updates are not guaranteed live, and commercial player/season IQ metrics are not the same as the open event files. Terms and reuse rights must be reviewed before automated ingestion."
+    licenceReview:"documented_open_terms", automationAllowed:false,
+    licenceReference:"https://github.com/hudl/open-data#terms--conditions",
+    attribution:"Data source: StatsBomb Open Data. If publishing, sharing or distributing derived analysis, credit StatsBomb and use its official logo.",
+    notes:"Manual, owner-confirmed import only for private non-commercial football research. The repository makes selected competitions/seasons publicly available for research and genuine football-analytics interest. It does not publish a general-purpose CC licence for the dataset. No scheduled/automatic ingestion, no raw-data redistribution, and no claim of comprehensive league coverage. If publishing, sharing or distributing derived research, cite StatsBomb and use its official logo."
   },
   {
     id:"sportmonks", name:"Sportmonks", website:"https://www.sportmonks.com/",
@@ -218,6 +242,57 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     accessMode:"licensed_api", historicalSupport:"possible", authentication:"api_key",
     licenceReview:"required", automationAllowed:false,
     notes:"Commercial candidate; archive access and sport-specific coverage must be verified against plan and contract."
+  },
+
+  {
+    id:"nflverse-pbp-data", name:"nflverse NFL play-by-play and player statistics", website:"https://github.com/nflverse/nflverse-data",
+    sports:["american_football"],
+    dataDomains:["historical_match_play_by_play","team_match_statistics","player_match_statistics","player_events","results"],
+    accessMode:"open_download", historicalSupport:"documented", authentication:"none",
+    licenceReview:"approved", automationAllowed:true,
+    licenceReference:"https://github.com/nflverse/nflverse-data/blob/main/LICENSE.md",
+    attribution:"nflverse play-by-play data — CC BY 4.0.",
+    notes:"Automated season CSV releases provide NFL play-by-play, game scores and derived passing, rushing, receiving, tackling, turnover and special-teams counts. Attribution is required. The adapter intentionally does not use FTN-specific data fields and does not invent player ratings, lineups, injuries, snap counts or absent statistics. This provider covers American football, not association football."
+  },
+  {
+    id:"uefa-match-center", name:"UEFA official match centres", website:"https://www.uefa.com/uefachampionsleague/",
+    sports:["football"],
+    dataDomains:["fixtures","results","team_match_statistics","match_timeline","competition_context"],
+    accessMode:"research_candidate", historicalSupport:"possible", authentication:"none",
+    licenceReview:"required", automationAllowed:false,
+    licenceReference:"https://www.uefa.com/",
+    attribution:"UEFA — official match centre.",
+    notes:"Official reference source for competition fixtures, match reports and selected team statistics. This registry entry is a source pointer only; it does not authorize scraping, bulk downloads or automated reuse. Confirm per-competition availability and terms before building an adapter."
+  },
+  {
+    id:"fotmob-match-profiles", name:"FotMob match profiles", website:"https://www.fotmob.com/",
+    sports:["football"],
+    dataDomains:["fixtures","results","expected_goals","shot_maps","team_match_statistics","player_match_statistics","player_ratings","match_timeline"],
+    accessMode:"research_candidate", historicalSupport:"possible", authentication:"none",
+    licenceReview:"required", automationAllowed:false,
+    licenceReference:"https://www.fotmob.com/",
+    attribution:"FotMob — match profile and statistics.",
+    notes:"Reference source for match timelines, shot maps, xG and provider-calculated player ratings where available. No public bulk-data or redistribution permission is assumed; no automated ingestion is enabled."
+  },
+  {
+    id:"espn-match-center", name:"ESPN match centres", website:"https://www.espn.com/soccer/",
+    sports:["football","basketball","baseball","american_football","ice_hockey"],
+    dataDomains:["fixtures","results","match_timeline","team_match_statistics","player_match_statistics","lineups"],
+    accessMode:"research_candidate", historicalSupport:"possible", authentication:"none",
+    licenceReview:"required", automationAllowed:false,
+    licenceReference:"https://www.espn.com/",
+    attribution:"ESPN — match centre and scoreboard data.",
+    notes:"Reference destination for event commentary, schedules and sport-specific box scores where published. This entry is not an approved data API and does not permit automated scraping or redistribution."
+  },
+  {
+    id:"footystats-h2h", name:"FootyStats football H2H and trends", website:"https://footystats.org/",
+    sports:["football"],
+    dataDomains:["historical_results","head_to_head","team_form","competition_statistics","betting_trends"],
+    accessMode:"research_candidate", historicalSupport:"possible", authentication:"account_or_contract",
+    licenceReview:"required", automationAllowed:false,
+    licenceReference:"https://footystats.org/",
+    attribution:"FootyStats — historical H2H and trend reference.",
+    notes:"Reference source for historical form and H2H summaries. It is not an official governing-body feed; definitions, sample scope, access entitlements and reuse rights must be checked before any automated connection."
   }
 ];
 

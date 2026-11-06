@@ -8,6 +8,7 @@ import { runStrategyBacktest } from "../lib/backtest.mts";
 import { getTipsterSourceReport, importTipsterCoupon, listTipsterSources } from "../lib/source-intelligence.mts";
 import { authorizeMcpRequest, WIN_ISSUER } from "../lib/oauth-store.mts";
 import { getLearningObservatory } from "../lib/learning-observatory.mts";
+import { getSportScoreMatches } from "../lib/sportscore-live-adapter.mts";
 
 const resourceMetadata = WIN_ISSUER + "/.well-known/oauth-protected-resource/mcp";
 
@@ -34,6 +35,7 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
     historical_event_datasets: "library/model-lab/historical-event-datasets",
     consensus_market_datasets: "library/model-lab/market-consensus-datasets",
     player_event_datasets: "library/model-lab/player-event-datasets",
+    player_season_aggregate_datasets: "library/model-lab/player-season-aggregate-datasets",
     department_smoke_tests: "library/department-smoke-tests",
     review_operations: "library/review-operations",
     lesson_review_cases: "library/lesson-review-cases",
@@ -60,7 +62,7 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
     title: "List WIN audit records",
     description: "List recent records from a strict allowlist of WIN historical data, calibration, settlement, reviewer and learning collections, plus read-only research-run metadata. Cannot start research, mutate records, approve coupons or place bets.",
     inputSchema: {
-      category: z.enum(["calibration_reports","settled_market_datasets","observed_market_snapshots","historical_event_datasets","consensus_market_datasets","player_event_datasets","department_smoke_tests","review_operations","lesson_review_cases","win_post_match_cases","win_coupon_candidates","research_runs","research_jobs","learning_cycles","lessons"]),
+      category: z.enum(["calibration_reports","settled_market_datasets","observed_market_snapshots","historical_event_datasets","consensus_market_datasets","player_event_datasets","player_season_aggregate_datasets","department_smoke_tests","review_operations","lesson_review_cases","win_post_match_cases","win_coupon_candidates","research_runs","research_jobs","learning_cycles","lessons"]),
       limit: z.number().int().min(1).max(100).optional()
     },
     securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]
@@ -75,7 +77,7 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
     title: "Get one WIN audit record",
     description: "Read one exact record by ID from the same allowlisted audit collections, including read-only research-run metadata. Strictly read-only; no arbitrary store paths are accepted.",
     inputSchema: {
-      category: z.enum(["calibration_reports","settled_market_datasets","observed_market_snapshots","historical_event_datasets","consensus_market_datasets","player_event_datasets","department_smoke_tests","review_operations","lesson_review_cases","win_post_match_cases","win_coupon_candidates","research_runs","research_jobs","learning_cycles","lessons"]),
+      category: z.enum(["calibration_reports","settled_market_datasets","observed_market_snapshots","historical_event_datasets","consensus_market_datasets","player_event_datasets","player_season_aggregate_datasets","department_smoke_tests","review_operations","lesson_review_cases","win_post_match_cases","win_coupon_candidates","research_runs","research_jobs","learning_cycles","lessons"]),
       recordId: z.string().min(1).max(300)
     },
     securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]
@@ -122,6 +124,26 @@ function buildServer(baseUrl: string, internalToken: string, scopes: string[]) {
       body: JSON.stringify({ ...args, event })
     });
     return { content: [{ type: "text" as const, text: await response.text() }], isError: !response.ok && response.status !== 202 };
+  });
+
+  server.registerTool("get_sportscore_live_matches", {
+    title: "Get SportScore live and recent matches",
+    description: "Read a bounded live/recent match list for football, basketball, cricket or tennis from SportScore's free public API. User-triggered only, no key required, and cached for 60 seconds. Requires WIN read access. Results are source-reported and not independently verified; use SportScore only as corroborating context, never as the sole source or final settlement evidence. Preserve the visible Powered by SportScore attribution in any user-facing display.",
+    inputSchema: {
+      sport: z.enum(["football", "basketball", "cricket", "tennis"])
+    },
+    securitySchemes: [{ type: "oauth2", scopes: ["win:read"] }]
+  }, async ({ sport }) => {
+    if (!scopes.includes("win:read")) return authRequired("win:read");
+    try {
+      const result = await getSportScoreMatches(sport);
+      return { content: [{ type: "text" as const, text: JSON.stringify({
+        ...result,
+        warning: "SportScore aggregates upstream data. Verify important scores and times independently. Do not use this feed as the sole source of truth or as final settlement evidence."
+      }) }] };
+    } catch (error) {
+      return { content: [{ type: "text" as const, text: "SportScore request failed: " + String(error).slice(0, 300) }], isError: true };
+    }
   });
 
   server.registerTool("get_run", {

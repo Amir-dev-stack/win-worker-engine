@@ -22,7 +22,7 @@ export async function runOpenFootballBaselineLab() {
  await put("library/model-lab/experiments",id,result);return result;
 }
 export async function getModelLabResearchPack(targetBrief:any={}){
- const [events,consensus,observed,calibrations,experiments,runs,playerEventDatasets,settledObservedMarkets,settlementRuns,sourceCandidates,sourceDiscoveryRuns]=await Promise.all([
+ const [events,consensus,observed,calibrations,experiments,runs,playerEventDatasets,settledObservedMarkets,settlementRuns,sourceCandidates,sourceDiscoveryRuns,playerSeasonAggregateDatasets]=await Promise.all([
   list<any>("library/model-lab/historical-event-datasets",1000),
   list<any>("library/model-lab/market-consensus-datasets",100),
   list<any>("library/model-lab/observed-market-snapshots",100),
@@ -33,7 +33,8 @@ export async function getModelLabResearchPack(targetBrief:any={}){
   list<any>("library/model-lab/settled-observed-markets",100),
   list<any>("library/model-lab/observed-market-settlement-runs",20),
   list<any>("library/research-source-candidates",1000),
-  list<any>("library/research-source-discovery-runs",20)
+  list<any>("library/research-source-discovery-runs",20),
+  list<any>("library/model-lab/player-season-aggregate-datasets",20)
  ]);
  const latestCalibration=calibrations.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]||null;
  const latestSettlement=settlementRuns.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))[0]||null;
@@ -52,6 +53,15 @@ export async function getModelLabResearchPack(targetBrief:any={}){
  const observedRowsBySport:Record<string,number>={};
  for(const dataset of observed)for(const record of (Array.isArray(dataset.records)?dataset.records:[])){const sport=String(record.sportId||"unknown");observedRowsBySport[sport]=(observedRowsBySport[sport]||0)+1;}
  const groupRows=(items:any[],key:string,countKey:string)=>items.reduce((out:any,d:any)=>{const k=String(d[key]||"unknown");out[k]=(out[k]||0)+Number(d[countKey]||0);return out;},{});
+ const skillCornerDatasets=playerSeasonAggregateDatasets.filter((dataset:any)=>dataset.providerId==="skillcorner-open-basketball-acb-2025-26");
+ const skillCornerMetricLeaderboards=(aggregateType:string,metric:string)=>{
+  const rows=skillCornerDatasets.filter((dataset:any)=>dataset.aggregateType===aggregateType)
+   .flatMap((dataset:any)=>(Array.isArray(dataset.records)?dataset.records:[]))
+   .filter((record:any)=>!record.isSeasonTotalRow&&record.team!=="total"&&typeof record.statistics?.[metric]==="number");
+  return rows.sort((a:any,b:any)=>Number(b.statistics[metric])-Number(a.statistics[metric])).slice(0,10)
+   .map((record:any)=>({player:record.player,team:record.team,season:record.season,competition:record.competition,gamesPlayed:record.gamesPlayed,metric,value:record.statistics[metric],sourceUrl:record.sourceUrl}));
+ };
+
  return {
   generatedAt:new Date().toISOString(),
   dataSummary:{
@@ -62,6 +72,7 @@ export async function getModelLabResearchPack(targetBrief:any={}){
    observedMarketSnapshots:observed.length,observedMarketRows:observed.reduce((n,d)=>n+Number(d.recordCount||0),0),observedRowsBySport,
    playerEventDatasets:playerEventDatasets.length,playerEventRows:playerEventDatasets.reduce((n,d)=>n+Number(d.totalRows||0),0),playerEventRowsBySport:groupRows(playerEventDatasets,"sport","totalRows"),
    settledObservedMarketDatasets:settledObservedMarkets.length,settledObservedMarketRows:settledObservedMarkets.reduce((n,d)=>n+Number(d.settledSelectionCount||0),0),
+   skillCornerBasketball:{datasetCount:skillCornerDatasets.length,aggregateRows:skillCornerDatasets.reduce((n:any,d:any)=>n+Number(d.totalRows||0),0),aggregates:skillCornerDatasets.map((d:any)=>({aggregateType:d.aggregateType,season:d.season,competition:d.competition,rows:d.totalRows,uniquePlayers:d.uniquePlayers,uniqueTeams:d.uniqueTeams,includesSeasonTotalRows:d.includesSeasonTotalRows,sourceUrl:d.sourceUrl})),topShootersByAttempts:skillCornerMetricLeaderboards("shots","attempts"),topDriversByVolume:skillCornerMetricLeaderboards("drives","total_drives"),topPickHandlersByVolume:skillCornerMetricLeaderboards("picks","handler_total_picks"),caveats:["Player-team-season aggregate grain, not match-by-match rows.","Source covers only 293 of 327 ACB 2025/26 games and is offense-only.","Rows with team='total' are excluded from team leaderboards because they duplicate per-team rows for traded players.","Do not infer current-season form or live availability from this historical dataset."]},
    worldCupPlayerStats:{uniquePlayers:playerSummary.length,topScorers:playerSummary.filter(x=>x.goals>0).sort((a,b)=>b.goals-a.goals).slice(0,20),mostYellowCards:playerSummary.filter(x=>x.yellowCards>0).sort((a,b)=>b.yellowCards-a.yellowCards).slice(0,10),mostStarts:playerSummary.filter(x=>x.starts>0).sort((a,b)=>b.starts-a.starts).slice(0,10)},
    observedSports:[...new Set(observed.flatMap(d=>(d.records||[]).map(r=>r.sportId)))],
    observedBookmakerSources:[...new Set(observed.flatMap(d=>(d.records||[]).map(r=>r.bookmakerId)))],

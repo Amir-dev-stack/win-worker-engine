@@ -146,6 +146,67 @@ add("WIN structured coupon candidates require full run approval and preserve rej
 add("Dashboard shows WIN-built, won and lost coupon boards", html.includes('id="winBuiltList"') && html.includes('id="wonCouponList"') && html.includes('id="lostCouponList"') && app.includes("refreshCouponBoards") && app.includes("renderCouponBoardCard") && app.includes("View full coupon"), "The dashboard displays structured built candidates and separate won/lost records with their full selections and evidence.");
 add("WIN coupons preserve validated kickoff and participant identity for future result checks", library.includes("leg?.startTime || leg?.eventStart") && library.includes("eventStart: leg.eventStart") && library.includes("eventId: leg.eventId") && library.includes("homeTeam: leg.homeTeam") && library.includes("awayTeam: leg.awayTeam") && worker.includes("startTime: exactKickoff") && worker.includes("eventStart: exactKickoff"), "Post-match lookup has an explicit event date and two sides; it never substitutes an odds-capture timestamp for a kickoff.");
 add("Multi-sport historical settlement lookup is exact and source-linked", postMatch.includes("historicalDatasetResult") && postMatch.includes("row.status!==\"completed\"") && postMatch.includes("Multiple historical rows match this event") && postMatch.includes("sourceLicence:dataset.sourceLicence"), "Imported historical market datasets can resolve exact completed events where an applicable settlement field exists; ambiguous rows remain unresolved.");
+add("SkillCorner ACB basketball aggregates remain manual, player-season scoped and source-attributed",
+  providers.includes('id:"skillcorner-open-basketball-acb-2025-26"') &&
+  providers.includes('accessMode:"manual_authorized_import"') &&
+  providers.includes('licenceReview:"documented_open_terms"') &&
+  providers.includes('automationAllowed:false') &&
+  (await read("netlify/lib/skillcorner-basketball-adapter.mts")).includes("I_CONFIRM_SKILLCORNER_ACB_2025_26_RESEARCH") &&
+  (await read("netlify/lib/skillcorner-basketball-adapter.mts")).includes("MAX_TOTAL_BYTES = 3 * 1024 * 1024") &&
+  (await read("netlify/lib/skillcorner-basketball-adapter.mts")).includes('player-season-aggregate-datasets') &&
+  (await read("netlify/lib/skillcorner-basketball-adapter.mts")).includes("rawTrackingDataImported: false") &&
+  (await read("netlify/lib/skillcorner-basketball-normalize.mjs")).includes("isSeasonTotalRow") &&
+  (await read("netlify/functions/learning-data-jobs.mts")).includes("syncSkillCornerBasketballAggregates") &&
+  (await read("netlify/functions/research-status.mts")).includes("getSkillCornerBasketballStatus") &&
+  (await read("netlify/lib/model-lab.mts")).includes("topShootersByAttempts") &&
+  (await read("netlify/lib/library.mts")).includes('library/model-lab/player-season-aggregate-datasets') &&
+  (await read("netlify/lib/library.mts")).includes('model_lab_player_season_aggregate_dataset') &&
+  (await read("netlify/functions/mcp.mts")).includes('player_season_aggregate_datasets: "library/model-lab/player-season-aggregate-datasets"') &&
+  (await read("netlify/functions/mcp.mts")).includes('"player_season_aggregate_datasets"') &&
+  (await read("public/app.js")).includes('runLearningDataJob("sync_skillcorner_basketball"') &&
+  (await read("netlify/functions/learning-data-jobs.mts")).includes('action === "sync_skillcorner_basketball"') &&
+  (await read("scripts/skillcorner-basketball.test.mjs")).includes("season total rows are explicitly labelled") &&
+  (await read("scripts/skillcorner-adapter-policy.test.mjs")).includes("requires exact owner confirmation") &&
+  (await read("docs/SKILLCORNER_BASKETBALL.md")).includes("293 of the 327 ACB games") &&
+  html.includes("Import SkillCorner ACB 2025/26 player aggregates") &&
+  html.includes("SkillCorner Open Data"),
+  "The import downloads only the three bounded ACB 2025/26 CSV aggregates after explicit confirmation, stores them separately from match-level results, preserves per-team versus season-total rows and excludes the large tracking archives.");
+add("SportScore free live API is on-demand, attributed, cached and never treated as settlement truth",
+  providers.includes('id:"sportscore-live"') &&
+  providers.includes('accessMode:"open_api"') &&
+  providers.includes('licenceReview:"documented_open_terms"') &&
+  providers.includes('automationAllowed:false') &&
+  (await read("netlify/lib/sportscore-live-adapter.mts")).includes("assertSportScoreTerms();") &&
+  (await read("netlify/lib/sportscore-live-adapter.mts")).includes("CACHE_SECONDS = 60") &&
+  (await read("netlify/lib/sportscore-live-adapter.mts")).includes('url.searchParams.set("src", "win-worker-engine")') &&
+  (await read("netlify/functions/sportscore-live.mts")).includes("requireAuth") &&
+  (await read("netlify/functions/mcp.mts")).includes('registerTool("get_sportscore_live_matches"') &&
+  (await read("netlify/functions/mcp.mts")).includes('scopes: ["win:read"]') &&
+  (await read("netlify/functions/sportscore-live.mts")).includes('path: "/api/sportscore-live"') &&
+  html.includes('href="https://sportscore.com/" rel="dofollow"') &&
+  html.includes("Powered by SportScore") &&
+  app.includes("refreshSportScoreMatches") &&
+  app.includes('addEventListener("click",refreshSportScoreMatches)') &&
+  !app.includes('setInterval(()=>{if(token&&!document.hidden)refreshSportScoreMatches()') &&
+  !learningDataJobsFn.includes("syncSportScore") &&
+  (await read("scripts/sportscore-normalize.test.mjs")).includes("zero scores preserved") &&
+  (await read("docs/SPORTSCORE_LIVE_API.md")).includes("approximately 10,000 requests per 24 hours per IP"),
+  "SportScore requests are manually triggered, cached for 60 seconds, authenticated, visibly attributed, rate-limited by cache, and treated as supplementary evidence only.");
+add("StatsBomb Open Data stays manual, bounded, attributed and isolated from betting records",
+  providers.includes('id:"statsbomb-open-data"') &&
+  providers.includes('licenceReview:"documented_open_terms"') &&
+  providers.includes('automationAllowed:false') &&
+  (await read("netlify/lib/statsbomb-open-data-adapter.mts")).includes("I_CONFIRM_PRIVATE_STATSBOMB_RESEARCH_USE") &&
+  (await read("netlify/lib/statsbomb-open-data-adapter.mts")).includes("MAX_MATCHES = 15") &&
+  (await read("netlify/lib/statsbomb-open-data-adapter.mts")).includes("MAX_TOTAL_BYTES = 48 * 1024 * 1024") &&
+  (await read("netlify/lib/statsbomb-open-data-adapter.mts")).includes("rawChecksum") &&
+  (await read("netlify/lib/statsbomb-open-data-adapter.mts")).includes("researchOnly: true") &&
+  (await read("netlify/functions/learning-data-jobs.mts")).includes("syncStatsBombOpenDataResearch") &&
+  (await read("netlify/functions/statsbomb-open-data.mts")).includes("requireAuth") &&
+  (await read("netlify/lib/statsbomb-normalize.mjs")).includes("eventStartPrecision: \"date_only\"") &&
+  (await read("scripts/statsbomb-normalize.test.mjs")).includes("never invents a score") &&
+  (await read("docs/STATSBOMB_OPEN_DATA.md")).includes("private, non-commercial research only"),
+  "The free StatsBomb source is owner-confirmed per import, manual-only, size-bounded, attributed and stored in the historical Model Lab without changing coupons or making AI calls.");
 add("Learning data jobs are authenticated, backgrounded, bounded by source adapters and no-AI", learningDataJobsFn.includes("requireAuth") && learningDataJobsFn.includes("discoverPublicResearchSources") && learningDataJobsFn.includes("syncOpenFootballHistoricalData") && learningDataJobsFn.includes("syncOpenFootballWorldCupData") && learningDataJobsFn.includes("syncConsensusMarketDatasets") && learningDataJobsFn.includes("syncSharpApiSampleMarkets") && learningDataJobsFn.includes('path: "/api/learning-data-jobs"') && learningDataJobsFn.includes("background: true") && learningDataJobsFn.includes("aiCalls: 0") && learningDataJobsFn.includes("humanCouponLabTouched: false") && !learningDataJobsFn.includes("runWinAgent"), "The dashboard can manually run metadata discovery and the existing licence-labelled historical adapters without paid AI or touching human coupon records.");
 add("Manual historical sync settles eligible observed prices and generates chronological calibration", learningDataJobsFn.includes("settleObservedWorldCupMarkets") && learningDataJobsFn.includes("runMarketCalibrationLab") && learningDataJobsFn.includes('historical_observed_market_settlement') && learningDataJobsFn.includes('chronological_market_calibration') && learningDataJobsFn.includes("Unsupported markets, ambiguous fixtures") && learningDataJobsFn.includes("chronological 70/30 holdout") && settlementBridge.includes("eventTimeSemantics!==\"scheduled_event_start\"") && settlementBridge.includes("unsupported_market") && calibration.includes("chronological_70_30_per_dataset"), "Manual imports now invoke the existing evidence-constrained football snapshot settlement bridge and out-of-time consensus calibration; unresolved markets remain excluded and no WIN coupon or paid-AI workflow is touched.");
 add("Learning monitor shows department-history fetch failures instead of a permanent loading placeholder", app.includes('$("#learningDepartments").innerHTML=\'<div class="empty">Department test history unavailable:') && app.includes("Check authentication and the /api/learning-observatory response"), "A failed or unauthorized observatory request now surfaces a visible diagnostic in the department-history panel instead of leaving Loading test history indefinitely.");
@@ -188,6 +249,55 @@ add("Consensus calibration evaluates binary moneyline datasets without inventing
   (await read("scripts/market-calibration.test.mjs")).includes("tennis player-one probabilities"),
   "Football uses three-class 1X2 scoring; NBA/NFL/NHL/MLB and tennis use binary winner scoring with chronological holdout and the same minimum sample requirement.");
 
+add("NFL play-by-play adapter is source-attributed, sport-scoped and provenance-preserving",
+  (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("parseNflverseCsv") &&
+  (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("buildNflverseMatchRecords") &&
+  (await read("netlify/lib/nflverse-pbp-adapter.mts")).includes("rawChecksum") &&
+  providers.includes('id:"nflverse-pbp-data"') &&
+  providers.includes("historical_match_play_by_play") &&
+  providers.includes("CC BY 4.0") &&
+  (await read("netlify/functions/learning-data-jobs.mts")).includes("nflverse_american_football_play_by_play") &&
+  (await read("netlify/functions/research-status.mts")).includes("getNflversePlayByPlaySyncStatus") &&
+  (await read("scripts/nflverse-pbp-adapter.test.mjs")).includes("performances.ratingsAvailable, 0"),
+  "The licensed feed contributes American-football play timelines and derived player/team box-score counts; ratings and absent fields remain explicitly unavailable.");
+add("API-Football dossier ingestion is authenticated, provenance-preserving and rights-gated",
+  providers.includes('id:"api-sports"') &&
+  providers.includes('licenceReview:"required"') &&
+  providers.includes('automationAllowed:false') &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("getApiFootballReadiness") &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("providerMayRunAutomatically") &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("buildApiFootballMatchDossier") &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("rawPayloadSha256") &&
+  (await read("netlify/functions/api-football-sync.mts")).includes("requireAuth") &&
+  (await read("netlify/functions/research-status.mts")).includes("getApiFootballSyncStatus") &&
+  (await read("scripts/api-football-adapter.test.mjs")).includes("coverage false is not converted into zero"),
+  "The API-Football adapter cannot request data until the provider registry, terms approval, API key and explicitly enabled domains pass; fixture identity, player ratings, raw payloads and gaps are stored with source provenance.");
+add("API-Football metric availability is not overstated as full tracking data",
+  providers.includes("Standard event feed is goals, cards, substitutions and VAR") &&
+  providers.includes("shot-coordinate maps and advanced pressure/field-tilt metrics") &&
+  (await read("netlify/lib/api-football-adapter.mts")).includes("not_in_competition_coverage"),
+  "The connector records documented standard stats and provider events while retaining a blocker for unsupported tracking/shot-map fields and competition-specific gaps.");
+add("Football source references remain review-only until access and reuse terms are verified",
+  providers.includes('id:"uefa-match-center"') &&
+  providers.includes('id:"fotmob-match-profiles"') &&
+  providers.includes('id:"espn-match-center"') &&
+  providers.includes('id:"footystats-h2h"') &&
+  providers.includes("automationAllowed:false"),
+  "UEFA, FotMob, ESPN and FootyStats are registered as discovery references, not scraped or treated as connected data feeds.");
+
+add("Every registered sport has a sport-specific statistics catalogue",
+  statCatalog.includes("water_sports:spec") &&
+  statCatalog.includes("athletics:spec") &&
+  statCatalog.includes("greyhound_racing:spec") &&
+  statCatalog.includes("field_hockey:spec") &&
+  statCatalog.includes("water_polo:spec") &&
+  statCatalog.includes("lacrosse:spec") &&
+  statCatalog.includes("floorball:spec") &&
+  statCatalog.includes("squash_padel:spec") &&
+  statCatalog.includes("winter_sports:spec") &&
+  statCatalog.includes("Provider-defined player rating") &&
+  (await read("scripts/match-evidence.test.mjs")).includes("every registered sport has its own team/participant statistics"),
+  "Every sport in WIN's sport capability registry has sport-specific team/athlete metric groups, event types and an explicit provider-rating availability field.");
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
