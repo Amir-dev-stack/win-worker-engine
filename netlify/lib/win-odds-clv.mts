@@ -9,6 +9,9 @@ export type WinCLVQuote = {
   quoteId: string;
   sourceId: string;
   sourceRecordId: string;
+  sourceRevision: string;
+  licenceId: string;
+  snapshotRole: "decision" | "closing";
   eventId: string;
   marketId: string;
   selectionId: string;
@@ -56,8 +59,10 @@ const nonEmpty = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
 
 function validateQuote(quote: WinCLVQuote, kickoffAt: string) {
-  if (!quote || !["quoteId","sourceId","sourceRecordId","eventId","marketId","selectionId","period","bookmakerId"].every(key => nonEmpty((quote as any)[key])) ||
+  if (!quote || !["quoteId","sourceId","sourceRecordId","sourceRevision","licenceId","eventId","marketId","selectionId","period","bookmakerId"].every(key => nonEmpty((quote as any)[key])) ||
       !["sportsbook","exchange"].includes(quote.venueType) ||
+      !/^[a-f0-9]{40}$/i.test(quote.sourceRevision) ||
+      !["decision","closing"].includes(quote.snapshotRole) ||
       quote.priceType !== "decimal_back" ||
       typeof quote.decimalOdds !== "number" || !Number.isFinite(quote.decimalOdds) ||
       quote.decimalOdds <= 1 || quote.decimalOdds > 1000 ||
@@ -103,6 +108,9 @@ export function calculateWinClosingLineValue(args: {
   }
   validateQuote(decisionQuote, kickoffAt);
   validateQuote(closingQuote, kickoffAt);
+  if (decisionQuote.snapshotRole !== "decision" || closingQuote.snapshotRole !== "closing") {
+    throw new WinCLVError("clv_snapshot_role_invalid");
+  }
   if (identity(decisionQuote) !== identity(closingQuote)) {
     throw new WinCLVError("clv_quote_identity_mismatch");
   }
