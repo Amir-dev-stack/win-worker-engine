@@ -340,6 +340,8 @@ add("WIN shadow inference loads only registered artifacts and enforces point-in-
   mlShadowPrediction.includes("hashWinMLProvenance(args.features)") &&
   mlShadowPrediction.includes("putIfNew(COLLECTION, prediction.predictionRunId, record)") &&
   mlShadowPrediction.includes("getWinMLShadowPredictionRecord") &&
+  mlShadowPrediction.includes("assertShadowInferenceMatches") &&
+  mlShadowPrediction.includes("shadow_prediction_inference_mismatch") &&
   mlShadowPrediction.includes("shadow_prediction_record_tampered") &&
   mlShadowPrediction.includes("productionUseAllowed: false") &&
   mlShadowPrediction.includes("automatedBettingAllowed: false") &&
@@ -347,7 +349,8 @@ add("WIN shadow inference loads only registered artifacts and enforces point-in-
   mlShadowPredictionTests.includes("rejects features unavailable at the declared cutoff") &&
   mlShadowPredictionTests.includes("never a caller-supplied artifact") &&
   winMarketEvaluationRegistryTests.includes("getWinMLShadowPredictionRecord") &&
-  winMarketEvaluationRegistryTests.includes("shadow_prediction_record_tampered"),
+  winMarketEvaluationRegistryTests.includes("shadow_prediction_record_tampered") &&
+  winMarketEvaluationRegistryTests.includes("shadow_prediction_inference_mismatch"),
   "The inference boundary retrieves a hash-verified registered artifact, validates exact feature schema and availability timestamps, and records immutable shadow-only outputs; no production route or betting action is exposed.");
 
 add("WIN ML predictions are provenance-bound to an evaluated model and shadow-only",
