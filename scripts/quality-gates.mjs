@@ -34,9 +34,27 @@ const learningObservatory = await read("netlify/lib/learning-observatory.mts");
 const winLearningCore = await read("netlify/lib/win-learning-core.mjs");
 const learningObservatoryFn = await read("netlify/functions/learning-observatory.mts");
 const learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts");
+const storeContractTests = await read("scripts/win-store.test.mjs");
+const resultSubmissionTests = await read("scripts/results-isolated-retry.test.mjs");
 const mcpApi = await read("netlify/functions/mcp.mts");
 const oauthStore = await read("netlify/lib/oauth-store.mts");
 const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
+add("WIN shared-store contract tests cover conditional races, bounded reads, legacy and malformed records",
+  storeContractTests.includes("onlyIfNew race must have exactly one winner") &&
+  storeContractTests.includes("compare-and-swap update may have exactly one winner") &&
+  storeContractTests.includes("bounded parallel reads") &&
+  storeContractTests.includes("valid legacy JSON record remains readable") &&
+  storeContractTests.includes("malformed JSON must surface as a parse failure") &&
+  storeContractTests.includes("deleted record must not reappear"),
+  "Storage regressions must preserve conditional-write, bounded-read, legacy JSON and fail-visible malformed-record contracts.");
+
+add("WIN result submission tests cover same-outcome and conflicting races plus interrupted recovery",
+  resultSubmissionTests.includes("Concurrent same-outcome requests must converge on one atomic claim") &&
+  resultSubmissionTests.includes("Conflicting concurrent outcomes have one winner") &&
+  resultSubmissionTests.includes("A crash after claim creation but before canonical result persistence is recoverable") &&
+  resultSubmissionTests.includes("a retry should resume an existing same-outcome result"),
+  "Result claim idempotency and recovery regressions must remain in the isolated test suite.");
+
 add("WIN exposes a dedicated read-only audit scope through OAuth", oauthStore.includes('"win:audit"') && oauthAuthorize.includes("Read-only WIN diagnostics") && mcpApi.includes('securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]'), "The user can authorize diagnostics separately from research permissions.");
 add("OAuth authorization requires explicit least-privilege scopes", oauthAuthorize.includes("const requested = value.trim() ? value.trim().split") && oauthAuthorize.includes(": [];") && oauthAuthorize.includes("!requested.length"), "An omitted scope is rejected instead of silently granting every supported permission.");
 add("WIN audit consent accurately describes read-only research-run metadata", oauthAuthorize.includes("read-only research-run records") && oauthAuthorize.includes("Cannot start research") && mcpApi.includes("read-only research-run metadata"), "The audit scope may read run metadata but cannot start research or mutate data.");
