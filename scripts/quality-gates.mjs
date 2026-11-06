@@ -1277,6 +1277,8 @@ add("WIN odds evidence schema is append-only, source-pinned and prediction-bound
   winOddsEvidenceSchema.includes("win_validate_prediction_quote_binding") &&
   winOddsEvidenceSchema.includes("win_validate_clv_evaluation") &&
   winOddsEvidenceSchema.includes("closing quote does not match decision evidence") &&
+  winOddsEvidenceSchema.includes("new.odds_ratio_clv - (d.decimal_odds / c.decimal_odds - 1)") &&
+  winOddsEvidenceSchema.includes("new.implied_probability_delta - (1 / c.decimal_odds - 1 / d.decimal_odds)") &&
   winOddsEvidenceSchemaTests.includes("append-only") &&
   winOddsEvidenceSchemaTests.includes("cannot claim profitability"),
   "Quote evidence, prediction-time price binding and CLV results must remain immutable and evidence-only.");
