@@ -29,11 +29,17 @@ Deferred until the PR #9/#10 storage implementation is integrated:
 - compare the 23-prefix structured-memory allowlist across `netlify/lib/store.mts`, `neon-memory-backup.mts`, `memory-backfill.mts` and `memory-restore.mts`;
 - assert no duplicates, explicit `library/*/` boundaries, and exclusion of model-lab/research and separate AI-budget/OAuth collections.
 
-## 2. Known result-submission gap
+## 2. Storage conditional-write race coverage added
+
+The isolated `scripts/win-store.test.mjs` contract fixture now exercises simultaneous `putIfNew` attempts for one key and simultaneous `putIfMatch` attempts using one shared ETag. It asserts exactly one winner and that all stale/competing attempts fail closed. The architecture quality gate requires these cases to remain present.
+
+Important limitation: these are isolated adapter-contract tests. They validate WIN's wrapper behavior against the expected atomic semantics of the adapter fixture; they do not independently prove Netlify Blobs' provider-side atomicity or Neon transaction behavior. Provider integration verification remains open and must be done with non-production test resources only after an explicitly approved test environment exists.
+
+## 3. Known result-submission gap
 
 The handler still uses a read-before-write duplicate check and does not atomically claim a prediction result. The new test covers sequential retry after a partial write; it does **not** prove safety under simultaneous submissions. Concurrent same-prediction submissions, including a possible duplicate canonical result, remain unverified and are a required next test before any idempotency refactor. No lock/claim protocol should be introduced until the storage conditional-write semantics and existing correction workflow are covered.
 
-## 3. Next contract tests — priority order
+## 4. Next contract tests — priority order
 
 ### A. Result submission concurrency and recovery
 Use only an isolated in-memory store and stubbed dependencies. Add deterministic barriers and failure injection at each write boundary.
@@ -97,7 +103,7 @@ For every scheduled/background job, record:
 
 A cron expression in source is not evidence of active production configuration. Verify deployed schedules and execution history read-only before making changes.
 
-## 4. Execution policy
+## 5. Execution policy
 
 - Run tests in CI or a local isolated environment with no production credentials.
 - Never set `WIN_STORE_TEST_MODE=1` in a production process.
@@ -105,7 +111,7 @@ A cron expression in source is not evidence of active production configuration. 
 - Keep PR #11 draft and unmerged; do not merge PR #8, #9 or #10 as part of this work.
 - Record skipped tests and unavailable integration dependencies explicitly; do not report them as passed.
 
-## 5. Exit criteria
+## 6. Exit criteria
 
 Stage 2 is not complete until:
 - the storage ownership manifest matches the implementation actually present in the integrated branch;
