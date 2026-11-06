@@ -291,3 +291,12 @@ This follow-up is a source review and documentation update only. It does not cla
 - The test writes only synthetic records through the explicitly enabled in-memory adapter. It does not establish provider-side Netlify Blobs conditional-write behavior.
 - The test is registered in the build-required file list and a source-level architecture gate checks that the recovery assertions remain present.
 - This is newly added test coverage; no execution result is claimed for the current PR head. The review remains a sequence of single-record writes, not a multi-record transaction. If the process fails at another boundary, exact-payload retry after lease expiry remains the recovery mechanism.
+
+### WIN-origin coupon settlement claim and retry recovery (2026-11-06)
+
+- `settleCouponRecord` now creates one immutable claim per coupon under `library/coupon-settlement-claims/`, using `putIfNew` and a SHA-256 fingerprint over the coupon ID, outcome, settlement source and evidence payload.
+- The claim stores the complete settlement payload and timestamp. An identical retry reuses that exact claim and can repair missing coupon projections, history and learning records after an interrupted write.
+- Settlement history now has a deterministic per-coupon identity, preventing duplicate history rows on retries. Existing stable lesson, settlement-learning, agent-observation and agent-profile identities are retained.
+- A different outcome, changed evidence payload, or previously settled legacy coupon without a matching immutable claim fails closed. This preserves the original outcome until a dedicated correction workflow is implemented.
+- Added `scripts/library-settlement-recovery.test.mjs` for an injected failure after the first learning write, retry recovery, duplicate-history prevention, conflicting-outcome rejection and legacy-record fail-closed behavior. Registered it in the build-required files and architecture quality gates.
+- The test uses synthetic records and the isolated in-memory adapter. It does not prove provider-side Netlify Blobs atomicity, and no current-head test/build execution is claimed.
