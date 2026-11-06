@@ -33,3 +33,21 @@ test("preserves explicit market periods and requires exact expected outcome iden
   assert.equal(report.validPreKickoffSnapshotCount, 3);
   assert.equal(report.incompleteMarketGroupCount, 0);
 });
+
+
+test("preserves open, suspended, closed and unknown bookmaker availability", () => {
+  const statusRows = records.slice(0, 3).map((row, index) => ({
+    ...row,
+    availabilityStatus: ["open", "suspended", "closed"][index]
+  }));
+  statusRows.push({
+    ...statusRows[0],
+    sourceRecordId: "row-home-unknown",
+    observedAt: "2026-11-10T16:59:00.000Z",
+    availabilityStatus: "unknown"
+  });
+  const report = assessWinObservedFootballOddsQuality({ fixtures, records: statusRows, expectedMarkets });
+  assert.equal(report.validPreKickoffSnapshotCount, 4);
+  assert.deepEqual(report.availabilityStatusCounts, { open: 1, suspended: 1, closed: 1, unknown: 1 });
+  assert.ok(report.reasons.includes("non_open_or_unknown_availability_snapshots_present"));
+});
