@@ -756,6 +756,20 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   !winCiWorkflow.includes("NETLIFY_SITE_ID"),
   "The CI job runs tests and build checks with read-only repository permissions; it does not deploy or access production secrets.");
 
+
+const independentReviewRecoveryTests = await read("scripts/independent-review-recovery.test.mjs");
+add("Independent coupon review retries repair interrupted settlement and learning projections idempotently",
+  independentReview.includes("alreadyApplied") &&
+  independentReview.includes("coupon?.settlementLearningId === settlementLearningId") &&
+  independentReview.includes('const historyId = "review-"') &&
+  independentReview.includes('await put("library/settlement-learning", settlementLearningId, learning)') &&
+  independentReview.includes("completeReviewOperation") &&
+  independentReviewRecoveryTests.includes("after coupon settlement but before learning projection completion") &&
+  independentReviewRecoveryTests.includes("Simulate the operation lease expiring after the process crash") &&
+  independentReviewRecoveryTests.includes("stable history identity must prevent duplicate history rows") &&
+  independentReviewRecoveryTests.includes("the settlement-learning projection must be completed once"),
+  "Independent-review recovery must resume the same approved settlement after a partial write, reuse stable projection identities, and complete the operation without duplicating history or learning records.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
