@@ -8,6 +8,29 @@ import { registerAgentProposals } from "../lib/agent-evolution.mts";
 import { getAIbudgetStatus } from "../lib/ai-budget.mts";
 import { claimNextPersistentAgentTask, updatePersistentAgentTaskLease } from "../lib/agent-task-queue.mts";
 
+const MAX_REQUEST_BODY_BYTES = 16 * 1024;
+
+export async function readScheduledScoutRunId(req: Request): Promise<{ runId: string } | Response> {
+  if (req.method !== "POST") return Response.json({ error: "method_not_allowed" }, { status: 405 });
+  if (!req.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+    return Response.json({ error: "application_json_required" }, { status: 415 });
+  }
+  let raw: string;
+  try { raw = await req.text(); }
+  catch { return Response.json({ error: "request_body_unreadable" }, { status: 400 }); }
+  if (new TextEncoder().encode(raw).byteLength > MAX_REQUEST_BODY_BYTES) {
+    return Response.json({ error: "request_body_too_large" }, { status: 413 });
+  }
+  let body: any;
+  try { body = JSON.parse(raw); }
+  catch { return Response.json({ error: "invalid_json" }, { status: 400 }); }
+  const runId = typeof body?.runId === "string" ? body.runId.trim() : "";
+  if (!runId || runId.length > 180) {
+    return Response.json({ error: "valid_run_id_required" }, { status: 400 });
+  }
+  return { runId };
+}
+
 function extractLearningCycle(report: string): any | null {
   const open = "<WIN_LEARNING_CYCLE_JSON>";
   const close = "</WIN_LEARNING_CYCLE_JSON>";
@@ -44,6 +67,9 @@ function stage(name: string, status: string, startedAt: string, extra: Record<st
 export default async (req: Request) => {
   if (!authorized(req)) return new Response("Unauthorized", { status: 401 });
 
+  const parsedRequest = await readScheduledScoutRunId(req);
+  if (parsedRequest instanceof Response) return parsedRequest;
+
   if (Netlify.env.get("WIN_AI_BUDGET_APPROVED") !== "true") {
     return Response.json({ error: "Scheduled research is disabled; no learning cycle was started." }, { status: 423 });
   }
@@ -51,9 +77,7 @@ export default async (req: Request) => {
   if (budgetStatus.spendingLocked) {
     return Response.json({ error: "WIN's persistent spending lock is active; no learning cycle was started." }, { status: 423 });
   }
-  let body: any;
-  try { body = await req.json(); } catch { return new Response("Bad JSON", { status: 400 }); }
-  const run = await get<any>("runs", body.runId);
+  const run = await get<any>("runs", parsedRequest.runId);
   if (!run) return new Response("Run not found", { status: 404 });
   if (run.status === "completed" && run.learningReportVersion >= 2) {
     return new Response(null, { status: 202 });
