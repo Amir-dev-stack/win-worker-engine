@@ -334,7 +334,9 @@ add("WIN licence evidence requires a signed, time-bounded reviewer attestation a
   mlLicenceEvidence.includes("sourceDocumentSha256") &&
   mlLicenceEvidenceTests.includes("signed licence review verifies exact source") &&
   mlLicenceEvidenceTests.includes("cannot be reused for a different licence") &&
-  mlLicenceEvidenceTests.includes("incorrectly signed licence reviews fail closed"),
+  mlLicenceEvidenceTests.includes("incorrectly signed licence reviews fail closed") &&
+  mlLicenceEvidenceTests.includes("reviewerId: 7") &&
+  mlLicenceEvidenceTests.includes("2026-02-30T09:00:00.000Z"),
   "A trusted reviewer signature binds the licence, source-document hash, training-use attestation and review validity window; it does not replace human legal review.");
 
 const mlOwnerApproval = await read("netlify/lib/ml-owner-approval.mts");
