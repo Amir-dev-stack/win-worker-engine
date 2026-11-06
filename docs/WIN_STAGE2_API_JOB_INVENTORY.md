@@ -134,3 +134,16 @@ Limitations remain explicit:
 - This does not prove that Netlify's scheduler is active or establish the deployed invocation history.
 
 No live invocation, production schedule change, provider call, deployment or credential change was made.
+
+
+## 9. CI evidence clarification (2026-11-06)
+
+The GitHub connector's `fetch_commit_workflow_runs` view filters to pull-request-triggered runs. The branch workflow also triggers on pushes, so an empty response from that particular view is not proof that no push-triggered run exists.
+
+A direct job-log inspection verified push-triggered run [#42144616719](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/42144616719):
+- The checkout log records exact source SHA `8e2e5d1f83bdc37d86aedb32c83b99902aba71f1`.
+- `npm test`: 148 tests passed, 0 failed.
+- Architecture quality gates: 135 passed.
+- `npm run build`: passed, reporting 96 required files and 44 architecture checks.
+
+That is valid CI evidence for commit `8e2e5d1` only. The scheduled-run request/lease changes were committed later, so this historical green run does not verify the current PR head. No current-head execution claim is made.
