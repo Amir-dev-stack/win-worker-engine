@@ -100,3 +100,14 @@ These foundations do **not** yet constitute a complete autonomous all-sport even
 - the user's final decision.
 
 No automated betting, bookmaker placement, or automatic stake execution is authorised by this strategy.
+
+## 10. Draft availability versus probability qualification (2026-11-06)
+
+The worker's coupon-candidate collector now treats dependence diagnostics as an advisory probability boundary rather than a proposal-generation veto:
+
+- Any non-empty candidate leg set is retained as `DRAFTABLE` unless it is a fully evidenced single-leg `QUALIFIED` candidate. Missing leg evidence remains visible in `blockers` and `dataQualityStatus`; it does not silently erase the proposal.
+- For multi-leg proposals, `probabilityWarnings` explain same-event or cross-event dependence limitations. `jointProbabilityAvailable` is false and `probabilityStatus` is `marginal_only_joint_unavailable` until a validated model exists.
+- WIN does not multiply leg prices into a purported combined price for same-event combinations. For distinct-event legs with valid prices, `theoreticalOddsProduct` is shown separately and explicitly labelled as a mathematical price product, not a bookmaker-quoted accumulator price or a joint win probability.
+- `combinedOdds` is retained only for a qualified single-leg candidate in this path. The user remains responsible for confirming the actual bookmaker price and deciding whether to bet.
+
+This corrects the earlier worker behavior that merged correlation blockers into the coupon's hard blocker list and changed every multi-leg proposal to `BLOCKED`. Quantitative approval remains withheld; proposal availability is not.
