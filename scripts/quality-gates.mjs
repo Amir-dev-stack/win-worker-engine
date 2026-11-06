@@ -430,12 +430,16 @@ add("WIN owner approval endpoint requires a separate protected token, trusted pu
   mlOwnerApprovalEndpoint.includes("WIN_ML_OWNER_REVIEWER_ID") &&
   mlOwnerApprovalEndpoint.includes("timingSafeEqual") &&
   mlOwnerApprovalEndpoint.includes("MAX_BODY_BYTES") &&
+  mlOwnerApprovalEndpoint.includes("readOwnerApprovalRequestBody") &&
+  mlOwnerApprovalEndpoint.includes("reader.read()") &&
   mlOwnerApprovalEndpoint.includes('path: "/api/ml-owner-approval"') &&
   mlOwnerApprovalEndpoint.includes('body?.action === "licence_evidence"') &&
   mlOwnerApprovalEndpoint.includes('body?.action === "readiness"') &&
   !mlOwnerApprovalEndpoint.includes("body.publicKeyPem") &&
   !mlOwnerApprovalEndpoint.includes("body.ownerToken") &&
-  mlOwnerApprovalEndpointTests.includes("requires protected configuration and bounded JSON requests") &&
+  mlOwnerApprovalEndpointTests.includes("requires protected configuration and bounded streaming JSON requests") &&
+  mlOwnerApprovalEndpointTests.includes("streamedTooLarge") &&
+  mlOwnerApprovalEndpointTests.includes("invalidUtf8") &&
   mlOwnerApprovalEndpointTests.includes("separately authenticated signed approval") &&
   mlOwnerApprovalEndpointTests.includes("readinessBody.modelFittingAllowed, false"),
   "The protected owner endpoint registers signed licence evidence and exposes a read-only composite readiness check without accepting caller-supplied keys or enabling fitting.");
@@ -609,7 +613,8 @@ add("Result submissions enforce bounded JSON request parsing before settlement p
   resultsHandler.includes("request_body_too_large") &&
   resultRequestTests.includes("enforces declared and streamed body limits") &&
   resultRequestTests.includes("rejects invalid UTF-8") &&
-  resultRequestTests.includes("requires JSON content type"),
+  resultRequestTests.includes("requires JSON content type") &&
+  resultRequestTests.includes("JSON-like but invalid media types"),
   "The result endpoint must require JSON, enforce a streaming 64 KiB cap, reject invalid UTF-8/non-object JSON, and cover those boundaries with regression tests.");
 
 const packageManifest = JSON.parse(await read("package.json"));
