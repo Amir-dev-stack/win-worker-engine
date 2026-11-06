@@ -409,9 +409,12 @@ export function evaluateWinMLFootball1X2LogisticModel(
   if (validationEnd === null || testStart === null || testStart <= validationEnd) {
     throw new Error("held_out_test_not_after_validation_label_availability");
   }
-  const modelMetrics = metrics(testRows, row => predictWinMLFootball1X2(artifact,
-    Object.fromEntries(artifact.featureNames.map(name => [name, row.features[name].value]))
-  ).probabilities);
+  const modelMetrics = metrics(testRows, row => {
+    const normalized = artifact.featureNames.map((name, index) =>
+      (row.features[name].value - artifact.normalization.means[index]) / artifact.normalization.scales[index]
+    );
+    return probabilities(artifact.weights, normalized);
+  });
   const baselineMetrics = metrics(testRows, () => artifact.baselineProbabilities);
   return {
     testRows: testRows.length,
