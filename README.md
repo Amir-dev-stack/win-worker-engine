@@ -292,3 +292,32 @@ The authenticated endpoints are:
 Automated harvesting is disabled by default. Public visibility does not automatically grant permission for bulk collection. API-based or scheduled collection is enabled only after the source's terms, robots policy, API access and rate limits are verified. WIN does not log into private groups, bypass paywalls/CAPTCHAs, reuse session cookies, or collect private messages. If a platform restricts automation, D5 can still analyse public search results and manually captured public posts without pretending that a full archive was obtained.
 
 Human-performance analysis must include the complete available record, losses, odds and timestamps. Follower counts, screenshots, selected wins and short streaks are not proof of skill. The system reports sample size, missing-history risk, ROI and market-relative performance only when the evidence supports them.
+
+ 
+## Match statistics and player-performance coverage
+
+The complete acceptance and reporting specification is maintained in [docs/MATCH_STATISTICS_MASTER_SPEC.md](docs/MATCH_STATISTICS_MASTER_SPEC.md). It defines the pre-event dossier, in-event team metrics, event timelines, per-player/athlete lines, provider-rated player comparisons, cross-sport event models, post-event interpretation, betting analysis and the evidence/coverage rules for every future data adapter.
+
+WIN's statistic catalogue describes what a sport can measure; it does **not** claim that every connected source supplies every metric. Each event dossier reports the fields actually present, provider-by-provider, with missing metrics marked `not_provided`. A missing field is unknown, not zero. Complementary feeds are merged while retaining each source's own coverage and rating scale.
+
+WIN's sport catalogue now follows every sport in its sport capability registry, including team/athlete metric groups, sport-specific event types and a provider-rating availability field. The first connected deep event-data adapter is `nflverse-pbp-data`. It imports the source's season play-by-play release, derives team box-score totals and per-player passing/rushing/receiving/defensive/special-teams lines, and preserves a play-by-play timeline with quarter, clock, down, yards-to-go, yards gained, event type, score state and source provenance. The source is CC BY 4.0 and requires nflverse attribution. WIN does not fabricate player ratings, confirmed lineups, injuries, snap counts or metrics absent from the source. See the provider registry for domain-level scope and licence controls.
+
+The football source registry separately records the user's requested reference destinations:
+- UEFA official match centres for competition records and selected team statistics.
+- FotMob match profiles for xG, shot maps, match event timelines and provider-defined player ratings where exposed.
+- ESPN match centres for event commentary and sport-specific box scores.
+- FootyStats for historical H2H and trend context.
+
+These four entries are **reference-only candidates**. They are not connected APIs and do not authorize scraping, bulk download or redistribution. API-SPORTS, StatsBomb Open Data and other specialist sources remain gated by account entitlements, data rights, coverage and methodology review. In particular, the current nflverse adapter covers American football, not association football; it does not solve missing football pass maps, xG, player ratings or UEFA match-level data.
+
+The manual **Import historical datasets** job now includes the NFL play-by-play import. It runs without OpenAI calls and writes into the existing model-lab event dataset collection so the same pre-match cutoff, exact-event matching, multi-source merge and coverage inspector can use it. Source sync status is surfaced in the research engine panel.
+
+
+### API-Football association-football connector
+
+WIN now has a **code-complete but intentionally disabled** API-Football v3 connector on the feature branch. It can build a match dossier from an exact fixture ID: competition/season coverage, score and match context, team/half-time statistics, player match lines and provider ratings (separately permission-gated), goals/cards/substitutions/VAR events, lineups, and optional injuries, standings, H2H, predictions and pre-match odds. It records endpoint-level success/quota information, raw payloads, retrieval time and a payload checksum.
+
+The connector is not live until the API key, documented rights approval, reviewed HTTPS terms, explicit data-domain allowlist and a separate code-reviewed provider-registry approval are all present. No API key is assumed and no API-Football calls or fixture imports have been run from the feature branch. The dashboard exposes connection testing and exact fixture import actions, while the research status shows its blockers and coverage.
+
+Read [docs/API_FOOTBALL_CONNECTOR.md](docs/API_FOOTBALL_CONNECTOR.md) before enabling it. API-Football is licensed commercial data—not an open-source dataset—and its terms prohibit resale of its data to third parties. The connector does not promise full optical tracking, every pass event, xG, shot coordinates/maps, PPDA or xT. Those fields stay unavailable unless another approved feed actually provides them. Its Free tier currently advertises 100 requests/day, so context-rich match imports must be budgeted.
+

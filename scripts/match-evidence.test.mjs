@@ -60,6 +60,7 @@ test("reports missing standings and coverage instead of fabricating a league tab
 
 
 import { getSportStatSpec, inspectStatisticCoverage, extractPlayerPerformances } from "../netlify/lib/sport-stat-catalog.mts";
+import { SPORT_REGISTRY } from "../netlify/lib/sport-registry.mts";
 
 test("football catalogue tracks passing, attacking, restarts, defending and player ratings",()=>{
  const spec=getSportStatSpec("football");
@@ -116,4 +117,24 @@ test("same match from multiple sources retains complementary team and player sta
  assert.equal(playerProvider.lowestRated[0].name,"Low Rated");
  assert.deepEqual(pack.postMatch.statisticCoverageBySource.map(x=>x.providerId).sort(),["player-feed","team-feed"]);
  assert.equal(pack.postMatch.detailConflicts.includes("fullTimeScore"),false);
+});
+
+
+test("every registered sport has its own team/participant statistics and a provider-rating availability field",()=>{
+ for(const sport of SPORT_REGISTRY){
+  const spec=getSportStatSpec(sport.id);
+  assert.ok(spec.team.length>0,sport.id+" must have event/team metrics");
+  assert.ok(spec.player.length>0,sport.id+" must have player/athlete metrics");
+  assert.ok(spec.player.some(group=>group.id==="rating"),sport.id+" must explicitly track provider rating availability");
+  assert.notEqual(spec.label,"Sport-specific coverage not catalogued",sport.id+" must have a sport-specific catalogue");
+ }
+});
+
+test("date-only American-football match dates are excluded from kickoff-sensitive history until scheduled times are verified",()=>{
+ const dateOnly={id:"nfl-date-only",sport:"american_football",competition:"NFL",season:"2026",eventDate:"2026-10-30",eventTimePrecision:"date_only",eventStart:null,homeTeam:"Kansas City Chiefs",awayTeam:"Baltimore Ravens",fullTimeScore:[24,20],status:"completed",origin:"provider_historical_data",sourceProvider:"nflverse-pbp-data"};
+ const brief={sport:"american_football",competition:"NFL",event:"Kansas City Chiefs vs Baltimore Ravens",startTime:"2026-11-05T20:00:00Z"};
+ const pack=buildMatchEvidencePack(brief,{historicalDatasets:[{id:"nfl-date-only-set",providerId:"nflverse-pbp-data",sport:"american_football",records:[dateOnly]}],nowMs:Date.parse("2026-11-04T12:00:00Z")});
+ assert.equal(pack.teamProfiles.home.last5.length,0);
+ assert.equal(pack.teamProfiles.away.last5.length,0);
+ assert.equal(pack.postMatch.status,"not_started_or_kickoff_unknown");
 });

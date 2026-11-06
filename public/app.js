@@ -250,10 +250,12 @@ async function refreshResearch(){
  try{
   const d=await api("/api/research-status");
   const providers=(d.providers||[]).map(p=>'<article class="mini-row"><div><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.status||"unknown")+' · '+escapeHtml(p.accessMode||"")+' · licence '+escapeHtml(p.licenceReview||"unverified")+'</small></div></article>').join("");
-  const open=d.openfootball||{},worldCup=d.openfootballWorldCup||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{},evolution=d.agentEvolution||{};
+  const open=d.openfootball||{},nfl=d.nflverse||{},worldCup=d.openfootballWorldCup||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{},evolution=d.agentEvolution||{};
   const couponSims=(cal.reports||[]).flatMap(r=>r.couponSimulation?.results||[]);
   const candidateRows=renderSourceCandidates(discovery.topCandidates||[]);
   const sections=[
+   '<article class="mini-row"><div><b>NFL play-by-play and player box scores</b><small>'+escapeHtml(nfl.status||"not yet run")+' · '+Number(nfl.totals?.matchesImported||0).toLocaleString()+' matches · '+Number(nfl.totals?.playsImported||0).toLocaleString()+' play events · '+Number(nfl.totals?.playerLinesImported||0).toLocaleString()+' player lines · '+escapeHtml(nfl.lastCheck||"not yet synced")+'</small></div></article>',
+   '<article class="mini-row"><div><b>API-Football detailed match dossiers</b><small>'+escapeHtml(footballApi.status||"blocked")+' · '+Number(footballApi.totals?.matchesImported||0).toLocaleString()+' matches imported · '+Number(footballApi.totals?.availableSections||0)+' latest fixture sections available · '+(footballApi.blockers||[]).map(escapeHtml).join(", ")+'</small></div></article>',
    '<article class="mini-row"><div><b>OpenFootball historical results</b><small>'+escapeHtml(open.status||"not yet run")+' · '+Number(open.totals?.matchesImported||0).toLocaleString()+' matches imported · last check '+escapeHtml(open.lastCheck||"not yet")+'</small></div></article>',
    '<article class="mini-row"><div><b>World Cup history and player events</b><small>'+escapeHtml(worldCup.status||"not yet run")+' · '+Number(lab.worldCupMatchCount||0).toLocaleString()+' matches · '+Number(lab.playerEventRows||0).toLocaleString()+' player events · '+Number(lab.worldCupDatasetCount||0)+' tournament datasets</small></div></article>',
    '<article class="mini-row"><div><b>Consensus market history</b><small>'+escapeHtml(cons.status||"not yet run")+' · '+Number(lab.consensusMarketRows||0).toLocaleString()+' rows · '+Number(lab.consensusSettledRows||0).toLocaleString()+' settled events</small></div></article>',
@@ -441,6 +443,48 @@ async function runLearningDataJob(action,buttonId,label){
 }
 $("#runSourceDiscovery").addEventListener("click",()=>runLearningDataJob("discover_sources","#runSourceDiscovery","Worldwide public-source discovery"));
 $("#runHistoricalSync").addEventListener("click",()=>runLearningDataJob("sync_historical_data","#runHistoricalSync","Historical dataset import"));
+async function runApiFootballAction(action,buttonId,label,extra={}){
+ const button=$(buttonId),status=$("#apiFootballStatus");
+ button.disabled=true;
+ status.textContent=label+"…";
+ try{
+  const result=await api("/api/football-data",{method:"POST",body:JSON.stringify({action,...extra})});
+  if(action==="sync_fixture") {
+   status.textContent="Imported fixture "+result.result.fixtureId+" · "+result.result.playerCount+" player lines · "+result.result.eventCount+" timeline events · "+result.result.availableSections+" dossier sections available.";
+  } else if(action==="find_fixtures") {
+   const fixtures=result.result.results||[];
+   $("#apiFootballFixtureResults").innerHTML=fixtures.length?fixtures.map(item=>{
+    const fx=item.fixture||{},teams=item.teams||{},league=item.league||{},score=item.goals||{};
+    const label=(teams.home?.name||"Home")+" vs "+(teams.away?.name||"Away");
+    const scoreText=score.home!==null&&score.away!==null&&score.home!==undefined&&score.away!==undefined?" · "+score.home+"–"+score.away:"";
+    return '<article class="mini-row"><div><b>'+escapeHtml(label)+'</b><small>'+escapeHtml(league.name||"Competition")+' · '+escapeHtml(fx.date||"Date unknown")+' · fixture '+Number(fx.id||0)+escapeHtml(scoreText)+'</small></div><button type="button" class="subtle" data-api-football-fixture="'+Number(fx.id||0)+'">Select fixture</button></article>';
+   }).join(""):'<div class="empty">No fixtures returned for this date and filter.</div>';
+   $("#apiFootballFixtureResults").querySelectorAll("[data-api-football-fixture]").forEach(select=>{
+    select.addEventListener("click",()=>{
+     $("#apiFootballFixtureId").value=select.dataset.apiFootballFixture;
+     status.textContent="Selected fixture "+select.dataset.apiFootballFixture+". Import it after checking its identity.";
+    });
+   });
+   status.textContent="Found "+fixtures.length+" fixture(s) from API-Football. Select the exact match before importing.";
+  } else {
+   status.textContent="API-Football connection successful · quota remaining "+(result.result.quota?.dailyRemaining??"not reported");
+  }
+  await refreshResearch();
+ }catch(error){
+  status.textContent="API-Football "+label.toLowerCase()+" blocked or failed: "+error.message;
+ }finally{button.disabled=false;}
+}
+$("#testApiFootballConnection").addEventListener("click",()=>runApiFootballAction("test_connection","#testApiFootballConnection","Testing connection"));
+$("#searchApiFootballFixtures").addEventListener("click",()=>{
+ const date=$("#apiFootballDate").value;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){$("#apiFootballStatus").textContent="Select a valid fixture date.";return;}
+ runApiFootballAction("find_fixtures","#searchApiFootballFixtures","Finding fixtures",{date});
+});
+$("#syncApiFootballFixture").addEventListener("click",()=>{
+ const fixtureId=Number($("#apiFootballFixtureId").value);
+ if(!Number.isSafeInteger(fixtureId)||fixtureId<=0){$("#apiFootballStatus").textContent="Enter a valid positive API-Football fixture ID.";return;}
+ runApiFootballAction("sync_fixture","#syncApiFootballFixture","Importing match dossier",{fixtureId,includeContext:true,includeHalfTime:true});
+});
 
 $("#runPostMatchCheck").addEventListener("click",async()=>{
  const button=$("#runPostMatchCheck");
