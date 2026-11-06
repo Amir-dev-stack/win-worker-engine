@@ -5088,6 +5088,20 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   !winCiWorkflow.includes("NETLIFY_SITE_ID"),
   "The CI job runs tests and build checks with read-only repository permissions; it does not deploy or access production secrets.");
 
+const strictTimestamp = await read("netlify/lib/strict-timestamp.mts");
+const strictTimestampTests = await read("scripts/strict-timestamp.test.mjs");
+const importerTests = await read("scripts/ml-football-importer.test.mjs");
+add("ML ingestion and chronology reject impossible timestamps and mixed dataset scope",
+  strictTimestamp.includes("daysInMonth") &&
+  strictTimestamp.includes("parseStrictIsoTimestamp") &&
+  (await read("netlify/lib/ml-data-contract.mts")).includes("isStrictIsoTimestamp") &&
+  (await read("netlify/lib/ml-football-importer.mts")).includes("season_mismatch") &&
+  (await read("netlify/lib/ml-football-importer.mts")).includes("competition_mismatch") &&
+  strictTimestampTests.includes("2026-02-31") &&
+  importerTests.includes("season_mismatch") &&
+  importerTests.includes("competition_mismatch"),
+  "Manifest, importer, feature and chronological split timestamps must reject calendar rollover; a single dataset manifest cannot silently contain multiple seasons or competitions.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
