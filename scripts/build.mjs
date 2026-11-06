@@ -9,6 +9,8 @@ const required = [
   "netlify/functions/library.mts",
   "netlify/functions/mcp.mts",
   "netlify/functions/oauth-authorize.mts",
+  "netlify/lib/oauth-request.mts",
+  "scripts/oauth-request-validation.test.mjs",
   "netlify/functions/oauth-metadata.mts",
   "netlify/functions/oauth-register.mts",
   "netlify/functions/oauth-token.mts",
