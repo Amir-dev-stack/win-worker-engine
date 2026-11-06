@@ -1,3 +1,4 @@
+import { isStrictIsoTimestamp } from "./strict-timestamp.mts";
 import { get, putIfNew } from "./store.mts";
 import { getWinMLDatasetManifest } from "./ml-dataset-registry.mts";
 import { evaluateWinMLPromotionReadiness, type WinMLModelEvaluationV1 } from "./ml-model-contract.mts";
@@ -99,12 +100,10 @@ export async function registerWinMLModelArtifact(args: {
   const { artifact, evaluation, registeredAt, evaluatedAt, testRows } = args || ({} as any);
   validateBinding(artifact, evaluation);
   if (!validId(evaluation.modelId) || !validId(evaluation.modelVersion) ||
-      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(registeredAt || "") ||
-      !Number.isFinite(Date.parse(registeredAt))) {
+      !isStrictIsoTimestamp(registeredAt)) {
     throw new WinMLModelArtifactRegistryError("model_artifact_registration_metadata_invalid");
   }
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(evaluatedAt || "") ||
-      !Number.isFinite(Date.parse(evaluatedAt)) || Date.parse(registeredAt) < Date.parse(evaluatedAt) ||
+  if (!isStrictIsoTimestamp(evaluatedAt) || Date.parse(registeredAt) < Date.parse(evaluatedAt) ||
       !Array.isArray(testRows)) {
     throw new WinMLModelArtifactRegistryError("model_artifact_test_evaluation_evidence_invalid");
   }
