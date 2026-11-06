@@ -23,7 +23,7 @@ test("computes price CLV only for the exact same pre-match bookmaker selection",
   const result = calculateWinClosingLineValue({
     decisionQuote, closingQuote, predictionCutoff, kickoffAt, evaluationMode: "live"
   });
-  assert.equal(result.oddsRatioClv, 0.1);
+  assert.ok(Math.abs(result.oddsRatioClv - 0.1) < 1e-12);
   assert.ok(Math.abs(result.impliedProbabilityDelta - (0.5 - 1 / 2.2)) < 1e-12);
   assert.equal(result.evidenceOnly, true);
   assert.equal(result.profitabilityClaimed, false);
