@@ -70,10 +70,15 @@ test("blend evidence rejects dataset and model artifact drift", () => {
   const { model, market } = fixture();
   assert.throws(() => composeWinMLMarketBlendEvaluationEvidence({
     ...model, artifact: { artifactSha256: "9".repeat(64) }
-  }, market), /market_blend_evidence_binding_mismatch/);
-  assert.throws(() => composeWinMLMarketBlendEvaluationEvidence({
-    ...model, evaluation: { ...model.evaluation, datasetContentSha256: "8".repeat(64) }
-  }, market), /market_blend_evidence_binding_mismatch/);
+  }, market), /market_blend_model_evaluation_hash_mismatch/);
+  const changedEvaluation = { ...model.evaluation, datasetContentSha256: "8".repeat(64) };
+  const changedModel = {
+    ...model,
+    evaluation: changedEvaluation,
+    provenance: { ...model.provenance, evaluationSha256: hashWinMLProvenance(changedEvaluation).sha256 }
+  };
+  assert.throws(() => composeWinMLMarketBlendEvaluationEvidence(changedModel, market),
+    /market_blend_evidence_binding_mismatch/);
 });
 
 test("blend evidence cannot be evaluated before all held-out labels are available", () => {
