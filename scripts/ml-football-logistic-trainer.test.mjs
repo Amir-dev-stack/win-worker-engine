@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   trainWinMLFootball1X2LogisticModel,
+  evaluateWinMLFootball1X2LogisticModel,
   predictWinMLFootball1X2
 } from "../netlify/lib/ml-football-logistic-trainer.mts";
 
@@ -61,6 +62,23 @@ test("deterministic multinomial trainer learns a synthetic 1X2 pattern and emits
   assert.ok(Math.abs(prediction.probabilities.reduce((sum, value) => sum + value, 0) - 1) < 1e-12);
   assert.ok(prediction.probabilities[0] > prediction.probabilities[1]);
   assert.ok(prediction.probabilities[0] > prediction.probabilities[2]);
+});
+
+test("frozen logistic artifact evaluates only a later held-out test partition", () => {
+  const result = train();
+  const evaluation = evaluateWinMLFootball1X2LogisticModel(result.artifact, rows(91, 30));
+  assert.equal(evaluation.heldOutTest, true);
+  assert.equal(evaluation.testRows, 30);
+  assert.ok(evaluation.modelMetrics.brier < evaluation.baselineMetrics.brier);
+  assert.ok(evaluation.modelMetrics.logLoss < evaluation.baselineMetrics.logLoss);
+  assert.equal(evaluation.productionPromotionAllowed, false);
+  assert.equal(evaluation.automatedBettingAllowed, false);
+  assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, rows(90, 30)),
+    /held_out_test_not_after_validation_label_availability/);
+  const duplicated = rows(91, 30);
+  duplicated[0].eventId = "synthetic-0";
+  assert.throws(() => evaluateWinMLFootball1X2LogisticModel(result.artifact, duplicated),
+    /training_event_identity_missing_or_duplicate/);
 });
 
 test("trainer is deterministic for identical rows and configuration", () => {
