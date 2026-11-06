@@ -4,6 +4,7 @@ import {
   validateWinMLDatasetManifest,
   type WinMLDatasetManifestV1
 } from "./ml-data-contract.mts";
+import { isStrictIsoTimestamp } from "./strict-timestamp.mts";
 
 export const WIN_FOOTBALL_RESULTS_SOURCE_SCHEMA = "win.football.results.v2" as const;
 const MAX_RAW_BYTES = 20 * 1024 * 1024;
@@ -52,9 +53,7 @@ function nonEmpty(value: unknown): value is string {
 }
 
 function validTimestamp(value: unknown): value is string {
-  return nonEmpty(value) &&
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(value) &&
-    Number.isFinite(Date.parse(value));
+  return isStrictIsoTimestamp(value);
 }
 
 /**
@@ -107,6 +106,7 @@ export function importWinFootballResultsBytes(
   const eventIds = new Set<string>();
   const rows: WinFootballResultRow[] = [];
   const errors: string[] = [];
+  let datasetCompetitionId: string | null = null;
 
   for (let index = 0; index < parsed.records.length; index++) {
     const row = parsed.records[index];
@@ -124,6 +124,11 @@ export function importWinFootballResultsBytes(
     if (!Number.isSafeInteger(row.homeGoals) || row.homeGoals < 0 ||
         !Number.isSafeInteger(row.awayGoals) || row.awayGoals < 0) errors.push(prefix + "score_invalid");
     if (row.status !== "finished") errors.push(prefix + "match_not_finished");
+    if (nonEmpty(row.season) && row.season !== source.season) errors.push(prefix + "season_mismatch");
+    if (nonEmpty(row.competitionId)) {
+      if (datasetCompetitionId === null) datasetCompetitionId = row.competitionId;
+      else if (row.competitionId !== datasetCompetitionId) errors.push(prefix + "competition_mismatch");
+    }
     if (row.scoreBasis !== "regulation_time") errors.push(prefix + "score_basis_must_be_regulation_time");
     if (nonEmpty(row.homeTeamId) && row.homeTeamId === row.awayTeamId) errors.push(prefix + "teams_must_differ");
     if (nonEmpty(row.sourceRecordId)) {
@@ -139,7 +144,8 @@ export function importWinFootballResultsBytes(
         Date.parse(row.resultAvailableAt) <= Date.parse(source.retrievedAt) &&
         Number.isSafeInteger(row.homeGoals) && row.homeGoals >= 0 &&
         Number.isSafeInteger(row.awayGoals) && row.awayGoals >= 0 &&
-        row.status === "finished" && row.scoreBasis === "regulation_time" && row.homeTeamId !== row.awayTeamId) {
+        row.status === "finished" && row.scoreBasis === "regulation_time" && row.homeTeamId !== row.awayTeamId &&
+        row.season === source.season && row.competitionId === datasetCompetitionId) {
       rows.push({
         sourceRecordId: row.sourceRecordId,
         eventId: row.eventId,
