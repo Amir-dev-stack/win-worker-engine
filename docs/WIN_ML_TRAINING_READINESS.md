@@ -48,3 +48,8 @@ The current football 1X2 plan remains `fittingAllowed: false`; therefore the gat
 The model-artifact registry stores one immutable envelope per model ID/version. It binds the self-hashed logistic artifact, versioned held-out evaluation record, registered dataset ID/content hash, evaluation hash and envelope hash. Registration uses an atomic create-if-absent operation; identical retries are idempotent and conflicting writes fail. Before registration, held-out metrics are recomputed from the supplied test partition and compared to the versioned evaluation record; only a hash of the test rows is retained, not the rows themselves. Reads revalidate the artifact/config/split hashes, evaluation bindings, envelope hash and current dataset manifest hash.
 
 The registry records research artifacts only. It does not train models, store raw training rows, authorize fitting, approve promotion, expose a production inference endpoint or enable automated betting. Research-only or unapproved datasets remain visibly blocked by the promotion-readiness result.
+
+
+## Dataset source revision binding
+
+The offline football importer requires an immutable `sourceRevision` alongside the HTTPS source URL, exact retrieval timestamp and raw-byte SHA-256. Mutable aliases such as `main`, `master`, `latest`, `head` and `current` are rejected. Dataset manifests retain the revision so an experiment can be traced to the exact source snapshot rather than a moving branch. The importer also rejects mixed seasons and mixed competition IDs within one manifest, and source URLs containing embedded credentials are rejected. This strengthens reproducibility; it does not establish licence rights, source accuracy or independent result truth.
