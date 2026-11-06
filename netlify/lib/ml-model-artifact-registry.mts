@@ -21,6 +21,7 @@ type StoredRecord = {
   datasetContentSha256: string;
   artifactSha256: string;
   evaluationSha256: string;
+  testRowsSha256: string;
   recordSha256: string;
   artifact: WinMLFootballLogisticArtifactV1;
   evaluation: WinMLModelEvaluationV1;
@@ -69,6 +70,7 @@ function verifyRecord(record: StoredRecord) {
       !/^[a-f0-9]{64}$/i.test(record.datasetContentSha256 || "") ||
       !/^[a-f0-9]{64}$/i.test(record.artifactSha256 || "") ||
       !/^[a-f0-9]{64}$/i.test(record.evaluationSha256 || "") ||
+      !/^[a-f0-9]{64}$/i.test(record.testRowsSha256 || "") ||
       !/^[a-f0-9]{64}$/i.test(record.recordSha256 || "")) {
     throw new WinMLModelArtifactRegistryError("model_artifact_record_invalid");
   }
@@ -132,6 +134,7 @@ export async function registerWinMLModelArtifact(args: {
     datasetContentSha256: artifact.datasetContentSha256,
     artifactSha256: artifact.artifactSha256,
     evaluationSha256: hashWinMLProvenance(evaluation).sha256,
+    testRowsSha256: hashWinMLProvenance(testRows).sha256,
     artifact,
     evaluation,
     registeredAt
@@ -152,7 +155,7 @@ export async function registerWinMLModelArtifact(args: {
     if (existing.recordSha256 === record.recordSha256) {
       return {
         registered: false, idempotent: true, modelId: existing.modelId, modelVersion: existing.modelVersion,
-        artifactSha256: existing.artifactSha256, evaluationSha256: existing.evaluationSha256,
+        artifactSha256: existing.artifactSha256, evaluationSha256: existing.evaluationSha256, testRowsSha256: existing.testRowsSha256,
         promotionReadiness, productionPromotionAllowed: false, automatedBettingAllowed: false
       };
     }
@@ -177,7 +180,7 @@ export async function getWinMLModelArtifact(modelId: string, modelVersion: strin
     provenance: {
       recordVersion: record.recordVersion,
       recordSha256: record.recordSha256,
-      evaluationSha256: record.evaluationSha256,
+      evaluationSha256: record.evaluationSha256, testRowsSha256: record.testRowsSha256,
       datasetId: record.datasetId,
       datasetContentSha256: record.datasetContentSha256,
       registeredAt: record.registeredAt
