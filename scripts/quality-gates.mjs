@@ -812,6 +812,7 @@ add("Protected owner approval adapter revalidates signed evidence without enabli
 
 const mlOwnerGatedPredictionContract = await read("netlify/lib/ml-prediction-contract.mts");
 const mlOwnerGatedShadowPrediction = await read("netlify/lib/ml-shadow-prediction.mts");
+const mlOwnerShadowIntegrationTests = await read("scripts/ml-owner-shadow-integration.test.mjs");
 add("WIN shadow inference revalidates signed owner approval from protected config on every artifact read",
   mlModelArtifactRegistry.includes("evaluateWinMLTrainingReadinessFromProtectedConfig") &&
   mlModelArtifactRegistry.includes("ownerApprovalEvidenceReady") &&
@@ -819,8 +820,12 @@ add("WIN shadow inference revalidates signed owner approval from protected confi
   mlOwnerGatedShadowPrediction.includes("registered.ownerApprovalEvidenceReady") &&
   mlOwnerApprovalRegistry.includes("WIN_ML_OWNER_APPROVAL_PUBLIC_KEY") &&
   mlOwnerApprovalRegistry.includes("WIN_ML_OWNER_REVIEWER_ID") &&
-  mlModelArtifactRegistryTests.includes("refuses approval references without protected server configuration"),
-  "A stored approval ID is only a reference: the signed licence, owner signature, expiry and revocation chain is revalidated from protected server configuration before shadow inference. Training, production promotion and betting remain disabled.");
+  mlModelArtifactRegistryTests.includes("refuses approval references without protected server configuration") &&
+  mlOwnerShadowIntegrationTests.includes("eligible_for_human_shadow_review") &&
+  mlOwnerShadowIntegrationTests.includes("eligible_for_shadow_only") &&
+  mlOwnerShadowIntegrationTests.includes("registerWinMLOwnerTrainingRevocation") &&
+  mlOwnerShadowIntegrationTests.includes("automatedBettingAllowed, false"),
+  "A stored approval ID is only a reference: the signed licence, owner signature, expiry and revocation chain is revalidated from protected server configuration before shadow inference. The integrated regression proves valid evidence reaches shadow-only review and revocation blocks it; training, production promotion and betting remain disabled.");
 
 const packageManifest = JSON.parse(await read("package.json"));
 add("Netlify Blobs conditional-write dependency is pinned to the concurrent-write fix and Node runtime floor",
