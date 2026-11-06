@@ -108,3 +108,38 @@ This is a verified sample, not yet a complete route contract. The remaining rout
 ## 6. Safety boundary
 
 This inventory does not authorize a storage refactor, migration, schedule change, data import, production deployment, merge, paid provider, or credential change. Stage 2 may begin only with isolated contract tests and diagnostic manifests that preserve existing storage routing, prefix membership, job cadence and production state.
+
+
+## 7. Revalidation against the current development branch (2026-11-06)
+
+This section supersedes any conflicting statements above when assessing the current `docs/win-staged-build-roadmap` branch. The original inventory was explicitly captured from an earlier combined PR #10 tree and is historical evidence, not proof that every listed module is present in the current branch.
+
+### Current source-code check
+
+- The current branch's `netlify/lib/store.mts` has a production default that lazily loads `@netlify/blobs` and opens the `win-engine` store in EU Central with strong consistency.
+- That module exposes only an explicitly enabled in-process test adapter (`WIN_STORE_TEST_MODE=1`). The inspected current file does not contain a Neon runtime adapter, Neon mirror selection, or a switch to Neon.
+- The current branch's `package.json` lists `@netlify/blobs` and the OpenAI Agents SDK, but does not list `@neondatabase/serverless` or `pg`. Do not assume a Neon driver is installed.
+- The earlier file inventory's Neon backup/backfill/restore handlers could not be confirmed at the corresponding paths in the current development branch during this revalidation. Treat those rows and schedule entries as historical until their exact source paths are found and inspected in the current branch.
+- No Netlify deployment, build, schedule invocation, or production storage operation was performed as part of this revalidation.
+
+### Neon isolated-branch schema inspection
+
+The existing Neon project `win-memory` has an isolated branch named `win-memory-schema-test`. Read-only schema inspection of database `neondb` on that branch found these three tables:
+
+| Table | Confirmed schema features | Interpretation |
+|---|---|---|
+| `public.win_memory_records` | `record_key` primary key; `kind`, `record_id`, JSONB `payload`, opaque `etag`, created/updated timestamps; indexes by kind and update time | A structured record table suitable for a carefully tested memory repository adapter, but not proof the app currently uses it |
+| `public.win_financial_accounts` | Account primary key, currency, opening balance, exposure limits, daily loss limit, active flag and timestamps; positive-limit and exposure-order checks | A separate financial-account domain; do not conflate with AI provider spend controls or actual bookmaker accounts |
+| `public.win_financial_ledger` | UUID primary key, account FK, unique idempotency key, constrained entry types, numeric amount/exposure delta, JSONB metadata and indexes | A separate append-style financial ledger; no live account or ledger writes were made |
+
+The schema inspection was read-only. It did not inspect or export row contents, did not add or modify tables, did not change compute settings, and did not connect the application runtime.
+
+### Correct next integration sequence
+
+1. Locate and inspect the exact source and ownership of the three Neon tables' DDL before writing an adapter.
+2. Define and test the `win_memory_records` adapter against the existing `store.mts` contract, including strong-read expectations, bounded list behavior, immutable keys, `onlyIfNew` and `onlyIfMatch` semantics, and stable ETags.
+3. Keep the adapter opt-in and isolated. Do not change the current Blobs default, enable a mirror, backfill, restore, or write to Neon until contract tests pass and the migration/rollback behavior is reviewed.
+4. Treat financial tables as a separate subsystem with independent authorization, idempotency and audit tests.
+5. Update this inventory only when each exact implementation path is confirmed in the current branch.
+
+This revalidation narrows the claim: Neon schema objects exist on the isolated test branch, but current application-level Neon integration is **not yet verified**.
