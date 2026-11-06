@@ -101,7 +101,7 @@ add("High-impact authenticated JSON write routes enforce bounded streaming reque
   boundedJsonHelper.includes("new TextDecoder(\"utf-8\", { fatal: true })") &&
   boundedJsonTests.includes("enforces declared and streamed byte limits") &&
   boundedJsonTests.includes("rejects invalid UTF-8, malformed JSON and non-object JSON") &&
-  boundedJsonRoutes.length === 16 && boundedJsonRoutes.every((route, index) => route.includes("readBoundedJsonObject(req, " + boundedJsonRouteCaps[index])) && boundedJsonRoutesHaveAuth &&
+  boundedJsonRoutes.length === 16 && boundedJsonRoutes.every((route, index) => route.includes("readBoundedJsonObject(req, " + (boundedJsonRouteCaps[index] / 1024) + " * 1024")) && boundedJsonRoutesHaveAuth &&
   boundedJsonRoutes[13].includes('req.method!=="POST"') && boundedJsonRoutes[15].includes('req.method !== "POST"'),
   "Sixteen authenticated JSON write routes use the same strict streaming parser with route-specific limits. Both internal background runners also require POST and authenticate before parsing.");
 
@@ -793,9 +793,9 @@ add("WIN market-anchored blend is held-out-evidence-gated, timestamp-safe and re
   mlMarketBlend.includes("market_overround_out_of_bounds") &&
   mlMarketBlend.includes("Math.abs(values.reduce((sum, number) => sum + number, 0) - 1) <= 1e-6") &&
   mlMarketBlend.includes("evaluation.modelBrier > 2") &&
-  mlMarketBlend.includes("calendar.getUTCDate() !== d") &&
-  mlMarketBlend.includes(String.raw`const match = /^(\d{4})-(\d{2})-(\d{2})T` ) &&
-  mlMarketBlend.includes("marketTestCohortSha256 !== evaluation.testCohortSha256") &&
+  mlMarketBlend.includes('import { parseStrictIsoTimestamp } from "./strict-timestamp.mts"') &&
+  mlMarketBlend.includes("return parseStrictIsoTimestamp(value)") &&
+  mlMarketBlend.includes("evaluation.testCohortSha256 !== evaluation.marketTestCohortSha256") &&
   mlMarketBlend.includes("model_does_not_beat_market_on_both_metrics") &&
   mlMarketBlend.includes("MIN_RELATIVE_MARKET_IMPROVEMENT = 0.01") &&
   mlMarketBlend.includes("model_calibration_gate_failed") &&
