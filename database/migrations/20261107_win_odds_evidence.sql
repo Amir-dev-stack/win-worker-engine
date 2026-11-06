@@ -87,17 +87,21 @@ create trigger win_prediction_quote_binding_validate
 -- Validate exact market identity and close timing before accepting a CLV record.
 create or replace function public.win_validate_clv_evaluation()
 returns trigger language plpgsql as $
-declare d public.win_odds_quote_snapshots%rowtype;
-declare c public.win_odds_quote_snapshots%rowtype;
-declare cutoff_at timestamptz;
+declare
+  d public.win_odds_quote_snapshots%rowtype;
+  c public.win_odds_quote_snapshots%rowtype;
+  cutoff_at timestamptz;
 begin
-  select q.*, b.prediction_cutoff into d
+  select q.* into d
     from public.win_prediction_quote_bindings b
     join public.win_odds_quote_snapshots q on q.quote_id = b.decision_quote_id
     where b.prediction_id = new.prediction_id;
   if not found then
     raise exception 'WIN prediction quote binding is missing';
   end if;
+  select prediction_cutoff into cutoff_at
+    from public.win_prediction_quote_bindings
+    where prediction_id = new.prediction_id;
   select * into c from public.win_odds_quote_snapshots where quote_id = new.closing_quote_id;
   if not found
      or c.snapshot_role <> 'closing'
