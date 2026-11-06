@@ -109,6 +109,7 @@ const required = [
   "netlify/lib/coupon-correlation-gate.mts",
   "scripts/coupon-correlation-gate.test.mjs",
   "scripts/ml-market-anchored-blend.test.mjs",
+  "scripts/ml-market-anchored-blend-verified.test.mjs",
   "netlify/lib/ml-provenance.mts",
   "netlify/lib/ml-owner-approval.mts",
   "netlify/lib/ml-licence-evidence.mts",
