@@ -25,7 +25,7 @@ test("local research runner endpoint is separately token-authenticated and owner
   assert.match(runner, /redirect: "error"/);
   assert.match(runner, /WIN_OLLAMA_BASE_URL/);
   assert.match(runner, /api\("upload_artifact"/);
-  assert.match(runner, /win-blob:\\/\\//);
+  assert.ok(runner.includes('startsWith("win-blob://")'));
   assert.doesNotMatch(runner, /location: "local-file:"/);
   assert.match(runner, /https:/);
   assert.match(runner, /No general web search or external tools/);
