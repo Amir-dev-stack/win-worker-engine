@@ -27,7 +27,7 @@ export default async (req: Request) => {
     return Response.json({ error: "Local research runner is disabled by the owner." }, { status: 403 });
   }
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  const parsed = await readBoundedJsonObject(req, 128 * 1024);
+  const parsed = await readBoundedJsonObject(req, 320 * 1024);
   if (parsed instanceof Response) return parsed;
   const body = parsed.body;
   const action = typeof body.action === "string" ? body.action : "";
