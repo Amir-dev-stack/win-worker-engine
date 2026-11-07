@@ -275,6 +275,14 @@ add("TipsAudit historical predictions are catalogued as research-only pending sn
   (await read("scripts/public-data-source-policy.test.mjs")).includes("providerMayRunAutomatically") &&
   (await read("scripts/public-data-source-policy.test.mjs")).includes("snapshot hash matches"),
   "The source is discoverable, but immutable pre-kickoff snapshot, manifest, timestamp-proof, data-rights and methodology checks must pass before ingestion.");
+add("The Odds API remains disabled until owner licence, quota and source-semantics review",
+  providers.includes('id:"the-odds-api"') &&
+  providers.includes('licenceReview:"required", automationAllowed:false') &&
+  providers.includes("500 credits/month") &&
+  providers.includes("historical odds endpoints are paid-plan-only") &&
+  (await read("scripts/public-data-source-policy.test.mjs")).includes("The Odds API stays a zero-cost research candidate until owner licence and quota review"),
+  "The free current-odds tier is only a candidate; no provider fetch may run until the owner has reviewed terms, quotas and the exact data-use scope.");
+
 add("Every automatic public dataset adapter enforces the central provider registry before network access",
   (await read("netlify/lib/data-provider-registry.mts")).includes("assertProviderImportAllowed") &&
   (await read("netlify/lib/openfootball-adapter.mts")).includes('assertProviderImportAllowed("openfootball-football-json", ["fixtures", "results"])') &&
