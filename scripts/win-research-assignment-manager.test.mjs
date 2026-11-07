@@ -62,6 +62,8 @@ test("research assignment manager enforces approval, lease, untrusted intake and
   await assert.rejects(()=>manager.submitResearchAssignment(assignment.id,agent,claim.leaseId,forged,4000),/Cloud artifact/);
   const forgedDigest={...submission,artifacts:[{...submission.artifacts[0],sha256:"f".repeat(64)}]};
   await assert.rejects(()=>manager.submitResearchAssignment(assignment.id,agent,claim.leaseId,forgedDigest,4000),/Cloud artifact/);
+  const forgedMediaType={...submission,artifacts:[{...submission.artifacts[0],mediaType:"text/plain"}]};
+  await assert.rejects(()=>manager.submitResearchAssignment(assignment.id,agent,claim.leaseId,forgedMediaType,4000),/Cloud artifact/);
   const saved=await manager.submitResearchAssignment(assignment.id,agent,claim.leaseId,submission,4000);
   assert.equal(saved.status,"untrusted_pending_review");
   const researchMemory=await import("../netlify/lib/win-research-memory.mts");
