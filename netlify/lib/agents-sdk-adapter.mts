@@ -81,10 +81,14 @@ export function createOpenAIWinLLMAdapter(input: {
         return failed(request, input.model, "openai_adapter_model_policy_mismatch", 0);
       }
       if (signal?.aborted) throw new Error("WIN OpenAI request was aborted before execution.");
-      const memoryContext = input.memoryContextProvider\n        ? await input.memoryContextProvider(request.agentId)\n        : undefined;\n      const result = await runner({
+      const memoryContext = input.memoryContextProvider
+        ? await input.memoryContextProvider(request.agentId)
+        : undefined;
+      const result = await runner({
         name: "WIN " + request.agentId,
         instructions: request.prompt.instructions,
-        prompt: request.prompt.input,\n        memoryContext,
+        prompt: request.prompt.input,
+        memoryContext,
         model: input.model,
         apiKey: input.apiKey,
         webSearch: request.tools.includes("web_search"),
