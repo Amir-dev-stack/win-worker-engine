@@ -281,6 +281,9 @@ add("The Odds API remains disabled until owner licence, quota and source-semanti
   providers.includes("500 credits/month") &&
   providers.includes("historical odds endpoints are paid-plan-only") &&
   (await read("scripts/public-data-source-policy.test.mjs")).includes("The Odds API stays a zero-cost research candidate until owner licence and quota review"),
+  (await read("netlify/lib/the-odds-api-quota-plan.mts")).includes("historical ? 10 : 1") &&
+  (await read("netlify/lib/the-odds-api-quota-plan.mts")).includes("providerActivationAllowed: false") &&
+  (await read("scripts/the-odds-api-quota-plan.test.mjs")).includes("keeps a reserve and blocks plans that would consume it"),
   "The free current-odds tier is only a candidate; no provider fetch may run until the owner has reviewed terms, quotas and the exact data-use scope.");
 
 add("Every automatic public dataset adapter enforces the central provider registry before network access",
