@@ -10,7 +10,8 @@
     "build": "node scripts/build.mjs && node scripts/quality-gates.mjs",
     "dev": "npx --yes netlify-cli@27.14.2 dev",
     "test": "node --experimental-strip-types --test scripts/*.test.mjs && node scripts/quality-gates.mjs",
-    "test:neon:integration": "node scripts/neon-store-live.integration.mjs"
+    "test:neon:integration": "node scripts/neon-store-live.integration.mjs",
+    "audit:store-migration": "node scripts/win-store-migration-audit.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest",
