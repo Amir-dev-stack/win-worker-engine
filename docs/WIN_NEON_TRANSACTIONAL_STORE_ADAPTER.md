@@ -45,3 +45,30 @@ npm run test:neon:integration
 Use only the dedicated test branch connection string. Never use the production branch URL. The script creates three uniquely named records, tests concurrent create-only and ETag compare-and-swap behavior, checks reads/metadata/prefix listing, and removes only those exact generated keys in a `finally` block. It is intentionally excluded from the default test suite and GitHub CI because no database secret is stored in the repository.
 
 The test has not been run yet. A successful result is required before enabling the Neon adapter in any deployed environment.
+
+
+## Read-only Blobs-to-Neon migration audit
+
+The repository includes `scripts/win-store-migration-audit.mjs` and the command `npm run audit:store-migration`. This is a read-only comparison tool, not a migration or cutover tool.
+
+It reads the current site-wide Netlify Blobs store `win-engine` in `eu-central-1` with strong consistency, reads rows from `public.win_memory_records` on the Neon connection supplied as the test target, and compares canonical JSON SHA-256 hashes. It reports counts and a small sample of mismatched keys; it never prints payload contents and performs zero writes.
+
+PowerShell example (use the dedicated `win-memory-schema-test` branch connection string):
+
+```powershell
+$env:NETLIFY_SITE_ID = "<Netlify site ID>"
+$env:NETLIFY_AUTH_TOKEN = "<Netlify read-capable token>"
+$env:WIN_NEON_TEST_DATABASE_URL = "<Neon test-branch connection string>"
+$env:WIN_MIGRATION_AUDIT_CONFIRM = "1"
+npm run audit:store-migration
+```
+
+Optional record cap:
+
+```powershell
+$env:WIN_MIGRATION_AUDIT_MAX_RECORDS = "100000"
+```
+
+The default cap is 100,000 and the hard cap is 1,000,000. A cap overflow aborts rather than silently producing a partial comparison. A non-zero exit status indicates missing payloads, missing keys, or hash mismatches. A clean audit is necessary but not sufficient for cutover: repeat it after a quiesced/captured write window, reconcile concurrent writes, verify all non-JSON artifact stores separately, and complete concurrency, backup/restore and rollback drills. This tool deliberately has no copy, delete, truncate, schema-change or environment-setting operation.
+
+Do not point this at production Neon. Do not set `WIN_TRANSACTIONAL_STORE=neon` while running it. Netlify credentials must remain local environment variables and must never be committed or pasted into GitHub issues.
