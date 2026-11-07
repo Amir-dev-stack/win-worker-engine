@@ -155,6 +155,26 @@ export async function submitResearchAssignment(id: string, agentId: string, leas
   if (safeArtifacts.some((a: any) => !a.name || !a.sha256 || !/^[a-f0-9]{64}$/i.test(a.sha256))) {
     throw new Error("Every artifact requires a name and SHA-256 digest.");
   }
+  // Bind cloud artifact references to this assignment, agent and exact stored bytes.
+  for (const artifact of safeArtifacts) {
+    if (!artifact.location.startsWith("win-blob://")) continue;
+    const match = artifact.location.match(/^win-blob:\/\/library\/research-artifacts\/(research-artifact-[A-Za-z0-9-]+)$/);
+    if (!match) throw new Error("Cloud artifact location is not a valid WIN research-artifact reference.");
+    const stored = await getWithMetadata<any>("library/research-artifacts", match[1]);
+    const record = stored?.value;
+    if (!record || record.artifactId !== match[1] || record.assignmentId !== id ||
+        record.agentId !== agentId || record.sha256 !== artifact.sha256.toLowerCase() ||
+        !record.content || typeof record.content !== "object" || Array.isArray(record.content)) {
+      throw new Error("Cloud artifact is missing or is not bound to this assignment, agent and SHA-256 digest.");
+    }
+    const serialized = JSON.stringify(record.content, null, 2);
+    const actualDigest = createHash("sha256").update(serialized, "utf8").digest("hex");
+    const actualBytes = Buffer.byteLength(serialized, "utf8");
+    if (actualDigest !== record.sha256 || actualDigest !== artifact.sha256.toLowerCase() ||
+        actualBytes !== record.byteLength || actualBytes > 256 * 1024) {
+      throw new Error("Stored cloud artifact failed content-integrity verification.");
+    }
+  }
   const submissionId = "submission-" + randomUUID();
   const submission = {
     id: submissionId, assignmentId: id, agentId, summary, findings, limitations,
