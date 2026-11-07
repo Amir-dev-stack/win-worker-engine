@@ -20,7 +20,7 @@ OpenAI's TypeScript Agents SDK supports tool use, multi-agent handoffs, sessions
 
 ## Free-first multi-provider execution
 
-See [WIN Free-First Multi-Provider Agent Network](WIN_FREE_FIRST_AGENT_PROVIDER_PLAN.md). The owner has authorized additional providers and frameworks when they are genuinely free and sustainable. WIN is no longer restricted to OpenAI-only; however, no paid fallback, paid upgrade, auto-recharge or budget increase is authorized. Use local Ollama first for routine tasks, then verified free Cloudflare/Gemini quotas for public non-sensitive work, and OpenAI only for selected tasks within the existing owner-authorized budget. Keep one WIN memory and assignment control plane across all providers.
+See [WIN Free-First Multi-Provider Agent Network](WIN_FREE_FIRST_AGENT_PROVIDER_PLAN.md). The owner has authorized additional providers and frameworks when they are genuinely free and sustainable. WIN is no longer restricted to OpenAI-only; however, no paid fallback, paid upgrade, auto-recharge or budget increase is authorized. A local Ollama adapter, token-authenticated runner endpoint and bounded local polling script are staged in code but not live until deployment and local installation. Use local Ollama first for routine tasks, then verified free Cloudflare/Gemini quotas for public non-sensitive work, and OpenAI only for selected tasks within the existing owner-authorized budget. Keep one WIN memory and assignment control plane across all providers.
 
 ## Research divisions
 
