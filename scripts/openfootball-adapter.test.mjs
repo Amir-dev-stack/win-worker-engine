@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildOpenFootballSyncRunId } from "../netlify/lib/openfootball-adapter.mts";
-import { buildOpenFootballWorldCupSyncRunId, buildOpenFootballWorldCupDatasetEligibility } from "../netlify/lib/openfootball-worldcup-adapter.mts";
+import { buildOpenFootballSyncRunId, buildOpenFootballDatasetSnapshotId } from "../netlify/lib/openfootball-adapter.mts";
+import { buildOpenFootballWorldCupSyncRunId, buildOpenFootballWorldCupDatasetEligibility, buildOpenFootballWorldCupDatasetSnapshotId } from "../netlify/lib/openfootball-worldcup-adapter.mts";
 
 const revision = "a".repeat(40);
 const startedAt = "2026-11-07T10:00:00.000Z";
@@ -36,4 +36,20 @@ test("World Cup dataset snapshots declare date-only, unknown-result availability
     resultAvailability: "unknown",
     trainingEligible: false
   });
+});
+
+test("OpenFootball dataset snapshots are immutable across source revisions", () => {
+  const first = buildOpenFootballDatasetSnapshotId("2025-26", "eng.1.json", revision);
+  const second = buildOpenFootballDatasetSnapshotId("2025-26", "eng.1.json", "b".repeat(40));
+  assert.notEqual(first, second);
+  assert.match(first, /-ra{40}$/);
+  assert.throws(() => buildOpenFootballDatasetSnapshotId("2025-26", "eng.1.json", "master"), /snapshot_identity_invalid/);
+});
+
+test("World Cup dataset snapshots are immutable across source revisions", () => {
+  const first = buildOpenFootballWorldCupDatasetSnapshotId(2022, "worldcup-full.json", revision);
+  const second = buildOpenFootballWorldCupDatasetSnapshotId(2022, "worldcup-full.json", "b".repeat(40));
+  assert.notEqual(first, second);
+  assert.match(first, /-ra{40}$/);
+  assert.throws(() => buildOpenFootballWorldCupDatasetSnapshotId(2022, "worldcup-full.json", "main"), /snapshot_identity_invalid/);
 });
