@@ -25,7 +25,7 @@ The owner reports purchasing **USD 5.00 of OpenAI API credits** and has now expl
 
 ## First live test: minimal and observable
 
-The first test should be one short, non-sensitive, no-web-search request through the existing governed worker path. It must:
+The first test should be one short, non-sensitive research assignment through the existing governed OpenAI path, using OpenAI-hosted web search only if the assignment needs current sources. It must:
 
 - reserve budget before the provider call;
 - record task ID, agent ID, provider, model, request limits and reservation ID;
@@ -43,8 +43,8 @@ Do not start the full 13-pass research federation as the first test. A single su
 2. Validate evidence citations, model identity, token accounting and failure recovery.
 3. Add one independent FOR/AGAINST review pair.
 4. Expand to the full department workflow only after per-pass cost and total-run cost are measured.
-5. Keep scheduled learning and broad multi-sport runs disabled until the measured cost fits the owner's remaining credit and spending approval.
+5. Keep scheduled learning and broad multi-sport runs disabled until the measured cost fits the verified remaining credit and the existing $2.95 stop.
 
 ## Explicit non-goals
 
-This plan does not authorize spending, key creation, budget unlocking, auto-recharge, production deployment, automatic training, model promotion or bet placement. The owner remains the final authority for every spending decision and every BET / WAIT / NO BET decision.
+The owner has authorized bounded OpenAI-only research spending. This does not authorize new key creation without the owner's action, a spending-cycle reset or an increase above the existing $2.95 stop, auto-recharge, production deployment, automatic model promotion or bet placement. The owner remains the final authority for changing the spending ceiling and for every BET / WAIT / NO BET decision.
