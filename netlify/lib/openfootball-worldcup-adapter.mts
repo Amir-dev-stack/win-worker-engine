@@ -21,8 +21,10 @@ export function selectLatestOpenFootballWorldCupSnapshots<T extends {id?:unknown
   const logicalId=id.replace(/-r[a-f0-9]{40}$/i,"");
   if(!logicalId)continue;
   const current=latest.get(logicalId);
-  const nextTime=Date.parse(String(snapshot.retrievedAt||""));
-  const currentTime=current?Date.parse(String(current.retrievedAt||"")):Number.NEGATIVE_INFINITY;
+  const parsedNextTime=Date.parse(String(snapshot.retrievedAt||""));
+  const parsedCurrentTime=current?Date.parse(String(current.retrievedAt||"")):Number.NEGATIVE_INFINITY;
+  const nextTime=Number.isFinite(parsedNextTime)?parsedNextTime:Number.NEGATIVE_INFINITY;
+  const currentTime=Number.isFinite(parsedCurrentTime)?parsedCurrentTime:Number.NEGATIVE_INFINITY;
   if(!current||nextTime>currentTime||(nextTime===currentTime&&String(snapshot.sourceRevision||"")>String(current.sourceRevision||"")))latest.set(logicalId,snapshot);
  }
  return [...latest.values()].sort((a,b)=>String(a.id).localeCompare(String(b.id)));
