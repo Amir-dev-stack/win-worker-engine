@@ -1283,6 +1283,20 @@ add("WIN odds evidence schema is append-only, source-pinned and prediction-bound
   winOddsEvidenceSchemaTests.includes("cannot claim profitability"),
   "Quote evidence, prediction-time price binding and CLV results must remain immutable and evidence-only.");
 
+const quoteNormalizer = await read("netlify/lib/win-odds-quote-normalizer.mts");
+const quoteNormalizerTests = await read("scripts/win-odds-quote-normalizer.test.mjs");
+add("WIN quote normalization requires explicit source provenance, licence, source role and executable pre-match price",
+  quoteNormalizer.includes("source_provenance_incomplete") &&
+  quoteNormalizer.includes("source_revision_invalid") &&
+  quoteNormalizer.includes("snapshot_role_must_be_source_declared") &&
+  quoteNormalizer.includes("executable_back_price_required") &&
+  quoteNormalizer.includes("prematch_observation_required") &&
+  quoteNormalizer.includes("stableQuoteId") &&
+  quoteNormalizerTests.includes("does not infer missing source, licence, revision or snapshot role") &&
+  quoteNormalizerTests.includes("rejects non-executable prices, unknown availability and live/post-kickoff observations") &&
+  quoteNormalizerTests.includes("different quote identity"),
+  "Provider records cannot become quote evidence unless source/licence/revision/role/timestamps and executable decimal prices are explicit; stable identities preserve revision and price changes.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
