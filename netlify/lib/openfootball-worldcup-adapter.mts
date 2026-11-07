@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { get, put, list } from "./store.mts";
 import { assertProviderImportAllowed } from "./data-provider-registry.mts";
 
@@ -10,6 +10,10 @@ const PATHS=[
 const RAW_BASE="https://raw.githubusercontent.com/openfootball/worldcup.json";
 const GITHUB_API="https://api.github.com/repos/openfootball/worldcup.json";
 export function isPinnedOpenFootballWorldCupRevision(value:unknown):value is string{return typeof value==="string"&&/^[a-f0-9]{40}$/i.test(value);}
+export function buildOpenFootballWorldCupSyncRunId(startedAt:string,sourceRevision:string){
+ if(!Number.isFinite(Date.parse(startedAt))||!isPinnedOpenFootballWorldCupRevision(sourceRevision))throw Error("worldcup_sync_run_identity_invalid");
+ return "openfootball-worldcup-sync-"+Date.parse(startedAt).toString(36)+"-"+sourceRevision.slice(0,12).toLowerCase()+"-"+randomUUID();
+}
 
 const UPSTREAM_TIMEOUT_MS=12_000;
 const MAX_REVISION_RESPONSE_BYTES=256_000;
@@ -74,7 +78,7 @@ async function syncOne(path:typeof PATHS[number],sourceRevision:string){
   const id=createHash("sha256").update([path.year,path.file,date,home,away,index].join("|")).digest("hex").slice(0,32);
   const playerLineup=lineupEvents(m),goals=scorerEvents(m),bookings=bookingEvents(m);
   return [{id,eventId:id,sport:"football",season:String(path.year),competition:parsed.name||path.competition,competitionFile:path.file,
-   event:home+" vs "+away,homeTeam:home,awayTeam:away,eventStart:date,eventTimeRaw:m.time||null,
+   event:home+" vs "+away,homeTeam:home,awayTeam:away,eventStart:date,eventTimeRaw:m.time||null,eventTimePrecision:m.time?"local_time_without_timezone":"date_only",resultAvailableAt:null,trainingEligible:false,
    round:m.round||null,group:m.group||null,venue:m.ground||null,attendance:Number.isFinite(Number(m.attendance))?Number(m.attendance):null,
    fullTimeScore:ft,halfTimeScore:ht,extraTimeScore:validScore(m.score?.et)?m.score.et:null,penaltyShootoutScore:validScore(m.score?.p)?m.score.p:null,
    resultBasis:"regulation_90min",status:ft?"completed":"scheduled_or_unscored",
@@ -110,7 +114,7 @@ export async function syncOpenFootballWorldCupData(){
  const previous=await get<any>("scheduler-state","openfootball-worldcup-daily-sync");
  if(previous?.sourceRevision===sourceRevision&&previous?.status==="completed"){
   const completedAt=new Date().toISOString();
-  const unchanged={id:"openfootball-worldcup-sync-"+startedAt.slice(0,10),startedAt,completedAt,status:"unchanged",sourceRevision,sourceCommitUrl:"https://github.com/openfootball/worldcup.json/commit/"+sourceRevision,datasetsImported:0,datasetsUnchanged:PATHS.length,matchesImported:Number(previous.matchesImported||0),scoredMatches:Number(previous.scoredMatches||0),playerEventsImported:Number(previous.playerEventsImported||0),results:[],failures:[],reusedExistingSnapshot:true,origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false};
+  const unchanged={id:buildOpenFootballWorldCupSyncRunId(startedAt,sourceRevision),startedAt,completedAt,status:"unchanged",sourceRevision,sourceCommitUrl:"https://github.com/openfootball/worldcup.json/commit/"+sourceRevision,datasetsImported:0,datasetsUnchanged:PATHS.length,matchesImported:Number(previous.matchesImported||0),scoredMatches:Number(previous.scoredMatches||0),playerEventsImported:Number(previous.playerEventsImported||0),results:[],failures:[],reusedExistingSnapshot:true,origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false};
   await put("library/model-lab/provider-sync-runs",unchanged.id,unchanged);
   await put("scheduler-state","openfootball-worldcup-daily-sync",{...previous,lastCheck:completedAt,status:"unchanged",sourceRevision});
   return unchanged;
@@ -121,7 +125,7 @@ export async function syncOpenFootballWorldCupData(){
   const batch=await Promise.all(PATHS.slice(i,i+4).map(async path=>{try{return {ok:true,value:await syncOne(path,sourceRevision)};}catch(e){return {ok:false,path:path.year+"/"+path.file,error:String(e).slice(0,350)};}}));
   for(const item of batch){if(item.ok)results.push(item.value);else failures.push(item);}
  }
- const summary={id:"openfootball-worldcup-sync-"+startedAt.slice(0,10),startedAt,completedAt:new Date().toISOString(),sourceRevision,sourceCommitUrl:"https://github.com/openfootball/worldcup.json/commit/"+sourceRevision,status:results.length===PATHS.length?"completed":results.length?"partial":"failed",datasetsImported:results.length,matchesImported:results.reduce((n,x)=>n+x.matches,0),scoredMatches:results.reduce((n,x)=>n+x.scored,0),playerEventsImported:results.reduce((n,x)=>n+x.playerEvents,0),results,failures,origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false};
+ const summary={id:buildOpenFootballWorldCupSyncRunId(startedAt,sourceRevision),startedAt,completedAt:new Date().toISOString(),sourceRevision,sourceCommitUrl:"https://github.com/openfootball/worldcup.json/commit/"+sourceRevision,status:results.length===PATHS.length?"completed":results.length?"partial":"failed",datasetsImported:results.length,matchesImported:results.reduce((n,x)=>n+x.matches,0),scoredMatches:results.reduce((n,x)=>n+x.scored,0),playerEventsImported:results.reduce((n,x)=>n+x.playerEvents,0),results,failures,origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false};
  await put("library/model-lab/provider-sync-runs",summary.id,summary);
  await put("scheduler-state","openfootball-worldcup-daily-sync",{lastCheck:summary.completedAt,status:summary.status,sourceRevision,sourceCommitUrl:summary.sourceCommitUrl,datasetsImported:summary.datasetsImported,matchesImported:summary.matchesImported,scoredMatches:summary.scoredMatches,playerEventsImported:summary.playerEventsImported,failures:failures.length});
  return summary;
