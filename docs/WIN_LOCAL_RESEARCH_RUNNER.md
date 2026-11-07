@@ -8,7 +8,7 @@
 - Uses lease IDs for claim, submit and safe release.
 - Local Ollama execution through its OpenAI-compatible localhost endpoint.
 - Fetches only explicitly assigned HTTPS URLs; redirects are rejected, response size is bounded, and non-text sources are ignored.
-- Produces a local JSON artifact with a SHA-256 digest and submits it to the untrusted research inbox.
+- Produces a local JSON artifact with a SHA-256 digest, uploads the artifact through the authenticated runner endpoint, verifies the digest server-side, and submits a private cloud artifact reference to the untrusted research inbox.
 - Independent review is still required before findings enter shared research memory.
 
 ## What is not implemented or active
@@ -89,7 +89,7 @@ Cloudflare's Free Workers plan enforces the documented daily free allocation by 
 - The local model receives only public-source text fetched from the assignment's explicit HTTPS URL scope.
 - No credentials, private data, internal project secrets or betting-account data are sent to free cloud models.
 - Local artifacts remain on the PC unless the owner deliberately copies them elsewhere.
-- The current API stores the submission manifest and evidence; the local artifact file itself remains local.
+- The local artifact file remains as an owner-side copy. The cloud copy is stored in the private WIN research-artifact collection after lease validation and SHA-256 verification; the submission points to the cloud artifact ID.
 - Keep first run to one task and inspect the report and artifact manually.
 
 
@@ -124,3 +124,10 @@ This verifies local service/API reachability only. It does **not** verify the WI
 ### Exact local chat response confirmed — 2026-11-07
 
 The owner subsequently inspected `$result.choices[0].message.content` in Windows PowerShell and confirmed the exact response `WIN_LOCAL_API_OK`. This completes the local Ollama OpenAI-compatible chat endpoint smoke test. It still does not exercise the WIN assignment runner or a cloud-to-local task lifecycle.
+
+
+### Verified cloud artifact handoff — implementation staged
+
+The local runner now calls the authenticated `upload_artifact` action before submission. The server checks the active assignment lease, requires a JSON object, limits the serialized artifact to 256 KiB, recomputes SHA-256, and stores the artifact in the private WIN Blobs collection. The runner then submits the returned `win-blob://` reference rather than a workstation-only `local-file:` path.
+
+This is code-level implementation only. It still requires contract tests and a successful CI run, plus a deployed endpoint and configured secrets, before any end-to-end claim can be made.
