@@ -17,7 +17,7 @@ export class OddsCollectionLedgerError extends Error {
   readonly code: string;
   constructor(code: string) { super(code); this.name = "OddsCollectionLedgerError"; this.code = code; }
 }
-const nonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
+const safeIdentifier = (v: unknown): v is string => typeof v === "string" && /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(v);
 const timestamp = (v: unknown): v is string => typeof v === "string" && isStrictIsoTimestamp(v);
 const count = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 0;
 const sha256 = (v: unknown): v is string => typeof v === "string" && /^[a-f0-9]{64}$/i.test(v);
@@ -39,19 +39,19 @@ export function buildOddsCollectionAttempt(input: {
   returnedRecords: number; oldestSourceObservedAt?: string | null;
   newestSourceObservedAt?: string | null; reserveCredits: number;
 }): OddsCollectionAttemptV1 {
-  if (!input || !nonEmpty(input.providerId) || !nonEmpty(input.licenceId) ||
-      !input.requestFamily || !nonEmpty(input.requestFamily.sport) ||
+  if (!input || !safeIdentifier(input.providerId) || !safeIdentifier(input.licenceId) ||
+      !input.requestFamily || !safeIdentifier(input.requestFamily.sport) ||
       !Array.isArray(input.requestFamily.markets) || input.requestFamily.markets.length === 0 ||
-      !input.requestFamily.markets.every(nonEmpty) ||
+      !input.requestFamily.markets.every(safeIdentifier) ||
       !Array.isArray(input.requestFamily.regions) || input.requestFamily.regions.length === 0 ||
-      !input.requestFamily.regions.every(nonEmpty) ||
+      !input.requestFamily.regions.every(safeIdentifier) ||
       !timestamp(input.plannedAt) || !timestamp(input.ingestedAt) ||
       (input.requestedAt !== null && !timestamp(input.requestedAt)) ||
       (input.requestedAt !== null && Date.parse(input.requestedAt) < Date.parse(input.plannedAt)) ||
       Date.parse(input.ingestedAt) < Date.parse(input.requestedAt ?? input.plannedAt) ||
       !["success", "empty", "rate_limited", "provider_error", "quota_exhausted", "not_attempted"].includes(input.outcome) ||
       !count(input.estimatedCredits) || !count(input.returnedRecords) || !count(input.reserveCredits) ||
-      !nonEmpty(input.correlationId) || (input.responseSha256 != null && !sha256(input.responseSha256)) ||
+      !safeIdentifier(input.correlationId) || (input.responseSha256 != null && !sha256(input.responseSha256)) ||
       (input.oldestSourceObservedAt != null && !timestamp(input.oldestSourceObservedAt)) ||
       (input.newestSourceObservedAt != null && !timestamp(input.newestSourceObservedAt))) {
     throw new OddsCollectionLedgerError("collection_attempt_input_invalid");
