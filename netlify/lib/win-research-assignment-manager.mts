@@ -152,7 +152,7 @@ export async function submitResearchAssignment(id: string, agentId: string, leas
     sha256: clean(entry?.sha256, 64), location: clean(entry?.location, 1000),
     reproductionCommand: clean(entry?.reproductionCommand, 1000)
   }));
-  if (safeArtifacts.some((a: any) => !a.name || !a.sha256 || !/^[a-f0-9]{64}$/i.test(a.sha256))) {
+  if (safeArtifacts.some((a: any) => !a.name || !a.mediaType || !a.sha256 || !/^[a-f0-9]{64}$/i.test(a.sha256))) {
     throw new Error("Every artifact requires a name and SHA-256 digest.");
   }
   if (safeArtifacts.some((artifact: any) => {
@@ -170,7 +170,7 @@ export async function submitResearchAssignment(id: string, agentId: string, leas
     const stored = await getWithMetadata<any>("library/research-artifacts", match[1]);
     const record = stored?.value;
     if (!record || record.artifactId !== match[1] || record.assignmentId !== id ||
-        record.agentId !== agentId || record.sha256 !== artifact.sha256.toLowerCase() ||
+        record.agentId !== agentId || record.mediaType !== artifact.mediaType || record.sha256 !== artifact.sha256.toLowerCase() ||
         !record.content || typeof record.content !== "object" || Array.isArray(record.content)) {
       throw new Error("Cloud artifact is missing or is not bound to this assignment, agent and SHA-256 digest.");
     }
