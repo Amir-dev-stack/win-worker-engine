@@ -93,3 +93,67 @@ Therefore this sample importer is useful for testing data-shape handling and qua
 5. Verify the full workflow on real licensed data before claiming CLV performance.
 
 The evaluator is not wired to a production route or automated betting. No provider was activated and no real-world CLV result is claimed.
+
+
+## Provider and zero-cost feasibility review — 2026-11-07
+
+This is a documentation-only review of official public pricing, API documentation and terms. No account was created, no key was requested, and no provider endpoint was called.
+
+### Candidate A — The Odds API
+
+Official pages:
+- Pricing and free tier: https://the-odds-api.com/
+- Historical odds: https://the-odds-api.com/historical-odds-data/
+- API terms (updated 2026-08-31): https://the-odds-api.com/terms-and-conditions.html
+- V4 docs: https://the-odds-api.com/liveapi/guides/v4/
+
+Findings:
+- The published free Starter tier is 500 credits/month and includes current sports odds.
+- Historical odds endpoints are explicitly paid-plan-only. Historical featured markets are available from 2020 with snapshots at 10-minute intervals initially and 5-minute intervals from September 2022; additional markets have their own later coverage.
+- The provider terms explicitly permit storage/retention and use in statistical or ML model training, and permit dashboards/apps where the raw data is not resold as a standalone data product.
+- The API returns bookmaker identity and bookmaker/market update timestamps. For historical endpoints it also returns the requested snapshot timestamp and neighboring snapshot timestamps.
+
+Assessment:
+- Best candidate for a controlled, zero-cost *forward collection pilot* if one sport/competition, one market, one region and a low polling cadence fit within 500 monthly credits.
+- Not a free source for retrospective multi-season CLV. Historical backfill must remain disabled unless a paid plan is separately approved.
+- The free plan quota and actual event/region/market coverage must be confirmed in the account before any scheduled collector is enabled.
+- The collector must persist every poll as an observation and must not pretend that the most recently seen price is necessarily the bookmaker's true closing price. A close label requires a documented end-of-market selection rule and timestamp evidence.
+
+### Candidate B — API-FOOTBALL (API-SPORTS)
+
+Official pages:
+- Pricing: https://www.api-football.com/pricing
+- Terms: https://www.api-football.com/terms
+- Documentation: https://www.api-football.com/documentation-v3
+
+Findings:
+- The public Free plan advertises 100 requests/day and includes pre-match and in-play odds, with free access limited by available seasons.
+- The terms prohibit resale of raw data and explicitly warn that the service does not grant commercial rights for third-party competitions or a licence to publish the data in applications/products. The user is responsible for obtaining any additional rights needed for publication or betting-platform use.
+- Its documented pre-match odds are updated on a slower cadence than a high-frequency price feed; coverage and data availability vary by competition.
+
+Assessment:
+- Potentially useful as a limited football fixture/context/odds source for private experimentation after the exact intended use and competition rights are reviewed.
+- Not approved for public display, resale or commercial distribution based only on the free subscription.
+- The published free quota is not a substitute for a historical timestamped odds archive. WIN must not assume it supplies a deep historical opening-to-close price series.
+
+### Candidate C — Sportmonks
+
+Official pages:
+- Pricing: https://www.sportmonks.com/football-api/plans-pricing/
+- FAQ: https://www.sportmonks.com/faq/
+
+Findings:
+- The published football Starter plan begins at €29/month; odds bundles and premium odds feeds are separately priced.
+- Sportmonks documents opening odds and subsequent odds changes, but the published FAQ describes odds history availability around the fixture and does not make this a zero-cost historical archive.
+
+Assessment:
+- Technically interesting for later paid evaluation, but not a $0-first provider. Do not activate or trial with payment details.
+
+### Decision
+
+1. **No provider is activated by this review.**
+2. The Odds API is the leading candidate for a narrow free forward-collection experiment because its published terms explicitly permit retained data and ML training, while historical backfill is paid-only.
+3. Keep API-FOOTBALL as a secondary candidate only for private, narrow football coverage after rights and publication restrictions are resolved.
+4. Do not use Sportmonks in the current zero-cost stage.
+5. Before implementation, require an owner-reviewed provider record: exact API plan, permitted use, data domains, attribution, retention, redistribution/display rights, competition restrictions, quota and source timestamp semantics.
+6. Start with one football competition and one market only after an actual key and quota are available. Poll at a quota-safe interval, store immutable raw responses and normalized bookmaker quotes, and track missing polls. Do not claim CLV until both decision and true pre-kickoff close prices are independently reconstructable.
