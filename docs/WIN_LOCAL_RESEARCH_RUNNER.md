@@ -91,3 +91,20 @@ Cloudflare's Free Workers plan enforces the documented daily free allocation by 
 - Local artifacts remain on the PC unless the owner deliberately copies them elsewhere.
 - The current API stores the submission manifest and evidence; the local artifact file itself remains local.
 - Keep first run to one task and inspect the report and artifact manually.
+
+
+## Bounded OpenAI assignment executor
+
+An additional owner-gated endpoint is staged at `/api/research-openai-execute`. It runs one already-approved research assignment through the existing OpenAI Agents SDK learning researcher, injects the agent's private/shared research memory, and stores a report artifact. The assignment's budget ceiling is checked against the global WIN budget reservation before the OpenAI request. Reports require HTTPS citations and remain untrusted until independent review.
+
+The endpoint remains disabled unless all of the following are configured server-side:
+
+- `WIN_RESEARCH_OPENAI_EXECUTOR_ENABLED=true`
+- `WIN_RESEARCH_OPENAI_AGENT_IDS=<comma-separated stable WIN agent IDs>`
+- `WIN_AI_BUDGET_APPROVED=true`, only after provider-side spending limits, usage alerts and disabled auto-recharge are verified
+- A valid server-side `OPENAI_API_KEY` and supported `OPENAI_MODEL`
+- The existing WIN AI budget ledger is unlocked by the owner and below its $2.95 stop
+
+The endpoint uses the existing authenticated internal API token. It does not schedule itself, create assignments, place bets, promote strategies or deploy code. If the assignment estimate exceeds its own budget ceiling, the reservation is released and no model request is sent. The API key must never be committed or pasted into chat.
+
+No OpenAI assignment has been executed by this change. The reported API credit purchase and remaining balance have not been independently verified.
