@@ -3,7 +3,7 @@ import { createOpenAIWinLLMAdapter } from "./agents-sdk-adapter.mts";
 import { mapWithConcurrency } from "./async-concurrency.mts";
 import { WIN_LLM_CONTRACT_VERSION } from "./llm-contract.mts";
 import { WIN_DEPARTMENTS, buildWorkerNetwork } from "./worker-org.mts";
-import { reserveAIRequest, settleAIRequest } from "./ai-budget.mts";
+import { reserveAIRequest, settleAIRequest, releaseAIRequest } from "./ai-budget.mts";
 
 export type Citation = { title?: string; url?: string; snippet?: string };
 export type WorkerReport = {
@@ -284,7 +284,7 @@ async function askWorker(
       maxOutputTokens, maxToolCalls,
       maxInputChars
     });
-    if (!budget.allowed) throw new Error(budget.reason);
+    if (!budget.allowed) throw new Error(budget.reason);\n    if (Number.isFinite(maxBudgetUsd) && budget.reservedUsd > Number(maxBudgetUsd)) {\n      await releaseAIRequest(requestBudgetId, "Assignment budget ceiling is lower than the estimated OpenAI reservation; no model call was sent.");\n      budgetSettled = true;\n      return failed("Assignment budget ceiling blocked this OpenAI request before execution. Estimated reservation $" + budget.reservedUsd.toFixed(4) + " exceeds task ceiling $" + Number(maxBudgetUsd).toFixed(4) + ".");\n    }
     const execution = await executeWinLLMWithPolicy({
       request: {
         contractVersion: WIN_LLM_CONTRACT_VERSION,
