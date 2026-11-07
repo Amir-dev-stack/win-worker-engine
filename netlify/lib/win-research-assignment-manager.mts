@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { getWithMetadata, list, put, putIfMatch, putIfNew } from "./store.mts";
 import { rememberResearchSubmission, promoteReviewedResearchMemory } from "./win-research-memory.mts";
 
@@ -94,6 +94,36 @@ export async function claimResearchAssignment(id: string, agentId: string, nowMs
     if (result?.modified) return claimed;
   }
   throw new Error("Assignment claim lost a concurrent race; reload the queue.");
+}
+
+export async function storeResearchArtifact(
+  id: string, agentId: string, leaseId: string, artifact: unknown, expectedSha256: string, nowMs = Date.now()
+) {
+  const current = await getWithMetadata<ResearchAssignment>(ASSIGNMENTS, id);
+  if (!current || current.value.status !== "running" || current.value.assignedAgentId !== agentId ||
+      current.value.leaseId !== leaseId || Date.parse(String(current.value.leaseExpiresAt || "")) <= nowMs) {
+    throw new Error("A valid, unexpired assignment lease is required to upload an artifact.");
+  }
+  if (!artifact || typeof artifact !== "object" || Array.isArray(artifact)) {
+    throw new Error("Artifact must be a JSON object.");
+  }
+  const serialized = JSON.stringify(artifact, null, 2);
+  const bytes = Buffer.byteLength(serialized, "utf8");
+  if (bytes < 2 || bytes > 256 * 1024) throw new Error("Artifact exceeds the 256 KB upload limit.");
+  const actualSha256 = createHash("sha256").update(serialized, "utf8").digest("hex");
+  if (!/^[a-f0-9]{64}$/i.test(expectedSha256) || actualSha256 !== expectedSha256.toLowerCase()) {
+    throw new Error("Artifact SHA-256 verification failed.");
+  }
+  const artifactId = "research-artifact-" + randomUUID();
+  await put("library/research-artifacts", artifactId, {
+    artifactId, assignmentId: id, agentId, sha256: actualSha256,
+    byteLength: bytes, mediaType: "application/json",
+    storedAt: nowIso(nowMs), content: artifact
+  });
+  return {
+    artifactId, sha256: actualSha256, byteLength: bytes,
+    location: "win-blob://library/research-artifacts/" + artifactId
+  };
 }
 
 export async function submitResearchAssignment(id: string, agentId: string, leaseId: string, input: any, nowMs = Date.now()) {
