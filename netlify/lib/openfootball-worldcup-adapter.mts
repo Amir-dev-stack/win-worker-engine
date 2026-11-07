@@ -10,6 +10,9 @@ const PATHS=[
 const RAW_BASE="https://raw.githubusercontent.com/openfootball/worldcup.json";
 const GITHUB_API="https://api.github.com/repos/openfootball/worldcup.json";
 export function isPinnedOpenFootballWorldCupRevision(value:unknown):value is string{return typeof value==="string"&&/^[a-f0-9]{40}$/i.test(value);}
+export function buildOpenFootballWorldCupDatasetEligibility() {
+ return {eventTimePrecision:"date" as const,resultAvailability:"unknown" as const,trainingEligible:false as const};
+}
 export function buildOpenFootballWorldCupSyncRunId(startedAt:string,sourceRevision:string){
  if(!Number.isFinite(Date.parse(startedAt))||!isPinnedOpenFootballWorldCupRevision(sourceRevision))throw Error("worldcup_sync_run_identity_invalid");
  return "openfootball-worldcup-sync-"+Date.parse(startedAt).toString(36)+"-"+sourceRevision.slice(0,12).toLowerCase()+"-"+randomUUID();
@@ -97,7 +100,7 @@ async function syncOne(path:typeof PATHS[number],sourceRevision:string){
   id:datasetId,providerId:"openfootball-worldcup-json",sourceRevision,sourceCommitUrl:"https://github.com/openfootball/worldcup.json/commit/"+sourceRevision,sport:"football",season:String(path.year),competition:parsed.name||path.competition,
   sourceUrl:url,sourceRevision,sourceCommitUrl:"https://github.com/openfootball/worldcup.json/commit/"+sourceRevision,sourceLicence:"CC0-1.0",licenceReference:"https://creativecommons.org/publicdomain/zero/1.0/",
   retrievedAt:new Date().toISOString(),rawChecksum:checksum,totalRows:records.length,scoredRows:records.filter(x=>x.fullTimeScore).length,
-  playerEventRows:playerEventRows.length,records,origin:"provider_historical_data",lab:"model-lab",
+  playerEventRows:playerEventRows.length,records,...buildOpenFootballWorldCupDatasetEligibility(),origin:"provider_historical_data",lab:"model-lab",
   attribution:"OpenFootball worldcup.json — public-domain data (CC0-1.0)."
  });
  await put("library/model-lab/player-event-datasets",datasetId,{id:datasetId,providerId:"openfootball-worldcup-json",sourceRevision,sourceCommitUrl:"https://github.com/openfootball/worldcup.json/commit/"+sourceRevision,sport:"football",season:String(path.year),competition:parsed.name||path.competition,sourceUrl:url,sourceLicence:"CC0-1.0",licenceReference:"https://github.com/openfootball/worldcup.json/blob/"+sourceRevision+"/LICENSE.md",attribution:"OpenFootball worldcup.json — CC0 1.0.",rawChecksum:checksum,totalRows:playerEventRows.length,records:playerEventRows,origin:"provider_historical_data",lab:"model-lab"});
