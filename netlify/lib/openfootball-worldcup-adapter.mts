@@ -14,6 +14,19 @@ export function buildOpenFootballWorldCupDatasetSnapshotId(year:number,fileName:
  if(!Number.isInteger(year)||year<1930||year>2100||!/^worldcup(?:-full)?\.json$|^clubworldcup\.json$/i.test(fileName)||!isPinnedOpenFootballWorldCupRevision(sourceRevision)) throw Error("worldcup_dataset_snapshot_identity_invalid");
  return "openfootball-worldcup-"+year+"-"+fileName.replace(/\.json$/i,"")+"-r"+sourceRevision.toLowerCase();
 }
+export function selectLatestOpenFootballWorldCupSnapshots<T extends {id?:unknown;retrievedAt?:unknown;sourceRevision?:unknown}>(snapshots:T[]):T[] {
+ const latest=new Map<string,T>();
+ for(const snapshot of snapshots){
+  const id=String(snapshot?.id||"");
+  const logicalId=id.replace(/-r[a-f0-9]{40}$/i,"");
+  if(!logicalId)continue;
+  const current=latest.get(logicalId);
+  const nextTime=Date.parse(String(snapshot.retrievedAt||""));
+  const currentTime=current?Date.parse(String(current.retrievedAt||"")):Number.NEGATIVE_INFINITY;
+  if(!current||nextTime>currentTime||(nextTime===currentTime&&String(snapshot.sourceRevision||"")>String(current.sourceRevision||"")))latest.set(logicalId,snapshot);
+ }
+ return [...latest.values()].sort((a,b)=>String(a.id).localeCompare(String(b.id)));
+}
 export function buildOpenFootballWorldCupDatasetEligibility() {
  return {eventTimePrecision:"date" as const,resultAvailability:"unknown" as const,trainingEligible:false as const};
 }
@@ -141,12 +154,6 @@ export async function getOpenFootballWorldCupSyncStatus(){
  const state=await get<any>("scheduler-state","openfootball-worldcup-daily-sync");
  const datasets=await list<any>("library/model-lab/historical-event-datasets",500);
  const snapshots=datasets.filter(d=>d.providerId==="openfootball-worldcup-json");
- const latestByDataset=new Map<string,any>();
- for(const dataset of snapshots){
-  const logicalId=String(dataset.id||"").replace(/-r[a-f0-9]{40}$/i,"");
-  const current=latestByDataset.get(logicalId);
-  if(!current||Date.parse(dataset.retrievedAt||"")>Date.parse(current.retrievedAt||""))latestByDataset.set(logicalId,dataset);
- }
- const tournament=[...latestByDataset.values()];
+ const tournament=selectLatestOpenFootballWorldCupSnapshots(snapshots);
  return {sampled:true,status:state?.status||"not_yet_run",lastCheck:state?.lastCheck||null,totals:state||null,snapshotCount:snapshots.length,datasetCount:tournament.length,matchCount:tournament.reduce((n,d)=>n+Number(d.totalRows||0),0),scoredMatches:tournament.reduce((n,d)=>n+Number(d.scoredRows||0),0),playerEventCount:tournament.reduce((n,d)=>n+Number(d.playerEventRows||0),0)};
 }
