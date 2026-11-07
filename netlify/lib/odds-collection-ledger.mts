@@ -63,6 +63,8 @@ export function buildOddsCollectionAttempt(input: {
   if (input.outcome === "empty" && input.returnedRecords !== 0) throw new OddsCollectionLedgerError("empty_outcome_has_records");
   if (input.outcome === "success" && input.returnedRecords === 0) throw new OddsCollectionLedgerError("success_outcome_requires_records");
   const headers = input.headers ?? {};
+  if (typeof headers !== "object" || headers === null || Array.isArray(headers)) throw new OddsCollectionLedgerError("provider_usage_headers_invalid");
+  if (input.newestSourceObservedAt && Date.parse(input.newestSourceObservedAt) > Date.parse(input.ingestedAt)) throw new OddsCollectionLedgerError("source_timestamp_after_ingestion");
   const totalUsed = readHeader(headers, "x-requests-used");
   const remaining = readHeader(headers, "x-requests-remaining");
   const lastRequest = readHeader(headers, "x-requests-last");
