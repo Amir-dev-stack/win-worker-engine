@@ -18,6 +18,8 @@ const [coverage, coverageApi, monitor, hourlyMonitor, settlement, independentRev
   read("netlify/lib/agent-evolution.mts"), read("netlify/functions/scheduled-scout-runner.mts"),
   read("netlify/lib/ai-budget.mts"), read("netlify/functions/health.mts"), read("netlify/functions/ai-budget.mts"), read("netlify/functions/openai-key-check.mts"), read("netlify/functions/department-smoke-test.mts"), read("netlify/functions/predictions.mts"), read("netlify/functions/results.mts"), read("netlify/functions/library.mts"), read("netlify/functions/runs.mts"), read("netlify/lib/store.mts")
 ]);
+const cloudflareWinScheduler = await read("cloudflare/win-scheduler/src/index.ts");
+const cloudflareWinSchedulerTests = await read("scripts/win-cloudflare-scheduler.test.mjs");
 const dashboardAuth = await read("netlify/edge-functions/dashboard-auth.ts");
 const postMatch = await read("netlify/lib/post-match-followup.mts");
 const matchEvidence = await read("netlify/lib/match-evidence.mts");
@@ -420,6 +422,18 @@ const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
 const agentsSdk = await read("netlify/lib/agents-sdk.mts");
 const agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
 const agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
+add("Cloudflare 24/7 scheduler uses authenticated low-cost health and result-check dispatch only",
+  cloudflareWinScheduler.includes('"*/15 * * * *"') &&
+  cloudflareWinScheduler.includes('"53 */4 * * *"') &&
+  cloudflareWinScheduler.includes("WIN_INTERNAL_TOKEN") &&
+  cloudflareWinScheduler.includes("AbortSignal.timeout(10_000)") &&
+  cloudflareWinScheduler.includes("post_match_failover") &&
+  !cloudflareWinScheduler.includes("OPENAI_API_KEY") &&
+  !cloudflareWinScheduler.includes("runScheduledLearning") &&
+  cloudflareWinSchedulerTests.includes("four-hour failover cron posts to the no-AI result runner") &&
+  cloudflareWinSchedulerTests.includes("scheduler rejects missing secrets and unsafe origins") &&
+  cloudflareWinSchedulerTests.includes("without retrying"),
+  "Cloudflare must use a closed public surface, HTTPS-only origin, server-side bearer secret, bounded requests and no paid AI or hidden retries.");
 add("WIN cloud research artifact manifests are cryptographically bound to assignment and agent",
   researchAssignmentManager.includes("storeResearchArtifact") &&
   researchAssignmentManager.includes("record.assignmentId !== id") &&
