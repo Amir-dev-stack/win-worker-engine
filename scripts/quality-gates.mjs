@@ -426,7 +426,6 @@ add("WIN cloud research artifact manifests are cryptographically bound to assign
   researchAssignmentManager.includes("record.agentId !== agentId") &&
   researchAssignmentManager.includes("actualDigest !== artifact.sha256.toLowerCase()") &&
   openAIResearchExecutor.includes("storeResearchArtifact(assignment.id, agentId, leaseId, artifact, sha256)") &&
-  researchAssignmentManagerTests.includes("forged cloud artifact reference is rejected") === false &&
   researchAssignmentManagerTests.includes("Cloud artifact") &&
   openAIResearchExecutorTests.includes("storeResearchArtifact"),
   "Cloud artifact submissions must resolve to stored bytes, match the active assignment and agent, and pass a recomputed SHA-256 check.");
