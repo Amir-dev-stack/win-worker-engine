@@ -15,6 +15,7 @@ The owner also authorizes additional agent frameworks, model providers, research
 - Keep API keys in server-side runtime secrets or the local machine's protected environment only. Never place keys in source, browser bundles, public GitHub files, chat, logs or fixtures.
 - Keep the existing `WIN_AI_BUDGET_APPROVED` gate fail-closed until the owner verifies provider-side controls and the actual account balance.
 - The in-app ledger is an estimate, not a provider-enforced hard billing limit. Preserve the existing provider-side spending limit and owner confirmation requirements.
+- **Transactional storage is a release blocker:** the runtime `netlify/lib/store.mts` still uses Netlify Blobs, and the configured `WIN_NEON_DATABASE_URL` / `WIN_MEMORY_BACKEND` keys are not wired into a runtime Neon adapter. Do not enable OpenAI execution until the budget ledger, reservations, assignment leases and global lock use Neon atomic SQL and pass concurrent reservation/claim tests. Track this in [issue #15](https://github.com/Amir-dev-stack/win-worker-engine/issues/15).
 
 ## Implemented execution paths (staged, not live)
 
