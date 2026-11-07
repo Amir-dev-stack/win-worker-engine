@@ -8,6 +8,14 @@ Use this runner while GitHub-hosted Actions cannot start because the monthly inc
 - Dependencies previously installed in the WIN project directory with the existing lockfile (`npm ci --ignore-scripts --no-audit --no-fund` if needed). Installing packages requires internet access and is a separate, explicit action.
 - PowerShell or any terminal, opened in the WIN repository root.
 
+## Preview without running checks
+
+```powershell
+node .\scripts\win-verify-local.mjs --plan
+```
+
+This lists the intended commands without invoking npm, npx, or any tests. The optional `--plan --bundle` shows the esbuild command without downloading or executing it. This preview can run before project dependencies are installed.
+
 ## Commands
 
 ```powershell
