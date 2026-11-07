@@ -18,7 +18,7 @@ export type ResearchAssignment = {
   ownerId: string; independentReviewerId: string; status: string; executionMode: string;
   modelCallLimit: number; toolCallLimit: number; budgetCeilingUsd: number;
   createdAt: string; updatedAt: string; dueAt: string | null; leaseId?: string;
-  leaseExpiresAt?: string | null; assignedAgentId?: string; submissionId?: string;
+  leaseExpiresAt?: string | null; assignedAgentId?: string | null; submissionId?: string;
   [key: string]: unknown;
 };
 
@@ -47,7 +47,7 @@ export async function createResearchAssignment(input: any, ownerId: string, nowM
   const assignment: ResearchAssignment = {
     id, title, division, objective, acceptanceCriteria, sourceScope, dataRestrictions, expectedArtifacts,
     ownerId, independentReviewerId, status: "proposed",
-    executionMode: "openai_agents_sdk",
+    executionMode: "provider_neutral",
     // Task ceilings are configuration only; the executor must reserve against the global WIN ledger before any call.
     modelCallLimit: boundedInteger(input?.modelCallLimit, 3, 12),
     toolCallLimit: boundedInteger(input?.toolCallLimit, 4, 20),
