@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { get, put } from "./store.mts";
+import { get, put, list } from "./store.mts";
 import { assertProviderImportAllowed } from "./data-provider-registry.mts";
 
 const API = "https://api.github.com/repos/openfootball/football.json/contents";
@@ -159,13 +159,44 @@ export async function syncOpenFootballHistoricalData() {
   return summary;
 }
 
+export function selectLatestOpenFootballSnapshots<T extends {id?:unknown;retrievedAt?:unknown;sourceRevision?:unknown}>(snapshots:T[]):T[] {
+  const latest = new Map<string,T>();
+  for (const snapshot of snapshots) {
+    const id = String(snapshot?.id || "");
+    if (!id) continue;
+    const logicalId = id.replace(/-r[a-f0-9]{40}$/i, "");
+    const current = latest.get(logicalId);
+    const parsedNext = Date.parse(String(snapshot.retrievedAt || ""));
+    const parsedCurrent = current ? Date.parse(String(current.retrievedAt || "")) : Number.NEGATIVE_INFINITY;
+    const nextTime = Number.isFinite(parsedNext) ? parsedNext : Number.NEGATIVE_INFINITY;
+    const currentTime = Number.isFinite(parsedCurrent) ? parsedCurrent : Number.NEGATIVE_INFINITY;
+    if (!current || nextTime > currentTime ||
+        (nextTime === currentTime && String(snapshot.sourceRevision || "") > String(current.sourceRevision || ""))) {
+      latest.set(logicalId, snapshot);
+    }
+  }
+  return [...latest.values()].sort((a,b)=>String(a.id).localeCompare(String(b.id)));
+}
+
 export async function getOpenFootballSyncStatus() {
   const state = await get<any>("scheduler-state","openfootball-daily-sync");
-  const runs = await (async()=> {
-    const { list } = await import("./store.mts");
-    return list<any>("library/model-lab/provider-sync-runs",20);
-  })();
-  return { providerId:"openfootball-football-json", status:state?.status || "not_yet_run",
+  const [runs, snapshots] = await Promise.all([
+    list<any>("library/model-lab/provider-sync-runs",20),
+    list<any>("library/model-lab/historical-event-datasets",500)
+  ]);
+  const providerSnapshots = snapshots.filter(item => item?.providerId === "openfootball-football-json");
+  const latestDatasets = selectLatestOpenFootballSnapshots(providerSnapshots);
+  const totals = latestDatasets.reduce((sum,item) => ({
+    filesFetched: sum.filesFetched + 1,
+    matchesImported: sum.matchesImported + Number.isSafeInteger(item.totalRows) ? item.totalRows : 0,
+    matchesWithScores: sum.matchesWithScores + Number.isSafeInteger(item.scoredRows) ? item.scoredRows : 0
+  }), {filesFetched:0,matchesImported:0,matchesWithScores:0});
+  return {
+    providerId:"openfootball-football-json", status:state?.status || "not_yet_run",
     lastCheck:state?.lastCheck || null, totals:state || null,
-    recentRuns:runs.sort((a,b)=>Date.parse(b.startedAt||"")-Date.parse(a.startedAt||"")).slice(0,5) };
+    snapshotCount:providerSnapshots.length, datasetCount:latestDatasets.length,
+    datasetTotals:totals,
+    recentRuns:runs.filter(run=>run?.providerId==="openfootball-football-json")
+      .sort((a,b)=>Date.parse(b.startedAt||"")-Date.parse(a.startedAt||"")).slice(0,5)
+  };
 }
