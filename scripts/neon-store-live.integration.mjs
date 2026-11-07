@@ -51,7 +51,72 @@ try {
   }
   assert.deepEqual(listed, [plainKey]);
 
-  console.log("WIN_NEON_INTEGRATION_OK: concurrent create-only, CAS, read, metadata and prefix listing verified.");
+  if (process.env.WIN_NEON_TEST_BUDGET_CONFIRM !== "1") {
+    throw new Error("Set WIN_NEON_TEST_BUDGET_CONFIRM=1 to run the isolated AI-budget controller test.");
+  }
+
+  process.env.WIN_TRANSACTIONAL_STORE = "neon";
+  process.env.WIN_NEON_DATABASE_URL = connectionString;
+  const budget = await import("../netlify/lib/ai-budget.mts");
+  const { getStoreAdapter } = await import("../netlify/lib/store.mts");
+  const budgetStore = await getStoreAdapter();
+  const month = new Date().toISOString().slice(0, 7);
+  const ledgerKey = "ai-budget/months/" + month;
+  const lockKey = "ai-budget/controller-lock";
+  const settingsKey = "ai-budget/settings";
+
+  for (const key of [ledgerKey, lockKey, settingsKey]) {
+    if (await budgetStore.get(key, { type: "json" })) {
+      throw new Error("Refusing AI-budget integration test because a reserved test key already exists: " + key);
+    }
+  }
+
+  try {
+    const budgetReservations = await Promise.all([
+      budget.reserveAIRequest({
+        id: prefix + "-budget-a", model: "gpt-6-luna", phase: "integration",
+        inputChars: 50, maxOutputTokens: 100, maxToolCalls: 0, maxInputChars: 1000
+      }),
+      budget.reserveAIRequest({
+        id: prefix + "-budget-b", model: "gpt-6-luna", phase: "integration",
+        inputChars: 50, maxOutputTokens: 100, maxToolCalls: 0, maxInputChars: 1000
+      })
+    ]);
+    assert.equal(budgetReservations.filter(item => item.allowed).length, 2,
+      "two small concurrent budget reservations should serialize and both be admitted");
+
+    const statusWithReservations = await budget.getAIbudgetStatus();
+    assert.ok(statusWithReservations.reservedUsd > 0,
+      "the shared Neon ledger must reflect active reservations");
+
+    await Promise.all([
+      budget.settleAIRequest(prefix + "-budget-a", null, 0, true),
+      budget.settleAIRequest(prefix + "-budget-b", null, 0, true)
+    ]);
+    const settledStatus = await budget.getAIbudgetStatus();
+    assert.equal(settledStatus.reservedUsd, 0,
+      "uncertain outcomes must conservatively settle rather than lose reservations");
+    assert.ok(settledStatus.spentUsd > 0,
+      "conservative settlement must be persisted in the Neon ledger");
+
+    const overLimit = await budget.reserveAIRequest({
+      id: prefix + "-budget-over-limit", model: "gpt-6.1-sol", phase: "integration",
+      inputChars: 0, maxOutputTokens: 300000, maxToolCalls: 0, maxInputChars: 1000
+    });
+    assert.equal(overLimit.allowed, false,
+      "an estimate above the $2.95 operating stop must be denied before provider invocation");
+    const lockedStatus = await budget.getAIbudgetStatus();
+    assert.equal(lockedStatus.spendingLocked, true,
+      "the operating stop must persist the owner lock in Neon");
+  } finally {
+    await Promise.allSettled([
+      budgetStore.delete(ledgerKey),
+      budgetStore.delete(lockKey),
+      budgetStore.delete(settingsKey)
+    ]);
+  }
+
+  console.log("WIN_NEON_INTEGRATION_OK: store concurrency, CAS, reads, pagination and OpenAI budget reservation/settlement/owner-lock behavior verified.");
 } finally {
   await Promise.allSettled([
     store.delete(claimKey),
