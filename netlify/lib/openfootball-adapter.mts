@@ -18,6 +18,13 @@ export function isPinnedOpenFootballRevision(value: unknown): value is string {
   return typeof value === "string" && /^[a-f0-9]{40}$/i.test(value);
 }
 
+export function buildOpenFootballDatasetSnapshotId(season: string, fileName: string, sourceRevision: string) {
+  if (!normalizedSeason(season) || !/^[a-z]{2}\\.\\d+\\.json$/i.test(fileName) || !isPinnedOpenFootballRevision(sourceRevision)) {
+    throw new Error("openfootball_dataset_snapshot_identity_invalid");
+  }
+  return "openfootball-" + season + "-" + fileName.replace(/\\.json$/i, "") + "-r" + sourceRevision.toLowerCase();
+}
+
 export function buildOpenFootballSyncRunId(startedAt: string, sourceRevision: string) {
   if (!Number.isFinite(Date.parse(startedAt)) || !isPinnedOpenFootballRevision(sourceRevision)) {
     throw new Error("openfootball_sync_run_identity_invalid");
@@ -120,7 +127,7 @@ export async function syncOpenFootballHistoricalData() {
             }];
           });
           const checksum = createHash("sha256").update(raw).digest("hex");
-          const datasetId = "openfootball-" + season + "-" + file.name.replace(/\.json$/,"");
+          const datasetId = buildOpenFootballDatasetSnapshotId(season, file.name, sourceRevision);
           await put("library/model-lab/historical-event-datasets", datasetId, {
             id:datasetId, providerId:"openfootball-football-json", sourceRevision, sourceCommitUrl:"https://github.com/openfootball/football.json/commit/" + sourceRevision, season, competitionFile:file.name,
             competition:parsed?.name || file.name, sourceUrl:url, sourceLicence:"CC0-1.0",
