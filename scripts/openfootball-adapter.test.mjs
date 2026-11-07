@@ -46,6 +46,12 @@ test("OpenFootball dataset snapshots are immutable across source revisions", () 
   assert.throws(() => buildOpenFootballDatasetSnapshotId("2025-26", "eng.1.json", "master"), /snapshot_identity_invalid/);
 });
 
+test("OpenFootball snapshot identities accept two- and three-letter competition prefixes only", () => {
+  assert.match(buildOpenFootballDatasetSnapshotId("2025-26", "de.1.json", revision), /^openfootball-/);
+  assert.match(buildOpenFootballDatasetSnapshotId("2025-26", "eng.1.json", revision), /^openfootball-/);
+  assert.throws(() => buildOpenFootballDatasetSnapshotId("2025-26", "engl.1.json", revision), /snapshot_identity_invalid/);
+});
+
 test("World Cup dataset snapshots are immutable across source revisions", () => {
   const first = buildOpenFootballWorldCupDatasetSnapshotId(2022, "worldcup-full.json", revision);
   const second = buildOpenFootballWorldCupDatasetSnapshotId(2022, "worldcup-full.json", "b".repeat(40));
