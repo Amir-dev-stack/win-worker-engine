@@ -4,6 +4,7 @@
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { resolve, dirname } from "node:path";
+import { tmpdir } from "node:os";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const includeBundle = process.argv.includes("--bundle");
@@ -24,7 +25,7 @@ if (includeBundle) checks.push([
   "Netlify function bundles (may download pinned esbuild; no deployment)",
   npx, ["--yes", "esbuild@0.25.0", "--bundle", "--packages=external",
     "--platform=node", "--target=node22", "--format=esm",
-    "--outdir=" + resolve(root, ".win-local-bundles"), "netlify/functions/*.mts"],
+    "--outdir=" + resolve(tmpdir(), "win-local-bundles"), "netlify/functions/*.mts"],
 ]);
 
 console.log("WIN local verification");
