@@ -106,6 +106,8 @@ const required = [
   "netlify/lib/odds-collection-ledger.mts",
   "scripts/odds-collection-ledger.test.mjs",
   "docs/WIN_ODDS_COLLECTION_LEDGER.md",
+  "database/migrations/20261107_win_odds_collection_attempts.sql",
+  "scripts/win-odds-collection-schema.test.mjs",
   "scripts/the-odds-api-adapter.test.mjs",
   "docs/WIN_ODDS_API_ADAPTER_BOUNDARY.md",
   "database/migrations/20261107_win_odds_evidence.sql",
