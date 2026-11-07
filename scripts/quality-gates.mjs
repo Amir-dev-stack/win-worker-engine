@@ -443,6 +443,7 @@ add("Cloudflare 24/7 scheduler uses authenticated low-cost health and result-che
   "Cloudflare must use a closed public surface, HTTPS-only origin, server-side bearer secret, bounded requests and no paid AI or hidden retries.");
 add("WIN cloud research artifact manifests are cryptographically bound to assignment and agent",
   researchAssignmentManager.includes("storeResearchArtifact") &&
+  researchAssignmentManager.includes("await rememberResearchSubmission") &&
   researchAssignmentManager.includes("record.assignmentId !== id") &&
   researchAssignmentManager.includes("record.agentId !== agentId") &&
   researchAssignmentManager.includes("actualDigest !== artifact.sha256.toLowerCase()") &&
