@@ -1,0 +1,13 @@
+name = "win-cloud-scheduler"
+main = "src/index.ts"
+compatibility_date = "2026-11-07"
+
+[vars]
+WIN_ORIGIN = "https://win-worker-engine.netlify.app"
+
+[triggers]
+crons = ["*/15 * * * *", "53 */4 * * *"]
+
+# Set the secret separately:
+#   npx wrangler secret put WIN_INTERNAL_TOKEN
+# Never add WIN_INTERNAL_TOKEN to this file or commit it.
