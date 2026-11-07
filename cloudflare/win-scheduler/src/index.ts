@@ -36,18 +36,32 @@ function resolveOrigin(value: string): URL {
 export async function dispatchWinCronJob(
   cron: string,
   env: WinSchedulerEnv,
-  fetcher: WinFetch = fetch
-): Promise<{ job: string; status: number; ok: true } | { job: string; skipped: true }> {
+  fetcher: WinFetch = fetch,
+  nowMs = Date.now()
+): Promise<{ job: string; status: number; ok: true } | { job: string; skipped: true; reason?: string }> {
   const job = resolveWinCronJob(cron);
   if (!job) return { job: "unrecognized", skipped: true };
   if (!env?.WIN_INTERNAL_TOKEN?.trim()) throw new Error("WIN_INTERNAL_TOKEN is not configured.");
   const origin = resolveOrigin(env.WIN_ORIGIN);
+  const headers = {
+    authorization: "Bearer " + env.WIN_INTERNAL_TOKEN.trim(),
+    "cache-control": "no-store"
+  };
+  if (job.id === "post_match_failover") {
+    const health = await fetcher(new URL("/api/health", origin), {
+      method: "GET", headers, signal: AbortSignal.timeout(10_000)
+    });
+    if (!health.ok) throw new Error("WIN failover health probe returned HTTP " + health.status + ".");
+    let healthData: any = null;
+    try { healthData = await health.json(); } catch { /* Missing heartbeat means failover is required. */ }
+    const lastCompletedAt = Date.parse(healthData?.learningSystem?.postMatchFollowup?.lastCompletedAt || "");
+    const recentPrimaryRun = Number.isFinite(lastCompletedAt) && lastCompletedAt <= nowMs &&
+      nowMs - lastCompletedAt < 3.5 * 60 * 60 * 1000;
+    if (recentPrimaryRun) return { job: job.id, skipped: true, reason: "recent_primary_completion" };
+  }
   const response = await fetcher(new URL(job.path, origin), {
     method: job.method,
-    headers: {
-      authorization: "Bearer " + env.WIN_INTERNAL_TOKEN.trim(),
-      "cache-control": "no-store"
-    },
+    headers,
     signal: AbortSignal.timeout(10_000)
   });
   if (!response.ok) throw new Error("WIN scheduled job " + job.id + " returned HTTP " + response.status + ".");
