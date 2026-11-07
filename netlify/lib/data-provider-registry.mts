@@ -202,7 +202,8 @@ export const DATA_PROVIDER_REGISTRY: ProviderRecord[] = [
     dataDomains:["prematch_odds","live_odds","historical_odds","market_catalogue"],
     accessMode:"licensed_api", historicalSupport:"documented", authentication:"api_key",
     licenceReview:"required", automationAllowed:false,
-    notes:"Historical odds availability varies by sport, market, timestamp and plan; confirm terms and quota before enabling."
+    licenceReference:"https://the-odds-api.com/terms-and-conditions.html",
+    notes:"2026-11-07 public review: free Starter has 500 credits/month for current odds; historical odds endpoints are paid-plan-only. Published terms permit retaining data and using it for statistical/ML training and dashboards, but prohibit redistributing it as a standalone raw feed. Candidate only: licenceReview remains required and automationAllowed remains false until an owner-approved source record, quota plan, source timestamp semantics and competition/use rights are verified. No key or provider connection is active."
   },
   {
     id:"sportradar", name:"Sportradar", website:"https://developer.sportradar.com/",
