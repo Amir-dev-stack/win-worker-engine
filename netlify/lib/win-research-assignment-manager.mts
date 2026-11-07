@@ -48,8 +48,8 @@ export async function createResearchAssignment(input: any, ownerId: string, nowM
     ownerId, independentReviewerId, status: "proposed",
     executionMode: input?.executionMode === "local_only" ? "local_only" : "manual",
     // New assignments cannot initiate billable model calls. Limits are explicit and zero by default.
-    modelCallLimit: boundedInteger(input?.modelCallLimit, 0, 20),
-    toolCallLimit: boundedInteger(input?.toolCallLimit, 0, 100),
+    modelCallLimit: 0,
+    toolCallLimit: 0,
     budgetCeilingUsd: 0,
     createdAt: nowIso(nowMs), updatedAt: nowIso(nowMs), dueAt: dueAt || null,
     approvalRequired: true, approvedBy: null, approvedAt: null,
