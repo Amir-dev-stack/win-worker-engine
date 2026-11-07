@@ -756,9 +756,13 @@ add("WIN market blend runtime obtains metrics and event probabilities only from 
   verifiedMarketBlend.includes("getWinMLShadowPredictionRecord(predictionRunId)") &&
   verifiedMarketBlend.includes("bindWinMLShadowPredictionToBlendInput") &&
   verifiedMarketBlend.includes("market_blend_registered_shadow_prediction_missing") &&
+  verifiedMarketBlend.includes('prediction.usage !== "shadow_only" || prediction.origin !== "trained_model"') &&
+  verifiedMarketBlend.includes("market_blend_registered_shadow_prediction_usage_invalid") &&
   verifiedMarketBlend.includes("probabilities: prediction.probabilities") &&
   verifiedMarketBlend.includes("prediction.featureVectorSha256 !== input.model.featureVectorSha256") &&
   verifiedMarketBlendTests.includes("replaces caller probabilities with the registered shadow prediction") &&
+  verifiedMarketBlendTests.includes("usage: \"production\"") &&
+  verifiedMarketBlendTests.includes('origin: "external"') &&
   verifiedMarketBlendTests.includes("rejects event, cutoff, model and feature provenance drift") &&
   winMarketEvaluationRegistryTests.includes("market_blend_registered_shadow_prediction_missing"),
   "The verified wrapper loads immutable model/evaluation evidence and the exact registered shadow inference; caller probabilities are overwritten and event/model/cutoff/feature hashes must match.");
