@@ -1376,8 +1376,32 @@ add("Odds collection ledger database schema is append-only and enforces quota, p
   oddsCollectionSchemaTests.includes("database enforces exact usage reconciliation"),
   "The staged database migration must preserve immutable collection audit records, reject secret persistence, and enforce provider quota and timestamp boundaries.");
 
-const failed = checks.filter(x => !x.ok);
-console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
+const checksByName = new Map();
+for (const check of checks) {
+  const existing = checksByName.get(check.name);
+  if (!existing) {
+    checksByName.set(check.name, {
+      name: check.name,
+      ok: check.ok,
+      detail: check.detail,
+      evaluations: [{ ok: check.ok, detail: check.detail }]
+    });
+    continue;
+  }
+  // A repeated logical check can never hide a failing evaluation.
+  existing.ok = existing.ok && check.ok;
+  existing.evaluations.push({ ok: check.ok, detail: check.detail });
+  if (!check.ok) existing.detail = check.detail;
+}
+const uniqueChecks = [...checksByName.values()];
+const failed = uniqueChecks.filter(check => !check.ok);
+console.log(JSON.stringify({
+  status: failed.length ? "failed" : "passed",
+  passed: uniqueChecks.length - failed.length,
+  total: uniqueChecks.length,
+  evaluations: checks.length,
+  checks: uniqueChecks
+}, null, 2));
 if (failed.length) process.exitCode = 1;
 {
 
