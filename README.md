@@ -4,7 +4,7 @@ WIN is the on-demand backend and operations console for the WIN multi-sport rese
 
 ## OpenAI Research Network and persistent memory
 
-The separate WIN research network is OpenAI-only at this stage. Its agents use OpenAI models and, when assigned, OpenAI-hosted research tools such as web search and sandboxed code execution. No other AI provider, external agent platform or third-party tool integration is part of this stage.
+The separate WIN research network is OpenAI-only at this stage. Its agents use OpenAI models and OpenAI-hosted web search through the current SDK adapter. OpenAI sandboxed code execution is a planned next capability, not yet connected. No other AI provider, external agent platform or third-party tool integration is part of this stage.
 
 Each specialist has private persistent memory for its own tasks, experiments, failed approaches and source trail. Independently reviewer-accepted findings enter a shared research-network memory that all agents can consult. This shared research memory is still separate from WIN's trusted production knowledge: promoting a finding into a validated WIN lesson, model, strategy or production code requires the normal independent validation and owner-controlled promotion process.
 
