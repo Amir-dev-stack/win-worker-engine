@@ -188,8 +188,8 @@ export async function getOpenFootballSyncStatus() {
   const latestDatasets = selectLatestOpenFootballSnapshots(providerSnapshots);
   const totals = latestDatasets.reduce((sum,item) => ({
     filesFetched: sum.filesFetched + 1,
-    matchesImported: sum.matchesImported + Number.isSafeInteger(item.totalRows) ? item.totalRows : 0,
-    matchesWithScores: sum.matchesWithScores + Number.isSafeInteger(item.scoredRows) ? item.scoredRows : 0
+    matchesImported: sum.matchesImported + (Number.isSafeInteger(item.totalRows) ? item.totalRows : 0),
+    matchesWithScores: sum.matchesWithScores + (Number.isSafeInteger(item.scoredRows) ? item.scoredRows : 0)
   }), {filesFetched:0,matchesImported:0,matchesWithScores:0});
   return {
     providerId:"openfootball-football-json", status:state?.status || "not_yet_run",
