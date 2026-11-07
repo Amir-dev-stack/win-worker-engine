@@ -14,6 +14,7 @@ This is an additive, opt-in adapter. Netlify Blobs remains the default until the
 - Compare-and-swap writes use one `UPDATE ... WHERE record_key = ... AND etag = ... RETURNING` statement.
 - Ordinary writes use one PostgreSQL upsert statement.
 - Reads and prefix listing return the same basic shapes expected by WIN's store abstraction.
+- The shared store factory is used by both research assignment claims and the OpenAI AI-budget controller. With Neon explicitly selected, the budget ledger, persistent owner lock, reservation records and assignment lease claims use the same PostgreSQL backend.
 
 ## Important limitations and next gates
 
@@ -22,7 +23,7 @@ This is an additive, opt-in adapter. Netlify Blobs remains the default until the
 3. The adapter's SQL contract tests use a fake tagged SQL client. They do not prove live Neon connectivity, concurrent transaction behavior or provider-side behavior.
 4. Run integration tests against the dedicated `win-memory-schema-test` branch before any production use.
 5. Implement a paginated, idempotent Blobs-to-Neon migration with source/destination counts, key comparison, payload hashes, conflict reporting and a dry-run mode.
-6. Before cutover, test simultaneous budget reservations, duplicate task claims, expired lease recovery, owner lock/unlock races, and failure/timeout behavior.
+6. Before cutover, test simultaneous budget reservations, duplicate task claims, expired lease recovery, owner lock/unlock races, and failure/timeout behavior. The OpenAI budget controller has now been routed through the shared backend, but its real Neon concurrency behavior is not yet verified.
 7. Preserve OpenAI Agents SDK execution, but keep it disabled until the transactional budget ledger and assignment claims are verified, provider-side spend limits are configured, and the owner explicitly approves activation.
 8. Keep the existing $2.95 application operating stop unchanged. The owner has separately stated a $5/month maximum API ceiling; this adapter does not change either control.
 
