@@ -1,7 +1,7 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { runScheduledLearning } from "./ai.mts";
 import { buildResearchMemoryContext } from "./win-research-memory.mts";
-import { put } from "./store.mts";
+import { storeResearchArtifact } from "./win-research-assignment-manager.mts";
 import {
   claimResearchAssignment, releaseResearchAssignment, submitResearchAssignment
 } from "./win-research-assignment-manager.mts";
@@ -82,7 +82,6 @@ export async function executeOpenAIResearchAssignment(assignmentId: string, agen
     }
 
     const cycle = extractLearningCycle(workerReport.report);
-    const artifactId = "research-artifact-" + randomUUID();
     const artifact = {
       schemaVersion: "win.openai-research-artifact.v1",
       assignmentId: assignment.id, agentId, provider: "openai_agents_sdk",
@@ -91,8 +90,9 @@ export async function executeOpenAIResearchAssignment(assignmentId: string, agen
       learningCycle: cycle, citations
     };
     const serialized = JSON.stringify(artifact, null, 2);
-    const sha256 = createHash("sha256").update(serialized).digest("hex");
-    await put("library/research-artifacts", artifactId, { ...artifact, sha256 });
+    const sha256 = createHash("sha256").update(serialized, "utf8").digest("hex");
+    const storedArtifact = await storeResearchArtifact(assignment.id, agentId, leaseId, artifact, sha256);
+    const artifactId = storedArtifact.artifactId;
 
     const submission = await submitResearchAssignment(assignment.id, agentId, leaseId, {
       summary: workerReport.report.slice(0, 8000),
@@ -106,7 +106,7 @@ export async function executeOpenAIResearchAssignment(assignmentId: string, agen
       })),
       artifacts: [{
         name: artifactId + ".json", mediaType: "application/json", sha256,
-        location: "win-blob://library/research-artifacts/" + artifactId,
+        location: storedArtifact.location,
         reproductionCommand: "Retrieve the stored artifact by its artifact ID and rerun the same assignment with the recorded prompt and source URLs."
       }]
     });
