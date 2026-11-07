@@ -47,11 +47,11 @@ export async function createResearchAssignment(input: any, ownerId: string, nowM
   const assignment: ResearchAssignment = {
     id, title, division, objective, acceptanceCriteria, sourceScope, dataRestrictions, expectedArtifacts,
     ownerId, independentReviewerId, status: "proposed",
-    executionMode: input?.executionMode === "local_only" ? "local_only" : "manual",
-    // New assignments cannot initiate billable model calls. Limits are explicit and zero by default.
-    modelCallLimit: 0,
-    toolCallLimit: 0,
-    budgetCeilingUsd: 0,
+    executionMode: "openai_agents_sdk",
+    // Task ceilings are configuration only; the executor must reserve against the global WIN ledger before any call.
+    modelCallLimit: boundedInteger(input?.modelCallLimit, 3, 12),
+    toolCallLimit: boundedInteger(input?.toolCallLimit, 4, 20),
+    budgetCeilingUsd: Math.max(0, Math.min(0.5, Number.isFinite(Number(input?.budgetCeilingUsd)) ? Number(input.budgetCeilingUsd) : 0.15)),
     createdAt: nowIso(nowMs), updatedAt: nowIso(nowMs), dueAt: dueAt || null,
     approvalRequired: true, approvedBy: null, approvedAt: null,
     trustedKnowledgePromotion: "separate_owner_action_required"
