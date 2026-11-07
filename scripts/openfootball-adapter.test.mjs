@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { buildOpenFootballSyncRunId, buildOpenFootballDatasetSnapshotId, buildOpenFootballDatasetEligibility, selectLatestOpenFootballSnapshots } from "../netlify/lib/openfootball-adapter.mts";
 import { buildOpenFootballWorldCupSyncRunId, buildOpenFootballWorldCupDatasetEligibility, buildOpenFootballWorldCupDatasetSnapshotId, selectLatestOpenFootballWorldCupSnapshots } from "../netlify/lib/openfootball-worldcup-adapter.mts";
 
@@ -114,4 +115,12 @@ test("ordinary OpenFootball imports are explicitly excluded from point-in-time t
     resultAvailability: "unknown",
     trainingEligible: false
   });
+});
+
+
+test("World Cup status sampling is explicitly bounded and disclosed", async () => {
+  const source = await readFile(new URL("../netlify/lib/openfootball-worldcup-adapter.mts", import.meta.url), "utf8");
+  assert.match(source, /const MAX_STATUS_DATASET_SAMPLES=25/);
+  assert.match(source, /historical-event-datasets",MAX_STATUS_DATASET_SAMPLES/);
+  assert.match(source, /sampleLimit:MAX_STATUS_DATASET_SAMPLES/);
 });
