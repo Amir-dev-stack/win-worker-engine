@@ -446,6 +446,7 @@ add("WIN cloud research artifact manifests are cryptographically bound to assign
   researchAssignmentManager.includes("await rememberResearchSubmission") &&
   researchAssignmentManager.includes("record.assignmentId !== id") &&
   researchAssignmentManager.includes("record.agentId !== agentId") &&
+  researchAssignmentManager.includes("record.mediaType !== artifact.mediaType") &&
   researchAssignmentManager.includes("actualDigest !== artifact.sha256.toLowerCase()") &&
   openAIResearchExecutor.includes("storeResearchArtifact(assignment.id, agentId, leaseId, artifact, sha256)") &&
   researchAssignmentManagerTests.includes("Cloud artifact") &&
