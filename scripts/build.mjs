@@ -74,6 +74,7 @@ const required = [
   "netlify/lib/win-research-assignment-manager.mts",
   "docs/WIN_LOCAL_RESEARCH_RUNNER.md",
   "netlify/functions/research-runner.mts",
+  "scripts/setup-win-local-ollama.ps1",
   "scripts/win-local-agent-runner.mjs",
   "scripts/win-research-runner-api-contract.test.mjs",
   "netlify/functions/research-assignments.mts",
