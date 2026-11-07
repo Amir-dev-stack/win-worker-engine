@@ -53,7 +53,9 @@ test("rejects malformed headers, invalid dates, contradictory outcomes and bad h
   const x=base(); x.responseSha256="bad";
   assert.throws(()=>buildOddsCollectionAttempt(x),e=>e instanceof OddsCollectionLedgerError);
 });
-test("source timestamp range is chronological", () => {
+test("source timestamps must be chronological and no later than ingestion", () => {
   const x=base(); x.oldestSourceObservedAt="2026-11-07T10:00:03.000Z";
   assert.throws(()=>buildOddsCollectionAttempt(x),/source_timestamp_range_invalid/);
+  const future=base(); future.newestSourceObservedAt="2026-11-07T10:00:03.000Z";
+  assert.throws(()=>buildOddsCollectionAttempt(future),/source_timestamp_after_ingestion/);
 });
