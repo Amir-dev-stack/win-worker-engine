@@ -24,6 +24,8 @@ export type WinLLMRequestV1 = {
 };
 
 export type WinLLMProviderDescriptor = {
+  /** True only when this provider may retain/use submitted prompts under its free-tier terms. */
+  requiresRetentionConsent?: boolean;
   id: string;
   enabled: boolean;
   approved: boolean;
@@ -92,7 +94,7 @@ export function validateWinLLMRequest(request: WinLLMRequestV1): string[] {
   if (!CLASSIFICATIONS.has(request?.privacy?.classification)) errors.push("data_classification_invalid");
   if (typeof request?.privacy?.allowProviderRetention !== "boolean") errors.push("provider_retention_policy_required");
   if (!nonEmpty(request?.budget?.reservationId) ||
-      !Number.isFinite(request?.budget?.reservedUsd) || request.budget.reservedUsd <= 0) errors.push("positive_budget_reservation_required");
+      !Number.isFinite(request?.budget?.reservedUsd) || request.budget.reservedUsd < 0) errors.push("nonnegative_budget_reservation_required");
   const promptSize = (request?.prompt?.instructions?.length || 0) + (request?.prompt?.input?.length || 0);
   if (promptSize > 1_000_000) errors.push("prompt_size_limit_exceeded");
   if (new Set(request?.providerPolicy?.allowedProviders || []).size !== (request?.providerPolicy?.allowedProviders || []).length) {
@@ -120,6 +122,7 @@ export function selectWinLLMProvider(
     [...required].every(capability => provider.capabilities.includes(capability)) &&
     Array.isArray(provider.allowedClassifications) &&
     provider.allowedClassifications.includes(request.privacy.classification) &&
+    (!provider.requiresRetentionConsent || request.privacy.allowProviderRetention === true) &&
     Number.isFinite(provider.priority)
   );
   candidates.sort((a, b) =>
