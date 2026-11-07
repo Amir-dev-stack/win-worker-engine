@@ -72,6 +72,7 @@ const required = [
   "netlify/functions/research-status.mts",
   "netlify/lib/win-research-memory.mts",
   "netlify/lib/win-research-assignment-manager.mts",
+  "docs/WIN_LOCAL_RESEARCH_RUNNER.md",
   "netlify/functions/research-runner.mts",
   "scripts/win-local-agent-runner.mjs",
   "scripts/win-research-runner-api-contract.test.mjs",
