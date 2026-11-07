@@ -32,13 +32,14 @@ export default async (req: Request) => {
   try {
     const summary = await runPostMatchFollowups();
     const completedAt = new Date().toISOString();
+    const completedLock = await putIfMatch("library/post-match-runner-lock", lockKey, {
+      ...lock, status: "completed", completedAt, leaseExpiresAt: null
+    }, lockEtag);
+    if (!completedLock?.modified) throw new Error("Post-match runner lease was lost before completion could be recorded.");
     await put("scheduler-state", "post-match-followup", {
       ...priorState, status: "completed", startedAt: now, lastCheck: completedAt,
       lastCompletedAt: completedAt, resultStatus: summary.status, aiCalls: 0
     });
-    await putIfMatch("library/post-match-runner-lock", lockKey, {
-      ...lock, status: "completed", completedAt, leaseExpiresAt: null
-    }, lockEtag);
     return Response.json({ accepted: true, status: summary.status, summary, completedAt, aiCalls: 0 });
   } catch (error) {
     await put("scheduler-state", "post-match-followup", {
