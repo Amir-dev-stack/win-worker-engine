@@ -2,7 +2,7 @@ name: WIN build and quality
 
 on:
   pull_request:
-    branches: [main, master]
+    branches: [main, master, docs/win-staged-build-roadmap]
   push:
     branches: [docs/win-staged-build-roadmap, feat/neon-transactional-store-adapter]
   workflow_dispatch:
