@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 
 function memoryStore() {
   const rows = new Map(); let rev = 0;
@@ -47,10 +48,18 @@ test("research assignment manager enforces approval, lease, untrusted intake and
   assert.equal([claimA,claimB].filter(x=>x.status==="fulfilled").length,1,"only one worker can claim the assignment");
   const claim=claimA.status==="fulfilled"?claimA.value:claimB.status==="fulfilled"?claimB.value:null;
   const agent=claim.assignedAgentId;
+  const artifactContent={fixture:"assignment-bound cloud artifact",rows:3};
+  const artifactDigest=createHash("sha256").update(JSON.stringify(artifactContent,null,2),"utf8").digest("hex");
+  await assert.rejects(()=>manager.storeResearchArtifact(assignment.id,agent,claim.leaseId,artifactContent,"0".repeat(64),3500),/SHA-256/);
+  const uploaded=await manager.storeResearchArtifact(assignment.id,agent,claim.leaseId,artifactContent,artifactDigest,3500);
   const submission={summary:"Timestamp audit completed.",findings:["Post-kickoff quotes are rejected."],
     limitations:["Sample contains synthetic rows."],evidence:[{title:"Public specification",url:"https://example.org/spec",retrievedAt:"2026-11-07T00:00:00Z"}],
-    artifacts:[{name:"audit.json",mediaType:"application/json",sha256:"a".repeat(64),location:"local://audit.json",reproductionCommand:"node audit.mjs"}]};
+    artifacts:[{name:"audit.json",mediaType:"application/json",sha256:uploaded.sha256,location:uploaded.location,reproductionCommand:"node audit.mjs"}]};
   await assert.rejects(()=>manager.submitResearchAssignment(assignment.id,agent,"wrong-lease",submission,4000),/valid, unexpired/);
+  const forged={...submission,artifacts:[{...submission.artifacts[0],location:"win-blob://library/research-artifacts/research-artifact-not-found"}]};
+  await assert.rejects(()=>manager.submitResearchAssignment(assignment.id,agent,claim.leaseId,forged,4000),/Cloud artifact/);
+  const forgedDigest={...submission,artifacts:[{...submission.artifacts[0],sha256:"f".repeat(64)}]};
+  await assert.rejects(()=>manager.submitResearchAssignment(assignment.id,agent,claim.leaseId,forgedDigest,4000),/Cloud artifact/);
   const saved=await manager.submitResearchAssignment(assignment.id,agent,claim.leaseId,submission,4000);
   assert.equal(saved.status,"untrusted_pending_review");
   const researchMemory=await import("../netlify/lib/win-research-memory.mts");
