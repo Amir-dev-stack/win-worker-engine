@@ -4,13 +4,22 @@ import { neon } from "@neondatabase/serverless";
 import { createNeonStore } from "../netlify/lib/neon-store.mts";
 
 const connectionString = process.env.WIN_NEON_TEST_DATABASE_URL;
-if (!connectionString || process.env.WIN_NEON_TEST_CONFIRM !== "1") {
+const expectedDatabase = process.env.WIN_NEON_TEST_EXPECTED_DATABASE || "";
+if (!connectionString || process.env.WIN_NEON_TEST_CONFIRM !== "1" ||
+    process.env.WIN_NEON_TEST_BRANCH_CONFIRM !== "dedicated-test-branch" || !expectedDatabase) {
   throw new Error(
-    "Refusing live Neon integration test. Set WIN_NEON_TEST_DATABASE_URL to the dedicated test-branch connection string and WIN_NEON_TEST_CONFIRM=1."
+    "Refusing live Neon integration test. Provide the dedicated test-branch URL, WIN_NEON_TEST_CONFIRM=1, WIN_NEON_TEST_BRANCH_CONFIRM=dedicated-test-branch and WIN_NEON_TEST_EXPECTED_DATABASE."
   );
+}
+if (process.env.WIN_NEON_DATABASE_URL && process.env.WIN_NEON_DATABASE_URL === connectionString) {
+  throw new Error("Refusing live Neon integration test because the test URL matches WIN_NEON_DATABASE_URL.");
 }
 
 const sql = neon(connectionString);
+const databaseIdentity = await sql`SELECT current_database() AS name`;
+if (databaseIdentity?.[0]?.name !== expectedDatabase) {
+  throw new Error("Refusing live Neon integration test because the connected database does not match WIN_NEON_TEST_EXPECTED_DATABASE.");
+}
 const store = createNeonStore(sql);
 const prefix = "win-neon-integration-" + randomUUID();
 const claimKey = "integration-claim/" + prefix;
