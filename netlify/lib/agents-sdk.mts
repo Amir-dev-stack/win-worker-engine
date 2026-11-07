@@ -50,7 +50,7 @@ export async function runWinAgent(input: {
     tools
   });
 
-  const result: any = await run(agent, input.prompt, {
+  const prompt = input.memoryContext\n    ? input.prompt + "\\n\\n" + input.memoryContext\n    : input.prompt;\n  const result: any = await run(agent, prompt, {
     maxTurns: Math.max(1, Math.min(2, input.maxTurns ?? 2)),
     signal: input.signal
   });
