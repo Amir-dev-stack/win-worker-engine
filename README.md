@@ -185,6 +185,8 @@ MCP tools:
 
 The updated plugin must still complete its first ChatGPT OAuth authorization handshake before the connection can be considered fully verified.
 
+OpenAI API credit setup and staged activation are documented in [docs/WIN_OPENAI_CREDIT_ACTIVATION_PLAN.md](docs/WIN_OPENAI_CREDIT_ACTIVATION_PLAN.md). The owner-reported USD 5 purchase is not treated as a verified remaining balance or spending approval.
+
 ## Required Netlify environment variables
 
 Set these in Netlify → win-worker-engine → Project configuration → Environment variables. Keep secrets scoped to Functions/Runtime.
@@ -244,7 +246,7 @@ All REST routes require `Authorization: Bearer <WIN_INTERNAL_TOKEN>`, except hea
 
 The project deploys from GitHub `main` to Netlify. Build command: `npm run build`. Publish directory: `public`. Functions directory: `netlify/functions`.
 
-Local development requires Node.js 20.12.2+ and Netlify CLI:
+Local development requires Node.js 22.12.0+ and Netlify CLI:
 
     npm install
     netlify dev
@@ -254,7 +256,7 @@ Use an untracked `.env` file or Netlify environment variables for local secrets.
 
 ## Central mission: high-probability coupon intelligence
 
-WIN's central objective is to research, test and improve the strongest evidence-supported betting coupons it can realistically identify. Every department and agent must contribute to better selection quality, lower avoidable risk, stronger probability calibration, verified learning or disciplined NO BET decisions.
+WIN's central objective is to research, test and improve the strongest evidence-supported betting coupons it can realistically identify. Every department and agent must contribute to better selection quality, lower avoidable risk, stronger probability calibration, verified learning and transparent uncertainty reporting. WIN should provide an estimated probability with its evidence and calibration limits; the user makes the final decision.
 
 The user's 99% win-probability aspiration is a research target, **not a guarantee or a default label**. WIN must never claim 99% without defensible calibrated evidence, sample size and uncertainty. Accumulator joint probability and correlation must be considered; high hit rate must not be confused with positive expected value or profitability.
 
