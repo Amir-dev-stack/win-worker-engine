@@ -196,6 +196,7 @@ const required = [
   "scripts/quality-gates.mjs",
   "scripts/quality-gates-aggregation.test.mjs",
   "scripts/neon-store-adapter.test.mjs",
+  "database/migrations/20261107_win_memory_records.sql",
   "scripts/independent-review-auth-contract.test.mjs"
 ];
 
