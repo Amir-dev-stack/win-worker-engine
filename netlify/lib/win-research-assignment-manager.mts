@@ -17,7 +17,7 @@ export type ResearchAssignment = {
   sourceScope: string[]; dataRestrictions: string[]; expectedArtifacts: string[];
   ownerId: string; independentReviewerId: string; status: string; executionMode: string;
   modelCallLimit: number; toolCallLimit: number; budgetCeilingUsd: number;
-  createdAt: string; updatedAt: string; dueAt: string | null; leaseId?: string;
+  createdAt: string; updatedAt: string; dueAt: string | null; leaseId?: string | null;
   leaseExpiresAt?: string | null; assignedAgentId?: string | null; submissionId?: string;
   [key: string]: unknown;
 };
