@@ -82,3 +82,12 @@ No live provider was called, no credentials or spending were enabled, no model w
 Database triggers reject updates/deletes and validate that the decision quote was open and ingested by the prediction cutoff. A closing quote must match the same event, market, selection, period, line, bookmaker, source revision, licence and venue; it must be observed after the cutoff and before kickoff. The database also independently checks the stored CLV arithmetic.
 
 **Deployment boundary:** the migration has been applied and exercised on the isolated Neon branch `win-memory-schema-test` in project `win-memory`. It has not been applied to the `production` branch or any production database. Five database triggers were confirmed active. Synthetic tests verified a valid decision/closing quote flow, rejection of a mismatched bookmaker and a late decision quote, and rollback of all synthetic rows. Production application remains a separate approval step.
+
+
+## Provider quote normalization boundary
+
+Added `netlify/lib/win-odds-quote-normalizer.mts` as a strict adapter boundary. It does not fetch or invent data. A future provider connector must explicitly provide the source ID and record ID, pinned 40-character source revision, licence identifier, source-declared decision/closing role, event/market/selection/bookmaker identity, executable decimal back price, open status and source/ingestion/kickoff timestamps.
+
+The normalizer rejects missing provenance, fair-probability and prediction-market inputs, unknown/suspended/closed availability, live or post-kickoff observations, invalid timestamps and invalid prices. When the provider does not supply its own quote ID, WIN derives a deterministic SHA-256 identity from the source record revision and quote identity/price fields. A source revision or price change therefore produces a different quote ID.
+
+This is not a live or historical provider integration. It is a fail-closed contract that provider adapters must pass before any quote can be persisted or used for CLV. No provider credentials, external data calls, production migrations or deployment were added.
