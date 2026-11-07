@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getWithMetadata, list, put, putIfMatch, putIfNew } from "./store.mts";
+import { rememberResearchSubmission, promoteReviewedResearchMemory } from "./win-research-memory.mts";
 
 const ASSIGNMENTS = "library/research-assignments";
 const SUBMISSIONS = "library/research-submissions";
@@ -166,7 +167,7 @@ export async function reviewResearchSubmission(id: string, reviewerId: string, d
   const submissionId = String(assignment.value.submissionId || "");
   const submission = await getWithMetadata<any>(SUBMISSIONS, submissionId);
   if (!submission || submission.value.agentId === reviewerId) throw new Error("Submitter and reviewer must be independent.");
-  const status = decision === "accept" ? "accepted_research" : "rejected";
+  const status = decision === "accept" ? "accepted_research" : "rejected";\n  if (decision === "accept") await promoteReviewedResearchMemory({ agentId: submission.value.agentId, assignmentId: id, reviewerId, reviewedAt: nowIso(nowMs) });
   const saved = await putIfMatch(SUBMISSIONS, submissionId, {
     ...submission.value, status, reviewerId, reviewRationale: clean(rationale, 4000),
     reviewedAt: nowIso(nowMs), trustedKnowledgePromotion: "blocked_pending_separate_owner_approval"
