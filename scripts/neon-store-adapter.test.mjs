@@ -85,3 +85,14 @@ test("Blobs-to-Neon audit is read-only and hashes payloads without printing them
   assert.doesNotMatch(auditSource, /INSERT INTO|UPDATE public\.win_memory_records|DELETE FROM|TRUNCATE TABLE|\.setJSON\(|\.delete\(/i);
   assert.doesNotMatch(auditSource, /console\.log\([^\n]*payload/i);
 });
+
+
+test("live Neon integration refuses ambiguous or runtime-matching database targets", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("./neon-store-live.integration.mjs", import.meta.url), "utf8");
+  assert.match(source, /WIN_NEON_TEST_BRANCH_CONFIRM !== "dedicated-test-branch"/);
+  assert.match(source, /WIN_NEON_TEST_EXPECTED_DATABASE/);
+  assert.match(source, /WIN_NEON_DATABASE_URL === connectionString/);
+  assert.match(source, /SELECT current_database\(\) AS name/);
+  assert.match(source, /databaseIdentity\?\.\[0\]\?\.name !== expectedDatabase/);
+});
