@@ -19,10 +19,10 @@ export function isPinnedOpenFootballRevision(value: unknown): value is string {
 }
 
 export function buildOpenFootballDatasetSnapshotId(season: string, fileName: string, sourceRevision: string) {
-  if (!normalizedSeason(season) || !/^[a-z]{2}\\.\\d+\\.json$/i.test(fileName) || !isPinnedOpenFootballRevision(sourceRevision)) {
+  if (!normalizedSeason(season) || !/^[a-z]{2}\.\d+\.json$/i.test(fileName) || !isPinnedOpenFootballRevision(sourceRevision)) {
     throw new Error("openfootball_dataset_snapshot_identity_invalid");
   }
-  return "openfootball-" + season + "-" + fileName.replace(/\\.json$/i, "") + "-r" + sourceRevision.toLowerCase();
+  return "openfootball-" + season + "-" + fileName.replace(/\.json$/i, "") + "-r" + sourceRevision.toLowerCase();
 }
 
 export function buildOpenFootballSyncRunId(startedAt: string, sourceRevision: string) {
