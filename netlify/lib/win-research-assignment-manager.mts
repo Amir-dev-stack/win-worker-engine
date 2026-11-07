@@ -155,6 +155,13 @@ export async function submitResearchAssignment(id: string, agentId: string, leas
   if (safeArtifacts.some((a: any) => !a.name || !a.sha256 || !/^[a-f0-9]{64}$/i.test(a.sha256))) {
     throw new Error("Every artifact requires a name and SHA-256 digest.");
   }
+  if (safeArtifacts.some((artifact: any) => {
+    if (artifact.location.startsWith("win-blob://")) return false;
+    try {
+      const url = new URL(artifact.location);
+      return url.protocol !== "https:" || Boolean(url.username || url.password);
+    } catch { return true; }
+  })) throw new Error("Artifact location must be a verified WIN cloud reference or a credential-free HTTPS URL.");
   // Bind cloud artifact references to this assignment, agent and exact stored bytes.
   for (const artifact of safeArtifacts) {
     if (!artifact.location.startsWith("win-blob://")) continue;
