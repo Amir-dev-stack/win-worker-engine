@@ -76,6 +76,7 @@ const required = [
   "netlify/lib/win-research-openai-executor.mts",
   "cloudflare/win-scheduler/src/index.ts",
   "cloudflare/win-scheduler/wrangler.toml",
+  "docs/WIN_24_7_CLOUD_SCHEDULER.md",
   "scripts/win-cloudflare-scheduler.test.mjs",
   "netlify/functions/research-openai-execute.mts",
   "scripts/win-research-openai-executor-contract.test.mjs",
