@@ -4,6 +4,8 @@
 
 This is an additive, opt-in adapter. Netlify Blobs remains the default until the Neon path has passed isolated tests, test-branch integration tests, migration/reconciliation checks, and a controlled owner-approved cutover.
 
+The expected table definition is staged in `database/migrations/20261107_win_memory_records.sql`. It is source-only: CI does not apply it, and it must be applied only to the dedicated test branch after explicit owner approval. It is not a production migration or cutover instruction.
+
 ## Activation contract
 
 - Default: omit `WIN_TRANSACTIONAL_STORE`; existing Netlify Blobs behavior remains unchanged.
