@@ -13,7 +13,7 @@ The existing Netlify schedule remains the primary scheduler. This Cloudflare Wor
 | `*/15 * * * *` | Health heartbeat | Authenticated GET to `/api/health`; read-only service and budget status |
 | `53 */4 * * *` | Post-match failover | Authenticated POST to `/.netlify/functions/post-match-runner`; runs the existing no-AI result checker |
 
-The primary Netlify post-match schedule runs at minute 23 every four hours. The Cloudflare backup runs at minute 53, leaving a 30-minute separation. The Netlify runner has its own atomic lease, so overlapping invocations are rejected safely.
+The primary Netlify post-match schedule runs at minute 23 every four hours. The Cloudflare watchdog probes the authenticated health endpoint at minute 53 and dispatches the result checker only when the last successful post-match completion is missing or older than 3.5 hours. A recent primary completion suppresses the duplicate. The Netlify runner also has its own atomic lease, so concurrent invocations are rejected safely.
 
 ## Security and cost controls
 
@@ -22,6 +22,7 @@ The primary Netlify post-match schedule runs at minute 23 every four hours. The 
 - The public fetch handler returns 404 and exposes no scheduler controls.
 - Each dispatch has a 10-second timeout and sends no request body.
 - The worker does not retry failed requests. The next scheduled tick is the retry boundary.
+- The failover check reads only the `lastCompletedAt` heartbeat exposed by `/api/health`; the post-match runner records that timestamp only after its own lease is successfully completed.
 - The result-check endpoint reports `aiCalls: 0`; this scheduler does not call OpenAI or any other model.
 - No provider billing, AI approval, spend unlock, production deployment or database migration is performed by this code.
 
