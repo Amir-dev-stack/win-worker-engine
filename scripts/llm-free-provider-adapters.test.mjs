@@ -25,10 +25,10 @@ test("free providers are disabled by default and require exact owner opt-in", ()
   assert.ok(defaults.every(provider => !provider.enabled && !provider.approved));
   const enabled = buildFreeProviderDescriptors({
     WIN_ENABLE_OLLAMA_PROVIDER: "true", WIN_OLLAMA_MODEL: "qwen2.5:3b",
-    WIN_ENABLE_CLOUDFLARE_FREE_PROVIDER: "true", WIN_CLOUDFLARE_FREE_MODEL_APPROVED: "true",
+    WIN_ENABLE_CLOUDFLARE_FREE_PROVIDER: "true", WIN_CLOUDFLARE_WORKERS_FREE_PLAN_CONFIRMED: "true", WIN_CLOUDFLARE_FREE_MODEL_APPROVED: "true",
     WIN_CLOUDFLARE_FREE_MODEL: "@cf/example/free-model", CLOUDFLARE_ACCOUNT_ID: "account",
     CLOUDFLARE_API_TOKEN: "token",
-    WIN_ENABLE_GEMINI_FREE_PROVIDER: "true", WIN_GEMINI_FREE_MODEL_APPROVED: "true",
+    WIN_ENABLE_GEMINI_FREE_PROVIDER: "true", WIN_GEMINI_FREE_TIER_CONFIRMED: "true", WIN_GEMINI_BILLING_DISABLED: "true", WIN_GEMINI_FREE_MODEL_APPROVED: "true",
     WIN_GEMINI_FREE_MODEL: "gemini-example-free", GEMINI_API_KEY: "secret"
   });
   assert.deepEqual(enabled.map(provider => provider.enabled), [true, true, true]);
@@ -38,7 +38,7 @@ test("free providers are disabled by default and require exact owner opt-in", ()
 
 test("provider selection blocks Gemini free tier unless retention is explicitly allowed", () => {
   const gemini = buildFreeProviderDescriptors({
-    WIN_ENABLE_GEMINI_FREE_PROVIDER: "true", WIN_GEMINI_FREE_MODEL_APPROVED: "true",
+    WIN_ENABLE_GEMINI_FREE_PROVIDER: "true", WIN_GEMINI_FREE_TIER_CONFIRMED: "true", WIN_GEMINI_BILLING_DISABLED: "true", WIN_GEMINI_FREE_MODEL_APPROVED: "true",
     WIN_GEMINI_FREE_MODEL: "gemini-example-free", GEMINI_API_KEY: "secret"
   })[2];
   assert.equal(selectWinLLMProvider(request("gemini_free", "gemini-example-free"), [gemini]), null);
