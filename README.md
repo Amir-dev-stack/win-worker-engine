@@ -185,7 +185,7 @@ MCP tools:
 
 The updated plugin must still complete its first ChatGPT OAuth authorization handshake before the connection can be considered fully verified.
 
-OpenAI API credit setup and staged activation are documented in [docs/WIN_OPENAI_CREDIT_ACTIVATION_PLAN.md](docs/WIN_OPENAI_CREDIT_ACTIVATION_PLAN.md). The owner-reported USD 5 purchase is not treated as a verified remaining balance or spending approval.
+OpenAI API credit setup and staged activation are documented in [docs/WIN_OPENAI_CREDIT_ACTIVATION_PLAN.md](docs/WIN_OPENAI_CREDIT_ACTIVATION_PLAN.md). The governed external research, practice and experiment network is specified in [docs/WIN_EXTERNAL_RESEARCH_NETWORK.md](docs/WIN_EXTERNAL_RESEARCH_NETWORK.md). The owner-reported USD 5 purchase is not treated as a verified remaining balance or spending approval.
 
 ## Required Netlify environment variables
 
