@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildOpenFootballSyncRunId } from "../netlify/lib/openfootball-adapter.mts";
-import { buildOpenFootballWorldCupSyncRunId } from "../netlify/lib/openfootball-worldcup-adapter.mts";
+import { buildOpenFootballWorldCupSyncRunId, buildOpenFootballWorldCupDatasetEligibility } from "../netlify/lib/openfootball-worldcup-adapter.mts";
 
 const revision = "a".repeat(40);
 const startedAt = "2026-11-07T10:00:00.000Z";
@@ -28,4 +28,12 @@ test("World Cup sync attempts also receive unique audit identities", () => {
 test("World Cup sync identity rejects invalid timestamps and unpinned revisions", () => {
   assert.throws(() => buildOpenFootballWorldCupSyncRunId("not-a-date", revision), /identity_invalid/);
   assert.throws(() => buildOpenFootballWorldCupSyncRunId(startedAt, "master"), /identity_invalid/);
+});
+
+test("World Cup dataset snapshots declare date-only, unknown-result availability and training exclusion", () => {
+  assert.deepEqual(buildOpenFootballWorldCupDatasetEligibility(), {
+    eventTimePrecision: "date",
+    resultAvailability: "unknown",
+    trainingEligible: false
+  });
 });
