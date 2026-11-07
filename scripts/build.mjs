@@ -192,7 +192,8 @@ const required = [
   "scripts/ml-prediction-contract.test.mjs",
   "scripts/ml-provenance.test.mjs",
   "scripts/ml-football-import-training.integration.test.mjs",
-  "scripts/quality-gates.mjs"
+  "scripts/quality-gates.mjs",
+  "scripts/quality-gates-aggregation.test.mjs"
 ];
 
 for (const file of required) await access(file);
