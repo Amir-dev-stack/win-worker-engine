@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 test("research assignment API is authenticated, bounded and does not execute agents", async () => {
-  const { readFile } = await import("node:fs/promises");\n  const route = await readFile(new URL("../netlify/functions/research-assignments.mts", import.meta.url), "utf8");
+  const { readFile } = await import("node:fs/promises");
+  const route = await readFile(new URL("../netlify/functions/research-assignments.mts", import.meta.url), "utf8");
   const manager = await readFile(new URL("../netlify/lib/win-research-assignment-manager.mts", import.meta.url), "utf8");
   assert.match(route, /requireAuth\(req\)/);
   assert.match(route, /readBoundedJsonObject\(req, 64 \* 1024\)/);
