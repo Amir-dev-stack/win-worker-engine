@@ -204,7 +204,8 @@ async function askWorker(
   phase: string,
   brief: unknown,
   peerReports?: WorkerReport[],
-  department?: DepartmentAssignment
+  department?: DepartmentAssignment,
+  maxBudgetUsd?: number
 ): Promise<WorkerReport> {
   const startedAt = new Date().toISOString();
   const workerId = crypto.randomUUID();
@@ -284,7 +285,13 @@ async function askWorker(
       maxOutputTokens, maxToolCalls,
       maxInputChars
     });
-    if (!budget.allowed) throw new Error(budget.reason);\n    if (Number.isFinite(maxBudgetUsd) && budget.reservedUsd > Number(maxBudgetUsd)) {\n      await releaseAIRequest(requestBudgetId, "Assignment budget ceiling is lower than the estimated OpenAI reservation; no model call was sent.");\n      budgetSettled = true;\n      return failed("Assignment budget ceiling blocked this OpenAI request before execution. Estimated reservation $" + budget.reservedUsd.toFixed(4) + " exceeds task ceiling $" + Number(maxBudgetUsd).toFixed(4) + ".");\n    }
+    if (!budget.allowed) throw new Error(budget.reason);
+    if (Number.isFinite(maxBudgetUsd) && budget.reservedUsd > Number(maxBudgetUsd)) {
+      await releaseAIRequest(requestBudgetId, "Assignment budget ceiling is lower than the estimated OpenAI reservation; no model call was sent.");
+      budgetSettled = true;
+      return failed("Assignment budget ceiling blocked this OpenAI request before execution. Estimated reservation $" +
+        budget.reservedUsd.toFixed(4) + " exceeds task ceiling $" + Number(maxBudgetUsd).toFixed(4) + ".");
+    }
     const execution = await executeWinLLMWithPolicy({
       request: {
         contractVersion: WIN_LLM_CONTRACT_VERSION,
@@ -359,8 +366,8 @@ export async function runScheduledScout(brief: any) {
   return askWorker("WIN Scheduled Public Offer & Scouting", "scheduled_scout", brief, undefined, scoutDepartment);
 }
 
-export async function runScheduledLearning(brief: any) {
-  return askWorker("WIN Scheduled Intensive Learning Researcher", "scheduled_learning", brief);
+export async function runScheduledLearning(brief: any, maxBudgetUsd?: number) {
+  return askWorker("WIN Scheduled Intensive Learning Researcher", "scheduled_learning", brief, undefined, undefined, maxBudgetUsd);
 }
 
 export async function runIndependentWorkers(brief: any, runId: string) {
