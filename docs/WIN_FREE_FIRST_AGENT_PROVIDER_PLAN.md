@@ -80,3 +80,11 @@ Keep orchestration lightweight and provider-neutral. The current OpenAI Agents S
 ## Explicit boundaries
 
 No paid subscription, paid inference, automatic overage, auto-recharge, budget reset/increase, production deployment, unattended unlimited agent loop, automatic model/strategy promotion, or bet execution is authorized by this plan. The owner retains control over spend ceilings and final betting decisions.
+
+## Owner clarification: unlimited free services may handle core work
+
+The owner explicitly permits WIN to use genuinely free and sustainable providers, agent frameworks, research tools and infrastructure for either core or supporting tasks when their use will not create future operational problems. A service is not restricted to side tasks merely because it is an external provider.
+
+Before relying on a free service for core work, verify its current quota/rate limits, fair-use rules, commercial-use terms, data-retention/privacy terms, account/billing prerequisites, availability and export/recovery options. Prefer services with no material usage cap and no billing exposure. If a service has quotas, throttling, changing free-tier terms or uncertain availability, it may still be used for optional/supporting work, but WIN must retain a provider-neutral fallback and must not make critical workflows depend on it. Never silently enable paid overages, auto-recharge or a paid fallback. Keep source data, artifacts and memory portable so WIN can change providers without losing its work.
+
+This is an explicit permission to use suitable free services for main or supporting tasks, not permission to accept lock-in, unbounded external dependencies, future surprise charges or avoidable account/security risk.
