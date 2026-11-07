@@ -433,7 +433,7 @@ add("Cloudflare 24/7 scheduler uses authenticated low-cost health and result-che
   cloudflareWinScheduler.includes("3.5 * 60 * 60 * 1000") &&
   postMatchRunnerScheduler.includes("lastCompletedAt: completedAt") &&
   postMatchRunnerScheduler.includes("completedLock?.modified") &&
-  healthSchedulerStatus.includes("postMatchFollowup: postMatchState") &&
+  healthSchedulerStatus.includes("postMatchFollowup: postMatchState ?") &&
   !cloudflareWinScheduler.includes("OPENAI_API_KEY") &&
   !cloudflareWinScheduler.includes("runScheduledLearning") &&
   cloudflareWinSchedulerTests.includes("four-hour failover cron probes heartbeat then posts only when the primary run is stale") &&
