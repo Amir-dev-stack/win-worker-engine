@@ -16,17 +16,17 @@ All requests require the existing WIN internal authentication. `actorId` is an a
 
 ## Trust and execution boundaries
 
-- New assignments default to manual execution, zero billable model calls and a zero-dollar budget ceiling. The manager does not invoke an LLM, scheduler, sandbox, shell or external tool.
+- New assignments are configured for the OpenAI Agents SDK only, with defaults of 3 model calls, 4 OpenAI-hosted tool calls and a USD 0.15 task ceiling (owner-configurable up to USD 0.50). These are task-level limits, not permission to bypass the global WIN budget. The future executor must reserve against the existing global budget ledger before every provider call and reconcile model plus hosted-tool usage. The assignment manager itself does not invoke an LLM or start a scheduler; no research agent is running automatically yet.
 - Assignment creation is not approval. Only the recorded owner can approve.
 - Claims use conditional ETag writes and expiring leases to prevent two workers from owning the same assignment.
-- Submissions are written to `library/research-submissions` with `untrusted_pending_review`; source URLs and artifact digests are validated.
+- Submissions are written to `library/research-submissions` with `untrusted_pending_review`; source URLs and artifact digests are validated. Each submission also creates private persistent memory for its originating agent.
 - Independent challenge and review are required to move a submission out of pending review. The submitter cannot review their own work.
-- Acceptance means accepted research, **not** trusted knowledge promotion. Promotion to WIN's trusted knowledge, code, model or strategy requires a separate owner-controlled workflow that is not implemented here.
+- Independent acceptance makes the finding available in shared research-network memory for other agents. It is still not trusted WIN knowledge: promotion to WIN's validated lessons, code, model or strategy requires a separate owner-controlled workflow.
 - No endpoint here can place bets, update coupon decisions, promote a model, change the AI budget, or enable scheduled execution.
 
 ## Pilot assignments
 
-Create these as proposed assignments first, approve them deliberately, and assign local/manual execution:
+Create these as proposed assignments first and approve them deliberately. The intended execution path is OpenAI-only; until the bounded executor is connected, assignments remain queued for manual handling:
 
 1. Football odds timestamp and event-identity pipeline audit.
 2. Chronological walk-forward evaluation harness and market-baseline comparison.
