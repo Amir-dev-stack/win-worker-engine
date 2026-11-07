@@ -2,6 +2,7 @@ import { access, readFile } from "node:fs/promises";
 
 const required = [
   ".github/workflows/win-quality.yml",
+  "scripts/win-quality-workflow.test.mjs",
   "public/index.html",
   "public/app.js",
   "netlify/functions/health.mts",
