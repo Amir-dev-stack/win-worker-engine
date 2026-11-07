@@ -97,7 +97,10 @@ async function fetchAssignedSources(sourceScope) {
 }
 
 function parseModelJson(output) {
-  const cleaned = output.trim().replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\s*\`\`\`$/, "");
+  const fence = String.fromCharCode(96).repeat(3);
+  let cleaned = output.trim();
+  if (cleaned.startsWith(fence)) cleaned = cleaned.slice(3).replace(/^json\\b/i, "").trimStart();
+  if (cleaned.endsWith(fence)) cleaned = cleaned.slice(0, -3).trimEnd();
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
   if (start < 0 || end <= start) throw new Error("Local model did not return a JSON research report.");
