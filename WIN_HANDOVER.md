@@ -19,6 +19,7 @@ Last updated: 2026-11-07 (UTC)
 - Recent remote hardening also classifies non-JSON provider HTTP failures before body parsing, rejects credential-shaped odds-ledger identifiers, accepts only supported two-/three-letter OpenFootball competition prefixes, and bounds World Cup status sampling to 25 disclosed records. These source changes have focused regression coverage but await a complete-suite run.
 - The storage-ownership contract now verifies that AI budget reservations use the configured shared store (including opt-in Neon) while OAuth stays isolated in its `win-oauth` namespace.
 - The live Neon integration script now requires an explicit dedicated-test-branch confirmation and expected database name, rejects a URL matching `WIN_NEON_DATABASE_URL`, and checks `current_database()` before write-capable test steps.
+- The read-only Blobs-to-Neon audit applies the same target identity guard and an explicit cap to both source and destination scans; it remains non-mutating and reports zero writes.
 - The previous local status record reported **395 passing tests**, quality gates and build-component checks. Those local changes/results were not published and cannot be treated as current remote CI evidence.
 - This branch has no verified current-head hosted test/build result in this handover.
 - The repaired test now checks the literal `startsWith("win-blob://")` contract rather than an over-escaped regular expression. The runner still requires a verified cloud artifact location; local-file locations remain prohibited.
