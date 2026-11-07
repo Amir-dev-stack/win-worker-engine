@@ -22,6 +22,7 @@ Last updated: 2026-11-07 (UTC)
 - The read-only Blobs-to-Neon audit applies the same target identity guard and an explicit cap to both source and destination scans; it remains non-mutating and reports zero writes.
 - Neon store pagination normalizes invalid page-size inputs to the bounded default (500), with adapter regression coverage.
 - The build gate now requires the Neon adapter regression suite to remain present, in addition to the default test-glob execution.
+- Independent-review identity is now guarded by a build-required contract: reviewer identity must come from the validated separate credential, never request-body actor or credential fields.
 - The previous local status record reported **395 passing tests**, quality gates and build-component checks. Those local changes/results were not published and cannot be treated as current remote CI evidence.
 - This branch has no verified current-head hosted test/build result in this handover.
 - The repaired test now checks the literal `startsWith("win-blob://")` contract rather than an over-escaped regular expression. The runner still requires a verified cloud artifact location; local-file locations remain prohibited.
