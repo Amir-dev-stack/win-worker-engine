@@ -34,6 +34,13 @@ test("Neon ETag compare-and-swap uses a single conditional UPDATE", async () => 
   assert.equal(fake.calls[0].values.at(-1), "old-version");
 });
 
+test("Neon pagination defaults invalid page sizes to a bounded safe value", async () => {
+  const fake = fakeSql([[]]);
+  const store = createNeonStore(fake.sql, { pageSize: Number.NaN });
+  for await (const _page of store.list({ prefix: "agent-memory/" })) { /* no rows */ }
+  assert.equal(fake.calls[0].values.at(-1), 500);
+});
+
 test("Neon reads return payload and ETag in the Blobs-compatible shape", async () => {
   const fake = fakeSql([[{ payload: { status: "approved" }, etag: "v1" }]]);
   const store = createNeonStore(fake.sql);
