@@ -35,6 +35,20 @@ The owner also authorizes additional agent frameworks, model providers, research
 - The task's `budgetCeilingUsd` is compared with the global budget reservation before the provider call. If the reservation exceeds the task ceiling, the reservation is released and the model request is not sent.
 - The existing global spending lock, `WIN_AI_BUDGET_APPROVED` gate, token/tool limits and conservative uncertain-outcome settlement remain in force.
 - A successful report must include HTTPS citations and is submitted to the untrusted inbox; independent review is required before shared research memory promotion.
+- Research artifacts are stored through the same lease-checked cloud artifact service used by the local runner. The manifest is accepted only when its exact stored bytes recompute to the submitted SHA-256 and the artifact is bound to the active assignment and agent; local-only file paths are rejected.
+
+### Current API cost assumptions (checked 2026-11-07)
+
+The WIN ledger currently recognizes only these standard API model rates per 1 million tokens:
+
+| Model | Input | Output |
+|---|---:|---:|
+| `gpt-6-luna` | $0.10 | $0.50 |
+| `gpt-6.1-sol` | $2.00 | $10.00 |
+
+OpenAI web search is estimated at $0.01 per call, with retrieved search-content tokens billed at the selected model rate. The ledger adds a 15% estimate margin and a small per-request allowance. These are planning estimates, not a provider-enforced cap; actual invoices and account eligibility must be checked in the OpenAI dashboard. See the [official API pricing](https://developers.openai.com/api/docs/pricing).
+
+For routine research, prefer `gpt-6-luna` if it is available to the API project and passes a quality check. Reserve `gpt-6.1-sol` for tasks where the stronger model materially improves evidence synthesis. The existing per-assignment ceiling and global $2.95 stop still apply.
 
 ### Cloudflare Workers AI and Gemini
 
