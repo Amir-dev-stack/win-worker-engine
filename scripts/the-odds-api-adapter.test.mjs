@@ -60,11 +60,14 @@ test("rejects malformed prices, invalid lines, stale post-kickoff data and futur
     /odds_api_ingestion_precedes_source_timestamp/);
 });
 
-test("canonical source fingerprint is stable and changes with price", () => {
+test("source contract revision is stable while each changed observation gets a new record identity", () => {
   const first = parseOddsApiV4EventOdds(sample(), ingestedAt)[0];
   const second = parseOddsApiV4EventOdds(sample(), ingestedAt)[0];
   assert.equal(first.sourceRevision, second.sourceRevision);
+  assert.equal(first.sourceRecordId, second.sourceRecordId);
   const changed = sample(); changed[0].bookmakers[0].markets[0].outcomes[0].price = 2.2;
-  assert.notEqual(first.sourceRevision, parseOddsApiV4EventOdds(changed, ingestedAt)[0].sourceRevision);
+  const changedRow = parseOddsApiV4EventOdds(changed, ingestedAt)[0];
+  assert.equal(first.sourceRevision, changedRow.sourceRevision);
+  assert.notEqual(first.sourceRecordId, changedRow.sourceRecordId);
   assert.match(first.sourceRevision, /^[a-f0-9]{40}$/);
 });
