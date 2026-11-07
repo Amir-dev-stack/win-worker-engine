@@ -16,6 +16,8 @@ const event = {
 const generatedAt = "2027-04-01T17:00:01.000Z";
 const trainedAt = "2027-03-01T07:00:00.000Z";
 const prediction = {
+  origin: "trained_model",
+  usage: "shadow_only",
   predictionRunId,
   modelId,
   modelVersion,
@@ -84,4 +86,10 @@ test("verified blend rejects event, cutoff, model and feature provenance drift",
   assert.throws(() => bindWinMLShadowPredictionToBlendInput({
     ...args, predictionRunId: "different-run"
   }), /market_blend_registered_shadow_prediction_binding_mismatch/);
+  assert.throws(() => bindWinMLShadowPredictionToBlendInput({
+    ...args, prediction: { ...prediction, usage: "production" }
+  }), /market_blend_registered_shadow_prediction_usage_invalid/);
+  assert.throws(() => bindWinMLShadowPredictionToBlendInput({
+    ...args, prediction: { ...prediction, origin: "external" }
+  }), /market_blend_registered_shadow_prediction_usage_invalid/);
 });

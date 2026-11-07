@@ -756,9 +756,13 @@ add("WIN market blend runtime obtains metrics and event probabilities only from 
   verifiedMarketBlend.includes("getWinMLShadowPredictionRecord(predictionRunId)") &&
   verifiedMarketBlend.includes("bindWinMLShadowPredictionToBlendInput") &&
   verifiedMarketBlend.includes("market_blend_registered_shadow_prediction_missing") &&
+  verifiedMarketBlend.includes('prediction.usage !== "shadow_only" || prediction.origin !== "trained_model"') &&
+  verifiedMarketBlend.includes("market_blend_registered_shadow_prediction_usage_invalid") &&
   verifiedMarketBlend.includes("probabilities: prediction.probabilities") &&
   verifiedMarketBlend.includes("prediction.featureVectorSha256 !== input.model.featureVectorSha256") &&
   verifiedMarketBlendTests.includes("replaces caller probabilities with the registered shadow prediction") &&
+  verifiedMarketBlendTests.includes("usage: \"production\"") &&
+  verifiedMarketBlendTests.includes('origin: "external"') &&
   verifiedMarketBlendTests.includes("rejects event, cutoff, model and feature provenance drift") &&
   winMarketEvaluationRegistryTests.includes("market_blend_registered_shadow_prediction_missing"),
   "The verified wrapper loads immutable model/evaluation evidence and the exact registered shadow inference; caller probabilities are overwritten and event/model/cutoff/feature hashes must match.");
@@ -925,12 +929,24 @@ add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate
   oauthRequestTests.includes("rejects malformed, non-object and misleading media types"),
   "Authorization and token form requests are capped at 16 KiB (8 KiB for owner authorization); dynamic registration JSON is capped at 16 KiB. Invalid UTF-8, malformed/non-object JSON, duplicate form keys and unsupported media types fail closed.");
 
+const neonStoreSchema = await read("database/migrations/20261107_win_memory_records.sql");
+const neonStoreAdapterTests = await read("scripts/neon-store-adapter.test.mjs");
+add("WIN Neon transactional store schema is staged, keyed and source-contract tested",
+  neonStoreSchema.includes("CREATE TABLE IF NOT EXISTS public.win_memory_records") &&
+  neonStoreSchema.includes("record_key text PRIMARY KEY") &&
+  neonStoreSchema.includes("payload jsonb NOT NULL") &&
+  neonStoreSchema.includes("record_key = kind || '/' || record_id") &&
+  neonStoreSchema.includes("win_memory_records_kind_record_idx") &&
+  neonStoreAdapterTests.includes("staged Neon schema matches the transactional store contract") &&
+  build.includes('"database/migrations/20261107_win_memory_records.sql"'),
+  "The Neon table contract remains staged source only, binds keys to kind/id fields, and is required by the build without applying any database migration.");
+
 const winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -1376,8 +1392,32 @@ add("Odds collection ledger database schema is append-only and enforces quota, p
   oddsCollectionSchemaTests.includes("database enforces exact usage reconciliation"),
   "The staged database migration must preserve immutable collection audit records, reject secret persistence, and enforce provider quota and timestamp boundaries.");
 
-const failed = checks.filter(x => !x.ok);
-console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
+const checksByName = new Map();
+for (const check of checks) {
+  const existing = checksByName.get(check.name);
+  if (!existing) {
+    checksByName.set(check.name, {
+      name: check.name,
+      ok: check.ok,
+      detail: check.detail,
+      evaluations: [{ ok: check.ok, detail: check.detail }]
+    });
+    continue;
+  }
+  // A repeated logical check can never hide a failing evaluation.
+  existing.ok = existing.ok && check.ok;
+  existing.evaluations.push({ ok: check.ok, detail: check.detail });
+  if (!check.ok) existing.detail = check.detail;
+}
+const uniqueChecks = [...checksByName.values()];
+const failed = uniqueChecks.filter(check => !check.ok);
+console.log(JSON.stringify({
+  status: failed.length ? "failed" : "passed",
+  passed: uniqueChecks.length - failed.length,
+  total: uniqueChecks.length,
+  evaluations: checks.length,
+  checks: uniqueChecks
+}, null, 2));
 if (failed.length) process.exitCode = 1;
 {
 
@@ -1975,7 +2015,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -2598,7 +2638,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -3207,7 +3247,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -3837,7 +3877,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -4446,7 +4486,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -5069,7 +5109,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -5678,7 +5718,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&

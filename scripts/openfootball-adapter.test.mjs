@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { buildOpenFootballSyncRunId, buildOpenFootballDatasetSnapshotId, buildOpenFootballDatasetEligibility, selectLatestOpenFootballSnapshots } from "../netlify/lib/openfootball-adapter.mts";
 import { buildOpenFootballWorldCupSyncRunId, buildOpenFootballWorldCupDatasetEligibility, buildOpenFootballWorldCupDatasetSnapshotId, selectLatestOpenFootballWorldCupSnapshots } from "../netlify/lib/openfootball-worldcup-adapter.mts";
 
@@ -44,6 +45,12 @@ test("OpenFootball dataset snapshots are immutable across source revisions", () 
   assert.notEqual(first, second);
   assert.match(first, /-ra{40}$/);
   assert.throws(() => buildOpenFootballDatasetSnapshotId("2025-26", "eng.1.json", "master"), /snapshot_identity_invalid/);
+});
+
+test("OpenFootball snapshot identities accept two- and three-letter competition prefixes only", () => {
+  assert.match(buildOpenFootballDatasetSnapshotId("2025-26", "de.1.json", revision), /^openfootball-/);
+  assert.match(buildOpenFootballDatasetSnapshotId("2025-26", "eng.1.json", revision), /^openfootball-/);
+  assert.throws(() => buildOpenFootballDatasetSnapshotId("2025-26", "engl.1.json", revision), /snapshot_identity_invalid/);
 });
 
 test("World Cup dataset snapshots are immutable across source revisions", () => {
@@ -108,4 +115,12 @@ test("ordinary OpenFootball imports are explicitly excluded from point-in-time t
     resultAvailability: "unknown",
     trainingEligible: false
   });
+});
+
+
+test("World Cup status sampling is explicitly bounded and disclosed", async () => {
+  const source = await readFile(new URL("../netlify/lib/openfootball-worldcup-adapter.mts", import.meta.url), "utf8");
+  assert.match(source, /const MAX_STATUS_DATASET_SAMPLES=25/);
+  assert.match(source, /historical-event-datasets",MAX_STATUS_DATASET_SAMPLES/);
+  assert.match(source, /sampleLimit:MAX_STATUS_DATASET_SAMPLES/);
 });

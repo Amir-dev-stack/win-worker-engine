@@ -28,8 +28,25 @@ export function installIsolatedTestStore(adapter: StoreAdapter) {
 
 async function store(): Promise<StoreAdapter> {
   if (isolatedTestStore) return isolatedTestStore;
+
+  // Neon is deliberately opt-in. If selected, missing credentials or a failed
+  // Neon connection must fail closed; transactional namespaces never fall
+  // back to Blobs behind the owner's back.
+  if (process.env.WIN_TRANSACTIONAL_STORE === "neon") {
+    const databaseUrl = process.env.WIN_NEON_DATABASE_URL || "";
+    if (!databaseUrl) throw new Error("WIN_TRANSACTIONAL_STORE=neon requires WIN_NEON_DATABASE_URL.");
+    const { neon } = await import("@neondatabase/serverless");
+    const { createNeonStore } = await import("./neon-store.mts");
+    return createNeonStore(neon(databaseUrl)) as unknown as StoreAdapter;
+  }
+
   const { getStore } = await import("@netlify/blobs");
   return getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" }) as unknown as StoreAdapter;
+}
+
+/** Return the configured shared store for subsystems that need atomic primitives. */
+export async function getStoreAdapter(): Promise<StoreAdapter> {
+  return store();
 }
 
 const key = (kind: string, id: string) => kind + "/" + id;

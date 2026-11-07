@@ -9,14 +9,17 @@
   "scripts": {
     "build": "node scripts/build.mjs && node scripts/quality-gates.mjs",
     "dev": "npx --yes netlify-cli@27.14.2 dev",
-    "test": "node --experimental-strip-types --test scripts/*.test.mjs && node scripts/quality-gates.mjs"
+    "test": "node --experimental-strip-types --test scripts/*.test.mjs && node scripts/quality-gates.mjs",
+    "test:neon:integration": "node scripts/neon-store-live.integration.mjs",
+    "audit:store-migration": "node scripts/win-store-migration-audit.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "latest",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@netlify/blobs": "11.1.7",
-    "@netlify/functions": "latest",
-    "zod": "latest",
-    "@openai/agents": "0.21.0"
+    "@netlify/functions": "6.1.1",
+    "zod": "4.6.7",
+    "@openai/agents": "0.21.0",
+    "@neondatabase/serverless": "1.2.0"
   },
   "overrides": {
     "import-in-the-middle": "3.5.3"

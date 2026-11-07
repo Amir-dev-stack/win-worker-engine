@@ -17,7 +17,9 @@ export class OddsCollectionLedgerError extends Error {
   readonly code: string;
   constructor(code: string) { super(code); this.name = "OddsCollectionLedgerError"; this.code = code; }
 }
-const safeIdentifier = (v: unknown): v is string => typeof v === "string" && /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(v);
+const safeIdentifier = (v: unknown): v is string => typeof v === "string" &&
+  /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(v) &&
+  !/(?:bearer|token|secret|api[_-]?key|authorization|password)/i.test(v);
 const timestamp = (v: unknown): v is string => typeof v === "string" && isStrictIsoTimestamp(v);
 const count = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 0;
 const sha256 = (v: unknown): v is string => typeof v === "string" && /^[a-f0-9]{64}$/i.test(v);

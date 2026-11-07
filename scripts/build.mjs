@@ -2,6 +2,7 @@ import { access, readFile } from "node:fs/promises";
 
 const required = [
   ".github/workflows/win-quality.yml",
+  "scripts/win-quality-workflow.test.mjs",
   "public/index.html",
   "public/app.js",
   "netlify/functions/health.mts",
@@ -192,7 +193,11 @@ const required = [
   "scripts/ml-prediction-contract.test.mjs",
   "scripts/ml-provenance.test.mjs",
   "scripts/ml-football-import-training.integration.test.mjs",
-  "scripts/quality-gates.mjs"
+  "scripts/quality-gates.mjs",
+  "scripts/quality-gates-aggregation.test.mjs",
+  "scripts/neon-store-adapter.test.mjs",
+  "database/migrations/20261107_win_memory_records.sql",
+  "scripts/independent-review-auth-contract.test.mjs"
 ];
 
 for (const file of required) await access(file);

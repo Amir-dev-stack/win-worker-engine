@@ -56,8 +56,10 @@ test("rejects malformed headers, invalid dates, contradictory outcomes and bad h
   assert.throws(()=>buildOddsCollectionAttempt(x),e=>e instanceof OddsCollectionLedgerError);
 });
 test("rejects identifiers that could carry credentials or arbitrary secret text", () => {
-  const x=base(); x.correlationId="Bearer_secret_value";
-  assert.throws(()=>buildOddsCollectionAttempt(x),e=>e instanceof OddsCollectionLedgerError);
+  for (const correlationId of ["Bearer_secret_value", "api_key_live_value", "token-123", "authorization-proof"]) {
+    const x=base(); x.correlationId=correlationId;
+    assert.throws(()=>buildOddsCollectionAttempt(x),e=>e instanceof OddsCollectionLedgerError);
+  }
 });
 test("source timestamps must be chronological and no later than ingestion", () => {
   const x=base(); x.oldestSourceObservedAt="2026-11-07T10:00:03.000Z";

@@ -131,4 +131,22 @@ test("provider HTTP errors never return a fabricated success", async () => {
   const result = await adapter.execute(request("ollama", "qwen2.5:3b"));
   assert.equal(result.status, "failed");
   assert.equal(result.error.category, "retryable");
+
+  const cloudflare = createCloudflareWorkersAIAdapter({
+    accountId: "account", apiToken: "token", model: "@cf/example/free-model",
+    fetchImpl: async () => new Response("temporarily unavailable", { status: 503 })
+  });
+  const cloudflareResult = await cloudflare.execute(request("cloudflare_workers_ai", "@cf/example/free-model"));
+  assert.equal(cloudflareResult.status, "failed");
+  assert.equal(cloudflareResult.error.category, "uncertain");
+
+  const gemini = createGeminiFreeTierAdapter({
+    apiKey: "key", model: "gemini-example-free",
+    fetchImpl: async () => new Response("rate limited", { status: 429 })
+  });
+  const geminiResult = await gemini.execute(request("gemini_free", "gemini-example-free", {
+    privacy: { classification: "public", allowProviderRetention: true }
+  }));
+  assert.equal(geminiResult.status, "failed");
+  assert.equal(geminiResult.error.category, "retryable");
 });
