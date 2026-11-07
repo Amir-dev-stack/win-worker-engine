@@ -11,8 +11,8 @@ const RAW_BASE="https://raw.githubusercontent.com/openfootball/worldcup.json";
 const GITHUB_API="https://api.github.com/repos/openfootball/worldcup.json";
 export function isPinnedOpenFootballWorldCupRevision(value:unknown):value is string{return typeof value==="string"&&/^[a-f0-9]{40}$/i.test(value);}
 export function buildOpenFootballWorldCupDatasetSnapshotId(year:number,fileName:string,sourceRevision:string) {
- if(!Number.isInteger(year)||year<1930||year>2100||!/^worldcup(?:-full)?\\.json$|^clubworldcup\\.json$/i.test(fileName)||!isPinnedOpenFootballWorldCupRevision(sourceRevision)) throw Error("worldcup_dataset_snapshot_identity_invalid");
- return "openfootball-worldcup-"+year+"-"+fileName.replace(/\\.json$/i,"")+"-r"+sourceRevision.toLowerCase();
+ if(!Number.isInteger(year)||year<1930||year>2100||!/^worldcup(?:-full)?\.json$|^clubworldcup\.json$/i.test(fileName)||!isPinnedOpenFootballWorldCupRevision(sourceRevision)) throw Error("worldcup_dataset_snapshot_identity_invalid");
+ return "openfootball-worldcup-"+year+"-"+fileName.replace(/\.json$/i,"")+"-r"+sourceRevision.toLowerCase();
 }
 export function buildOpenFootballWorldCupDatasetEligibility() {
  return {eventTimePrecision:"date" as const,resultAvailability:"unknown" as const,trainingEligible:false as const};
