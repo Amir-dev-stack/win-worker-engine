@@ -24,7 +24,7 @@ test("research assignment manager enforces approval, lease, untrusted intake and
   store.installIsolatedTestStore(memoryStore());
   const manager=await import("../netlify/lib/win-research-assignment-manager.mts");
   const base={title:"Football odds pipeline audit",division:"R2",objective:"Verify timestamp integrity before kickoff.",
-    acceptanceCriteria:["Reject post-kickoff quotes","Provide reproducible tests"],sourceScope:["Open public football data"],
+    acceptanceCriteria:["Reject post-kickoff quotes","Provide reproducible tests"],sourceScope:["https://example.org/data"],
     dataRestrictions:["Public or synthetic only"],expectedArtifacts:["audit.json"],independentReviewerId:"reviewer-1"};
   const assignment=await manager.createResearchAssignment(base,"owner-1",1000);
   assert.equal(assignment.status,"proposed");
@@ -34,6 +34,12 @@ test("research assignment manager enforces approval, lease, untrusted intake and
   await assert.rejects(()=>manager.claimResearchAssignment(assignment.id,"agent-1",2000),/not available/);
   await assert.rejects(()=>manager.approveResearchAssignment(assignment.id,"intruder",2000),/Only the assignment owner/);
   await manager.approveResearchAssignment(assignment.id,"owner-1",2000);
+  assert.equal((await manager.getApprovedResearchAssignments()).length,1);
+  const releaseTask=await manager.createResearchAssignment({...base,title:"Release lease test"},"owner-1",2100);
+  await manager.approveResearchAssignment(releaseTask.id,"owner-1",2200);
+  const releaseClaim=await manager.claimResearchAssignment(releaseTask.id,"agent-release",2300);
+  const released=await manager.releaseResearchAssignment(releaseTask.id,"agent-release",releaseClaim.leaseId,"test release",2400);
+  assert.equal(released.status,"approved");
   const [claimA,claimB]=await Promise.allSettled([
     manager.claimResearchAssignment(assignment.id,"agent-1",3000),
     manager.claimResearchAssignment(assignment.id,"agent-2",3000)
