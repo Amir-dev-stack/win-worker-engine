@@ -8,9 +8,10 @@ import { tmpdir } from "node:os";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const includeBundle = process.argv.includes("--bundle");
-const unknown = process.argv.slice(2).filter(arg => arg !== "--bundle");
+const planOnly = process.argv.includes("--plan");
+const unknown = process.argv.slice(2).filter(arg => arg !== "--bundle" && arg !== "--plan");
 if (unknown.length) {
-  console.error("Unknown option(s): " + unknown.join(", ") + "\nUsage: node scripts/win-verify-local.mjs [--bundle]");
+  console.error("Unknown option(s): " + unknown.join(", ") + "\nUsage: node scripts/win-verify-local.mjs [--bundle] [--plan]");
   process.exit(2);
 }
 
@@ -33,6 +34,10 @@ console.log("Working directory: " + root);
 console.log("No GitHub Actions, deployment, payment, or production changes.");
 for (const [label, command, args] of checks) {
   console.log("\n==> " + label);
+  if (planOnly) {
+    console.log("PLAN (not executed): " + [command, ...args].join(" "));
+    continue;
+  }
   const run = spawnSync(command, args, {
     cwd: root,
     stdio: "inherit",
@@ -45,4 +50,4 @@ for (const [label, command, args] of checks) {
   }
   console.log("PASSED: " + label);
 }
-console.log("\nAll selected WIN local checks passed.");
+console.log(planOnly ? "\nPlan complete. No commands executed." : "\nAll selected WIN local checks passed.");
