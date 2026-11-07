@@ -194,7 +194,8 @@ const required = [
   "scripts/ml-football-import-training.integration.test.mjs",
   "scripts/quality-gates.mjs",
   "scripts/quality-gates-aggregation.test.mjs",
-  "scripts/neon-store-adapter.test.mjs"
+  "scripts/neon-store-adapter.test.mjs",
+  "scripts/independent-review-auth-contract.test.mjs"
 ];
 
 for (const file of required) await access(file);
