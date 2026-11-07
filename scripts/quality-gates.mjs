@@ -40,6 +40,10 @@ const mcpApi = await read("netlify/functions/mcp.mts");
 const oauthStore = await read("netlify/lib/oauth-store.mts");
 const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
 const oauthConsent = await read("netlify/lib/oauth-consent.mts");
+const researchAssignmentManager = await read("netlify/lib/win-research-assignment-manager.mts");
+const openAIResearchExecutor = await read("netlify/lib/win-research-openai-executor.mts");
+const researchAssignmentManagerTests = await read("scripts/win-research-assignment-manager.test.mjs");
+const openAIResearchExecutorTests = await read("scripts/win-research-openai-executor-contract.test.mjs");
 const mcpToolRegistrationMatches = [...mcpApi.matchAll(/server\.registerTool\("([^"]+)"/g)];
 const mcpToolsHaveMatchingScopeGuards = mcpToolRegistrationMatches.every((match, index) => {
   const end = index + 1 < mcpToolRegistrationMatches.length ? mcpToolRegistrationMatches[index + 1].index : mcpApi.length;
@@ -416,6 +420,16 @@ const llmExecutionTests = await read("scripts/llm-execution.test.mjs");
 const agentsSdk = await read("netlify/lib/agents-sdk.mts");
 const agentsSdkAdapter = await read("netlify/lib/agents-sdk-adapter.mts");
 const agentsSdkAdapterTests = await read("scripts/agents-sdk-adapter.test.mjs");
+add("WIN cloud research artifact manifests are cryptographically bound to assignment and agent",
+  researchAssignmentManager.includes("storeResearchArtifact") &&
+  researchAssignmentManager.includes("record.assignmentId !== id") &&
+  researchAssignmentManager.includes("record.agentId !== agentId") &&
+  researchAssignmentManager.includes("actualDigest !== artifact.sha256.toLowerCase()") &&
+  openAIResearchExecutor.includes("storeResearchArtifact(assignment.id, agentId, leaseId, artifact, sha256)") &&
+  researchAssignmentManagerTests.includes("forged cloud artifact reference is rejected") === false &&
+  researchAssignmentManagerTests.includes("Cloud artifact") &&
+  openAIResearchExecutorTests.includes("storeResearchArtifact"),
+  "Cloud artifact submissions must resolve to stored bytes, match the active assignment and agent, and pass a recomputed SHA-256 check.");
 add("WIN production OpenAI agent calls use the governed LLM execution layer",
   ai.includes("executeWinLLMWithPolicy") &&
   ai.includes("createOpenAIWinLLMAdapter") &&
