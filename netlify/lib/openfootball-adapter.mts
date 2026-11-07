@@ -25,6 +25,10 @@ export function buildOpenFootballDatasetSnapshotId(season: string, fileName: str
   return "openfootball-" + season + "-" + fileName.replace(/\.json$/i, "") + "-r" + sourceRevision.toLowerCase();
 }
 
+export function buildOpenFootballDatasetEligibility() {
+  return { eventTimePrecision: "date_only" as const, resultAvailability: "unknown" as const, trainingEligible: false as const };
+}
+
 export function buildOpenFootballSyncRunId(startedAt: string, sourceRevision: string) {
   if (!Number.isFinite(Date.parse(startedAt)) || !isPinnedOpenFootballRevision(sourceRevision)) {
     throw new Error("openfootball_sync_run_identity_invalid");
@@ -116,7 +120,7 @@ export async function syncOpenFootballHistoricalData() {
               id:eventId, eventId, sport:"football", season, competitionFile:file.name,
               competition:typeof parsed?.name === "string" ? parsed.name : file.name,
               event:home + " vs " + away, homeTeam:home, awayTeam:away,
-              eventStart:date, eventTimePrecision:"date_only", resultAvailableAt:null, trainingEligible:false, round:typeof m?.round === "string" ? m.round : null,
+              eventStart:date, ...buildOpenFootballDatasetEligibility(), resultAvailableAt:null, round:typeof m?.round === "string" ? m.round : null,
               venue:typeof m?.ground === "string" ? m.ground : null,
               fullTimeScore:ft, halfTimeScore:ht,
               status:ft ? "completed" : "scheduled_or_unscored",
@@ -133,7 +137,7 @@ export async function syncOpenFootballHistoricalData() {
             competition:parsed?.name || file.name, sourceUrl:url, sourceLicence:"CC0-1.0",
             retrievedAt:new Date().toISOString(), rawChecksum:checksum,
             totalRows:normalized.length, scoredRows:normalized.filter(x=>x.fullTimeScore).length,
-            records:normalized, eventTimePrecision:"date_only", resultAvailability:"unknown", trainingEligible:false, origin:"provider_historical_data", lab:"model-lab"
+            records:normalized, ...buildOpenFootballDatasetEligibility(), origin:"provider_historical_data", lab:"model-lab"
           });
           summary.filesFetched++;
           summary.matchesImported += normalized.length;
