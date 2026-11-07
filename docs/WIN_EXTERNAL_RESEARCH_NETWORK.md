@@ -2,7 +2,7 @@
 
 ## Purpose
 
-WIN may use a governed network of OpenAI-powered research agents as an external R&D team. These agents receive bounded assignments, research independently, run reproducible experiments in isolated workspaces, challenge each other's conclusions, and submit evidence-backed recommendations to WIN.
+WIN may use a governed network of independent research agents powered by OpenAI and other approved free or owner-authorized providers as an external R&D team. These agents receive bounded assignments, research independently, run reproducible experiments in isolated workspaces, challenge each other's conclusions, and submit evidence-backed recommendations to WIN.
 
 This network is an R&D contributor, not a second production brain. It does not directly change trusted WIN rules, production code, model weights, strategy status, or coupon decisions.
 
@@ -116,7 +116,7 @@ Only accepted findings are distilled into the WIN Knowledge Library. Keep origin
 
 ## Cost-aware operation for the initial USD 5 API purchase
 
-The owner has explicitly authorized the OpenAI research agents to use OpenAI API credits when a task needs them. This is limited to OpenAI model usage and OpenAI-hosted tools; do not connect other AI providers, external agent platforms, or third-party tool services yet. Preserve the existing WIN $2.95 application stop and owner lock as the current per-project safety ceiling until the owner changes it. The reported USD 5 purchase is not a verified remaining balance. No auto-recharge, no hidden spend, and no unlimited/continuous loops. Every assignment must reserve budget before a model call, count model and hosted-tool usage, settle actual usage, and stop when its assignment or global ceiling is reached.
+The owner has authorized additional agent frameworks, model providers, research tools and public data sources when they are genuinely free and sustainable. The owner has also authorized bounded OpenAI API spending for tasks that need it. Follow the free-first provider plan: local Ollama first, then verified free Cloudflare/Gemini quotas for public non-sensitive tasks, and OpenAI as a bounded paid escalation route. Preserve the existing WIN $2.95 application stop and owner lock until the owner changes them. The reported USD 5 purchase is not a verified remaining balance. No paid upgrade, auto-recharge, hidden spend or unlimited/continuous loops. Every assignment must reserve budget before a paid model call, meter free quotas before free-provider calls, record model and hosted-tool usage, reconcile actual usage and stop at the task or global ceiling.
 
 Initial rollout:
 1. Build assignment definitions, storage schemas and evaluators without model calls.
@@ -126,7 +126,7 @@ Initial rollout:
 5. Estimate cost per accepted research artifact before deciding whether to scale.
 6. Keep recurring research disabled until the owner explicitly approves a schedule and budget.
 
-Do not confuse OpenAI API credits with unlimited execution, and do not treat an application-side estimated ledger as a provider-enforced billing cap.
+Do not confuse API credits or free-tier allocations with unlimited execution. Application-side ledgers are not provider-enforced billing caps; use provider-side controls wherever available and fail closed when cost or quota cannot be reconciled.
 
 ## Initial pilot assignments
 
