@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const runner = new URL("./win-verify-local.mjs", import.meta.url);
+const runner = fileURLToPath(new URL("./win-verify-local.mjs", import.meta.url));
 
 function run(...args) {
-  return spawnSync(process.execPath, [runner.pathname, ...args], {
+  return spawnSync(process.execPath, [runner, ...args], {
     encoding: "utf8",
     timeout: 10000,
   });
