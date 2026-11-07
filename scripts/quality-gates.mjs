@@ -450,6 +450,7 @@ add("WIN cloud research artifact manifests are cryptographically bound to assign
   researchAssignmentManager.includes("actualDigest !== artifact.sha256.toLowerCase()") &&
   openAIResearchExecutor.includes("storeResearchArtifact(assignment.id, agentId, leaseId, artifact, sha256)") &&
   researchAssignmentManagerTests.includes("Cloud artifact") &&
+  researchAssignmentManagerTests.includes("forgedMediaType") &&
   openAIResearchExecutorTests.includes("storeResearchArtifact"),
   "Cloud artifact submissions must resolve to stored bytes, match the active assignment and agent, and pass a recomputed SHA-256 check.");
 add("WIN production OpenAI agent calls use the governed LLM execution layer",
