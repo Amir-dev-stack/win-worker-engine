@@ -16,7 +16,8 @@
     "@netlify/blobs": "11.1.7",
     "@netlify/functions": "latest",
     "zod": "latest",
-    "@openai/agents": "0.21.0"
+    "@openai/agents": "0.21.0",
+    "@neondatabase/serverless": "1.0.2"
   },
   "overrides": {
     "import-in-the-middle": "3.5.3"
