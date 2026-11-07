@@ -77,7 +77,7 @@ export function buildOddsCollectionAttempt(input: {
   else if (input.outcome === "provider_error") stopReason = "provider_error_requires_review";
   else if (input.outcome === "not_attempted") stopReason = "attempt_not_executed";
   else if (remaining === null || lastRequest === null || totalUsed === null) stopReason = "provider_usage_headers_incomplete";
-  else if (remaining < input.reserveCredits) stopReason = "provider_quota_below_protected_reserve";
+  else if (remaining <= input.reserveCredits) stopReason = "provider_quota_below_protected_reserve";
   else if (actualCredits > input.estimatedCredits) stopReason = "actual_usage_exceeded_estimate";
   const attemptId = "winca_" + createHash("sha256").update([input.providerId, input.licenceId, input.correlationId].join("|")).digest("hex");
   const requiresOwnerReview = stopReason !== null || reconciliation === "unknown" || reconciliation === "over_estimate";
