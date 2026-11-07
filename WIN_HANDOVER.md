@@ -13,13 +13,14 @@ Last updated: 2026-11-07 (UTC)
 
 ## Recent verification
 
+- Runtime dependency manifests are pinned: `@modelcontextprotocol/sdk` 1.32.2, `@netlify/functions` 6.1.1 and `zod` 4.6.7. A lockfile is still required for full transitive reproducibility.
 - The previous local status record reported **395 passing tests**, quality gates and build-component checks. Those local changes/results were not published and cannot be treated as current remote CI evidence.
 - This branch has no verified current-head hosted test/build result in this handover.
 - The repaired test now checks the literal `startsWith("win-blob://")` contract rather than an over-escaped regular expression. The runner still requires a verified cloud artifact location; local-file locations remain prohibited.
 
 ## Incomplete work and blockers
 
-1. Generate and commit a reproducible dependency lockfile through a verified local install; do not claim `npm ci` support until then.
+1. Generate and commit a reproducible dependency lockfile through a verified local install; direct runtime dependencies are pinned, but do not claim `npm ci` support until a lockfile is committed.
 2. Run the full test, quality, and build suite against the current branch head and record exact outputs.
 3. Run the Neon integration test only against the dedicated test branch, with its explicit confirmation gate. Do not use production credentials or migrate records.
 4. Before any real-data work, select and approve a licensed football source, record provenance and rights, and complete out-of-sample calibration/settlement validation.
