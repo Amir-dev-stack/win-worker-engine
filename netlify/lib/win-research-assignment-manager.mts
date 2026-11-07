@@ -167,17 +167,20 @@ export async function reviewResearchSubmission(id: string, reviewerId: string, d
   const submissionId = String(assignment.value.submissionId || "");
   const submission = await getWithMetadata<any>(SUBMISSIONS, submissionId);
   if (!submission || submission.value.agentId === reviewerId) throw new Error("Submitter and reviewer must be independent.");
-  const status = decision === "accept" ? "accepted_research" : "rejected";\n  if (decision === "accept") await promoteReviewedResearchMemory({ agentId: submission.value.agentId, assignmentId: id, reviewerId, reviewedAt: nowIso(nowMs) });
-  const saved = await putIfMatch(SUBMISSIONS, submissionId, {
+  const status = decision === "accept" ? "accepted_research" : "rejected";\n  const saved = await putIfMatch(SUBMISSIONS, submissionId, {
     ...submission.value, status, reviewerId, reviewRationale: clean(rationale, 4000),
     reviewedAt: nowIso(nowMs), trustedKnowledgePromotion: "blocked_pending_separate_owner_approval"
   }, submission.etag);
   if (!saved?.modified) throw new Error("Submission changed during review; reload before retrying.");
-  return mutateAssignment(id, nowMs, current => {
+  const reviewedAssignment = await mutateAssignment(id, nowMs, current => {
     if (current.submissionId !== submissionId) throw new Error("Assignment submission changed during review.");
     return { ...current, status: decision === "accept" ? "accepted" : "rejected", reviewedBy: reviewerId,
       reviewRationale: clean(rationale, 4000), trustedKnowledgePromotion: "separate_owner_action_required" };
   });
+  if (decision === "accept") {
+    await promoteReviewedResearchMemory({ agentId: submission.value.agentId, assignmentId: id, reviewerId, reviewedAt: nowIso(nowMs) });
+  }
+  return reviewedAssignment;
 }
 
 export async function getResearchAssignmentStatus() {
