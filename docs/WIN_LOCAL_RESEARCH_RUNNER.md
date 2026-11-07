@@ -119,3 +119,8 @@ The owner reported that Windows PowerShell successfully reached the local Ollama
 - The PowerShell formatted summary did not display the nested assistant message content. A direct `$result.choices[0].message.content` inspection is still needed to verify the exact response text.
 
 This verifies local service/API reachability only. It does **not** verify the WIN runner, assignment claiming, source retrieval, artifact submission, or cloud-to-local end-to-end operation. Those remain blocked until the runner endpoint is deployed and its separate token/agent allowlist are configured. The PC is not required for cloud-hosted WIN services to operate, but local Ollama tasks cannot run while the PC is off or the Ollama service is stopped.
+
+
+### Exact local chat response confirmed — 2026-11-07
+
+The owner subsequently inspected `$result.choices[0].message.content` in Windows PowerShell and confirmed the exact response `WIN_LOCAL_API_OK`. This completes the local Ollama OpenAI-compatible chat endpoint smoke test. It still does not exercise the WIN assignment runner or a cloud-to-local task lifecycle.
