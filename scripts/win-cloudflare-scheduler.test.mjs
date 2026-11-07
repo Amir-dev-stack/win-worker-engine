@@ -32,17 +32,36 @@ test("health cron sends one authenticated read-only request", async () => {
   assert.equal(calls, 1);
 });
 
-test("four-hour failover cron posts to the no-AI result runner", async () => {
+test("four-hour failover cron probes heartbeat then posts only when the primary run is stale", async () => {
   let calls = 0;
+  const now = Date.now();
   const result = await dispatchWinCronJob("53 */4 * * *", env, async (url, init) => {
     calls++;
+    assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-only-secret");
+    if (calls === 1) {
+      assert.equal(String(url), "https://win-worker-engine.netlify.app/api/health");
+      assert.equal(init?.method, "GET");
+      return Response.json({ learningSystem: { postMatchFollowup: { lastCompletedAt: new Date(now - 4 * 60 * 60 * 1000).toISOString() } } });
+    }
     assert.equal(String(url), "https://win-worker-engine.netlify.app/.netlify/functions/post-match-runner");
     assert.equal(init?.method, "POST");
-    assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-only-secret");
-    return new Response(JSON.stringify({ accepted: true, status: "completed", aiCalls: 0 }), { status: 200 });
-  });
+    return Response.json({ accepted: true, status: "completed", aiCalls: 0 });
+  }, now);
   assert.deepEqual(result, { job: "post_match_failover", status: 200, ok: true });
-  assert.equal(calls, 1, "a cron invocation must not perform hidden automatic retries");
+  assert.equal(calls, 2, "one heartbeat probe and one bounded failover dispatch are expected");
+});
+
+test("failover skips when the primary Netlify run completed recently", async () => {
+  let calls = 0;
+  const now = Date.now();
+  const result = await dispatchWinCronJob("53 */4 * * *", env, async (url, init) => {
+    calls++;
+    assert.equal(String(url), "https://win-worker-engine.netlify.app/api/health");
+    assert.equal(init?.method, "GET");
+    return Response.json({ learningSystem: { postMatchFollowup: { lastCompletedAt: new Date(now - 30 * 60 * 1000).toISOString() } } });
+  }, now);
+  assert.deepEqual(result, { job: "post_match_failover", skipped: true, reason: "recent_primary_completion" });
+  assert.equal(calls, 1, "a recent primary completion must prevent duplicate result checking");
 });
 
 test("unknown cron expressions are skipped without making a request", async () => {
@@ -69,13 +88,14 @@ test("scheduler rejects missing secrets and unsafe origins before network access
   assert.equal(calls, 0);
 });
 
-test("scheduler treats non-2xx responses as failed dispatches without retrying", async () => {
+test("scheduler treats failed health and result dispatches as errors without retrying", async () => {
   let calls = 0;
   await assert.rejects(() => dispatchWinCronJob("53 */4 * * *", env, async () => {
     calls++;
+    if (calls === 1) return Response.json({ learningSystem: { postMatchFollowup: {} } });
     return new Response("not available", { status: 503 });
   }), /HTTP 503/);
-  assert.equal(calls, 1);
+  assert.equal(calls, 2, "the only calls are the health probe and one failover dispatch");
 });
 
 test("public HTTP surface is closed and does not expose scheduler controls", async () => {
