@@ -20,6 +20,8 @@ const [coverage, coverageApi, monitor, hourlyMonitor, settlement, independentRev
 ]);
 const cloudflareWinScheduler = await read("cloudflare/win-scheduler/src/index.ts");
 const cloudflareWinSchedulerTests = await read("scripts/win-cloudflare-scheduler.test.mjs");
+const postMatchRunnerScheduler = await read("netlify/functions/post-match-runner.mts");
+const healthSchedulerStatus = await read("netlify/functions/health.mts");
 const dashboardAuth = await read("netlify/edge-functions/dashboard-auth.ts");
 const postMatch = await read("netlify/lib/post-match-followup.mts");
 const matchEvidence = await read("netlify/lib/match-evidence.mts");
@@ -428,9 +430,14 @@ add("Cloudflare 24/7 scheduler uses authenticated low-cost health and result-che
   cloudflareWinScheduler.includes("WIN_INTERNAL_TOKEN") &&
   cloudflareWinScheduler.includes("AbortSignal.timeout(10_000)") &&
   cloudflareWinScheduler.includes("post_match_failover") &&
+  cloudflareWinScheduler.includes("3.5 * 60 * 60 * 1000") &&
+  postMatchRunnerScheduler.includes("lastCompletedAt: completedAt") &&
+  postMatchRunnerScheduler.includes("completedLock?.modified") &&
+  healthSchedulerStatus.includes("postMatchFollowup: postMatchState") &&
   !cloudflareWinScheduler.includes("OPENAI_API_KEY") &&
   !cloudflareWinScheduler.includes("runScheduledLearning") &&
-  cloudflareWinSchedulerTests.includes("four-hour failover cron posts to the no-AI result runner") &&
+  cloudflareWinSchedulerTests.includes("four-hour failover cron probes heartbeat then posts only when the primary run is stale") &&
+  cloudflareWinSchedulerTests.includes("failover skips when the primary Netlify run completed recently") &&
   cloudflareWinSchedulerTests.includes("scheduler rejects missing secrets and unsafe origins") &&
   cloudflareWinSchedulerTests.includes("without retrying"),
   "Cloudflare must use a closed public surface, HTTPS-only origin, server-side bearer secret, bounded requests and no paid AI or hidden retries.");
