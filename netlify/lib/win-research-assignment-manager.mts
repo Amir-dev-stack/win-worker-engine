@@ -194,6 +194,13 @@ export async function submitResearchAssignment(id: string, agentId: string, leas
     ...current.value, status: "submitted", submissionId, leaseExpiresAt: null, updatedAt: nowIso(nowMs)
   }, current.etag);
   if (!updated?.modified) throw new Error("Submission stored in the untrusted inbox, but assignment state changed concurrently; manual reconciliation required.");
+  // Private agent memory is a best-effort projection; it never controls submission trust or reviewer eligibility.
+  try {
+    await rememberResearchSubmission({
+      agentId, assignmentId: id, division: current.value.division, summary, findings,
+      limitations, evidence: safeEvidence, now: nowIso(nowMs)
+    });
+  } catch { /* The untrusted submission remains valid; memory can be reconciled separately. */ }
   return submission;
 }
 
