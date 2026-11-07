@@ -1,5 +1,5 @@
 import { authorized } from "../lib/auth.mts";
-import { put, getWithMetadata, putIfMatch, putIfNew } from "../lib/store.mts";
+import { get, put, getWithMetadata, putIfMatch, putIfNew } from "../lib/store.mts";
 import { runPostMatchFollowups } from "../lib/post-match-followup.mts";
 
 export default async (req: Request) => {
