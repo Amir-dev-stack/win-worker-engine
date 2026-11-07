@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildOpenFootballSyncRunId, buildOpenFootballDatasetSnapshotId, selectLatestOpenFootballSnapshots } from "../netlify/lib/openfootball-adapter.mts";
+import { buildOpenFootballSyncRunId, buildOpenFootballDatasetSnapshotId, buildOpenFootballDatasetEligibility, selectLatestOpenFootballSnapshots } from "../netlify/lib/openfootball-adapter.mts";
 import { buildOpenFootballWorldCupSyncRunId, buildOpenFootballWorldCupDatasetEligibility, buildOpenFootballWorldCupDatasetSnapshotId, selectLatestOpenFootballWorldCupSnapshots } from "../netlify/lib/openfootball-worldcup-adapter.mts";
 
 const revision = "a".repeat(40);
@@ -99,4 +99,13 @@ test("OpenFootball snapshot selection handles malformed retrieval timestamps det
   const latest = selectLatestOpenFootballSnapshots(snapshots);
   assert.equal(latest.length, 1);
   assert.equal(latest[0].sourceRevision, "b".repeat(40));
+});
+
+
+test("ordinary OpenFootball imports are explicitly excluded from point-in-time training", () => {
+  assert.deepEqual(buildOpenFootballDatasetEligibility(), {
+    eventTimePrecision: "date_only",
+    resultAvailability: "unknown",
+    trainingEligible: false
+  });
 });
