@@ -1,5 +1,5 @@
 import { authorized } from "../lib/auth.mts";
-import { put, getWithMetadata, putIfMatch, putIfNew } from "../lib/store.mts";
+import { get, put, getWithMetadata, putIfMatch, putIfNew } from "../lib/store.mts";
 import { runPostMatchFollowups } from "../lib/post-match-followup.mts";
 
 export default async (req: Request) => {
@@ -8,6 +8,7 @@ export default async (req: Request) => {
   const nowMs = Date.now();
   const now = new Date(nowMs).toISOString();
   const lockKey = "active";
+  const priorState = await get<any>("scheduler-state", "post-match-followup") || {};
   const prior = await getWithMetadata<any>("library/post-match-runner-lock", lockKey);
   if (prior?.value?.status === "running" && Date.parse(prior.value.leaseExpiresAt || "") > nowMs) {
     return Response.json({ accepted: false, status: "already_running", startedAt: prior.value.startedAt });
@@ -25,18 +26,25 @@ export default async (req: Request) => {
   }
   const lockEtag = claimed.etag;
   await put("scheduler-state", "post-match-followup", {
-    status: "running", startedAt: now, runner: "post-match-background", aiCalls: 0
+    ...priorState, status: "running", startedAt: now, lastAttemptAt: now,
+    runner: "post-match-background", aiCalls: 0
   });
   try {
     const summary = await runPostMatchFollowups();
-    await putIfMatch("library/post-match-runner-lock", lockKey, {
-      ...lock, status: "completed", completedAt: new Date().toISOString(), leaseExpiresAt: null
+    const completedAt = new Date().toISOString();
+    const completedLock = await putIfMatch("library/post-match-runner-lock", lockKey, {
+      ...lock, status: "completed", completedAt, leaseExpiresAt: null
     }, lockEtag);
-    return Response.json({ accepted: true, status: summary.status, summary });
+    if (!completedLock?.modified) throw new Error("Post-match runner lease was lost before completion could be recorded.");
+    await put("scheduler-state", "post-match-followup", {
+      ...priorState, status: "completed", startedAt: now, lastCheck: completedAt,
+      lastCompletedAt: completedAt, resultStatus: summary.status, aiCalls: 0
+    });
+    return Response.json({ accepted: true, status: summary.status, summary, completedAt, aiCalls: 0 });
   } catch (error) {
     await put("scheduler-state", "post-match-followup", {
-      status: "failed", startedAt: now, lastCheck: new Date().toISOString(),
-      error: String(error).slice(0, 400), aiCalls: 0
+      ...priorState, status: "failed", startedAt: now, lastCheck: new Date().toISOString(),
+      lastError: String(error).slice(0, 400), aiCalls: 0
     });
     await putIfMatch("library/post-match-runner-lock", lockKey, {
       ...lock, status: "failed", failedAt: new Date().toISOString(), leaseExpiresAt: null,

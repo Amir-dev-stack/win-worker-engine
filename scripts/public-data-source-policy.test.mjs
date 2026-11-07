@@ -7,7 +7,30 @@ import {
   providerMayRunAutomatically,
   assertProviderImportAllowed
 } from "../netlify/lib/data-provider-registry.mts";
-import { CONSENSUS_SOURCES } from "../netlify/lib/consensus-market-adapter.mts";
+import { CONSENSUS_SOURCES, isPinnedDatasetRevision } from "../netlify/lib/consensus-market-adapter.mts";
+import { isPinnedOpenFootballRevision } from "../netlify/lib/openfootball-adapter.mts";
+import { isPinnedOpenFootballWorldCupRevision, readBoundedWorldCupResponse } from "../netlify/lib/openfootball-worldcup-adapter.mts";
+
+
+test("The Odds API stays a zero-cost research candidate until owner licence and quota review", () => {
+  const candidate = DATA_PROVIDER_REGISTRY.find(x => x.id === "the-odds-api");
+  assert.ok(candidate);
+  assert.equal(candidate.accessMode, "licensed_api");
+  assert.equal(candidate.licenceReview, "required");
+  assert.equal(candidate.automationAllowed, false);
+  assert.match(candidate.licenceReference, /^https:\/\/the-odds-api\.com\/terms-and-conditions\.html$/);
+  assert.match(candidate.notes, /500 credits\/month/);
+  assert.match(candidate.notes, /historical odds endpoints are paid-plan-only/);
+  assert.match(candidate.notes, /permit retaining data and using it for statistical\/ML training/);
+  assert.throws(() => assertProviderImportAllowed(candidate.id, ["prematch_odds"]), /automation_disabled/);
+  assert.equal(providerMayRunAutomatically(candidate, {
+    providerId: candidate.id,
+    status: "connected",
+    verifiedAt: "2026-11-07T00:00:00.000Z",
+    enabledDomains: ["prematch_odds"],
+    termsReference: candidate.licenceReference
+  }), false);
+});
 
 test("TipsAudit is discoverable but cannot enter automated data ingestion", () => {
   const candidate = DATA_PROVIDER_REGISTRY.find(x => x.id === "tipsaudit-track-record-public");
@@ -85,7 +108,7 @@ test("each adapter checks registry policy before its first upstream operation", 
 
   const footballGate = football.indexOf('assertProviderImportAllowed("openfootball-football-json"');
   const footballStart = football.indexOf("export async function syncOpenFootballHistoricalData()");
-  const footballFetch = football.indexOf("const root = await getJson(API)");
+  const footballFetch = football.indexOf('const root = await getJson(API + "?ref=" + sourceRevision)');
   assert.ok(footballGate > footballStart && footballGate < footballFetch);
 
   const worldCupStart = worldCup.indexOf("export async function syncOpenFootballWorldCupData()");
@@ -162,4 +185,82 @@ test("commercial and source-discovery-only providers remain disabled pending rig
   for (const provider of DATA_PROVIDER_REGISTRY.filter(x => x.licenceReview === "required")) {
     assert.equal(provider.automationAllowed, false, provider.id);
   }
+});
+
+test("Hugging Face consensus imports require immutable 40-character revisions", () => {
+  assert.equal(isPinnedDatasetRevision("0123456789abcdef0123456789abcdef01234567"), true);
+  assert.equal(isPinnedDatasetRevision("main"), false);
+  assert.equal(isPinnedDatasetRevision("latest"), false);
+  assert.equal(isPinnedDatasetRevision("0123456789abcdef"), false);
+  assert.equal(isPinnedDatasetRevision("g123456789abcdef0123456789abcdef01234567"), false);
+});
+
+test("consensus adapter pins both tree and raw downloads and skips unchanged revisions", async () => {
+  const adapter = await readFile(new URL("../netlify/lib/consensus-market-adapter.mts", import.meta.url), "utf8");
+  assert.ok(adapter.includes("/revision/main"));
+  assert.ok(adapter.includes('/tree/"+sourceRevision+"'));
+  assert.ok(adapter.includes('/resolve/"+sourceRevision+"/'));
+  assert.ok(adapter.includes('existing?.sourceRevision===sourceRevision'));
+  assert.ok(adapter.includes('status:"unchanged"'));
+  assert.ok(adapter.includes("sourceCommitUrl"));
+  assert.ok(!adapter.includes("/tree/main?recursive=true"));
+  assert.ok(!adapter.includes("/resolve/main/"));
+});
+
+test("OpenFootball historical imports require immutable Git commit revisions", () => {
+  assert.equal(isPinnedOpenFootballRevision("0123456789abcdef0123456789abcdef01234567"), true);
+  assert.equal(isPinnedOpenFootballRevision("master"), false);
+  assert.equal(isPinnedOpenFootballRevision("main"), false);
+  assert.equal(isPinnedOpenFootballRevision("short"), false);
+});
+
+test("OpenFootball historical adapter pins contents and raw URLs and reuses completed unchanged snapshots", async () => {
+  const adapter = await readFile(new URL("../netlify/lib/openfootball-adapter.mts", import.meta.url), "utf8");
+  assert.ok(adapter.includes("/commits/master"));
+  assert.ok(adapter.includes('API + "?ref=" + sourceRevision'));
+  assert.ok(adapter.includes('API + "/" + season + "?ref=" + sourceRevision'));
+  assert.ok(adapter.includes('RAW + "/" + sourceRevision + "/"'));
+  assert.ok(adapter.includes('previous?.sourceRevision === sourceRevision'));
+  assert.ok(adapter.includes('previous?.status === "completed"'));
+  assert.ok(adapter.includes('status: "unchanged"'));
+  assert.ok(adapter.includes("sourceCommitUrl"));
+  assert.ok(!adapter.includes("football.json/master/"));
+});
+
+test("OpenFootball World Cup imports require immutable Git commit revisions", () => {
+  assert.equal(isPinnedOpenFootballWorldCupRevision("0123456789abcdef0123456789abcdef01234567"), true);
+  assert.equal(isPinnedOpenFootballWorldCupRevision("master"), false);
+  assert.equal(isPinnedOpenFootballWorldCupRevision("main"), false);
+  assert.equal(isPinnedOpenFootballWorldCupRevision("0123456789abcdef"), false);
+});
+
+test("World Cup historical adapter pins raw data and reuses a completed unchanged snapshot", async () => {
+  const adapter = await readFile(new URL("../netlify/lib/openfootball-worldcup-adapter.mts", import.meta.url), "utf8");
+  assert.ok(adapter.includes("isPinnedOpenFootballWorldCupRevision"));
+  assert.ok(adapter.includes('/commits/master'));
+  assert.ok(adapter.includes('RAW_BASE+"/"+sourceRevision+"/"'));
+  assert.ok(adapter.includes('previous?.sourceRevision===sourceRevision'));
+  assert.ok(adapter.includes('previous?.status==="completed"'));
+  assert.ok(adapter.includes('status:"unchanged"'));
+  assert.ok(adapter.includes("sourceCommitUrl"));
+  assert.ok(adapter.includes('sourceRevision,sourceCommitUrl'));
+  assert.ok(!adapter.includes("worldcup.json/master/"));
+});
+
+test("World Cup upstream responses enforce declared and streamed byte limits", async () => {
+  const declaredTooLarge = new Response("{}", { headers: { "content-length": "100" } });
+  await assert.rejects(() => readBoundedWorldCupResponse(declaredTooLarge, 10), /worldcup_dataset_over_limit/);
+  const streamedTooLarge = new Response(new Uint8Array(11));
+  await assert.rejects(() => readBoundedWorldCupResponse(streamedTooLarge, 10), /worldcup_dataset_over_limit/);
+  const valid = new Response('{"ok":true}');
+  assert.equal(await readBoundedWorldCupResponse(valid, 20), '{"ok":true}');
+  const invalidUtf8 = new Response(new Uint8Array([0xc3, 0x28]));
+  await assert.rejects(() => readBoundedWorldCupResponse(invalidUtf8, 10), /worldcup_response_invalid_utf8/);
+});
+test("World Cup upstream requests have a bounded timeout", async () => {
+  const adapter = await readFile(new URL("../netlify/lib/openfootball-worldcup-adapter.mts", import.meta.url), "utf8");
+  assert.ok(adapter.includes("UPSTREAM_TIMEOUT_MS=12_000"));
+  assert.ok(adapter.includes("AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)"));
+  assert.ok(adapter.includes("MAX_REVISION_RESPONSE_BYTES=256_000"));
+  assert.ok(adapter.includes("MAX_DATASET_RESPONSE_BYTES=4_000_000"));
 });

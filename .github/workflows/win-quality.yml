@@ -1,0 +1,44 @@
+name: WIN build and quality
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [docs/win-staged-build-roadmap]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: win-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Node 22 build, tests and quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run complete test suite and architecture gates
+        run: npm test
+
+      - name: Run production build checks
+        run: npm run build
+
+      - name: Parse dashboard JavaScript
+        run: node --check public/app.js
+
+      - name: Bundle every Netlify function
+        run: npx --yes esbuild@0.25.0 --bundle --packages=external --platform=node --target=node22 --format=esm --outdir=/tmp/win-netlify-functions netlify/functions/*.mts

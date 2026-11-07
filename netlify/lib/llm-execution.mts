@@ -8,6 +8,36 @@ import {
   type WinLLMResponseV1
 } from "./llm-contract.mts";
 
+/**
+ * Runs one asynchronous operation with cooperative cancellation and a hard
+ * caller-side wait bound. A timed-out operation may still be active if it
+ * ignores AbortSignal; callers must treat its external outcome as uncertain.
+ */
+export async function executeWithAbortTimeout<T>(
+  execute: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number
+): Promise<{ timedOut: false; value: T } | { timedOut: true }> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 1) {
+    throw new Error("WIN execution timeout must be a positive finite number.");
+  }
+  const controller = new AbortController();
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<{ timedOut: true }>(resolve => {
+    timeoutHandle = setTimeout(() => {
+      controller.abort(new Error("WIN asynchronous operation timed out"));
+      resolve({ timedOut: true });
+    }, timeoutMs);
+  });
+  try {
+    const execution = Promise.resolve()
+      .then(() => execute(controller.signal))
+      .then(value => ({ timedOut: false as const, value }));
+    return await Promise.race([execution, timeout]);
+  } finally {
+    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+  }
+}
+
 export type WinLLMExecutionResult = {
   providerId: string;
   response: WinLLMResponseV1;
@@ -73,6 +103,10 @@ export async function executeWinLLMWithPolicy(input: {
     const execution = Promise.resolve().then(() => adapter.execute(input.request, controller.signal));
     const response = await Promise.race([execution, timeout]);
     const validationErrors = validateWinLLMResponse(input.request, response, selected.id);
+    if (response?.status === "completed" && !selected.models.includes(response.model)) validationErrors.push("response_model_not_approved");
+    if (response && response.usage?.outputTokens > input.request.limits.maxOutputTokens) {
+      validationErrors.push("response_output_token_limit_exceeded");
+    }
     const valid = validationErrors.length === 0;
     return {
       providerId: selected.id,
@@ -82,8 +116,9 @@ export async function executeWinLLMWithPolicy(input: {
       retryPermitted: valid && response.status === "failed" && response.error?.category === "retryable"
     };
   } catch {
-    const response = failedResponse(input.request, selected.id, "uncertain", "provider_execution_outcome_uncertain", Date.now() - started);
-    return { providerId: selected.id, response, timedOut: false, validationErrors: [], retryPermitted: false };
+    const code = timedOut ? "provider_timeout_outcome_uncertain" : "provider_execution_outcome_uncertain";
+    const response = failedResponse(input.request, selected.id, "uncertain", code, Date.now() - started);
+    return { providerId: selected.id, response, timedOut, validationErrors: [], retryPermitted: false };
   } finally {
     if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
   }

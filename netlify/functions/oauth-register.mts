@@ -1,5 +1,6 @@
 import type { Config } from "@netlify/functions";
 import { randomUUID } from "node:crypto";
+import { readOAuthJsonBody } from "../lib/oauth-request.mts";
 import { saveOAuthRecord } from "../lib/oauth-store.mts";
 
 function validRedirect(value: unknown): value is string {
@@ -34,12 +35,9 @@ function validRedirect(value: unknown): value is string {
 
 export default async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
-    return Response.json({ error: "invalid_client_metadata" }, { status: 400 });
-  }
+  const parsedBody = await readOAuthJsonBody(req);
+  if (parsedBody instanceof Response) return parsedBody;
+  const body = parsedBody.body;
 
   const redirectUris = Array.isArray(body?.redirect_uris) ? body.redirect_uris : [];
   if (!redirectUris.length || redirectUris.length > 10 || !redirectUris.every(validRedirect)) {
@@ -48,11 +46,13 @@ export default async (req: Request) => {
   if (body.token_endpoint_auth_method && body.token_endpoint_auth_method !== "none") {
     return Response.json({ error: "unsupported_token_endpoint_auth_method" }, { status: 400 });
   }
-  if (Array.isArray(body.grant_types) &&
-      body.grant_types.some((x: string) => !["authorization_code", "refresh_token"].includes(x))) {
+  if (body.grant_types !== undefined && (!Array.isArray(body.grant_types) ||
+      !body.grant_types.includes("authorization_code") ||
+      body.grant_types.some((x: string) => !["authorization_code", "refresh_token"].includes(x)))) {
     return Response.json({ error: "unsupported_grant_type" }, { status: 400 });
   }
-  if (Array.isArray(body.response_types) && body.response_types.some((x: string) => x !== "code")) {
+  if (body.response_types !== undefined && (!Array.isArray(body.response_types) ||
+      !body.response_types.includes("code") || body.response_types.some((x: string) => x !== "code"))) {
     return Response.json({ error: "unsupported_response_type" }, { status: 400 });
   }
 

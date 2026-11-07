@@ -2,15 +2,25 @@
 
 WIN is the on-demand backend and operations console for the WIN multi-sport research project. It researches and audits betting markets; it never places bets or handles stakes.
 
+## OpenAI Research Network and persistent memory
+
+The WIN research network is provider-neutral and free-first. A bounded OpenAI assignment executor, a local Ollama runner, and opt-in Cloudflare/Gemini adapters have been added in code. They remain disabled until owner-side configuration, quota checks and deployment are complete. The owner has authorized additional agent frameworks and model providers when they are genuinely free and sustainable. The planned order is local Ollama first, then verified free Cloudflare/Gemini quotas for public non-sensitive tasks, with OpenAI as a bounded paid escalation route under the existing owner-authorized ceiling. The current OpenAI SDK integration remains supported; other providers are not considered connected until their adapters, credentials/runner and quota controls are actually implemented and verified.
+
+Each specialist has private persistent memory for its own tasks, experiments, failed approaches and source trail. Independently reviewer-accepted findings enter a shared research-network memory that all agents can consult. This shared research memory is still separate from WIN's trusted production knowledge: promoting a finding into a validated WIN lesson, model, strategy or production code requires the normal independent validation and owner-controlled promotion process.
+
+The owner has authorized bounded OpenAI API spending for this research network. Preserve the existing WIN application spending stop of USD 2.95 and owner lock, with no auto-recharge. Each task must have its own model/tool-call ceilings, cost reservation, actual usage reconciliation and stop condition. OpenAI-hosted tools are not assumed free. Do not start unbounded or continuous agent loops. Research agents can submit artifacts and pull requests, but cannot deploy, merge to production, unlock budgets, change credentials or place bets.
+
+See [the research network architecture](docs/WIN_EXTERNAL_RESEARCH_NETWORK.md), [the free-first provider plan](docs/WIN_FREE_FIRST_AGENT_PROVIDER_PLAN.md), [the local Ollama runner setup](docs/WIN_LOCAL_RESEARCH_RUNNER.md), [the persistent assignment manager](docs/WIN_RESEARCH_ASSIGNMENT_MANAGER.md), and [the API credit activation plan](docs/WIN_OPENAI_CREDIT_ACTIVATION_PLAN.md).
+
 ## On-demand request flow
 
 1. ChatGPT invokes the connected WIN MCP tool after the user authorizes the private plugin.
 2. WIN creates a run through the Executive Coordination Office.
 3. Department 1 — Public Offer & Scouting — runs first. It searches bounded, publicly accessible sources, attempts official STS public-offer sources, records event identity/time/status and only captures STS prices that are genuinely visible.
 4. The Worker Network Director creates a dynamic task graph from user-supplied and scout-reported candidates: sport → sport/country → competition → event → specialist assignments. Empty or unverified branches are not invented.
-5. Departments 2–8 receive the scouting handoff and run separate OpenAI Responses API requests. Each department report covers its director's assigned teams and checklists.
+5. Departments 2–8 receive the scouting handoff and execute through WIN's versioned, provider-neutral LLM policy. The currently approved OpenAI runtime uses the TypeScript Agents SDK; provider/model selection, data classification, output limits, cancellation and budget reservation are checked before execution. Each department report covers its director's assigned teams and checklists.
 6. Four separate challenge requests conduct FOR, AGAINST, market/settlement and quantitative/correlation review.
-7. The single WIN Global Master receives the complete report pack and issues BET / WAIT / NO BET. Failed or empty required reports force NO BET.
+7. The single WIN Global Master receives the report pack and returns a recommendation with estimated probability, confidence/uncertainty, supporting evidence, counterarguments, price context and any proposed coupon structure. Missing or failed reports are disclosed as evidence gaps; they do not silently erase a requested draft proposal or make up a probability. The user alone makes the final BET / WAIT / NO BET decision.
 8. The dashboard and MCP tools expose the actual worker reports, citations, dynamic network tree, handoffs, blockers and frozen forecast record.
 
 A queued run is not a completed run. ChatGPT should read the run again until it reaches a terminal status and inspect the actual reports, not infer completion from the queue response.
@@ -51,12 +61,12 @@ The system does not invent full rosters or pre-create every unknown country, clu
 
 ### Actual execution count
 
-Each run makes up to **13 independent Responses API requests**:
+Each run makes up to **13 independent worker passes** through the governed LLM execution path:
 - 8 main department reports, with Department 1 scouting first and Departments 2–8 receiving its handoff;
 - 4 independent debate/challenge reports;
 - 1 Global Master request.
 
-This is the actual count of independent model API requests. The persistent Sport, Country, League, Club, Player and Match/Event agent identities are activated on demand and their entity-specific work is routed through the responsible department reports. Tier 7 event specialist assignments are also covered inside those department requests. They are not extra always-on processes or extra independent API sessions. The dashboard shows the actual model request/report counts.
+These are worker passes, not a guaranteed count of billable HTTP requests: an SDK pass may use more than one model turn and optional hosted tools, subject to the configured caps. The persistent Sport, Country, League, Club, Player and Match/Event agent identities are activated on demand and their entity-specific work is routed through the responsible department reports. Tier 7 event specialist assignments are also covered inside those department passes. They are not extra always-on processes. The dashboard and budget ledger must report observed model usage rather than assuming one pass equals one request.
 
 ## Expanded WIN agent federation
 
@@ -101,7 +111,7 @@ The shared library uses the existing private, site-wide Netlify Blobs store `win
 
 ### Mandatory learning checkpoint
 
-Before a coupon can be approved, the worker engine loads relevant winning coupons, losing coupons, validated lessons and entity profiles from the library and includes that real data in every department brief. D6 Coupon Construction and D7 Results/Learning must both return a machine-readable `WIN_LIBRARY_REVIEW_JSON` receipt listing reviewed record IDs and empty collections. If either receipt is missing/invalid, the deterministic Low-Risk Gate returns **NO BET**.
+Before a coupon can be approved, the worker engine loads relevant winning coupons, losing coupons, validated lessons and entity profiles from the library and includes that real data in every department brief. D6 Coupon Construction and D7 Results/Learning must both return a machine-readable `WIN_LIBRARY_REVIEW_JSON` receipt listing reviewed record IDs and empty collections. If either receipt is missing or invalid, the deterministic Low-Risk Gate marks the review **EVIDENCE_INCOMPLETE**, explains which library records could not be checked, and prevents the proposal from being described as fully audited. Where candidate information exists, WIN should still return a clearly labelled draft proposal and its uncertainty; it must not fabricate a completed review. The user makes the final decision.
 
 D7 may write proposed lessons to the library, but they remain `candidate_for_validation` and are not supplied as proven knowledge until an authorized reviewer validates them with evidence. Settled human coupons are imported with `save_human_coupon` and moved to the winning or losing section only through `record_coupon_outcome` with a settlement source. Void/partial/cancelled cases are not mislabeled as wins or losses.
 
@@ -109,7 +119,7 @@ Every completed or failed run is archived with its worker reports, four challeng
 
 ### Library access
 
-The authenticated REST endpoint is `GET|POST /api/library`. The OAuth-protected MCP tools are:
+The authenticated REST endpoint is `GET|POST /api/library`.  The OAuth-protected MCP tools are:
 - `search_win_library`
 - `save_human_coupon`
 - `record_coupon_outcome`
@@ -185,6 +195,8 @@ MCP tools:
 
 The updated plugin must still complete its first ChatGPT OAuth authorization handshake before the connection can be considered fully verified.
 
+OpenAI API credit setup and staged activation are documented in [docs/WIN_OPENAI_CREDIT_ACTIVATION_PLAN.md](docs/WIN_OPENAI_CREDIT_ACTIVATION_PLAN.md). The governed external research, practice and experiment network is specified in [docs/WIN_EXTERNAL_RESEARCH_NETWORK.md](docs/WIN_EXTERNAL_RESEARCH_NETWORK.md). The owner-reported USD 5 purchase is not treated as a verified remaining balance or spending approval.
+
 ## Required Netlify environment variables
 
 Set these in Netlify → win-worker-engine → Project configuration → Environment variables. Keep secrets scoped to Functions/Runtime.
@@ -212,7 +224,7 @@ If exact current STS odds are unavailable or unverified, WIN must mark them BLOC
 ## Research integrity and risk rules
 
 1. Initial department reports are separate API requests; later debate requests receive the reports and must challenge them.
-2. Failed or empty required department/challenge reports force NO BET.
+2. Failed or empty required department/challenge reports are explicitly marked incomplete, lower the evidence-confidence assessment, and prevent a claim of full validation. WIN should still provide a draft candidate/coupon when enough verified information exists, with missing evidence and uncertainty clearly stated; the user makes the final decision.
 3. Global Master cannot force an odds target by adding weak selections.
 4. A tipster hit rate or popularity count requires verified historical odds/results, sample size and time window.
 5. A source URL alone does not prove a claim.
@@ -244,7 +256,7 @@ All REST routes require `Authorization: Bearer <WIN_INTERNAL_TOKEN>`, except hea
 
 The project deploys from GitHub `main` to Netlify. Build command: `npm run build`. Publish directory: `public`. Functions directory: `netlify/functions`.
 
-Local development requires Node.js 20.12.2+ and Netlify CLI:
+Local development requires Node.js 22.12.0+ and Netlify CLI:
 
     npm install
     netlify dev
@@ -254,7 +266,7 @@ Use an untracked `.env` file or Netlify environment variables for local secrets.
 
 ## Central mission: high-probability coupon intelligence
 
-WIN's central objective is to research, test and improve the strongest evidence-supported betting coupons it can realistically identify. Every department and agent must contribute to better selection quality, lower avoidable risk, stronger probability calibration, verified learning or disciplined NO BET decisions.
+WIN's central objective is to research, test and improve the strongest evidence-supported betting coupons it can realistically identify. Every department and agent must contribute to better selection quality, lower avoidable risk, stronger probability calibration, verified learning and transparent uncertainty reporting. WIN should provide an estimated probability with its evidence and calibration limits; the user makes the final decision.
 
 The user's 99% win-probability aspiration is a research target, **not a guarantee or a default label**. WIN must never claim 99% without defensible calibrated evidence, sample size and uncertainty. Accumulator joint probability and correlation must be considered; high hit rate must not be confused with positive expected value or profitability.
 
@@ -262,7 +274,7 @@ WIN has two operating phases:
 1. **Intensive learning:** build prioritized sport/market/entity coverage; document, historically test, out-of-sample validate and prospectively paper-track strategies using pre-event timestamps and independently verified results.
 2. **Mature intelligence:** after both coverage targets and evidence standards pass, reduce broad exploratory research while continuing scheduled monitoring, settlement audits, calibration checks and strategy-decay detection. Reopen intensive research when material gaps or changes appear.
 
-Strategies must have explicit lifecycle states (idea, documented, historically tested, out-of-sample validated, prospectively paper-tracked, mature/monitored, retired/suspended). Backtests and simulations alone do not prove future performance. Every coupon still passes the full WIN workflow and the BET / WAIT / NO BET gate; weak or unverifiable evidence means NO BET.
+Strategies must have explicit lifecycle states (idea, documented, historically tested, out-of-sample validated, prospectively paper-tracked, mature/monitored, retired/suspended). Backtests and simulations alone do not prove future performance. Every coupon proposal should pass through the full WIN workflow and receive transparent probability, confidence, risk and evidence-completeness assessments. Weak or unverifiable evidence must be disclosed and must reduce confidence; it must not be disguised as certainty. WIN does not place bets. The user makes the final BET / WAIT / NO BET decision.
 
 The full mission, learning exit gate, evidence standards, measurement dashboard and integrity rules are defined in [docs/WIN-MISSION.md](docs/WIN-MISSION.md).
 

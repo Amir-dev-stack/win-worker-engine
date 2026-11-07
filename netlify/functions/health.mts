@@ -9,9 +9,12 @@ export default async (req: Request) => {
     return denied;
   }
 
+  if (req.method !== "GET") return new Response("Method not allowed", { status: 405, headers: { "cache-control": "no-store" } });
+
   const budget = await getAIbudgetStatus();
-  const [schedulerState, cycles, runs] = await Promise.all([
+  const [schedulerState, postMatchState, cycles, runs] = await Promise.all([
     get<any>("scheduler-state", "balanced-hourly"),
+    get<any>("scheduler-state", "post-match-followup"),
     list<any>("library/learning-cycles", 20),
     list<any>("runs", 30)
   ]);
@@ -36,6 +39,14 @@ export default async (req: Request) => {
   },
   learningSystem: {
     schedulerHeartbeat: schedulerState?.lastCheck || null,
+    postMatchFollowup: postMatchState ? {
+      status: postMatchState.status || "unknown",
+      lastAttemptAt: postMatchState.lastAttemptAt || null,
+      lastCompletedAt: postMatchState.lastCompletedAt || null,
+      lastCheck: postMatchState.lastCheck || null,
+      lastError: postMatchState.lastError || null,
+      aiCalls: 0
+    } : null,
     cycleCounts,
     recentCycles: recentCycles.map((x: any) => ({ id: x.id, status: x.status, cycleType: x.cycleType, sport: x.sport, startedAt: x.startedAt, completedAt: x.completedAt, candidatesCreated: x.strategies?.candidatesCreated || 0, validationStatus: x.learningStatus || x.strategies?.validationStatus || null, error: x.execution?.error || null })),
     recentLearningRuns: recentLearningRuns.map((x: any) => ({ id: x.id, status: x.status, createdAt: x.createdAt, completedAt: x.completedAt, error: x.error || x.scoutSummary?.error || null }))

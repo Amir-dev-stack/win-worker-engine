@@ -1,24 +1,46 @@
-# WIN LLM execution safety — implementation note
+# WIN LLM execution safety and provider policy
 
-Date: 2026-11-05  
-Status: isolated execution wrapper and tests on the Stage 1 draft branch.
+Date: 2026-11-06  
+Status: governed execution path implemented on the WIN roadmap branch; live provider execution remains disabled pending owner approval.
 
-## Added
+## Execution path
 
-- One-attempt execution wrapper that selects only a provider already approved by the versioned provider policy.
-- Request validation before adapter invocation and response validation after completion.
-- Per-request timeout using an abort signal passed to cooperative adapters.
-- Timeout and transport exceptions are classified as uncertain outcomes.
-- Uncertain outcomes are never automatically replayed. A timeout does not prove that a provider did not process or bill the request.
-- Missing adapters and invalid responses fail closed.
-- Retry permission is surfaced only for a validated provider response explicitly classified as retryable; this wrapper itself never performs a retry.
+The existing worker uses the versioned `win.llm.v1` execution policy rather than calling the Agents SDK directly. The governed path:
 
-## Important integration boundary
+1. Checks the owner-controlled AI spending gate and creates a bounded budget reservation.
+2. Builds a versioned request carrying task, run and agent identity; provider allowlist; model; capabilities; privacy classification; output/tool limits; timeout; and reservation identity.
+3. Selects only an enabled, approved, price-verified provider compatible with the request.
+4. Invokes the dedicated OpenAI Agents SDK adapter.
+5. Validates provider identity, approved model, response contract and observed output-token usage.
+6. Settles observed token and search usage on a known completion. For timeout, transport failure or another uncertain outcome, it conservatively retains the reservation.
+7. Never automatically replays an uncertain request.
 
-This wrapper is not yet connected to the production OpenAI Agents SDK path. The current live path remains in ai.mts / agents-sdk.mts and continues to use its existing budget reservation and settlement logic. Before production integration, the caller must create a budget reservation, pass its ID into the request, settle actual usage on success, and retain/mark uncertain reservations conservatively on timeout or lost responses. Provider-side spending controls remain necessary; the local budget is not a hard provider cap.
+## Runtime and privacy limits
 
-The timeout wrapper cannot forcibly stop a provider that ignores AbortSignal. It stops waiting, signals cancellation, and records the result as uncertain. No automatic fallback is attempted because a timed-out request may already have been processed or billed.
+- One provider attempt per execution; retries are surfaced only when a validated provider response explicitly permits them.
+- Execution is bounded by a 90-second timeout and passes cooperative cancellation to the adapter.
+- The adapter currently supports text output and optional web search only. Unsupported structured output and unsupported tool families fail closed.
+- The SDK receives the requested output-token cap. Completed responses exceeding the cap or using an unapproved model are rejected.
+- Response storage is disabled with `store: false`; automatic trace export remains disabled.
+- Web-search calls are counted and checked after the SDK run. This detects and accounts for overruns; it is not a provider-enforced cap on tool execution.
 
-## Tests
+## Spending boundary
 
-Synthetic adapter tests cover approved routing, response validation, timeout cancellation, uncertain transport errors, no automatic replay, and missing adapters. No network provider is called.
+- `WIN_AI_BUDGET_APPROVED` remains owner-controlled and spending remains locked by default.
+- The application budget is an estimate, not a hard provider billing cap. Before any live activation, the owner must verify provider-side spending limits and alerts, auto-recharge settings, key scope and rotation.
+- No real provider call, paid AI execution, budget unlock, new paid service or production secret change is authorized by this implementation.
+- Tests use fake adapters and synthetic reservations; passing tests do not prove provider billing behavior or a live connection.
+
+## Verification
+
+The roadmap branch CI workflow runs Node 22, `npm test` and `npm run build` with read-only repository permissions. It does not deploy or access production secrets.
+
+The implementation and tests are maintained in:
+- `netlify/lib/llm-contract.mts`
+- `netlify/lib/llm-execution.mts`
+- `netlify/lib/agents-sdk-adapter.mts`
+- `scripts/llm-contract.test.mjs`
+- `scripts/llm-execution.test.mjs`
+- `scripts/agents-sdk-adapter.test.mjs`
+
+A successful CI run verifies repository tests and build checks only. It does not authorize provider activation, spending, production deployment or betting.

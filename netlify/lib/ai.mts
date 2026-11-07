@@ -1,4 +1,7 @@
-import { runWinAgent } from "./agents-sdk.mts";
+import { executeWinLLMWithPolicy } from "./llm-execution.mts";
+import { createOpenAIWinLLMAdapter } from "./agents-sdk-adapter.mts";
+import { mapWithConcurrency } from "./async-concurrency.mts";
+import { WIN_LLM_CONTRACT_VERSION } from "./llm-contract.mts";
 import { WIN_DEPARTMENTS, buildWorkerNetwork } from "./worker-org.mts";
 import { reserveAIRequest, settleAIRequest, releaseAIRequest } from "./ai-budget.mts";
 
@@ -111,12 +114,12 @@ const departmentAssignments: DepartmentAssignment[] = [
     role: "Coupon Construction & Portfolio Risk Department Director",
     assignment: [
       "Compare the user's existing coupon, when supplied, against the latest candidate set and an independently constructed alternative.",
-      "Construct only from legs that have passed event, sport, market, quantitative and integrity checks. If upstream evidence is missing, return WAIT / REMOVE / NO BET.",
-      "Check duplicate and contradictory legs, same-event dependence, same-team/player exposure, shared venue/weather/roster/schedule/league and all common-cause risks.",
+      "Prioritise legs with the strongest available event, sport, market, quantitative and integrity evidence. If evidence is incomplete, still retain a visible DRAFTABLE proposal and list every missing item; never invent facts to fill gaps.",
+      "Check duplicate and contradictory legs, same-event dependence, same-team/player exposure, shared venue/weather/roster/schedule/league and all common-cause risks. These are probability and risk warnings, not proposal-generation vetoes.",
       "Compare fewer-leg alternatives, separate sport-specific coupons and singles. Do not force an odds target by adding a weak leg.",
       "Calculate combined odds only when every included decimal price is current and verified. For MAXIKOMBI/system bets, distinguish stake per combination from total stake and label unsupported payouts illustrative.",
-      "Apply the WIN Low-Risk Gate as a hard eligibility check. Never issue or imply the user\u2019s final betting decision.",
-      "At the end include exactly one <WIN_COUPONS_JSON> block with { \"coupons\": [ { \"id\": string, \"label\": string, \"status\": \"QUALIFIED\"|\"BLOCKED\", \"legs\": [ { \"event\": string, \"eventId\": string|null, \"startTime\": string|null, \"homeTeam\": string|null, \"awayTeam\": string|null, \"leagueShortcut\": string|null, \"leagueSeason\": number|null, \"market\": string, \"selection\": string, \"odds\": number|null, \"oddsSource\": string|null, \"sourceUrl\": string|null, \"observedAt\": string|null, \"settlementRule\": string|null, \"evidenceRefs\": [string], \"checksPassed\": [string], \"blockers\": [string] } ], \"combinedOdds\": number|null, \"riskFactors\": [string], \"correlationNotes\": [string], \"blockers\": [string] } ] }. startTime must be an exact ISO-8601 kickoff timestamp with Z or an explicit timezone offset, never a price-observation timestamp. Preserve homeTeam and awayTeam separately when a source identifies them. Only set status QUALIFIED if every leg has confirmed event identity, future pre-match status, exact kickoff timestamp, exact market/selection, current verified decimal odds, source URL, observed timestamp, and settlement rules, and D2-D5/D8 checks do not block it. Otherwise status BLOCKED and list every missing item. Never invent IDs, participants, prices, timestamps, source URLs or settlement rules. Include an empty coupons array if no defensible candidate exists.",
+      "Do not apply a low-risk gate as a hard proposal filter. Report a transparent risk percentage, its heuristic or validated basis, confidence and evidence. Never decide BET / NO BET or imply the user\u2019s final decision.",
+      "At the end include exactly one <WIN_COUPONS_JSON> block with { \"coupons\": [ { \"id\": string, \"label\": string, \"status\": \"QUALIFIED\"|\"DRAFTABLE\", \"legs\": [ { \"event\": string, \"eventId\": string|null, \"startTime\": string|null, \"homeTeam\": string|null, \"awayTeam\": string|null, \"leagueShortcut\": string|null, \"leagueSeason\": number|null, \"market\": string, \"selection\": string, \"odds\": number|null, \"estimatedWinProbabilityPercent\": number|null, \"probabilityType\": \"agent_heuristic\"|\"market_implied\"|\"verified_model\"|\"unavailable\", \"probabilityConfidence\": \"high\"|\"medium\"|\"low\"|\"unrated\", \"probabilityRationale\": string, \"oddsSource\": string|null, \"sourceUrl\": string|null, \"observedAt\": string|null, \"settlementRule\": string|null, \"evidenceRefs\": [string], \"checksPassed\": [string], \"blockers\": [string] } ], \"combinedOdds\": number|null, \"wholeCouponWinProbabilityPercent\": number|null, \"wholeCouponProbabilityMethod\": string, \"riskPercent\": number|null, \"riskMethod\": string, \"riskFactors\": [string], \"correlationNotes\": [string], \"blockers\": [string] } ] }. startTime must be an exact ISO-8601 kickoff timestamp with Z or an explicit timezone offset, never a price-observation timestamp. Preserve homeTeam and awayTeam separately when a source identifies them. Use QUALIFIED only when every leg has confirmed event identity, future pre-match status, exact kickoff timestamp, exact market/selection, current verified decimal odds, source URL, observed timestamp and settlement rules. Otherwise keep the candidate as DRAFTABLE and list every missing item; D2-D5/D8 findings inform warnings and risk, not proposal suppression. Estimate each leg percentage only when supported: label model, market or heuristic basis, confidence and evidence; any agent heuristic is uncalibrated. If evidence is insufficient, use null. Whole-coupon probability must be null unless a validated joint model exists; never multiply marginal probabilities. Never invent IDs, participants, prices, timestamps, source URLs or settlement rules. For a requested coupon, always return a draft candidate even if some fields are unknown; use an empty coupons array only when no event or selection can be identified from available evidence.",
       "Before constructing any coupon, review the supplied mandatory WIN library pack. Read BOTH winningCoupons and losingCoupons, relevant entityProfiles and validatedLessons. Identify reusable patterns and counterexamples, but do not copy picks blindly or overfit small samples. If either collection has zero matching records, say so honestly.",
       "Include a <WIN_LIBRARY_REVIEW_JSON>...</WIN_LIBRARY_REVIEW_JSON> block with JSON: { \"reviewed\": true, \"winningRecordIds\": [], \"losingRecordIds\": [], \"validatedLessonIds\": [], \"emptyCollections\": [], \"keyLearning\": [\"...\"] }. This receipt is mandatory even when there are zero records."
     ].join("\n"),
@@ -196,40 +199,13 @@ function promptJson(value: any, maxChars: number): string {
   throw new Error("WIN request packet cannot fit its safe size after compaction (" + serialized.length + " characters; target " + maxChars + "). Split the work instead of dropping required evidence.");
 }
 
-function extractText(data: any): string {
-  if (typeof data.output_text === "string") return data.output_text;
-  const chunks: string[] = [];
-  for (const item of data.output ?? []) for (const part of item.content ?? []) {
-    if (part.type === "output_text" && part.text) chunks.push(part.text);
-  }
-  return chunks.join("\n");
-}
-
-function extractCitations(data: any): Citation[] {
-  const found: Citation[] = [];
-  for (const item of data.output ?? []) for (const part of item.content ?? []) {
-    for (const a of part.annotations ?? []) if (a.type === "url_citation" && a.url) {
-      found.push({ title: a.title, url: a.url, snippet: a.snippet });
-    }
-  }
-  for (const item of data.output ?? []) {
-    if (item.type === "web_search_call") {
-      for (const source of item.action?.sources ?? item.results ?? []) {
-        if (source.url || source.source_website_url) {
-          found.push({ title: source.title, url: source.url || source.source_website_url, snippet: source.snippet });
-        }
-      }
-    }
-  }
-  return [...new Map(found.filter(x => x.url).map(x => [x.url, x])).values()];
-}
-
 async function askWorker(
   role: string,
   phase: string,
   brief: unknown,
   peerReports?: WorkerReport[],
-  department?: DepartmentAssignment
+  department?: DepartmentAssignment,
+  maxBudgetUsd?: number
 ): Promise<WorkerReport> {
   const startedAt = new Date().toISOString();
   const workerId = crypto.randomUUID();
@@ -299,7 +275,9 @@ async function askWorker(
   let budgetSettled = false;
   try {
     const maxOutputTokens = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 600 : 1000;
-    const maxToolCalls = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 1 : 2;
+    // The Agents SDK runs at most two model turns. Reserve for the full possible
+    // total: the per-response max_tool_calls is enforced on each turn.
+    const maxToolCalls = (phase === "scheduled_scout" || phase === "scheduled_learning") ? 2 : 4;
     const requestBudgetId = crypto.randomUUID();
     budgetId = requestBudgetId;
     const budget = await reserveAIRequest({
@@ -308,24 +286,71 @@ async function askWorker(
       maxInputChars
     });
     if (!budget.allowed) throw new Error(budget.reason);
-    const sdkResult = await runWinAgent({
-      name: "WIN " + role,
-      instructions,
-      prompt: input,
-      model,
-      apiKey,
-      webSearch,
-      maxTurns: 2
+    if (Number.isFinite(maxBudgetUsd) && budget.reservedUsd > Number(maxBudgetUsd)) {
+      await releaseAIRequest(requestBudgetId, "Assignment budget ceiling is lower than the estimated OpenAI reservation; no model call was sent.");
+      budgetSettled = true;
+      return failed("Assignment budget ceiling blocked this OpenAI request before execution. Estimated reservation $" +
+        budget.reservedUsd.toFixed(4) + " exceeds task ceiling $" + Number(maxBudgetUsd).toFixed(4) + ".");
+    }
+    const execution = await executeWinLLMWithPolicy({
+      request: {
+        contractVersion: WIN_LLM_CONTRACT_VERSION,
+        requestId: requestBudgetId,
+        taskId: phase + ":" + workerId,
+        runId: workerId,
+        agentId: role,
+        providerPolicy: {
+          allowedProviders: ["openai"],
+          preferredProvider: "openai",
+          model,
+          requiredCapabilities: webSearch ? ["text", "web_search"] : ["text"]
+        },
+        prompt: { instructions, input },
+        output: { format: "text" },
+        tools: webSearch ? ["web_search"] : [],
+        limits: { maxOutputTokens, maxToolCalls, timeoutMs: 90_000 },
+        privacy: { classification: "internal", allowProviderRetention: false },
+        budget: { reservationId: requestBudgetId, reservedUsd: budget.reservedUsd }
+      },
+      providers: [{
+        id: "openai",
+        enabled: true,
+        approved: true,
+        pricingVerified: true,
+        capabilities: webSearch ? ["text", "web_search"] : ["text"],
+        allowedClassifications: ["internal"],
+        models: [model],
+        priority: 1
+      }],
+      adapters: [createOpenAIWinLLMAdapter({ apiKey, model })]
     });
-    await settleAIRequest(requestBudgetId, sdkResult.usage, sdkResult.webSearchRequests);
+    if (execution.response.status !== "completed") {
+      const observedUsage = execution.response.usage;
+      const observedSearches = observedUsage.billableUnits?.web_search_requests ?? 0;
+      if (observedUsage.inputTokens > 0 || observedUsage.outputTokens > 0 || observedSearches > 0) {
+        await settleAIRequest(requestBudgetId, {
+          input_tokens: observedUsage.inputTokens,
+          output_tokens: observedUsage.outputTokens
+        }, observedSearches);
+      } else {
+        await settleAIRequest(requestBudgetId, null, 0, true);
+      }
+      budgetSettled = true;
+      return failed("WIN LLM execution did not complete safely (" +
+        (execution.response.error?.code ?? "unknown_execution_error") +
+        "). Observed usage was settled when available; otherwise the reservation remains conservatively charged. No automatic replay was attempted.");
+    }
+    await settleAIRequest(requestBudgetId, {
+      input_tokens: execution.response.usage.inputTokens,
+      output_tokens: execution.response.usage.outputTokens
+    }, execution.response.usage.billableUnits?.web_search_requests ?? 0);
     budgetSettled = true;
-    const sdkOutput = sdkResult.rawResponses.flatMap((response: any) => response.output ?? []);
     return {
       workerId, role, phase, departmentId: department?.id,
       assignedTeams: department ? WIN_DEPARTMENTS.find(d => d.id === department.id)?.teams : undefined,
-      status: "completed", responseId: sdkResult.responseId,
-      report: sdkResult.finalOutput,
-      citations: extractCitations({ output: sdkOutput }),
+      status: "completed", responseId: execution.response.responseId,
+      report: execution.response.output,
+      citations: execution.response.citations.map(citation => ({ title: citation.title, url: citation.url })),
       startedAt, completedAt: new Date().toISOString()
     };
   } catch (error) {
@@ -341,8 +366,8 @@ export async function runScheduledScout(brief: any) {
   return askWorker("WIN Scheduled Public Offer & Scouting", "scheduled_scout", brief, undefined, scoutDepartment);
 }
 
-export async function runScheduledLearning(brief: any) {
-  return askWorker("WIN Scheduled Intensive Learning Researcher", "scheduled_learning", brief);
+export async function runScheduledLearning(brief: any, maxBudgetUsd?: number) {
+  return askWorker("WIN Scheduled Intensive Learning Researcher", "scheduled_learning", brief, undefined, undefined, maxBudgetUsd);
 }
 
 export async function runIndependentWorkers(brief: any, runId: string) {
@@ -358,9 +383,9 @@ export async function runIndependentWorkers(brief: any, runId: string) {
   };
 
   const remainingDepartments = departmentAssignments.slice(1);
-  const rest = await Promise.all(remainingDepartments.map(department =>
+  const rest = await mapWithConcurrency(remainingDepartments, 2, department =>
     askWorker(department.role, "department", routedBrief, undefined, department)
-  ));
+  );
   const reports = [scout, ...rest];
   const failed = reports.filter(r => r.status !== "completed" || !r.report.trim());
   const departmentStatuses = WIN_DEPARTMENTS.map(department => {
@@ -386,7 +411,7 @@ export async function runDebate(brief: unknown, reports: WorkerReport[]) {
     "Markets, price and settlement red-team auditor",
     "Quantitative evidence and correlation challenger"
   ];
-  return Promise.all(roles.map(role => askWorker(role, "debate", { brief, departmentReports: reports }, reports)));
+  return mapWithConcurrency(roles, 2, role => askWorker(role, "debate", { brief, departmentReports: reports }, reports));
 }
 
 export async function runGlobalMaster(brief: unknown, reports: WorkerReport[], debate: WorkerReport[], workerNetwork: unknown) {

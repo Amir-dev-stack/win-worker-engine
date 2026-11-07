@@ -1,0 +1,214 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { calculateWinMLMarketAnchoredBlend } from "../netlify/lib/ml-market-anchored-blend.mts";
+
+const digest = value => value.repeat(64).slice(0, 64);
+
+function input(overrides = {}) {
+  return {
+    event: {
+      eventId: "fixture-001",
+      kickoff: "2026-11-08T18:00:00.000Z",
+      predictionCutoff: "2026-11-08T17:00:00.000Z"
+    },
+    market: {
+      eventId: "fixture-001",
+      at: "2026-11-08T16:30:00.000Z",
+      sourceId: "licensed-market-feed",
+      snapshotId: "market-snapshot-001",
+      decimalOdds: { home: 2.1, draw: 3.4, away: 3.8 }
+    },
+    model: {
+      eventId: "fixture-001",
+      at: "2026-11-08T16:45:00.000Z",
+      modelId: "registered-shadow-model-v1",
+      trainedAt: "2026-10-01T00:00:00.000Z",
+      artifactSha256: digest("a"),
+      datasetContentSha256: digest("b"),
+      featureVectorSha256: digest("c"),
+      probabilities: { home: 0.52, draw: 0.25, away: 0.23 }
+    },
+    evaluation: {
+      modelEvaluationId: "model-evaluation-001",
+      marketEvaluationId: "market-evaluation-001",
+      testCohortSha256: digest("d"),
+      marketTestCohortSha256: digest("d"),
+      datasetContentSha256: digest("b"),
+      marketDataSha256: digest("e"),
+      testRows: 500,
+      modelLogLoss: 0.98,
+      marketLogLoss: 1.03,
+      modelBrier: 0.58,
+      marketBrier: 0.61,
+      expectedCalibrationError: 0.03,
+      testLabelsAvailableAt: "2026-10-31T23:00:00.000Z",
+      evaluationAsOf: "2026-11-01T00:00:00.000Z"
+    },
+    ...overrides
+  };
+}
+
+test("market-anchored blend is research-only and caps ML influence at twenty percent", () => {
+  const result = calculateWinMLMarketAnchoredBlend(input());
+  assert.equal(result.status, "research_only");
+  assert.equal(result.productionUseAllowed, false);
+  assert.equal(result.automatedBettingAllowed, false);
+  assert.ok(result.modelWeight > 0);
+  assert.ok(result.modelWeight <= 0.20);
+  assert.ok(Math.abs(result.probabilities.home + result.probabilities.draw + result.probabilities.away - 1) < 1e-12);
+  assert.ok(result.evidenceSha256.length === 64);
+  assert.ok(result.marketProbabilities.home > 0 && result.marketProbabilities.home < 1);
+});
+
+test("model contribution is zero when either held-out score is not better than the market", () => {
+  const result = calculateWinMLMarketAnchoredBlend(input({
+    evaluation: {
+      ...input().evaluation,
+      modelLogLoss: 1.04,
+      modelBrier: 0.60
+    }
+  }));
+  assert.equal(result.status, "blocked");
+  assert.ok(result.reasons.includes("model_does_not_beat_market_on_both_metrics"));
+  assert.equal(result.probabilities, null);
+});
+
+test("rejects a mismatched held-out cohort and insufficient sample size", () => {
+  const mismatched = calculateWinMLMarketAnchoredBlend(input({
+    evaluation: { ...input().evaluation, marketTestCohortSha256: digest("f") }
+  }));
+  assert.equal(mismatched.status, "blocked");
+  assert.ok(mismatched.reasons.includes("held_out_evaluation_provenance_or_cohort_mismatch"));
+
+  const small = calculateWinMLMarketAnchoredBlend(input({
+    evaluation: { ...input().evaluation, testRows: 99 }
+  }));
+  assert.equal(small.status, "blocked");
+  assert.ok(small.reasons.includes("held_out_evaluation_sample_too_small"));
+});
+
+test("rejects stale or post-cutoff market quotes and future model predictions", () => {
+  const stale = calculateWinMLMarketAnchoredBlend(input({
+    market: { ...input().market, at: "2026-11-08T10:00:00.000Z" }
+  }));
+  assert.equal(stale.status, "blocked");
+  assert.ok(stale.reasons.includes("market_snapshot_missing_stale_or_after_cutoff"));
+
+  const future = calculateWinMLMarketAnchoredBlend(input({
+    model: { ...input().model, at: "2026-11-08T17:01:00.000Z" }
+  }));
+  assert.equal(future.status, "blocked");
+  assert.ok(future.reasons.includes("model_prediction_after_cutoff"));
+});
+
+test("rejects poor calibration and evaluation performed before held-out labels were available", () => {
+  const uncalibrated = calculateWinMLMarketAnchoredBlend(input({
+    evaluation: { ...input().evaluation, expectedCalibrationError: 0.08 }
+  }));
+  assert.equal(uncalibrated.status, "blocked");
+  assert.ok(uncalibrated.reasons.includes("model_calibration_gate_failed"));
+
+  const premature = calculateWinMLMarketAnchoredBlend(input({
+    evaluation: { ...input().evaluation, evaluationAsOf: "2026-10-30T00:00:00.000Z" }
+  }));
+  assert.equal(premature.status, "blocked");
+  assert.ok(premature.reasons.includes("held_out_labels_not_available_as_of_evaluation"));
+});
+
+test("rejects invalid odds, model probability vectors and post-cutoff model training", () => {
+  const odds = calculateWinMLMarketAnchoredBlend(input({
+    market: { ...input().market, decimalOdds: { home: 1, draw: 3.4, away: 3.8 } }
+  }));
+  assert.equal(odds.status, "blocked");
+  assert.ok(odds.reasons.includes("market_decimal_odds_invalid"));
+
+  const probs = calculateWinMLMarketAnchoredBlend(input({
+    model: { ...input().model, probabilities: { home: 0.8, draw: 0.8, away: -0.6 } }
+  }));
+  assert.equal(probs.status, "blocked");
+  assert.ok(probs.reasons.includes("model_probabilities_invalid"));
+
+  const trainedLater = calculateWinMLMarketAnchoredBlend(input({
+    model: { ...input().model, trainedAt: "2026-11-08T17:01:00.000Z" }
+  }));
+  assert.equal(trainedLater.status, "blocked");
+  assert.ok(trainedLater.reasons.includes("model_trained_after_prediction_cutoff"));
+});
+
+test("caps even a very strong research model at twenty percent influence", () => {
+  const result = calculateWinMLMarketAnchoredBlend(input({
+    evaluation: {
+      ...input().evaluation,
+      modelLogLoss: 0.70,
+      modelBrier: 0.40
+    }
+  }));
+  assert.equal(result.status, "research_only");
+  assert.equal(result.modelWeight, 0.20);
+});
+
+test("rejects implausible market overround and impossible calendar timestamps", () => {
+  const overround = calculateWinMLMarketAnchoredBlend(input({
+    market: { ...input().market, decimalOdds: { home: 1.1, draw: 1.2, away: 1.3 } }
+  }));
+  assert.equal(overround.status, "blocked");
+  assert.ok(overround.reasons.includes("market_overround_out_of_bounds"));
+
+  const impossibleDate = calculateWinMLMarketAnchoredBlend(input({
+    event: { ...input().event, kickoff: "2026-11-31T18:00:00.000Z" }
+  }));
+  assert.equal(impossibleDate.status, "blocked");
+  assert.ok(impossibleDate.reasons.includes("prediction_cutoff_invalid"));
+});
+
+test("rejects unnormalized ML probabilities and out-of-range evaluation metrics", () => {
+  const unnormalized = calculateWinMLMarketAnchoredBlend(input({
+    model: { ...input().model, probabilities: { home: 0.6, draw: 0.6, away: 0.6 } }
+  }));
+  assert.equal(unnormalized.status, "blocked");
+  assert.ok(unnormalized.reasons.includes("model_probabilities_invalid"));
+
+  const impossibleMetric = calculateWinMLMarketAnchoredBlend(input({
+    evaluation: { ...input().evaluation, marketBrier: 2.5 }
+  }));
+  assert.equal(impossibleMetric.status, "blocked");
+  assert.ok(impossibleMetric.reasons.includes("held_out_evaluation_metrics_invalid"));
+});
+
+test("rejects tiny apparent gains that may be noise on the held-out cohort", () => {
+  const result = calculateWinMLMarketAnchoredBlend(input({
+    evaluation: {
+      ...input().evaluation,
+      modelLogLoss: 1.025,
+      modelBrier: 0.603
+    }
+  }));
+  assert.equal(result.status, "blocked");
+  assert.ok(result.reasons.includes("market_improvement_below_minimum_threshold"));
+  assert.equal(result.probabilities, null);
+});
+
+test("accepts valid offset timestamps and rejects impossible calendar dates in every event clock", () => {
+  const validOffset = calculateWinMLMarketAnchoredBlend(input({
+    event: {
+      eventId: "fixture-001",
+      kickoff: "2026-11-08T19:00:00.000+01:00",
+      predictionCutoff: "2026-11-08T18:00:00.000+01:00"
+    },
+    market: { ...input().market, at: "2026-11-08T17:30:00.000+01:00" },
+    model: { ...input().model, at: "2026-11-08T17:45:00.000+01:00" }
+  }));
+  assert.equal(validOffset.status, "research_only");
+
+  const impossibleMarketTime = calculateWinMLMarketAnchoredBlend(input({
+    market: { ...input().market, at: "2026-02-30T16:30:00.000Z" }
+  }));
+  assert.equal(impossibleMarketTime.status, "blocked");
+  assert.ok(impossibleMarketTime.reasons.includes("market_snapshot_missing_stale_or_after_cutoff"));
+
+  const impossibleModelTime = calculateWinMLMarketAnchoredBlend(input({
+    model: { ...input().model, at: "2026-11-08T25:45:00.000Z" }
+  }));
+  assert.equal(impossibleModelTime.status, "blocked");
+  assert.ok(impossibleModelTime.reasons.includes("model_prediction_after_cutoff"));
+});

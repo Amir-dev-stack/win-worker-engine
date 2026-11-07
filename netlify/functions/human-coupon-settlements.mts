@@ -1,8 +1,15 @@
+import { createHash } from "node:crypto";
 import { requireAuth } from "../lib/auth.mts";
-import { get, list, put } from "../lib/store.mts";
+import { get, getWithMetadata, putIfNew } from "../lib/store.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 
 const clean = (value: unknown, max = 2000) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const outcomes = new Set(["won", "lost", "void", "partial", "cancelled"]);
+
+export function humanSettlementSubmissionId(couponId: string, evidenceUrl: string, outcome: string): string {
+  const identity = JSON.stringify([couponId, evidenceUrl, outcome]);
+  return "human-settlement-" + createHash("sha256").update(identity).digest("hex");
+}
 
 export default async (req: Request) => {
   const denied = requireAuth(req);
@@ -15,8 +22,9 @@ export default async (req: Request) => {
     return Response.json({ count: filtered.length, items: filtered.slice(0, 300) }, { headers: { "cache-control": "no-store" } });
   }
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  let body: any;
-  try { body = await req.json(); } catch { return Response.json({ error: "Expected JSON body" }, { status: 400 }); }
+  const parsedRequest = await readBoundedJsonObject(req, 16 * 1024);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
   const couponId = clean(body?.couponId, 180);
   const claimedOutcome = clean(body?.claimedOutcome, 30).toLowerCase();
   const evidenceUrl = clean(body?.evidenceUrl, 1500);
@@ -31,11 +39,8 @@ export default async (req: Request) => {
   if (!coupon || coupon.origin !== "human") return Response.json({ error: "Human coupon not found" }, { status: 404 });
   if (clean(coupon.outcome).toLowerCase() !== "pending") return Response.json({ error: "Only pending human coupons can enter settlement review" }, { status: 409 });
   if (clean(coupon.source) === evidenceUrl) return Response.json({ error: "The original tipster post cannot independently verify its own claimed result" }, { status: 400 });
-  const existing = await list<any>("library/human-settlement-cases", 2000);
-  if (existing.some(item => item.couponId === couponId && item.evidenceUrl === evidenceUrl && item.claimedOutcome === claimedOutcome)) {
-    return Response.json({ error: "This evidence submission already exists" }, { status: 409 });
-  }
-  const id = "human-settlement-" + crypto.randomUUID();
+  // Preserve the prior duplicate identity while closing the concurrent POST race.
+  const id = humanSettlementSubmissionId(couponId, evidenceUrl, claimedOutcome);
   const record = {
     id, couponId, sourceCouponUrl: coupon.source || null,
     claimedOutcome, evidenceUrl, evidenceSummary, reviewerNotes: reviewerNotes || null,
@@ -49,7 +54,20 @@ export default async (req: Request) => {
       "Coupon outcome remains pending until an independent review process confirms market rules, event identity and all legs."
     ]
   };
-  await put("library/human-settlement-cases", id, record);
-  return Response.json({ accepted: true, record }, { status: 202 });
+  const claim = await putIfNew("library/human-settlement-cases", id, record);
+  if (!claim.modified) {
+    const existing = await getWithMetadata<any>("library/human-settlement-cases", id);
+    if (!existing || existing.value.couponId !== couponId ||
+        existing.value.evidenceUrl !== evidenceUrl || existing.value.claimedOutcome !== claimedOutcome) {
+      return Response.json({ error: "Settlement submission identity is already occupied; manual reconciliation is required" }, { status: 409 });
+    }
+    return Response.json({
+      accepted: true,
+      duplicate: true,
+      record: existing.value,
+      message: "This evidence submission already exists."
+    }, { status: 202 });
+  }
+  return Response.json({ accepted: true, duplicate: false, record }, { status: 202 });
 };
 export const config = { path: "/api/human-coupon-settlements" };

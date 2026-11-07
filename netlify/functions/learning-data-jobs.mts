@@ -9,6 +9,7 @@ import { syncSharpApiSampleMarkets } from "../lib/sharpapi-sample-adapter.mts";
 import { runOpenFootballBaselineLab } from "../lib/model-lab.mts";
 import { settleObservedWorldCupMarkets } from "../lib/observed-market-settlement.mts";
 import { runMarketCalibrationLab } from "../lib/market-calibration.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 
 type JobAction = "discover_sources" | "sync_historical_data";
 const actions = new Set<JobAction>(["discover_sources", "sync_historical_data"]);
@@ -18,9 +19,9 @@ export default async (req: Request) => {
   if (denied) return denied;
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
-  let body: any;
-  try { body = await req.json(); }
-  catch { return Response.json({ error: "Expected JSON body" }, { status: 400 }); }
+  const parsedRequest = await readBoundedJsonObject(req, 8 * 1024);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
   const action = String(body?.action || "") as JobAction;
   if (!actions.has(action)) return Response.json({ error: "Unsupported learning data job." }, { status: 400 });
 

@@ -14,11 +14,25 @@ function citationHtml(items=[]){return items.map(c=>{const u=safeUrl(c.url);retu
 function couponPanel(coupons=[]){
  if(!coupons.length)return '<section class="report-card"><b>Constructed coupons</b><p class="empty">No structured coupon candidate was returned. Check D6 report and evidence blockers.</p></section>';
  return '<section class="report-card"><h4>Coupon candidates — your decision</h4>'+coupons.map(c=>{
-  const legs=(c.legs||[]).map((l,i)=>'<tr><td>'+(i+1)+'. '+escapeHtml(l.event)+'</td><td>'+escapeHtml(l.market)+'<br><b>'+escapeHtml(l.selection)+'</b></td><td>'+(l.odds===null||l.odds===undefined?'Not verified':Number(l.odds).toFixed(2))+'</td><td>'+(l.sourceUrl?'<a href="'+escapeHtml(safeUrl(l.sourceUrl))+'" target="_blank" rel="noopener noreferrer">Source ↗</a>':'Not supplied')+'<br><small>'+escapeHtml(l.observedAt||'No timestamp')+'</small></td></tr>').join('');
+  const legs=(c.legs||[]).map((l,i)=>{
+   const probability=typeof l.estimatedWinProbabilityPercent==="number"?Number(l.estimatedWinProbabilityPercent).toFixed(1)+"%":"—";
+   const basis=l.probabilityType==="agent_heuristic_unverified"?"Uncalibrated agent estimate":l.probabilityType==="unverified_claim"?"Unverified model/market claim":"Not available";
+   const rationale=l.probabilityRationale?'<small>'+escapeHtml(l.probabilityRationale)+'</small>':"";
+   return '<tr><td>'+(i+1)+'. '+escapeHtml(l.event)+'</td><td>'+escapeHtml(l.market)+'<br><b>'+escapeHtml(l.selection)+'</b></td><td>'+(l.odds===null||l.odds===undefined?'Not verified':Number(l.odds).toFixed(2))+'</td><td>'+probability+'<br><small>'+basis+'</small>'+rationale+'</td><td>'+(l.sourceUrl?'<a href="'+escapeHtml(safeUrl(l.sourceUrl))+'" target="_blank" rel="noopener noreferrer">Source ↗</a>':'Not supplied')+'<br><small>'+escapeHtml(l.observedAt||'No timestamp')+'</small></td></tr>';
+  }).join('');
   const blockers=(c.blockers||[]).length?'<p class="report-error"><b>Evidence gaps / blockers:</b> '+escapeHtml(c.blockers.join(' · '))+'</p>':'';
   const corr=(c.correlationNotes||[]).length?'<p><b>Correlation:</b> '+escapeHtml(c.correlationNotes.join(' · '))+'</p>':'';
-  const risk=(c.riskFactors||[]).length?'<p><b>Risk factors:</b> '+escapeHtml(c.riskFactors.join(' · '))+'</p>':'';
-  return '<article class="mini-row"><div><div class="report-title"><b>'+escapeHtml(c.label||'WIN candidate')+'</b><span class="decision">'+escapeHtml(c.status||'UNASSESSED')+'</span></div><p>Combined odds: <b>'+(c.combinedOdds?Number(c.combinedOdds).toFixed(2):'Not verified')+'</b></p><div class="table-wrap"><table><thead><tr><th>Event</th><th>Market / selection</th><th>Odds</th><th>Price evidence</th></tr></thead><tbody>'+legs+'</tbody></table></div>'+blockers+corr+risk+'</div></article>';
+  const warnings=(c.probabilityWarnings||[]).length?'<p class="detail-meta"><b>Probability warnings:</b> '+escapeHtml(c.probabilityWarnings.join(' · '))+'</p>':'';
+  const riskFactors=(c.riskFactors||[]).length?'<p><b>Risk factors:</b> '+escapeHtml(c.riskFactors.join(' · '))+'</p>':'';
+  const wholeProbability=typeof c.wholeCouponWinProbabilityPercent==="number"?Number(c.wholeCouponWinProbabilityPercent).toFixed(1)+"%":"Not reliably quantifiable";
+  const probabilityLabel=c.jointProbabilityAvailable===true
+   ?"Single-leg estimate: "+wholeProbability+" (uncalibrated unless separately validated)"
+   :"Whole-coupon probability: "+wholeProbability;
+  const probability='<p class="detail-meta">'+escapeHtml(probabilityLabel)+'</p>';
+  const risk=typeof c.riskPercent==="number"?'<p class="detail-meta">Heuristic risk score: <b>'+Number(c.riskPercent).toFixed(0)+'%</b> · not a calibrated loss probability.</p>':"";
+  const theoretical=c.theoreticalOddsProduct===null||c.theoreticalOddsProduct===undefined?"":'<p class="detail-meta">Theoretical leg-price product: <b>'+Number(c.theoreticalOddsProduct).toFixed(2)+'</b> · not a bookmaker-quoted accumulator price.</p>';
+  const dataQuality=c.dataQualityStatus==="incomplete"?'<p class="report-error">Some leg evidence is incomplete; review the blockers before using this draft.</p>':"";
+  return '<article class="mini-row"><div><div class="report-title"><b>'+escapeHtml(c.label||'WIN candidate')+'</b><span class="decision">'+escapeHtml(c.status||'UNASSESSED')+'</span></div><p>Combined odds: <b>'+(c.combinedOdds?Number(c.combinedOdds).toFixed(2):'Not verified')+'</b></p>'+theoretical+probability+risk+warnings+dataQuality+'<div class="table-wrap"><table><thead><tr><th>Event</th><th>Market / selection</th><th>Odds</th><th>Estimated leg win %</th><th>Price evidence</th></tr></thead><tbody>'+legs+'</tbody></table></div>'+blockers+corr+riskFactors+'</div></article>';
  }).join('')+'</section>';
 }
 function riskPanel(risk,master){
@@ -85,26 +99,45 @@ function renderCouponBoardCard(item, mode) {
  const state=escapeHtml(mode==="candidate"?(item.status||"BLOCKED"):(item.outcome||"pending").toUpperCase());
  const date=item.settledAt||item.createdAt||item.archivedAt||item.updatedAt;
  const odds=item.combinedOdds===null||item.combinedOdds===undefined?"Not verified":Number(item.combinedOdds).toFixed(2);
+ const indicativeOdds=item.theoreticalOddsProduct===null||item.theoreticalOddsProduct===undefined?null:Number(item.theoreticalOddsProduct).toFixed(2);
+ const wholeProbability=typeof item.wholeCouponWinProbabilityPercent==="number"
+  ?Number(item.wholeCouponWinProbabilityPercent).toFixed(1)+"%" : "Not reliably quantifiable";
+ const probabilityStatus=item.jointProbabilityAvailable===true
+  ?"Single-leg estimate: "+wholeProbability+" (uncalibrated unless separately validated)"
+  :"Whole-coupon probability: "+wholeProbability;
+ const riskDisplay=typeof item.riskPercent==="number"
+  ?'<p class="detail-meta">Heuristic risk score: <b>'+Number(item.riskPercent).toFixed(0)+'%</b> · not a calibrated loss probability.</p>':"";
+ const probabilityWarnings=Array.isArray(item.probabilityWarnings)&&item.probabilityWarnings.length
+  ?'<p class="detail-meta"><b>Probability warning:</b> '+escapeHtml(item.probabilityWarnings.join(" · "))+'</p>':"";
+ const dataQuality=item.dataQualityStatus==="incomplete"?'<p class="report-error"><b>Incomplete evidence:</b> some leg details still need verification.</p>':"";
  const selections=Array.isArray(item.legs)?item.legs:(Array.isArray(item.selections)?item.selections:[]);
  const rows=selections.map((selection,index)=>{
   const event=escapeHtml(selection.event||selection.match||"Event not specified");
   const market=escapeHtml(selection.market||selection.selectionType||"Market not specified");
   const pick=escapeHtml(selection.selection||selection.pick||selection.outcome||"Pick not specified");
   const price=selection.odds===null||selection.odds===undefined?"—":Number(selection.odds).toFixed(2);
+  const probability=typeof selection.estimatedWinProbabilityPercent==="number"
+   ?Number(selection.estimatedWinProbabilityPercent).toFixed(1)+"%": "—";
+  const probabilityBasis=(selection.probabilityType==="agent_heuristic_unverified"?"Uncalibrated agent estimate"
+   :selection.probabilityType==="unverified_claim"?"Unverified model/market claim":"Not available")
+   +(selection.probabilityConfidence?" · "+escapeHtml(selection.probabilityConfidence)+" confidence":"");
+  const probabilityRationale=selection.probabilityRationale
+   ?'<small>'+escapeHtml(selection.probabilityRationale)+'</small>':"";
   const result=escapeHtml(selection.result||selection.settlement||"—");
   const url=safeUrl(selection.sourceUrl||selection.url||selection.reference||"");
   const source=url?'<a href="'+escapeHtml(url)+'" target="_blank" rel="noopener noreferrer">Evidence ↗</a>':"Not supplied";
   const observed=selection.observedAt?'<small>'+escapeHtml(selection.observedAt)+'</small>':"";
-  return '<tr><td>'+(index+1)+'</td><td>'+event+'</td><td>'+market+'<br><b>'+pick+'</b></td><td>'+price+'</td><td>'+result+'</td><td>'+source+observed+'</td></tr>';
+  return '<tr><td>'+(index+1)+'</td><td>'+event+'</td><td>'+market+'<br><b>'+pick+'</b></td><td>'+price+'</td><td>'+probability+'<br><small>'+escapeHtml(probabilityBasis)+'</small>'+probabilityRationale+'</td><td>'+result+'</td><td>'+source+observed+'</td></tr>';
  }).join("");
- const table=rows?'<div class="table-wrap"><table><thead><tr><th>#</th><th>Event</th><th>Market / pick</th><th>Odds</th><th>Result</th><th>Source</th></tr></thead><tbody>'+rows+'</tbody></table></div>':"";
+ const table=rows?'<div class="table-wrap"><table><thead><tr><th>#</th><th>Event</th><th>Market / pick</th><th>Odds</th><th>Estimated leg win %</th><th>Result</th><th>Source</th></tr></thead><tbody>'+rows+'</tbody></table></div>':"";
  const text=item.couponText?'<pre>'+escapeHtml(item.couponText)+'</pre>':"";
  const blockers=Array.isArray(item.blockers)&&item.blockers.length?'<p class="report-error"><b>Blockers:</b> '+escapeHtml(item.blockers.join(" · "))+'</p>':"";
  const note=item.executionDisclosure||item.notes||item.settlementReviewStatus||"";
  const placement=item.executionStatus==="not_placed_by_WIN"||item.placementStatus==="not_placed_by_WIN"
   ?'<p class="detail-meta">Research candidate only · not placed by WIN</p>':"";
  const details=table||text||blockers?'<details><summary>View full coupon ('+selections.length+' selections)</summary>'+table+text+blockers+'</details>':'<p class="detail-meta">No structured selections were stored for this record.</p>';
- return '<article class="coupon-board-card"><div class="report-title"><b>'+title+'</b><span class="decision">'+state+'</span></div><small>'+origin+' · '+escapeHtml(item.sport||"Sport unspecified")+' · '+escapeHtml(item.competition||"Competition unspecified")+(date?' · '+escapeHtml(new Date(date).toLocaleString()):"")+'</small><p>Combined odds: <b>'+odds+'</b> · '+selections.length+' selections</p>'+placement+(note?'<p class="detail-meta">'+escapeHtml(note)+'</p>':"")+details+'</article>';
+ const priceNote=indicativeOdds!==null?'<p class="detail-meta">Theoretical leg-price product: <b>'+indicativeOdds+'</b> · not a bookmaker-quoted accumulator price.</p>':"";
+ return '<article class="coupon-board-card"><div class="report-title"><b>'+title+'</b><span class="decision">'+state+'</span></div><small>'+origin+' · '+escapeHtml(item.sport||"Sport unspecified")+' · '+escapeHtml(item.competition||"Competition unspecified")+(date?' · '+escapeHtml(new Date(date).toLocaleString()):"")+'</small><p>Combined odds: <b>'+odds+'</b> · '+selections.length+' selections</p>'+priceNote+'<p class="detail-meta">'+escapeHtml(probabilityStatus)+'</p>'+riskDisplay+probabilityWarnings+dataQuality+placement+(note?'<p class="detail-meta">'+escapeHtml(note)+'</p>':"")+details+'</article>';
 }
 async function refreshCouponBoards(){
  const status=$("#couponBoardStatus");
@@ -250,7 +283,7 @@ async function refreshResearch(){
  try{
   const d=await api("/api/research-status");
   const providers=(d.providers||[]).map(p=>'<article class="mini-row"><div><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.status||"unknown")+' · '+escapeHtml(p.accessMode||"")+' · licence '+escapeHtml(p.licenceReview||"unverified")+'</small></div></article>').join("");
-  const open=d.openfootball||{},worldCup=d.openfootballWorldCup||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{},evolution=d.agentEvolution||{};
+  const open=d.openfootball||{},worldCup=d.openfootballWorldCup||{},cons=d.consensus||{},sharp=d.sharpapi||{},lab=d.modelLab||{},agents=d.persistentAgents||{},cal=d.calibration?.latest||{},settlement=d.observedMarketSettlement||{},bridge=settlement.latest||{},sim=bridge.simulation?.summary||{},discovery=d.sourceDiscovery||{},evolution=d.agentEvolution||{},sourceReview=d.sourceReview||{},resultReview=sourceReview.results||{},oddsReview=sourceReview.odds||{},footballInventory=sourceReview.footballInventory||{};
   const couponSims=(cal.reports||[]).flatMap(r=>r.couponSimulation?.results||[]);
   const candidateRows=renderSourceCandidates(discovery.topCandidates||[]);
   const sections=[
@@ -262,6 +295,7 @@ async function refreshResearch(){
    '<article class="mini-row"><div><b>Settled bookmaker prices → existing simulation</b><small>'+escapeHtml(settlement.status||"not yet run")+' · '+Number(bridge.snapshotRows||0).toLocaleString()+' snapshot rows → '+Number(bridge.eligiblePreMatchRows||0).toLocaleString()+' eligible pre-match → '+Number(settlement.settledSelections||0).toLocaleString()+' settled selections · '+Number(settlement.uniqueEvents||0)+' events · '+(sim.flatStakeRoi!==undefined?'descriptive historical ROI '+(Number(sim.flatStakeRoi)*100).toFixed(1)+'%':'simulation pending')+' · not a predictive edge</small></div></article>',
    '<article class="mini-row"><div><b>Agent proposal and sandbox readiness</b><small>'+Number(evolution.proposalCount||0)+' proposals · '+Number(evolution.readyForHumanSandboxApproval||0)+' ready for human sandbox approval · '+Number(evolution.blocked||0)+' blocked by missing data/evidence · '+Number(evolution.sandboxEvaluations||0)+' readiness checks · '+Number(evolution.productionAgentsCreated||0)+' production agents auto-created</small></div></article>',
    '<article class="mini-row"><div><b>Public source discovery</b><small>'+escapeHtml(discovery.status||"not yet run")+' · '+Number(discovery.totalCandidates||0)+' candidates · '+Number(discovery.openLicenseCandidates||0)+' open-license candidates · '+Number(discovery.reviewRequired||0)+' awaiting review · last check '+escapeHtml(discovery.lastCheck||"not yet")+'</small></div></article>',
+   '<article class="mini-row"><div><b>Football-first odds and result source review</b><small>'+Number(resultReview.total||0)+' result providers · '+Number(resultReview.footballFirst||0)+' football-first · '+Number(oddsReview.total||0)+' odds/market providers · '+Number(oddsReview.footballFirst||0)+' football-first · '+Number(footballInventory.notConnected||0)+' football sources still disconnected · identity, market semantics, timestamps and cadence remain unreviewed</small></div></article>',
    '<article class="mini-row"><div><b>Persistent entity agents</b><small>'+Number(agents.profiles||0)+' profiles · '+Number(agents.queued||0)+' queued · '+Number(agents.running||0)+' running · '+Number(agents.completed||0)+' completed · '+Number(agents.failed||0)+' failed</small></div></article>'
   ];
   $("#researchEngineStatus").innerHTML='<h4>Data providers</h4>'+providers+'<h4>Pipeline status</h4>'+sections.join("")+'<h4>Discovered public source candidates</h4>'+(candidateRows||'<div class="empty">No candidates discovered yet.</div>')+'<p class="detail-meta">Discovered sources remain review-only. Approving a source for adapter review does not connect or activate automatic ingestion. Human Coupon Lab remains isolated. AI entity agents execute one queued task per four-hour cycle only when the OpenAI key, model and explicit budget approval gates allow it.</p>';

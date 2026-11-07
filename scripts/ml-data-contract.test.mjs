@@ -1,0 +1,96 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { WIN_ML_DATASET_MANIFEST_VERSION, WIN_ML_FOOTBALL_1X2_SETTLEMENT_RULE_ID, evaluateWinMLDatasetReadiness, validateWinMLDatasetManifest, validateWinMLTrainingExample } from "../netlify/lib/ml-data-contract.mts";
+const manifest = (overrides = {}) => ({
+  manifestVersion: WIN_ML_DATASET_MANIFEST_VERSION, datasetId: "synthetic-football-2026",
+  providerId: "synthetic-fixture", sport: "association_football", competition: "synthetic-league",
+  season: "2026", sourceUrl: "https://example.test/dataset", licenceId: "CC0-1.0",
+  attributionRequired: false, automationAllowed: false, approvedForTraining: true, permittedUse: "training",
+  rowGrain: "match", eventTimePrecision: "instant", retrievedAt: "2026-11-05T10:00:00.000Z",
+  rowCount: 120, labeledRowCount: 120, schemaVersion: "football.match.v1", contentSha256: "a".repeat(64), ...overrides
+});
+const example = (overrides = {}) => ({
+  datasetId: "synthetic-football-2026", sourceRecordId: "source-row-1", eventId: "match-1",
+  eventStart: "2026-11-05T19:00:00.000Z", predictionCutoff: "2026-11-05T17:00:00.000Z",
+  features: {
+    prior_home_goals: { value: 1.4, availableAt: "2026-11-04T20:00:00.000Z", sourceId: "results-feed" },
+    home_rest_days: { value: 6, availableAt: "2026-11-05T08:00:00.000Z", sourceId: "schedule-feed" }
+  },
+  label: { market: "1x2", outcome: "HOME", settlementRuleId: "win.football.regulation_time_1x2.v1", settledAt: "2026-11-05T21:00:00.000Z" },
+  ...overrides
+});
+test("dataset manifest validates immutable provenance and licence fields", () => {
+  assert.deepEqual(validateWinMLDatasetManifest(manifest()), []);
+  const errors = validateWinMLDatasetManifest(manifest({ sourceUrl: "http://example.test/data", contentSha256: "bad", attributionRequired: true, attributionText: "" }));
+  assert.ok(errors.includes("source_url_must_be_https"));
+  assert.ok(errors.includes("content_sha256_invalid"));
+  assert.ok(errors.includes("required_attribution_missing"));
+});
+test("caller-controlled manifest flags cannot authorize training without trusted owner evidence", () => {
+  const claimedApproved = evaluateWinMLDatasetReadiness(manifest({ approvedForTraining: true, permittedUse: "training" }));
+  assert.equal(claimedApproved.eligible, false);
+  assert.ok(claimedApproved.reasons.includes("trusted_owner_approval_evidence_missing"));
+  assert.ok(evaluateWinMLDatasetReadiness(manifest({ permittedUse: "research_only" })).reasons.includes("licence_does_not_permit_training"));
+  assert.ok(evaluateWinMLDatasetReadiness(manifest({ approvedForTraining: false })).reasons.includes("owner_training_approval_missing"));
+  assert.ok(evaluateWinMLDatasetReadiness(manifest({ eventTimePrecision: "date" })).reasons.includes("exact_event_time_required_for_point_in_time_training"));
+});
+
+test("training readiness blocks research-only, unapproved and date-only sources", () => {
+  assert.equal(evaluateWinMLDatasetReadiness(manifest()).eligible, false);
+  assert.ok(evaluateWinMLDatasetReadiness(manifest({ permittedUse: "research_only" })).reasons.includes("licence_does_not_permit_training"));
+  assert.ok(evaluateWinMLDatasetReadiness(manifest({ approvedForTraining: false })).reasons.includes("owner_training_approval_missing"));
+  assert.ok(evaluateWinMLDatasetReadiness(manifest({ eventTimePrecision: "date" })).reasons.includes("exact_event_time_required_for_point_in_time_training"));
+});
+test("clean synthetic examples pass feature validation but remain blocked from training", () => {
+  assert.ok(validateWinMLTrainingExample(manifest(), example()).includes("dataset_not_training_eligible"));
+});
+test("point-in-time contract rejects future features, post-kickoff cutoffs and invalid labels", () => {
+  assert.ok(validateWinMLTrainingExample(manifest(), example({ features: { lineup: { value: "confirmed", availableAt: "2026-11-05T18:00:00.000Z", sourceId: "lineup-feed" } } })).includes("future_feature_leakage:lineup"));
+  assert.ok(validateWinMLTrainingExample(manifest(), example({ predictionCutoff: "2026-11-05T19:00:00.000Z" })).includes("prediction_cutoff_must_precede_event"));
+  assert.ok(validateWinMLTrainingExample(manifest(), example({ label: { market: "1x2", outcome: "OVER", settlementRuleId: "", settledAt: "invalid" } })).includes("settlement_aware_label_invalid"));
+  assert.ok(validateWinMLTrainingExample(manifest(), example({ label: { market: "1x2", outcome: "HOME", settlementRuleId: "win.football.regulation_time_1x2.v1", settledAt: "2026-11-05T18:00:00.000Z" } })).includes("label_cannot_settle_before_event_start"));
+});
+test("training examples cannot cross dataset identities or use malformed feature provenance", () => {
+  assert.ok(validateWinMLTrainingExample(manifest(), example({ datasetId: "different-dataset" })).includes("example_dataset_mismatch"));
+  const errors = validateWinMLTrainingExample(manifest(), example({ features: { broken: { value: Number.NaN, availableAt: "not-a-date", sourceId: "" } } }));
+  assert.ok(errors.includes("feature_provenance_invalid:broken"));
+});
+
+test("point-in-time data rejects date-only timestamps without timezone precision", () => {
+  assert.ok(validateWinMLDatasetManifest(manifest({ retrievedAt: "2026-11-05" })).includes("retrieved_at_invalid"));
+  assert.ok(validateWinMLTrainingExample(manifest(), example({ predictionCutoff: "2026-11-05" })).includes("event_and_cutoff_timestamps_required"));
+});
+
+
+test("1X2 labels reject arbitrary caller-supplied settlement identifiers", () => {
+  assert.ok(validateWinMLTrainingExample(manifest(), example({
+    label: {
+      market: "1x2", outcome: "HOME",
+      settlementRuleId: "unverified-caller-rule",
+      settledAt: "2026-11-05T21:00:00.000Z"
+    }
+  })).includes("settlement_aware_label_invalid"));
+  assert.equal(WIN_ML_FOOTBALL_1X2_SETTLEMENT_RULE_ID, "win.football.regulation_time_1x2.v1");
+});
+
+test("ML data contract rejects impossible calendar timestamps", () => {
+  for (const retrievedAt of [
+    "2026-02-29T12:00:00.000Z",
+    "2026-02-31T12:00:00.000Z",
+    "2026-11-06T24:00:00.000Z"
+  ]) {
+    assert.ok(
+      validateWinMLDatasetManifest(manifest({ retrievedAt })).includes("retrieved_at_invalid"),
+      retrievedAt
+    );
+  }
+});
+
+test("ML dataset manifests reject mutable source references and credential-bearing source URLs", () => {
+  assert.ok(validateWinMLDatasetManifest(manifest({ sourceRevision: "main" })).includes("source_revision_invalid"));
+  assert.ok(validateWinMLDatasetManifest(manifest({ sourceRevision: "latest" })).includes("source_revision_invalid"));
+  assert.ok(validateWinMLDatasetManifest(manifest({ sourceRevision: "a1b2c3d4e5f6" })).length === 0);
+  assert.ok(validateWinMLDatasetManifest(manifest({
+    sourceUrl: "https://user:password@example.test/data"
+  })).includes("source_url_credentials_or_host_invalid"));
+});

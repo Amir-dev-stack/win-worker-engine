@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto";
 import { get, list, put, putIfNew, remove } from "./store.mts";
 import { isIndependentlyValidatedLesson } from "./win-learning-core.mjs";
+import { buildWinCouponArchiveCandidate } from "./win-coupon-archive-policy.mts";
 
 export type LibraryOutcome = "pending" | "won" | "lost" | "void" | "partial" | "cancelled" | "unknown";
 export type EntityKind = "sport" | "country" | "league" | "club" | "player" | "manager" | "event" | "specialist";
@@ -371,6 +373,7 @@ export async function settleCouponRecord(input: any) {
   const current = await get<any>("library/coupons", id);
   if (!current) throw new Error("Coupon not found");
   if (current.origin === "human") throw new Error("Human-origin coupons must use the independent settlement review queue; direct settlement is disabled.");
+
   const outcome = clean(input?.outcome, 20).toLowerCase() as LibraryOutcome;
   if (!OUTCOMES.has(outcome) || outcome === "pending" || outcome === "unknown") {
     throw new Error("settlement outcome must be won, lost, void, partial or cancelled");
@@ -381,10 +384,50 @@ export async function settleCouponRecord(input: any) {
   if (!isHttpsUrl(settlementSource) || !settlementEvidence.some(evidenceHasHttpsUrl)) {
     throw new Error("Provide an HTTPS settlement source URL and at least one HTTPS evidence URL.");
   }
+
+  // One immutable claim owns the settlement decision for this coupon. The
+  // complete payload is retained so an identical retry can repair projections
+  // after a process failure without inventing a new timestamp or history row.
+  const claimId = createHash("sha256").update(id, "utf8").digest("hex");
+  const fingerprint = createHash("sha256").update(JSON.stringify({
+    couponId: id, outcome, settlementSource, settlementEvidence
+  }), "utf8").digest("hex");
+  let claim = await get<any>("library/coupon-settlement-claims", claimId);
+  if (!claim) {
+    if (clean(current.outcome, 20).toLowerCase() !== "pending") {
+      throw new Error("Coupon already has a settlement without a matching immutable claim; manual reconciliation or the explicit correction workflow is required.");
+    }
+    const now = new Date().toISOString();
+    const proposedClaim = {
+      claimVersion: "win.coupon-settlement-claim.v1",
+      couponId: id,
+      fingerprint,
+      outcome,
+      settlementSource,
+      settlementEvidence,
+      settledAt: clean(input?.settledAt, 100) || now,
+      claimedAt: now
+    };
+    const write = await putIfNew("library/coupon-settlement-claims", claimId, proposedClaim);
+    claim = write.modified
+      ? proposedClaim
+      : await get<any>("library/coupon-settlement-claims", claimId);
+  }
+  if (!claim || claim.claimVersion !== "win.coupon-settlement-claim.v1" ||
+      claim.couponId !== id || claim.fingerprint !== fingerprint ||
+      claim.outcome !== outcome || claim.settlementSource !== settlementSource ||
+      !Array.isArray(claim.settlementEvidence) || !claim.settledAt) {
+    throw new Error("A different or invalid immutable settlement claim already exists; an explicit correction workflow is required.");
+  }
+  const currentOutcome = clean(current.outcome, 20).toLowerCase();
+  if (currentOutcome !== "pending" && currentOutcome !== claim.outcome) {
+    throw new Error("Coupon was settled by a different outcome; an explicit correction workflow is required.");
+  }
+
   const updated = {
-    ...current, outcome, settlementSource,
-    settlementEvidence,
-    settledAt: clean(input?.settledAt, 100) || new Date().toISOString(),
+    ...current, outcome: claim.outcome, settlementSource: claim.settlementSource,
+    settlementEvidence: claim.settlementEvidence,
+    settledAt: claim.settledAt,
     updatedAt: new Date().toISOString(),
     learningStatus: "available_for_review",
     settlementReviewStatus: "owner_submitted_reference_pending_independent_review"
@@ -394,17 +437,20 @@ export async function settleCouponRecord(input: any) {
   await remove("library/losing-coupons", id);
   await remove("library/pending-coupons", id);
   await remove("library/other-settlements", id);
-  if (outcome === "won") await put("library/winning-coupons", id, updated);
-  else if (outcome === "lost") await put("library/losing-coupons", id, updated);
+  if (claim.outcome === "won") await put("library/winning-coupons", id, updated);
+  else if (claim.outcome === "lost") await put("library/losing-coupons", id, updated);
   else await put("library/other-settlements", id, updated);
-  const historyId = crypto.randomUUID();
+
+  // A deterministic history identity prevents duplicate rows when a retry
+  // resumes after any later projection write has failed.
+  const historyId = "settlement-review-" + createHash("sha256").update(id, "utf8").digest("hex").slice(0, 40);
   await put("library/coupon-history", historyId, {
-    id: historyId, couponId: id, action: "settled", outcome,
-    settlementSource, evidence: updated.settlementEvidence, at: updated.settledAt
+    id: historyId, couponId: id, action: "settled", outcome: claim.outcome,
+    settlementSource: claim.settlementSource, evidence: claim.settlementEvidence, at: claim.settledAt
   });
 
-  // Every settlement creates an idempotent, evidence-linked learning case.
-  // It records what happened, not an unsupported claim about why it happened.
+  // Every settlement creates an evidence-linked learning case. It records
+  // what happened, not an unsupported claim about why it happened.
   const learningId = "settlement-" + id;
   const selectionSummary = safeArray(updated.selections, 100).map((selection: any, index: number) => ({
     index: index + 1,
@@ -416,13 +462,13 @@ export async function settleCouponRecord(input: any) {
   }));
   const learningRecord = {
     id: learningId, recordType: "settlement_learning_case",
-    couponId: id, outcome, sport: updated.sport, country: updated.country,
+    couponId: id, outcome: claim.outcome, sport: updated.sport, country: updated.country,
     competition: updated.competition, combinedOdds: updated.combinedOdds ?? null,
-    selections: selectionSummary, settlementSource,
-    evidence: updated.settlementEvidence,
+    selections: selectionSummary, settlementSource: claim.settlementSource,
+    evidence: claim.settlementEvidence,
     observation: "Owner-submitted coupon outcome classification recorded with an HTTPS evidence reference. WIN has not independently verified the source or settlement. This is an observation candidate, not proof that any individual selection or strategy caused the result.",
     validationStatus: "candidate_for_validation",
-    createdAt: updated.settledAt, updatedAt: new Date().toISOString()
+    createdAt: claim.settledAt, updatedAt: new Date().toISOString()
   };
   await put("library/lessons", learningId, learningRecord);
   await put("library/settlement-learning", learningId, learningRecord);
@@ -444,24 +490,28 @@ export async function settleCouponRecord(input: any) {
     const observationId = learningId + ":" + clean(profile.id, 180);
     await put("library/agent-observations", observationId, {
       id: observationId, agentId: profile.agentId, entityId: profile.id,
-      entityType: profile.entityType, couponId: id, outcome,
+      entityType: profile.entityType, couponId: id, outcome: claim.outcome,
       recordType: "settlement_outcome_observation",
       observation: learningRecord.observation,
       settlementLearningId: learningId,
-      evidence: updated.settlementEvidence,
+      evidence: claim.settlementEvidence,
       status: "owner_submitted_outcome_unverified",
-      observedAt: updated.settledAt
+      observedAt: claim.settledAt
     });
     await put("library/agent-profiles", profile.agentId, {
       ...(await get<any>("library/agent-profiles", profile.agentId) || {}),
       agentId: profile.agentId, entityId: profile.id, entityType: profile.entityType,
       name: profile.name, scope: profile.scope,
-      lastUserSubmittedSettlementLearningId: learningId, lastUserSubmittedOutcome: outcome,
-      lastLearningAt: updated.settledAt
+      lastUserSubmittedSettlementLearningId: learningId, lastUserSubmittedOutcome: claim.outcome,
+      lastLearningAt: claim.settledAt
     });
   }
-  await put("library/coupons", id, { ...updated, learningStatus: "recorded", settlementLearningId: learningId, learningAgentsUpdated: matchingProfiles.length });
-  return { ...updated, learningStatus: "recorded", settlementLearningId: learningId, learningAgentsUpdated: matchingProfiles.length };
+  const completed = {
+    ...updated, learningStatus: "recorded", settlementLearningId: learningId,
+    learningAgentsUpdated: matchingProfiles.length
+  };
+  await put("library/coupons", id, completed);
+  return completed;
 }
 
 export async function saveEntityProfile(input: any) {
@@ -877,58 +927,21 @@ export async function archiveRunToLibrary(run: any) {
 
 
 
-  // Save D6's structured candidates with stable IDs. Only fully qualified
-  // candidates enter the pending tracker; WIN does not place any bet.
+  // Persist every D6 proposal. The pure archive policy keeps drafts visible
+  // and limits the pending tracker to fully evidenced qualified single legs.
   let winCouponCandidatesSaved = 0;
   let qualifiedWinCouponsTracked = 0;
-  const runResearchPassed = run.status === "completed" &&
-    run.workerNetwork?.libraryReviewGate?.status === "passed" &&
-    run.workerNetwork?.riskAssessmentGate?.status === "passed" &&
-    /^\s*FINAL DECISION:\s*BET\b/im.test(run.master?.report || "");
   for (const [index, candidate] of safeArray(run.coupons, 100).entries()) {
-    const candidateId = "win-candidate-" + slug(run.id + "-" + (candidate?.id || index));
-    const legs = safeArray(candidate?.legs, 100).map((leg: any) => ({
-      event: clean(leg?.event, 250) || "Unspecified event",
-      market: clean(leg?.market, 180) || "Unspecified market",
-      selection: clean(leg?.selection, 180) || "Unspecified selection",
-      odds: Number.isFinite(leg?.odds) && leg.odds > 1 ? leg.odds : null,
-      sourceUrl: clean(leg?.sourceUrl, 1500) || null,
-      observedAt: clean(leg?.observedAt, 100) || null,
-      eventStart: clean(leg?.startTime || leg?.eventStart || leg?.kickoff || leg?.matchDateTimeUTC, 100) || null,
-      eventId: clean(leg?.eventId, 180) || null,
-      leagueShortcut: clean(leg?.leagueShortcut, 40) || null,
-      leagueSeason: Number.isInteger(leg?.leagueSeason) ? leg.leagueSeason : null,
-      homeTeam: clean(leg?.homeTeam, 160) || null,
-      awayTeam: clean(leg?.awayTeam, 160) || null,
-      settlementRule: clean(leg?.settlementRule, 500) || null,
-      blockers: safeArray(leg?.blockers, 20)
-    }));
-    const blockers = safeArray(candidate?.blockers, 200).map((item: any) => clean(item, 300)).filter(Boolean);
-    if (!runResearchPassed) blockers.push("Global Master did not approve the coupon or the full research, library and risk gates did not pass.");
-    const fullyQualified = runResearchPassed && candidate?.status === "QUALIFIED" && legs.length > 0 && blockers.length === 0 &&
-      legs.every((leg: any) =>
-        leg.event !== "Unspecified event" && leg.market !== "Unspecified market" &&
-        leg.selection !== "Unspecified selection" && leg.odds !== null && Boolean(leg.sourceUrl) &&
-        Boolean(leg.observedAt) && Number.isFinite(Date.parse(leg.observedAt)) &&
-        Boolean(leg.eventStart) && Number.isFinite(Date.parse(leg.eventStart)) &&
-        /(?:Z|[+-]\d{2}:\d{2})$/i.test(leg.eventStart) &&
-        Boolean(leg.settlementRule) && leg.blockers.length === 0
-      );
-    const candidateRecord = {
-      id: candidateId, recordType: "win_coupon_candidate", origin: "win",
-      runId: run.id, label: clean(candidate?.label, 250) || "WIN coupon candidate " + (index + 1),
-      sport: clean(run.brief?.sport, 100) || null,
-      country: clean(run.brief?.country, 100) || null,
-      competition: clean(run.brief?.competition, 200) || null,
-      status: fullyQualified ? "QUALIFIED" : "BLOCKED",
-      combinedOdds: fullyQualified && Number.isFinite(candidate?.combinedOdds) ? candidate.combinedOdds : null,
-      legs, blockers: fullyQualified ? [] : blockers.length ? blockers : ["Candidate did not pass all structured D6 qualification checks."],
-      riskFactors: safeArray(candidate?.riskFactors, 30),
-      correlationNotes: safeArray(candidate?.correlationNotes, 30),
-      placementStatus: "not_placed_by_WIN",
-      executionDisclosure: "This is a research candidate. WIN did not place a bet or verify a bookmaker ticket.",
+    const archived = buildWinCouponArchiveCandidate({
+      runId: run.id,
+      runStatus: run.status,
+      libraryReviewGateStatus: run.workerNetwork?.libraryReviewGate?.status || null,
+      riskAssessmentGateStatus: run.workerNetwork?.riskAssessmentGate?.status || null,
+      candidate, index,
+      sport: run.brief?.sport, country: run.brief?.country, competition: run.brief?.competition,
       createdAt: run.createdAt || savedAt, archivedAt: savedAt
-    };
+    });
+    const { candidateId, legs, fullyQualified, record: candidateRecord } = archived;
     await put("library/win-coupon-candidates", candidateId, candidateRecord);
     winCouponCandidatesSaved++;
 
@@ -940,7 +953,13 @@ export async function archiveRunToLibrary(run: any) {
         eventStart: leg.eventStart, eventId: leg.eventId,
         leagueShortcut: leg.leagueShortcut,
         leagueSeason: leg.leagueSeason, homeTeam: leg.homeTeam, awayTeam: leg.awayTeam,
-        settlementRule: leg.settlementRule, result: "pending"
+        settlementRule: leg.settlementRule, result: "pending",
+        estimatedWinProbabilityPercent: leg.estimatedWinProbabilityPercent,
+        probabilityType: leg.probabilityType,
+        probabilityConfidence: leg.probabilityConfidence,
+        probabilityRationale: leg.probabilityRationale,
+        probabilityEvidenceRefs: leg.probabilityEvidenceRefs,
+        probabilityCalibrated: false
       }));
       const couponText = [
         candidateRecord.label,

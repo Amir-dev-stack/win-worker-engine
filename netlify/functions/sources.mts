@@ -1,4 +1,5 @@
 import { requireAuth } from "../lib/auth.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 import { getTipsterSourceReport, importTipsterCoupon, listTipsterSources } from "../lib/source-intelligence.mts";
 
 export default async (req: Request) => {
@@ -10,9 +11,9 @@ export default async (req: Request) => {
     return Response.json(listTipsterSources(), { headers: { "cache-control": "no-store" } });
   }
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  let body: any;
-  try { body = await req.json(); }
-  catch { return Response.json({ error: "Expected JSON body" }, { status: 400 }); }
+  const parsedRequest = await readBoundedJsonObject(req, 64 * 1024);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
   try {
     if (body?.action !== "import_coupon") return Response.json({ error: "Allowed action: import_coupon" }, { status: 400 });
     return Response.json(await importTipsterCoupon(body), { status: 201 });

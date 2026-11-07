@@ -2,6 +2,7 @@ import { requireAuth } from "../lib/auth.mts";
 import { list, put } from "../lib/store.mts";
 import { saveCouponRecord } from "../lib/library.mts";
 import { getAIbudgetStatus } from "../lib/ai-budget.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 
 const TASK_TYPES = new Set(["research_event", "build_latest_coupon", "audit_existing_coupon", "compare_coupons"]);
 
@@ -25,13 +26,9 @@ export default async (req: Request) => {
     }, { status: 423 });
   }
 
-  let brief: any;
-  try { brief = await req.json(); }
-  catch { return Response.json({ error: "Expected JSON body" }, { status: 400 }); }
-
-  if (!brief || typeof brief !== "object" || Array.isArray(brief)) {
-    return Response.json({ error: "Expected a research brief object" }, { status: 400 });
-  }
+  const parsedRequest = await readBoundedJsonObject(req, 64 * 1024);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const brief = parsedRequest.body;
 
   const taskType = typeof brief.taskType === "string" && TASK_TYPES.has(brief.taskType)
     ? brief.taskType : "research_event";

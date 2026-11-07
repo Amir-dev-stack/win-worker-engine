@@ -3,6 +3,7 @@ import {
   searchWinLibrary, saveCouponRecord, settleCouponRecord,
   saveEntityProfile, saveLearningNote
 } from "../lib/library.mts";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 
 function isHttpsUrl(value: unknown): boolean {
   if (typeof value !== "string") return false;
@@ -35,9 +36,9 @@ export default async (req: Request) => {
   }
 
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  let body: any;
-  try { body = await req.json(); }
-  catch { return Response.json({ error: "Expected JSON body" }, { status: 400 }); }
+  const parsedRequest = await readBoundedJsonObject(req, 128 * 1024);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
 
   try {
     switch (body?.action) {
@@ -54,9 +55,11 @@ export default async (req: Request) => {
         if (typeof body.lessonId !== "string" || !body.lessonId.trim()) {
           return Response.json({ error: "lessonId is required" }, { status: 400 });
         }
-        const { get, list, put } = await import("../lib/store.mts");
-        const current = await get<any>("library/lessons", body.lessonId);
-        if (!current) return Response.json({ error: "Lesson not found" }, { status: 404 });
+        const { get, getWithMetadata, putIfMatch, putIfNew } = await import("../lib/store.mts");
+        const { lessonReviewSubmissionId } = await import("../lib/lesson-review-submission.mts");
+        const currentSnapshot = await getWithMetadata<any>("library/lessons", body.lessonId);
+        const current = currentSnapshot?.value || null;
+        if (!current || !currentSnapshot?.etag) return Response.json({ error: "Lesson not found" }, { status: 404 });
         const evidence = Array.isArray(body.evidence) ? body.evidence.slice(0, 30) : [];
         if (!evidence.some(evidenceHasHttpsUrl)) {
           return Response.json({
@@ -64,21 +67,28 @@ export default async (req: Request) => {
           }, { status: 400 });
         }
 
-        const priorCases = await list<any>("library/lesson-review-cases", 1000);
-        const alreadyPending = priorCases.find((item: any) =>
-          item.lessonId === body.lessonId && item.reviewStatus === "pending_independent_review"
-        );
-        if (alreadyPending) {
+        if (current.validationStatus === "pending_independent_review") {
+          const pendingId = typeof current.validationReviewCaseId === "string" ? current.validationReviewCaseId : "";
+          const pendingCase = pendingId ? await get<any>("library/lesson-review-cases", pendingId) : null;
+          if (!pendingCase || pendingCase.lessonId !== body.lessonId || pendingCase.reviewStatus !== "pending_independent_review") {
+            return Response.json({ error: "Lesson is marked pending but its review case cannot be verified; manual reconciliation is required." }, { status: 409 });
+          }
           return Response.json({
             accepted: true,
             validationStatus: "pending_independent_review",
-            reviewCase: alreadyPending,
+            reviewCase: pendingCase,
             message: "This lesson already has a pending independent review case."
           }, { status: 202 });
         }
 
+        const reviewCaseId = lessonReviewSubmissionId({
+          lessonId: body.lessonId,
+          validationStatus: current.validationStatus || "candidate",
+          validationReviewCaseId: current.validationReviewCaseId || "",
+          updatedAt: current.updatedAt || "",
+          validatedAt: current.validatedAt || ""
+        });
         const submittedAt = new Date().toISOString();
-        const reviewCaseId = "lesson-review-" + crypto.randomUUID();
         const reviewCase = {
           id: reviewCaseId,
           lessonId: body.lessonId,
@@ -98,7 +108,15 @@ export default async (req: Request) => {
             "The lesson remains outside the trusted learning pack until a separate authenticated reviewer approves it."
           ]
         };
-        await put("library/lesson-review-cases", reviewCaseId, reviewCase);
+        const claim = await putIfNew("library/lesson-review-cases", reviewCaseId, reviewCase);
+        let acceptedCase = reviewCase;
+        if (!claim.modified) {
+          const existing = await get<any>("library/lesson-review-cases", reviewCaseId);
+          if (!existing || existing.lessonId !== body.lessonId || existing.reviewStatus !== "pending_independent_review") {
+            return Response.json({ error: "Lesson review submission identity is occupied by an incompatible record; manual reconciliation is required." }, { status: 409 });
+          }
+          acceptedCase = existing;
+        }
 
         const updated = {
           ...current,
@@ -109,12 +127,20 @@ export default async (req: Request) => {
           validatedAt: null,
           validatedBy: null
         };
-        await put("library/lessons", body.lessonId, updated);
+        const lessonWrite = await putIfMatch("library/lessons", body.lessonId, updated, currentSnapshot.etag);
+        let acceptedLesson = updated;
+        if (!lessonWrite.modified) {
+          const latest = await get<any>("library/lessons", body.lessonId);
+          if (latest?.validationStatus !== "pending_independent_review" || latest?.validationReviewCaseId !== reviewCaseId) {
+            return Response.json({ error: "Review case was claimed but the lesson changed concurrently; retry the same submission or reconcile the pending case." }, { status: 409 });
+          }
+          acceptedLesson = latest;
+        }
         return Response.json({
           accepted: true,
           validationStatus: "pending_independent_review",
-          reviewCase,
-          lesson: updated,
+          reviewCase: acceptedCase,
+          lesson: acceptedLesson,
           message: "Submitted for independent review; this has not validated the lesson."
         }, { status: 202 });
       }

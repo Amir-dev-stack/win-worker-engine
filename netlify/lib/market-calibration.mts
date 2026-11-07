@@ -1,4 +1,5 @@
-import { list, put } from "./store.mts";
+import { list, get, putIfNew } from "./store.mts";
+import { hashWinMLProvenance } from "./ml-provenance.mts";
 
 type Observation={id:string;sport:string;eventStart:string;homeTeam:string;awayTeam:string;closing:any;settlements:any;homeScore:number|null;awayScore:number|null;providerId:string;};
 type Trial={p:number;y:number;};
@@ -59,6 +60,36 @@ function validBinaryVector(home:any,away:any):number[]|null{
  const p=[Number(home),Number(away)];
  return p.every(validProb)&&p.reduce((sum,x)=>sum+x,0)>0?p:null;
 }
+export function evaluateSameSlateFavouritePairs(input:Array<{eventId:string;eventStart:string;p:number;won:boolean}>){
+ const MIN_PAIRS=100,MAX_PAIRS=100_000;
+ const seen=new Set<string>(),groups=new Map<string,Array<{eventId:string;p:number;won:boolean}>>();
+ for(const item of Array.isArray(input)?input:[]){
+  const eventId=typeof item?.eventId==="string"?item.eventId.trim():"";
+  const day=typeof item?.eventStart==="string"?item.eventStart.slice(0,10):"";
+  if(!eventId||!/^\d{4}-\d{2}-\d{2}$/.test(day)||!validProb(item.p)||typeof item.won!=="boolean"||seen.has(eventId))continue;
+  seen.add(eventId);
+  const group=groups.get(day)||[];
+  group.push({eventId,p:item.p,won:item.won});
+  groups.set(day,group);
+ }
+ let pairCount=0,predictedTotal=0,observedTotal=0,slateCount=0;
+ for(const group of [...groups.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([,items])=>items)){
+  if(group.length<2)continue;
+  group.sort((a,b)=>a.eventId.localeCompare(b.eventId));
+  const pairs=group.length*(group.length-1)/2;
+  if(pairCount+pairs>MAX_PAIRS)return {status:"sample_cap_exceeded",method:"same_utc_calendar_day_distinct_event_favourite_pairs_v1",pairCount:0,slateCount:0,minimumPairs:MIN_PAIRS,maximumPairs:MAX_PAIRS,meanPredictedJointHitProbability:null,realizedJointHitRate:null,calibrationGap:null,jointModelQualificationAllowed:false,couponQualificationAllowed:false,productionUseAllowed:false,limitations:["Pair sample exceeded the fixed computation cap; no partial metrics are reported."]};
+  slateCount++;
+  for(let i=0;i<group.length;i++)for(let j=i+1;j<group.length;j++){
+   pairCount++;
+   predictedTotal+=group[i].p*group[j].p;
+   observedTotal+=group[i].won&&group[j].won?1:0;
+  }
+ }
+ if(pairCount<MIN_PAIRS)return {status:"insufficient_sample",method:"same_utc_calendar_day_distinct_event_favourite_pairs_v1",pairCount,slateCount,minimumPairs:MIN_PAIRS,meanPredictedJointHitProbability:null,realizedJointHitRate:null,calibrationGap:null,jointModelQualificationAllowed:false,couponQualificationAllowed:false,productionUseAllowed:false,limitations:["At least 100 same-UTC-day distinct-event pairs are required for a descriptive diagnostic."]};
+ const meanPredictedJointHitProbability=predictedTotal/pairCount,realizedJointHitRate=observedTotal/pairCount;
+ return {status:"diagnostic_only",method:"same_utc_calendar_day_distinct_event_favourite_pairs_v1",pairCount,slateCount,minimumPairs:MIN_PAIRS,meanPredictedJointHitProbability,realizedJointHitRate,calibrationGap:realizedJointHitRate-meanPredictedJointHitProbability,jointModelQualificationAllowed:false,couponQualificationAllowed:false,productionUseAllowed:false,limitations:["UTC calendar date is only a proxy for a bookmaker coupon slate; it does not prove the events were offered together.","This measures consensus-favourite outcomes, not WIN model probabilities or executable bookmaker prices.","A descriptive pair gap is not a validated joint-probability model and cannot qualify any coupon."]};
+}
+
 function simulateConsensusCoupons(rows:Observation[],providerId:string,sport:string){
  const football=sport==="football";
  const favourites=rows.map(r=>{
@@ -78,6 +109,7 @@ function simulateConsensusCoupons(rows:Observation[],providerId:string,sport:str
  }).filter((x:any)=>x!==null).sort((a,b)=>a.eventStart.localeCompare(b.eventStart));
  if(favourites.length<MINIMUM_MARKET_SAMPLE)return {status:"insufficient_sample",settledEvents:favourites.length,minimum:MINIMUM_MARKET_SAMPLE,couponCount:0};
  const holdout=favourites.slice(Math.floor(favourites.length*.7));
+ const sameSlatePairDependence=evaluateSameSlateFavouritePairs(holdout);
  if(holdout.length<10)return {status:"insufficient_holdout",settledEvents:favourites.length,holdoutEvents:holdout.length,couponCount:0};
  const random=seededRandom(providerId+"|consensus-coupon-simulation-v3|"+sport);
  const legCounts=[2,3,4,5,8,10].filter(n=>n<=holdout.length);
@@ -91,7 +123,7 @@ function simulateConsensusCoupons(rows:Observation[],providerId:string,sport:str
   }
   return {legs,couponsSimulated:samples,meanPredictedHitProbability:predicted/samples,realizedHitRate:actual/samples,calibrationGap:(actual-predicted)/samples};
  });
- return {status:"completed",method:football?"random_distinct_event_three_way_favourite_accumulators_v3":"random_distinct_event_two_way_favourite_accumulators_v3",couponCount:results.reduce((n,x)=>n+x.couponsSimulated,0),settledEvents:favourites.length,holdoutEvents:holdout.length,trainingEnd:favourites[Math.floor(favourites.length*.7)-1]?.eventStart||null,holdoutStart:holdout[0]?.eventStart||null,holdoutEnd:holdout.at(-1)?.eventStart||null,results,limitations:["Only complete probability vectors and unambiguous match-winner outcomes are included; draws, pushes, voids and ambiguous outcomes are excluded where they cannot be graded by the model.","Favourite-only market consensus simulation; it does not test WIN's own predictions.","Consensus probabilities are normalized consensus benchmarks, not executable bookmaker prices.","No stake return, ROI, payout, or bookmaker settlement is simulated.","Coupons are random distinct-event combinations; legs are not assumed independent for real betting advice."]};
+ return {status:"completed",method:football?"random_distinct_event_three_way_favourite_accumulators_v3":"random_distinct_event_two_way_favourite_accumulators_v3",couponCount:results.reduce((n,x)=>n+x.couponsSimulated,0),settledEvents:favourites.length,holdoutEvents:holdout.length,sameSlatePairDependence,trainingEnd:favourites[Math.floor(favourites.length*.7)-1]?.eventStart||null,holdoutStart:holdout[0]?.eventStart||null,holdoutEnd:holdout.at(-1)?.eventStart||null,results,limitations:["Only complete probability vectors and unambiguous match-winner outcomes are included; draws, pushes, voids and ambiguous outcomes are excluded where they cannot be graded by the model.","Favourite-only market consensus simulation; it does not test WIN's own predictions.","Consensus probabilities are normalized consensus benchmarks, not executable bookmaker prices.","No stake return, ROI, payout, or bookmaker settlement is simulated.","Coupons are random distinct-event combinations; legs are not assumed independent for real betting advice."]};
 }
 export function evaluateMarketDataset(dataset:any){
  const sport=String(dataset.sport||"").toLowerCase();
@@ -121,11 +153,17 @@ export function evaluateMarketDataset(dataset:any){
 export async function runMarketCalibrationLab(){
  const datasets=await list<any>("library/model-lab/market-consensus-datasets",100);
  const evaluated=datasets.map(evaluateMarketDataset);
- const id="market-calibration-"+new Date().toISOString().slice(0,10);
+
  const totalEvents=evaluated.reduce((n,x)=>n+x.events,0);
- const report={id,status:totalEvents?"completed":"waiting_for_data",createdAt:new Date().toISOString(),sourceDatasetCount:datasets.length,totalEvents,splitMethod:"chronological_70_30_per_dataset",reports:evaluated,interpretation:"This evaluates closing consensus markets as benchmarks, not a WIN predictive model. Test metrics are out-of-time. It does not establish betting ROI, bookmaker execution price or a profitable edge.",guardrails:["No random train/test split.","No future rows used in training portion.","Football 1X2 requires all three valid class probabilities and an unambiguous three-way result; incomplete class vectors are excluded.","Two-way sports use home/player-one win probability and an unambiguous home/player-one or away/player-two result; draws, pushes, voids and ambiguous outcomes are excluded.","Every market requires at least 30 valid events and uses a chronological 70/30 split.","Consensus fair probabilities are not individual bookmaker prices.","Human Coupon Lab was not read or written."],origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false,calibrationVersion:"sport_aware_two_way_and_1x2_v3"};
- await put("library/model-lab/market-calibration-reports",id,report);
- return report;
+ const report={status:totalEvents?"completed":"waiting_for_data",createdAt:new Date().toISOString(),sourceDatasetCount:datasets.length,totalEvents,splitMethod:"chronological_70_30_per_dataset",reports:evaluated,interpretation:"This evaluates closing consensus markets as benchmarks, not a WIN predictive model. Test metrics are out-of-time. It does not establish betting ROI, bookmaker execution price or a profitable edge.",guardrails:["No random train/test split.","No future rows used in training portion.","Football 1X2 requires all three valid class probabilities and an unambiguous three-way result; incomplete class vectors are excluded.","Two-way sports use home/player-one win probability and an unambiguous home/player-one or away/player-two result; draws, pushes, voids and ambiguous outcomes are excluded.","Every market requires at least 30 valid events and uses a chronological 70/30 split.","Consensus fair probabilities are not individual bookmaker prices.","Human Coupon Lab was not read or written."],origin:"provider_historical_data",lab:"model-lab",humanCouponLabTouched:false,calibrationVersion:"sport_aware_two_way_and_1x2_v3"};
+ const reportDigest=hashWinMLProvenance(report).sha256;
+ const id="market-calibration-"+reportDigest.slice(0,32);
+ const immutableReport={...report,id,reportSha256:reportDigest,storagePolicy:"immutable_content_addressed_v1"};
+ const stored=await putIfNew("library/model-lab/market-calibration-reports",id,immutableReport);
+ if(stored?.modified)return immutableReport;
+ const existing=await get<any>("library/model-lab/market-calibration-reports",id);
+ if(existing&&existing.reportSha256===reportDigest&&hashWinMLProvenance({...Object.fromEntries(Object.entries(existing).filter(([key])=>key!=="id"&&key!=="reportSha256"&&key!=="storagePolicy"))}).sha256===reportDigest)return existing;
+ throw new Error("market_calibration_immutable_record_conflict");
 }
 export async function getMarketCalibrationStatus(){
  const reports=await list<any>("library/model-lab/market-calibration-reports",20);

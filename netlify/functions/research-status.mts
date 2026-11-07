@@ -1,5 +1,6 @@
 import { requireAuth } from "../lib/auth.mts";
 import { DATA_PROVIDER_REGISTRY } from "../lib/data-provider-registry.mts";
+import { getWinSourceReviewQueue, getWinOddsSourceReviewQueue, getWinFootballSourceInventory } from "../lib/ml-source-review-queue.mts";
 import { getOpenFootballSyncStatus } from "../lib/openfootball-adapter.mts";
 import { getOpenFootballWorldCupSyncStatus } from "../lib/openfootball-worldcup-adapter.mts";
 import { getConsensusMarketSyncStatus } from "../lib/consensus-market-adapter.mts";
@@ -12,6 +13,9 @@ import { list } from "../lib/store.mts";
 export default async (req: Request) => {
  const denied=requireAuth(req);if(denied)return denied;
  if(req.method!=="GET")return new Response("Method not allowed",{status:405});
+ const resultSourceReviewQueue=getWinSourceReviewQueue();
+ const oddsSourceReviewQueue=getWinOddsSourceReviewQueue();
+ const footballSourceInventory=getWinFootballSourceInventory();
  const [openfootball,openfootballWorldCup,consensus,sharpapi,calibration,observedMarketSettlement,sourceDiscovery,agentEvolution,experiments,datasets,consensusDatasets,observedMarketDatasets,playerEventDatasets,settledObservedMarketDatasets,agentTasks,agentProfiles]=await Promise.all([
   getOpenFootballSyncStatus(),getOpenFootballWorldCupSyncStatus(),getConsensusMarketSyncStatus(),getSharpApiSampleStatus(),getMarketCalibrationStatus(),getObservedMarketSettlementStatus(),getPublicResearchSourceDiscoveryStatus(),getAgentEvolutionStatus(),
   list<any>("library/model-lab/experiments",30),
@@ -24,6 +28,11 @@ export default async (req: Request) => {
   list<any>("library/persistent-agent-profiles",50)
  ]);
  return Response.json({
+  sourceReview:{
+   results:{total:resultSourceReviewQueue.length,footballFirst:resultSourceReviewQueue.filter(x=>x.rolloutTrack==="football_first").length,laterSport:resultSourceReviewQueue.filter(x=>x.rolloutTrack==="later_sport").length,unreviewed:resultSourceReviewQueue.length,queue:resultSourceReviewQueue},
+   odds:{total:oddsSourceReviewQueue.length,footballFirst:oddsSourceReviewQueue.filter(x=>x.rolloutTrack==="football_first").length,laterSport:oddsSourceReviewQueue.filter(x=>x.rolloutTrack==="later_sport").length,unreviewed:oddsSourceReviewQueue.length,queue:oddsSourceReviewQueue},
+   footballInventory:{total:footballSourceInventory.length,notConnected:footballSourceInventory.length,trainingUnapproved:footballSourceInventory.length}
+  },
   providers:DATA_PROVIDER_REGISTRY.map(p=>({
    id:p.id,name:p.name,accessMode:p.accessMode,licenceReview:p.licenceReview,automationAllowed:p.automationAllowed,
    status:p.id==="openfootball"?openfootball.status:p.id==="openfootball-worldcup-json"?openfootballWorldCup.status:p.id.startsWith("hf-minmaxxxer-")?(consensus.sourceStatuses?.[p.id]||"not_yet_run"):p.id==="sharpapi-sample-data"?sharpapi.status:"not_connected"

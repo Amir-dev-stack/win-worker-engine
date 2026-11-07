@@ -1,6 +1,33 @@
-import { getStore } from "@netlify/blobs";
+type AIBudgetStore = {
+  get(key: string, options?: any): Promise<any>;
+  getWithMetadata(key: string, options?: any): Promise<any>;
+  setJSON(key: string, value: unknown, options?: any): Promise<any>;
+  delete(key: string): Promise<any>;
+};
 
-const STORE = () => getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" });
+let isolatedAIBudgetTestStore: AIBudgetStore | null = null;
+
+/** Test-only adapter. Production always uses the win-engine Netlify Blobs store. */
+export function installIsolatedAIBudgetTestStore(adapter: AIBudgetStore) {
+  if (process.env.WIN_AI_BUDGET_TEST_MODE !== "1") {
+    throw new Error("The isolated AI budget store is available only in WIN_AI_BUDGET_TEST_MODE=1.");
+  }
+  if (!adapter || typeof adapter.get !== "function" ||
+      typeof adapter.getWithMetadata !== "function" ||
+      typeof adapter.setJSON !== "function" || typeof adapter.delete !== "function") {
+    throw new Error("The isolated AI budget store adapter is incomplete.");
+  }
+  if (isolatedAIBudgetTestStore && isolatedAIBudgetTestStore !== adapter) {
+    throw new Error("An isolated AI budget store adapter is already installed in this process.");
+  }
+  isolatedAIBudgetTestStore = adapter;
+}
+
+const STORE = async () => {
+  if (isolatedAIBudgetTestStore) return isolatedAIBudgetTestStore;
+  const { getStore } = await import("@netlify/blobs");
+  return getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" });
+};
 const LOCK_KEY = "ai-budget/controller-lock";
 const SETTINGS_KEY = "ai-budget/settings";
 const LIMIT_USD = 3;
@@ -92,7 +119,7 @@ function roundUsd(value: number) {
 }
 
 async function withControllerLock<T>(fn: () => Promise<T>): Promise<T> {
-  const store = STORE();
+  const store = await STORE();
   const owner = crypto.randomUUID();
   let acquired = false;
 
@@ -119,7 +146,7 @@ async function withControllerLock<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function readLedger(month = monthKey()): Promise<Ledger> {
-  const found = await STORE().get(ledgerKey(month), { type: "json" }) as Ledger | null;
+  const found = await (await STORE()).get(ledgerKey(month), { type: "json" }) as Ledger | null;
   return found ? {
     ...blankLedger(month), ...found,
     reservations: found.reservations || {},
@@ -129,7 +156,7 @@ async function readLedger(month = monthKey()): Promise<Ledger> {
 }
 
 async function readBudgetSettings(): Promise<BudgetSettings> {
-  const found = await STORE().get(SETTINGS_KEY, { type: "json" }) as Partial<BudgetSettings> | null;
+  const found = await (await STORE()).get(SETTINGS_KEY, { type: "json" }) as Partial<BudgetSettings> | null;
   return {
     limitEnabled: true,
     spendingLocked: found?.spendingLocked === true,
@@ -145,7 +172,7 @@ async function lockSpending(reason: string) {
   if (current.spendingLocked) return current;
   const next: BudgetSettings = { ...current, limitEnabled: true, spendingLocked: true,
     lockedAt: new Date().toISOString(), lockReason: reason, updatedAt: new Date().toISOString() };
-  await STORE().setJSON(SETTINGS_KEY, next);
+  await (await STORE()).setJSON(SETTINGS_KEY, next);
   return next;
 }
 export async function ownerApproveBudgetUnlock(confirmation: string) {
@@ -161,7 +188,7 @@ export async function ownerApproveBudgetUnlock(confirmation: string) {
     const current = await readBudgetSettings();
     const now = new Date().toISOString();
     const archiveId = now.replace(/[^0-9]/g, "");
-    await STORE().setJSON("ai-budget/archive/" + ledger.month + "/" + archiveId, {
+    await (await STORE()).setJSON("ai-budget/archive/" + ledger.month + "/" + archiveId, {
       ...ledger, archivedAt: now, archiveReason: "Explicit owner-authorized spending-cycle reset"
     });
     const fresh = blankLedger(ledger.month);
@@ -172,13 +199,13 @@ export async function ownerApproveBudgetUnlock(confirmation: string) {
     const next: BudgetSettings = { ...current, limitEnabled: true, spendingLocked: false,
       lockedAt: null, lockReason: null, lastOwnerApprovalAt: now,
       ownerApprovalCount: current.ownerApprovalCount + 1, updatedAt: now };
-    await STORE().setJSON(SETTINGS_KEY, next);
+    await (await STORE()).setJSON(SETTINGS_KEY, next);
     return next;
   });
 }
 async function writeLedger(ledger: Ledger) {
   ledger.updatedAt = new Date().toISOString();
-  await STORE().setJSON(ledgerKey(ledger.month), ledger);
+  await (await STORE()).setJSON(ledgerKey(ledger.month), ledger);
 }
 
 export type AIRequestBudget = {
@@ -192,6 +219,15 @@ export type AIRequestBudget = {
 };
 
 export async function reserveAIRequest(input: AIRequestBudget) {
+  if (!input || typeof input.id !== "string" || !input.id.trim() ||
+      typeof input.model !== "string" || !input.model.trim() ||
+      typeof input.phase !== "string" || !input.phase.trim() ||
+      !Number.isFinite(input.inputChars) || input.inputChars < 0 ||
+      !Number.isFinite(input.maxOutputTokens) || input.maxOutputTokens < 0 ||
+      !Number.isFinite(input.maxToolCalls) || input.maxToolCalls < 0 ||
+      !Number.isFinite(input.maxInputChars) || input.maxInputChars < 0) {
+    return { allowed: false as const, reason: "Invalid WIN AI budget request; request blocked before provider invocation." };
+  }
   const rates = MODEL_RATES[input.model];
   if (!rates) return { allowed: false as const, reason: "No verified price policy exists for model " + input.model + "; AI call blocked." };
   if (input.inputChars > input.maxInputChars) {
@@ -208,6 +244,13 @@ export async function reserveAIRequest(input: AIRequestBudget) {
     const estimate = roundUsd(rawEstimate * 1.15);
     const reserved = reservedTotal(ledger);
     const projectedTotal = roundUsd(ledger.spentUsd + reserved + estimate);
+
+    if (ledger.reservations[input.id]) {
+      ledger.blockedCalls += 1;
+      ledger.lastError = "Duplicate WIN AI reservation ID; request blocked to prevent reservation overwrite.";
+      await writeLedger(ledger);
+      return { allowed: false as const, reason: "This WIN AI reservation ID already exists; duplicate request blocked." };
+    }
 
     if (settings.spendingLocked) {
       ledger.blockedCalls += 1;
@@ -259,11 +302,12 @@ export async function settleAIRequest(
       if (!reservation) continue;
       let charge = reservation.amountUsd;
       let source: "usage" | "reserved_estimate" = "reserved_estimate";
-      if (!uncertain && usage && Number.isFinite(usage.input_tokens) && Number.isFinite(usage.output_tokens)) {
+      if (!uncertain && usage && Number.isFinite(usage.input_tokens) && usage.input_tokens! >= 0 &&
+          Number.isFinite(usage.output_tokens) && usage.output_tokens! >= 0) {
         const rates = MODEL_RATES[reservation.model];
         if (rates) {
           charge = roundUsd(((Number(usage.input_tokens) * rates.input + Number(usage.output_tokens) * rates.output) / 1_000_000
-            + Math.max(0, webSearchRequests) * WEB_SEARCH_USD) * 1.05);
+            + Math.max(0, Number.isFinite(webSearchRequests) ? webSearchRequests : 0) * WEB_SEARCH_USD) * 1.05);
           source = "usage";
         }
       }

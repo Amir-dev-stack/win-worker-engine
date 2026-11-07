@@ -1,4 +1,5 @@
 import type { Config } from "@netlify/functions";
+import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 import { authorized } from "../lib/auth.mts";
 import { get, list, put } from "../lib/store.mts";
 import { runDebate, runGlobalMaster, runIndependentWorkers } from "../lib/ai.mts";
@@ -7,6 +8,7 @@ import { getMandatoryLearningPack, archiveRunToLibrary } from "../lib/library.mt
 import { importTipsterCoupon } from "../lib/source-intelligence.mts";
 import { getModelLabResearchPack } from "../lib/model-lab.mts";
 import { getAIbudgetStatus } from "../lib/ai-budget.mts";
+import { evaluateCouponCorrelation } from "../lib/coupon-correlation-gate.mts";
 
 
 const REQUIRED_DEBATE_ROLES = [
@@ -106,7 +108,7 @@ async function archiveHumanCouponResearch(reports: any[]) {
     rejected: imports.filter(x => x.status === "rejected").length, records: imports };
 }
 
-function collectCouponCandidates(reports: any[]) {
+export function collectCouponCandidates(reports: any[]) {
   const source = reports.find(x => x.departmentId === "D6");
   const parsed = source ? extractJsonBlock(source.report || "", "WIN_COUPONS_JSON") : null;
   const coupons = Array.isArray(parsed?.coupons) ? parsed.coupons : [];
@@ -123,6 +125,20 @@ function collectCouponCandidates(reports: any[]) {
         market: typeof leg?.market === "string" ? leg.market : "Unspecified market",
         selection: typeof leg?.selection === "string" ? leg.selection : "Unspecified selection",
         odds: typeof leg?.odds === "number" && Number.isFinite(leg.odds) && leg.odds > 1 ? leg.odds : null,
+        estimatedWinProbabilityPercent: typeof leg?.estimatedWinProbabilityPercent === "number" &&
+          Number.isFinite(leg.estimatedWinProbabilityPercent) && leg.estimatedWinProbabilityPercent >= 0 &&
+          leg.estimatedWinProbabilityPercent <= 100 ? leg.estimatedWinProbabilityPercent : null,
+        probabilityType: typeof leg?.estimatedWinProbabilityPercent === "number" &&
+          Number.isFinite(leg.estimatedWinProbabilityPercent) && leg.estimatedWinProbabilityPercent >= 0 &&
+          leg.estimatedWinProbabilityPercent <= 100
+          ? (leg?.probabilityType === "agent_heuristic" ? "agent_heuristic_unverified" : "unverified_claim")
+          : "unavailable",
+        probabilityConfidence: ["high","medium","low"].includes(leg?.probabilityConfidence) ? leg.probabilityConfidence : "unrated",
+        probabilityRationale: typeof leg?.probabilityRationale === "string" ? leg.probabilityRationale.slice(0, 600) : "",
+        probabilityEvidenceRefs: (Array.isArray(leg?.probabilityEvidenceRefs) ? leg.probabilityEvidenceRefs
+          : Array.isArray(leg?.evidenceRefs) ? leg.evidenceRefs : [])
+          .filter((x: any) => typeof x === "string").slice(0, 10),
+        probabilityCalibrated: false,
         sourceUrl: typeof leg?.sourceUrl === "string" && (leg.sourceUrl.startsWith("https://") || leg.sourceUrl.startsWith("http://")) ? leg.sourceUrl : null,
         observedAt: typeof leg?.observedAt === "string" ? leg.observedAt : null,
         startTime: exactKickoff,
@@ -149,17 +165,45 @@ function collectCouponCandidates(reports: any[]) {
       if (leg.blockers.length) absent.push(...leg.blockers);
       return absent.map((item: string) => "Leg " + (i + 1) + ": " + item);
     });
+    const correlationAssessment = evaluateCouponCorrelation(legChecks);
     const blockers = [...(Array.isArray(coupon?.blockers) ? coupon.blockers : []), ...missing];
-    const status = coupon?.status === "QUALIFIED" && legs.length > 0 && blockers.length === 0 ? "QUALIFIED" : "BLOCKED";
-    const combined = legChecks.length && legChecks.every((x: any) => x.odds !== null)
+    const allOddsAvailable = legChecks.length > 0 && legChecks.every((x: any) => x.odds !== null);
+    const eventIds = legChecks.map((x: any) => x.eventId).filter((x: any) => typeof x === "string" && x.length > 0);
+    const distinctEvents = eventIds.length === legChecks.length && new Set(eventIds).size === legChecks.length;
+    const theoreticalOddsProduct = legChecks.length > 1 && allOddsAvailable && distinctEvents
       ? Number(legChecks.reduce((n: number, x: any) => n * x.odds, 1).toFixed(4)) : null;
+    const singleLeg = legChecks.length === 1;
+    const status = legs.length === 0 ? "BLOCKED"
+      : singleLeg && coupon?.status === "QUALIFIED" && blockers.length === 0 && correlationAssessment.approved
+        ? "QUALIFIED" : "DRAFTABLE";
     return {
       id: typeof coupon?.id === "string" ? coupon.id : crypto.randomUUID(),
       label: typeof coupon?.label === "string" ? coupon.label : "WIN coupon candidate",
       status, legs: legChecks,
-      combinedOdds: status === "QUALIFIED" ? (typeof coupon?.combinedOdds === "number" ? coupon.combinedOdds : combined) : null,
+      couponDraftAllowed: legs.length > 0,
+      dataQualityStatus: blockers.length === 0 ? "complete" : "incomplete",
+      combinedOdds: singleLeg && status === "QUALIFIED"
+        ? (typeof coupon?.combinedOdds === "number" ? coupon.combinedOdds : legChecks[0].odds) : null,
+      theoreticalOddsProduct,
+      theoreticalOddsProductWarning: theoreticalOddsProduct === null ? null
+        : "Mathematical product of individual decimal prices only; not a bookmaker-quoted accumulator price or a joint win probability.",
+      jointProbabilityAvailable: singleLeg && correlationAssessment.approved &&
+        legChecks[0]?.estimatedWinProbabilityPercent !== null,
+      wholeCouponWinProbabilityPercent: singleLeg
+        ? legChecks[0]?.estimatedWinProbabilityPercent ?? null : null,
+      wholeCouponProbabilityMethod: singleLeg
+        ? "single_leg_probability_equals_leg_probability" : "unvalidated_joint_probability_not_estimated",
+      probabilityStatus: singleLeg
+        ? (legChecks[0]?.estimatedWinProbabilityPercent === null ? "single_leg_probability_unavailable" : "single_leg_agent_estimate_unverified")
+        : "marginal_only_joint_unavailable",
+      riskPercent: typeof coupon?.riskPercent === "number" && Number.isFinite(coupon.riskPercent) &&
+        coupon.riskPercent >= 0 && coupon.riskPercent <= 100 ? coupon.riskPercent : null,
+      riskMethod: typeof coupon?.riskMethod === "string" ? coupon.riskMethod.slice(0, 300) : "unverified_agent_risk_estimate",
+      riskCalibrated: false,
       riskFactors: Array.isArray(coupon?.riskFactors) ? coupon.riskFactors : [],
       correlationNotes: Array.isArray(coupon?.correlationNotes) ? coupon.correlationNotes : [],
+      correlationAssessment,
+      probabilityWarnings: correlationAssessment.warnings,
       blockers
     };
   });
@@ -239,6 +283,7 @@ function updateNetworkStatuses(network: any, reports: any[], debate: any[]) {
 
 export default async (req: Request) => {
   if (!authorized(req)) return new Response("Unauthorized", { status: 401 });
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
   if (Netlify.env.get("WIN_AI_BUDGET_APPROVED") !== "true") {
     return Response.json({ error: "WIN research execution is disabled; worker run blocked before research." }, { status: 423 });
@@ -247,15 +292,29 @@ export default async (req: Request) => {
   if (budgetStatus.spendingLocked) {
     return Response.json({ error: "WIN's persistent spending lock is active; worker run blocked before research." }, { status: 423 });
   }
-  let body: any;
-  try { body = await req.json(); } catch { return new Response("Bad JSON", { status: 400 }); }
-  const run = await get<any>("runs", body.runId);
-  if (!run) return new Response("Run not found", { status: 404 });
+  const parsedRequest = await readBoundedJsonObject(req, 16 * 1024);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
+  const runId = typeof body?.runId === "string" ? body.runId.trim() : "";
+  if (!runId || runId.length > 180) {
+    return Response.json({ error: "valid_run_id_required" }, { status: 400 });
+  }
+  const run = await get<any>("runs", runId);
+  if (!run || run.id !== runId) return new Response("Run not found", { status: 404 });
+  if (run.status === "completed") {
+    return Response.json({ error: "run_already_completed" }, { status: 409 });
+  }
+  const lease = await claimWinScheduledRunLease(run.id);
+  if (!lease.claimed) {
+    return Response.json({
+      error: lease.reason === "already_running" ? "run_already_in_progress" : "run_execution_lease_unavailable",
+      reason: lease.reason
+    }, { status: 409 });
+  }
 
   const startedAt = new Date().toISOString();
-  await put("runs", run.id, { ...run, status: "scouting", startedAt, updatedAt: startedAt });
-
   try {
+    await put("runs", run.id, { ...run, status: "scouting", startedAt, updatedAt: startedAt });
     const libraryReview = await getMandatoryLearningPack(run.brief);
     const modelLabResearchPack = await getModelLabResearchPack(run.brief);
     // Attach a small, relevant slice of prior frozen records for Department 7.
@@ -437,6 +496,9 @@ export default async (req: Request) => {
         originalError: String(error), recordedAt: new Date().toISOString()
       });
     }
+  } finally {
+    // Only this invocation can release its own lease; stale workers cannot release a newer claim.
+    await releaseWinScheduledRunLease(run.id, lease.leaseId).catch(() => false);
   }
   return new Response(null, { status: 202 });
 };

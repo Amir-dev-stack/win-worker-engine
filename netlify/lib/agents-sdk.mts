@@ -1,5 +1,18 @@
 import { Agent, run, setDefaultOpenAIKey, setTracingDisabled, webSearchTool } from "@openai/agents";
 
+export function buildWinAgentModelSettings(maxOutputTokens: number, maxToolCallsPerResponse: number) {
+  if (!Number.isSafeInteger(maxOutputTokens) || maxOutputTokens < 1 ||
+      !Number.isSafeInteger(maxToolCallsPerResponse) || maxToolCallsPerResponse < 1) {
+    throw new Error("WIN Agents SDK token and tool-call limits must be positive safe integers.");
+  }
+  return {
+    store: false,
+    maxTokens: maxOutputTokens,
+    parallelToolCalls: false,
+    providerData: { max_tool_calls: maxToolCallsPerResponse }
+  };
+}
+
 export type WinAgentRun = {
   finalOutput: string;
   responseId?: string;
@@ -16,6 +29,9 @@ export async function runWinAgent(input: {
   apiKey: string;
   webSearch: boolean;
   maxTurns?: number;
+  maxOutputTokens: number;
+  maxToolCallsPerResponse: number;
+  signal?: AbortSignal;
 }): Promise<WinAgentRun> {
   // Netlify exposes secrets through Netlify.env rather than relying on process.env.
   // Configure the SDK per invocation so warm function instances never need a hard-coded key.
@@ -30,13 +46,17 @@ export async function runWinAgent(input: {
     name: input.name,
     instructions: input.instructions,
     model: input.model,
+    modelSettings: buildWinAgentModelSettings(input.maxOutputTokens, input.maxToolCallsPerResponse),
     tools
   });
 
-  const result: any = await run(agent, input.prompt, {
-    maxTurns: Math.max(1, Math.min(2, input.maxTurns ?? 2))
+  const prompt = input.memoryContext
+    ? input.prompt + "\n\n" + input.memoryContext
+    : input.prompt;
+  const result: any = await run(agent, prompt, {
+    maxTurns: Math.max(1, Math.min(2, input.maxTurns ?? 2)),
+    signal: input.signal
   });
-
   const output = typeof result.finalOutput === "string"
     ? result.finalOutput
     : result.finalOutput == null ? "" : JSON.stringify(result.finalOutput);

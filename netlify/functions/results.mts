@@ -1,5 +1,52 @@
+import { createHash } from "node:crypto";
 import { requireAuth } from "../lib/auth.mts";
-import { get, list, put } from "../lib/store.mts";
+import { get, list, put, putIfNew } from "../lib/store.mts";
+
+const MAX_RESULT_REQUEST_BYTES = 64 * 1024;
+
+export async function readResultSubmissionBody(req: Request): Promise<{ body: any } | Response> {
+  if (req.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {
+    return Response.json({ error: "application_json_required" }, { status: 415 });
+  }
+  const declaredLength = Number(req.headers.get("content-length") || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_RESULT_REQUEST_BYTES) {
+    return Response.json({ error: "request_body_too_large" }, { status: 413 });
+  }
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  if (req.body) {
+    const reader = req.body.getReader();
+    try {
+      while (true) {
+        const part = await reader.read();
+        if (part.done) break;
+        totalBytes += part.value.byteLength;
+        if (totalBytes > MAX_RESULT_REQUEST_BYTES) {
+          await reader.cancel();
+          return Response.json({ error: "request_body_too_large" }, { status: 413 });
+        }
+        chunks.push(part.value);
+      }
+    } catch {
+      return Response.json({ error: "request_body_unreadable" }, { status: 400 });
+    } finally {
+      reader.releaseLock();
+    }
+  }
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  let raw: string;
+  try { raw = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
+  catch { return Response.json({ error: "request_body_invalid_utf8" }, { status: 400 }); }
+  let body: any;
+  try { body = JSON.parse(raw); }
+  catch { return Response.json({ error: "invalid_json" }, { status: 400 }); }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return Response.json({ error: "json_object_required" }, { status: 400 });
+  }
+  return { body };
+}
 
 const SETTLED_OUTCOMES = new Set(["won", "lost", "void", "partial", "cancelled"]);
 const text = (value: unknown, max = 1000) =>
@@ -139,9 +186,9 @@ export default async (req: Request) => {
   if (denied) return denied;
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
-  let body: any;
-  try { body = await req.json(); }
-  catch { return Response.json({ error: "Expected JSON" }, { status: 400 }); }
+  const parsedRequest = await readResultSubmissionBody(req);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
 
   const predictionId = text(body?.predictionId, 180);
   const outcome = text(body?.outcome, 20).toLowerCase();
@@ -165,9 +212,16 @@ export default async (req: Request) => {
   const prediction = await get<any>("predictions", predictionId);
   if (!prediction) return Response.json({ error: "Prediction not found" }, { status: 404 });
 
-  // Avoid duplicate settlement rows on client/network retries. A conflicting
-  // outcome is rejected rather than silently overwriting an audited result.
-  const existing = (await list<any>("results", 500)).find((item: any) => item.predictionId === predictionId);
+  // First preserve compatibility with results written before claims existed.
+  // More than one legacy canonical result is ambiguous and must not be guessed.
+  const existingMatches = (await list<any>("results", 500))
+    .filter((item: any) => item.predictionId === predictionId);
+  if (existingMatches.length > 1) {
+    return Response.json({
+      error: "Multiple canonical results already exist for this prediction; manual reconciliation is required"
+    }, { status: 409 });
+  }
+  const existing = existingMatches[0] || null;
   if (existing && existing.outcome !== outcome) {
     return Response.json({
       error: "This prediction already has a different recorded outcome; an explicit correction workflow is required",
@@ -175,7 +229,7 @@ export default async (req: Request) => {
     }, { status: 409 });
   }
 
-  const result = existing
+  const proposedResult = existing
     ? { ...existing, settlementSource: existing.settlementSource || settlementSource,
         evidence: existing.evidence || evidence,
         settlementReviewStatus: existing.settlementReviewStatus || "pending_independent_review" }
@@ -189,13 +243,40 @@ export default async (req: Request) => {
         recordedAt: new Date().toISOString()
       };
 
+  // Atomically choose one immutable result identity and payload per prediction.
+  // The claim contains the complete recovery payload, so a crash before the
+  // canonical write can be repaired by any same-outcome retry.
+  const claimId = createHash("sha256").update(predictionId, "utf8").digest("hex");
+  const proposedClaim = {
+    claimVersion: "win.result-submission-claim.v1",
+    predictionId,
+    result: proposedResult,
+    claimedAt: new Date().toISOString()
+  };
+  const claimWrite = await putIfNew("library/result-submission-claims", claimId, proposedClaim);
+  const claim = claimWrite.modified
+    ? proposedClaim
+    : await get<any>("library/result-submission-claims", claimId);
+  if (!claim || claim.claimVersion !== "win.result-submission-claim.v1" ||
+      claim.predictionId !== predictionId || !claim.result ||
+      claim.result.predictionId !== predictionId || !claim.result.id) {
+    return Response.json({ error: "Result submission claim is invalid; manual reconciliation is required" }, { status: 409 });
+  }
+  if (claim.result.outcome !== outcome) {
+    return Response.json({
+      error: "This prediction already has a different claimed outcome; an explicit correction workflow is required",
+      existingOutcome: claim.result.outcome
+    }, { status: 409 });
+  }
+  const result = claim.result;
+
   await put("results", result.id, result);
   await put("library/settled-results", result.id, result);
   const learning = await archivePredictionLearning(prediction, result);
   const completed = { ...result, ...learning };
   await put("results", result.id, completed);
   await put("library/settled-results", result.id, completed);
-  return Response.json(completed, { status: existing ? 200 : 201 });
+  return Response.json(completed, { status: existing || !claimWrite.modified ? 200 : 201 });
 };
 
 export const config = { path: "/api/results" };

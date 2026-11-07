@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { authorized } from "../lib/auth.mts";
 import { get, getWithMetadata, list, put, putIfMatch, putIfNew, remove } from "../lib/store.mts";
 import { deriveReviewedCouponOutcome as deriveCouponOutcome } from "../lib/win-learning-core.mjs";
+import { readIndependentReviewBody } from "../lib/independent-review-request.mts";
 
 const OWNER_SUBMITTER_CREDENTIAL = "owner-internal-token";
 const HUMAN_OUTCOMES = new Set(["won", "lost", "void", "partial", "cancelled"]);
@@ -572,39 +573,47 @@ export async function reviewCaseForIsolatedTest(body: any, reviewer: { credentia
 }
 
 export default async (req: Request) => {
-  let body: any = null;
-  if (req.method === "POST") {
-    try { body = await req.json(); }
-    catch { return Response.json({ error: "Expected JSON body." }, { status: 400 }); }
-    if (body?.action === "create_reviewer_access") {
-      if (!authorized(req)) return Response.json({ error: "Owner authorization required." }, { status: 401 });
-      const token = randomBytes(32).toString("base64url");
-      const now = new Date().toISOString();
-      const current = await get<any>("library/reviewer-config", "active");
-      const credentialId = credentialIdFromToken(token);
-      await put("library/reviewer-config", "active", {
-        credentialId,
-        tokenHash: createHash("sha256").update(token).digest("hex"),
-        createdAt: now,
-        rotatedAt: current ? now : null,
-        previousCredentialId: current?.credentialId || null,
-        createdBy: OWNER_SUBMITTER_CREDENTIAL,
-        status: "active"
-      });
-      return Response.json({
-        created: true, credentialId, token, shownOnce: true,
-        warning: "Copy this credential now and provide it only to a different trusted reviewer. It proves credential separation, not the holder's real-world identity. Creating a new credential immediately revokes the previous one."
-      }, { headers: { "cache-control": "no-store" } });
-    }
+  if (req.method === "GET") {
+    const reviewer = await authenticateReviewer(req);
+    if (!reviewer) return Response.json({ error: "Separate reviewer credential is missing or invalid." }, { status: 401 });
+    return Response.json(await pendingQueue(), { headers: { "cache-control": "no-store" } });
+  }
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+
+  // Authenticate before consuming an attacker-controlled request body. The
+  // owner token is valid only for reviewer-credential creation; review actions
+  // still require the separate reviewer credential.
+  const ownerAuthorized = authorized(req);
+  const reviewer = ownerAuthorized ? null : await authenticateReviewer(req);
+  if (!ownerAuthorized && !reviewer) return Response.json({ error: "Separate reviewer credential is missing or invalid." }, { status: 401 });
+
+  const parsedRequest = await readIndependentReviewBody(req);
+  if (parsedRequest instanceof Response) return parsedRequest;
+  const body = parsedRequest.body;
+
+  if (body.action === "create_reviewer_access") {
+    if (!ownerAuthorized) return Response.json({ error: "Owner authorization required." }, { status: 401 });
+    const token = randomBytes(32).toString("base64url");
+    const now = new Date().toISOString();
+    const current = await get<any>("library/reviewer-config", "active");
+    const credentialId = credentialIdFromToken(token);
+    await put("library/reviewer-config", "active", {
+      credentialId,
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      createdAt: now,
+      rotatedAt: current ? now : null,
+      previousCredentialId: current?.credentialId || null,
+      createdBy: OWNER_SUBMITTER_CREDENTIAL,
+      status: "active"
+    });
+    return Response.json({
+      created: true, credentialId, token, shownOnce: true,
+      warning: "Copy this credential now and provide it only to a different trusted reviewer. It proves credential separation, not the holder's real-world identity. Creating a new credential immediately revokes the previous one."
+    }, { headers: { "cache-control": "no-store" } });
   }
 
-  const reviewer = await authenticateReviewer(req);
-  if (!reviewer) return Response.json({ error: "Separate reviewer credential is missing or invalid." }, { status: 401 });
-  if (req.method === "GET")
-    return Response.json(await pendingQueue(), { headers: { "cache-control": "no-store" } });
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (body?.action !== "review_case")
-    return Response.json({ error: "Reviewer action must be review_case." }, { status: 400 });
+  if (!reviewer) return Response.json({ error: "Separate reviewer credential is required for review actions." }, { status: 401 });
+  if (body.action !== "review_case") return Response.json({ error: "Reviewer action must be review_case." }, { status: 400 });
   try {
     const result = await reviewCase(body, reviewer);
     return Response.json(result.body, { status: result.status, headers: { "cache-control": "no-store" } });

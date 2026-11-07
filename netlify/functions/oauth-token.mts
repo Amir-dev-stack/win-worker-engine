@@ -1,4 +1,5 @@
 import type { Config } from "@netlify/functions";
+import { readOAuthFormBody } from "../lib/oauth-request.mts";
 import {
   WIN_RESOURCE, issueTokenPair, hashSecret, readOAuthRecordWithMetadata, consumeOAuthRecord
 } from "../lib/oauth-store.mts";
@@ -17,20 +18,21 @@ function fail(error: string, status = 400) {
 
 export default async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  let form: FormData;
-  try { form = await req.formData(); } catch { return fail("invalid_request"); }
+  const parsedForm = await readOAuthFormBody(req);
+  if (parsedForm instanceof Response) return parsedForm;
+  const form = parsedForm.params;
 
-  const grantType = String(form.get("grant_type") || "");
-  const clientId = String(form.get("client_id") || "");
-  const audienceParam = String(form.get("resource") || "");
+  const grantType = form.get("grant_type") || "";
+  const clientId = form.get("client_id") || "";
+  const audienceParam = form.get("resource") || "";
 
-  if (!clientId || audienceParam !== WIN_RESOURCE) return fail("invalid_target_or_client");
+  if (!clientId || clientId.length > 128 || audienceParam !== WIN_RESOURCE) return fail("invalid_target_or_client");
 
   if (grantType === "authorization_code") {
-    const code = String(form.get("code") || "");
-    const redirectUri = String(form.get("redirect_uri") || "");
-    const verifier = String(form.get("code_verifier") || "");
-    if (!code || !redirectUri || !verifier || verifier.length < 43 || verifier.length > 128) {
+    const code = form.get("code") || "";
+    const redirectUri = form.get("redirect_uri") || "";
+    const verifier = form.get("code_verifier") || "";
+    if (!code || code.length > 256 || !redirectUri || redirectUri.length > 2048 || !verifier || verifier.length < 43 || verifier.length > 128) {
       return fail("invalid_request");
     }
     const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
@@ -50,8 +52,8 @@ export default async (req: Request) => {
   }
 
   if (grantType === "refresh_token") {
-    const refreshToken = String(form.get("refresh_token") || "");
-    if (!refreshToken) return fail("invalid_request");
+    const refreshToken = form.get("refresh_token") || "";
+    if (!refreshToken || refreshToken.length > 256) return fail("invalid_request");
     const key = hashSecret(refreshToken);
     const stored = await readOAuthRecordWithMetadata<RefreshRecord>("refresh", key);
     const record = stored?.value;
