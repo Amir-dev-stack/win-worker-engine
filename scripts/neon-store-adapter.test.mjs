@@ -75,3 +75,13 @@ test("OpenAI budget controller and assignment manager share the configured store
   assert.match(assignmentSource, /from "\.\/store\.mts"/);
   assert.match(aiSource, /reserveAIRequest, settleAIRequest, releaseAIRequest/);
 });
+
+test("Blobs-to-Neon audit is read-only and hashes payloads without printing them", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const auditSource = await readFile(new URL("./win-store-migration-audit.mjs", import.meta.url), "utf8");
+  assert.match(auditSource, /READ_ONLY_DRY_RUN/);
+  assert.match(auditSource, /createHash\("sha256"\)/);
+  assert.match(auditSource, /writesPerformed: 0/);
+  assert.doesNotMatch(auditSource, /INSERT INTO|UPDATE public\.win_memory_records|DELETE FROM|TRUNCATE TABLE|\.setJSON\(|\.delete\(/i);
+  assert.doesNotMatch(auditSource, /console\.log\([^\n]*payload/i);
+});
