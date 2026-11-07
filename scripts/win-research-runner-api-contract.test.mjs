@@ -13,6 +13,7 @@ test("local research runner endpoint is separately token-authenticated and owner
   assert.match(route, /action === "claim_next"/);
   assert.match(route, /action === "upload_artifact"/);
   assert.match(route, /storeResearchArtifact/);
+  assert.match(route, /readBoundedJsonObject\(req, 320 \* 1024\)/);
   assert.match(route, /claimResearchAssignment/);
   assert.match(route, /submitResearchAssignment/);
   assert.match(route, /releaseResearchAssignment/);
