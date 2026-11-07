@@ -68,7 +68,7 @@ Keep orchestration lightweight and provider-neutral. The current OpenAI Agents S
 
 ## Rollout sequence
 
-1. Keep assignment lifecycle, persistent memory, review and artifact contracts as the shared control plane.
+1. Keep assignment lifecycle, persistent memory, review and artifact contracts as the shared control plane. A bounded OpenAI assignment executor is now staged and enforces the per-assignment ceiling before model execution.
 2. Implement a provider adapter contract and local Ollama polling runner; the adapter, token-authenticated endpoint and bounded local runner script are now staged in code. Keep execution disabled until the endpoint is deployed, the owner configures the server-side token/agent allowlist and Ollama is installed locally.
 3. Add provider health, quota and usage telemetry plus strict zero-cost mode.
 4. Evaluate one Cloudflare Workers AI free model only after verifying the account is on Workers Free; never activate on Workers Paid. Keep the adapter disabled until a quota monitor and model-specific neuron preflight are implemented.
