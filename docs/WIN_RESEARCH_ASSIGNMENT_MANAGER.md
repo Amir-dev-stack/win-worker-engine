@@ -16,7 +16,7 @@ All requests require the existing WIN internal authentication. `actorId` is an a
 
 ## Trust and execution boundaries
 
-- New assignments are configured for the OpenAI Agents SDK only, with defaults of 3 model calls, 4 OpenAI-hosted tool calls and a USD 0.15 task ceiling (owner-configurable up to USD 0.50). These are task-level limits, not permission to bypass the global WIN budget. The future executor must reserve against the existing global budget ledger before every provider call and reconcile model plus hosted-tool usage. The assignment manager itself does not invoke an LLM or start a scheduler; no research agent is running automatically yet.
+- New assignments use provider-neutral execution mode, with defaults of 3 model calls, 4 tool calls and a USD 0.15 task ceiling (owner-configurable up to USD 0.50). These are task-level limits, not permission to bypass the global WIN budget. The staged OpenAI executor reserves against the existing global budget before its model call and reconciles model plus hosted-tool usage. The local Ollama runner uses no cloud inference credits. Cloudflare/Gemini adapters require explicit free-tier and billing confirmation. No executor starts a recurring scheduler.
 - Assignment creation is not approval. Only the recorded owner can approve.
 - Claims use conditional ETag writes and expiring leases to prevent two workers from owning the same assignment.
 - Submissions are written to `library/research-submissions` with `untrusted_pending_review`; source URLs and artifact digests are validated. Each submission also creates private persistent memory for its originating agent.
@@ -26,7 +26,7 @@ All requests require the existing WIN internal authentication. `actorId` is an a
 
 ## Pilot assignments
 
-Create these as proposed assignments first and approve them deliberately. The intended execution path is OpenAI-only; until the bounded executor is connected, assignments remain queued for manual handling:
+Create these as proposed assignments first and approve them deliberately. Available staged execution paths are the bounded OpenAI assignment endpoint and the local Ollama polling runner. Cloudflare/Gemini adapters are opt-in and not yet connected to assignment execution. All paths require deployment and owner-side configuration before use:
 
 1. Football odds timestamp and event-identity pipeline audit.
 2. Chronological walk-forward evaluation harness and market-baseline comparison.
@@ -34,3 +34,11 @@ Create these as proposed assignments first and approve them deliberately. The in
 4. Provider timeout, duplicate-task and uncertain-budget failure drills.
 
 Use only public/licensed, owner-provided or synthetic data. Keep synthetic records separate from real observations. Record dataset hashes, time cut-offs, exact commands, Brier score, log loss, calibration, CLV where relevant, sample size and limitations.
+
+
+## Staged execution endpoints
+
+- `POST /api/research-openai-execute`: runs one approved assignment through the existing OpenAI Agents SDK learning researcher. Requires `WIN_RESEARCH_OPENAI_EXECUTOR_ENABLED=true`, an allowlisted agent ID, the existing `WIN_AI_BUDGET_APPROVED` gate, API credentials and the global budget unlock.
+- `POST /api/research-runner`: dedicated token-authenticated local Ollama runner endpoint. Requires `WIN_RESEARCH_RUNNER_ENABLED=true`, a separate high-entropy token and a server-side agent allowlist.
+- Both endpoints claim only approved assignments, submit into the untrusted inbox, and preserve independent review before shared-memory promotion.
+- Neither endpoint schedules itself, places bets, changes production code or promotes model strategies.
