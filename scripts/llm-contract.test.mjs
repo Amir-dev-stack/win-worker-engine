@@ -108,4 +108,6 @@ test("provider-neutral LLM contract validates policy, routing and fake adapter r
 
   assert.equal(selectWinLLMProvider(validRequest, [provider({ enabled: false })]), null,
     "disabled providers must never be selected");
+  assert.equal(selectWinLLMProvider(validRequest, [provider({ quotaVerified: false })]), null,
+    "providers without verified quota controls must never be selected");
 });
