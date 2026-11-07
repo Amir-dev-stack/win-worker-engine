@@ -139,7 +139,14 @@ export async function syncOpenFootballWorldCupData(){
 }
 export async function getOpenFootballWorldCupSyncStatus(){
  const state=await get<any>("scheduler-state","openfootball-worldcup-daily-sync");
- const datasets=await list<any>("library/model-lab/historical-event-datasets",25);
- const tournament=datasets.filter(d=>d.providerId==="openfootball-worldcup-json");
- return {sampled:true,status:state?.status||"not_yet_run",lastCheck:state?.lastCheck||null,totals:state||null,datasetCount:tournament.length,matchCount:tournament.reduce((n,d)=>n+Number(d.totalRows||0),0),scoredMatches:tournament.reduce((n,d)=>n+Number(d.scoredRows||0),0),playerEventCount:tournament.reduce((n,d)=>n+Number(d.playerEventRows||0),0)};
+ const datasets=await list<any>("library/model-lab/historical-event-datasets",500);
+ const snapshots=datasets.filter(d=>d.providerId==="openfootball-worldcup-json");
+ const latestByDataset=new Map<string,any>();
+ for(const dataset of snapshots){
+  const logicalId=String(dataset.id||"").replace(/-r[a-f0-9]{40}$/i,"");
+  const current=latestByDataset.get(logicalId);
+  if(!current||Date.parse(dataset.retrievedAt||"")>Date.parse(current.retrievedAt||""))latestByDataset.set(logicalId,dataset);
+ }
+ const tournament=[...latestByDataset.values()];
+ return {sampled:true,status:state?.status||"not_yet_run",lastCheck:state?.lastCheck||null,totals:state||null,snapshotCount:snapshots.length,datasetCount:tournament.length,matchCount:tournament.reduce((n,d)=>n+Number(d.totalRows||0),0),scoredMatches:tournament.reduce((n,d)=>n+Number(d.scoredRows||0),0),playerEventCount:tournament.reduce((n,d)=>n+Number(d.playerEventRows||0),0)};
 }
