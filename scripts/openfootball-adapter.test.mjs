@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildOpenFootballSyncRunId, buildOpenFootballDatasetSnapshotId } from "../netlify/lib/openfootball-adapter.mts";
+import { buildOpenFootballSyncRunId, buildOpenFootballDatasetSnapshotId, selectLatestOpenFootballSnapshots } from "../netlify/lib/openfootball-adapter.mts";
 import { buildOpenFootballWorldCupSyncRunId, buildOpenFootballWorldCupDatasetEligibility, buildOpenFootballWorldCupDatasetSnapshotId, selectLatestOpenFootballWorldCupSnapshots } from "../netlify/lib/openfootball-worldcup-adapter.mts";
 
 const revision = "a".repeat(40);
@@ -73,6 +73,30 @@ test("World Cup snapshot selection prefers valid retrieval timestamps over malfo
     { id: "openfootball-worldcup-2022-worldcup-full-r" + "b".repeat(40), sourceRevision: "b".repeat(40), retrievedAt: "2026-11-02T00:00:00.000Z" }
   ];
   const latest = selectLatestOpenFootballWorldCupSnapshots(snapshots);
+  assert.equal(latest.length, 1);
+  assert.equal(latest[0].sourceRevision, "b".repeat(40));
+});
+
+
+test("OpenFootball status selects only the newest revision for each logical dataset", () => {
+  const snapshots = [
+    { id: "openfootball-2025-26-eng.1-r" + "a".repeat(40), sourceRevision: "a".repeat(40), retrievedAt: "2026-11-01T00:00:00.000Z", totalRows: 380 },
+    { id: "openfootball-2025-26-eng.1-r" + "b".repeat(40), sourceRevision: "b".repeat(40), retrievedAt: "2026-11-02T00:00:00.000Z", totalRows: 382 },
+    { id: "openfootball-2024-25-eng.1-r" + "c".repeat(40), sourceRevision: "c".repeat(40), retrievedAt: "2026-11-01T00:00:00.000Z", totalRows: 380 }
+  ];
+  const latest = selectLatestOpenFootballSnapshots(snapshots);
+  assert.equal(latest.length, 2);
+  assert.ok(latest.some(item => item.sourceRevision === "b".repeat(40)));
+  assert.ok(latest.some(item => item.sourceRevision === "c".repeat(40)));
+  assert.ok(!latest.some(item => item.sourceRevision === "a".repeat(40)));
+});
+
+test("OpenFootball snapshot selection handles malformed retrieval timestamps deterministically", () => {
+  const snapshots = [
+    { id: "openfootball-2025-26-eng.1-r" + "a".repeat(40), sourceRevision: "a".repeat(40), retrievedAt: "invalid" },
+    { id: "openfootball-2025-26-eng.1-r" + "b".repeat(40), sourceRevision: "b".repeat(40), retrievedAt: "2026-11-02T00:00:00.000Z" }
+  ];
+  const latest = selectLatestOpenFootballSnapshots(snapshots);
   assert.equal(latest.length, 1);
   assert.equal(latest[0].sourceRevision, "b".repeat(40));
 });
