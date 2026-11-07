@@ -15,7 +15,8 @@ type NeonStoreOptions = {
  */
 export function createNeonStore(sql: NeonSql, options: NeonStoreOptions = {}) {
   if (typeof sql !== "function") throw new Error("A Neon SQL client is required.");
-  const pageSize = Math.max(50, Math.min(1000, Math.floor(options.pageSize ?? 500)));
+  const requestedPageSize = Number.isFinite(options.pageSize) ? Number(options.pageSize) : 500;
+  const pageSize = Math.max(50, Math.min(1000, Math.floor(requestedPageSize)));
 
   function splitKey(key: string) {
     const slash = key.indexOf("/");
