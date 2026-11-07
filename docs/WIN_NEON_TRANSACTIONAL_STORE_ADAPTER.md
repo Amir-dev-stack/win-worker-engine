@@ -39,11 +39,13 @@ A separately gated integration command is available:
 ```powershell
 $env:WIN_NEON_TEST_DATABASE_URL = "<connection string for the dedicated win-memory-schema-test branch>"
 $env:WIN_NEON_TEST_CONFIRM = "1"
+$env:WIN_NEON_TEST_BRANCH_CONFIRM = "dedicated-test-branch"
+$env:WIN_NEON_TEST_EXPECTED_DATABASE = "<exact test database name>"
 $env:WIN_NEON_TEST_BUDGET_CONFIRM = "1"
 npm run test:neon:integration
 ```
 
-Use only the dedicated test branch connection string. Never use the production branch URL. The script creates three uniquely named records, tests concurrent create-only and ETag compare-and-swap behavior, checks reads/metadata/prefix listing, and removes only those exact generated keys in a `finally` block. With the additional budget confirmation flag, it also runs the real AI-budget controller against Neon: concurrent reservations, conservative settlement of uncertain outcomes, denial above the $2.95 stop, and persistent owner-lock verification. Before that test, it refuses to run if the fixed budget ledger/lock/settings keys already exist on the test branch; it cleans only those exact keys afterward. It is intentionally excluded from the default test suite and GitHub CI because no database secret is stored in the repository.
+Use only the dedicated test branch connection string. Never use the production branch URL. The script rejects a URL matching `WIN_NEON_DATABASE_URL`, requires the explicit `dedicated-test-branch` confirmation, and verifies `current_database()` equals `WIN_NEON_TEST_EXPECTED_DATABASE` before it creates three uniquely named records, tests concurrent create-only and ETag compare-and-swap behavior, checks reads/metadata/prefix listing, and removes only those exact generated keys in a `finally` block. With the additional budget confirmation flag, it also runs the real AI-budget controller against Neon: concurrent reservations, conservative settlement of uncertain outcomes, denial above the $2.95 stop, and persistent owner-lock verification. Before that test, it refuses to run if the fixed budget ledger/lock/settings keys already exist on the test branch; it cleans only those exact keys afterward. It is intentionally excluded from the default test suite and GitHub CI because no database secret is stored in the repository.
 
 The test has not been run yet. A successful result is required before enabling the Neon adapter in any deployed environment.
 
@@ -60,6 +62,8 @@ PowerShell example (use the dedicated `win-memory-schema-test` branch connection
 $env:NETLIFY_SITE_ID = "<Netlify site ID>"
 $env:NETLIFY_AUTH_TOKEN = "<Netlify read-capable token>"
 $env:WIN_NEON_TEST_DATABASE_URL = "<Neon test-branch connection string>"
+$env:WIN_NEON_TEST_BRANCH_CONFIRM = "dedicated-test-branch"
+$env:WIN_NEON_TEST_EXPECTED_DATABASE = "<exact test database name>"
 $env:WIN_MIGRATION_AUDIT_CONFIRM = "1"
 npm run audit:store-migration
 ```
@@ -70,6 +74,6 @@ Optional record cap:
 $env:WIN_MIGRATION_AUDIT_MAX_RECORDS = "100000"
 ```
 
-The default cap is 100,000 and the hard cap is 1,000,000. A cap overflow aborts rather than silently producing a partial comparison. A non-zero exit status indicates missing payloads, missing keys, or hash mismatches. A clean audit is necessary but not sufficient for cutover: repeat it after a quiesced/captured write window, reconcile concurrent writes, verify all non-JSON artifact stores separately, and complete concurrency, backup/restore and rollback drills. This tool deliberately has no copy, delete, truncate, schema-change or environment-setting operation.
+The default cap is 100,000 and the hard cap is 1,000,000. The cap applies independently to both source and destination scans. A cap overflow aborts rather than silently producing a partial comparison. A non-zero exit status indicates missing payloads, missing keys, or hash mismatches. A clean audit is necessary but not sufficient for cutover: repeat it after a quiesced/captured write window, reconcile concurrent writes, verify all non-JSON artifact stores separately, and complete concurrency, backup/restore and rollback drills. This tool deliberately has no copy, delete, truncate, schema-change or environment-setting operation.
 
-Do not point this at production Neon. Do not set `WIN_TRANSACTIONAL_STORE=neon` while running it. Netlify credentials must remain local environment variables and must never be committed or pasted into GitHub issues.
+Do not point this at production Neon. The audit also rejects a test URL matching `WIN_NEON_DATABASE_URL` and verifies the expected database name before scanning. Do not set `WIN_TRANSACTIONAL_STORE=neon` while running it. Netlify credentials must remain local environment variables and must never be committed or pasted into GitHub issues.
