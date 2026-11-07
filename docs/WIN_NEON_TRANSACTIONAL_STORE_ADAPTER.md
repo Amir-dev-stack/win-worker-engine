@@ -39,10 +39,11 @@ A separately gated integration command is available:
 ```powershell
 $env:WIN_NEON_TEST_DATABASE_URL = "<connection string for the dedicated win-memory-schema-test branch>"
 $env:WIN_NEON_TEST_CONFIRM = "1"
+$env:WIN_NEON_TEST_BUDGET_CONFIRM = "1"
 npm run test:neon:integration
 ```
 
-Use only the dedicated test branch connection string. Never use the production branch URL. The script creates three uniquely named records, tests concurrent create-only and ETag compare-and-swap behavior, checks reads/metadata/prefix listing, and removes only those exact generated keys in a `finally` block. It is intentionally excluded from the default test suite and GitHub CI because no database secret is stored in the repository.
+Use only the dedicated test branch connection string. Never use the production branch URL. The script creates three uniquely named records, tests concurrent create-only and ETag compare-and-swap behavior, checks reads/metadata/prefix listing, and removes only those exact generated keys in a `finally` block. With the additional budget confirmation flag, it also runs the real AI-budget controller against Neon: concurrent reservations, conservative settlement of uncertain outcomes, denial above the $2.95 stop, and persistent owner-lock verification. Before that test, it refuses to run if the fixed budget ledger/lock/settings keys already exist on the test branch; it cleans only those exact keys afterward. It is intentionally excluded from the default test suite and GitHub CI because no database secret is stored in the repository.
 
 The test has not been run yet. A successful result is required before enabling the Neon adapter in any deployed environment.
 
