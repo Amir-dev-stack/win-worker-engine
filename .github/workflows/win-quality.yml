@@ -36,3 +36,9 @@ jobs:
 
       - name: Run production build checks
         run: npm run build
+
+      - name: Parse dashboard JavaScript
+        run: node --check public/app.js
+
+      - name: Bundle every Netlify function
+        run: npx --yes esbuild@0.25.0 --bundle --packages=external --platform=node --target=node22 --format=esm --outdir=/tmp/win-netlify-functions netlify/functions/*.mts
