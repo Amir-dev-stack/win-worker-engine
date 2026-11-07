@@ -6,7 +6,7 @@ Last updated: 2026-11-07 (UTC)
 
 - Active branch: `feat/neon-transactional-store-adapter`
 - Draft pull request: [#16](https://github.com/Amir-dev-stack/win-worker-engine/pull/16) — opt-in Neon transactional store adapter.
-- Latest remote commit: `b0d9cba1ab8b0c433c2b78e127e206834ed4e3ff` — fixes the local-runner cloud-artifact contract assertion.
+- Latest remote commit: `739cab5e8c9ba96ee7624cfa7e05de78f7fa26a6` — records the handover workflow. The preceding commit `b0d9cba1ab8b0c433c2b78e127e206834ed4e3ff` fixes the local-runner cloud-artifact contract assertion.
 - Default storage remains Netlify Blobs. Neon is selected only through `WIN_TRANSACTIONAL_STORE=neon`; missing credentials and connection errors fail closed.
 - The OpenAI executor and local runner are disabled unless their separate owner-controlled enablement variables are exactly `"true"`. The runner additionally requires a token and allowlisted agent identity.
 - Production storage, production migration, deployment, real data import, provider activation, spending, and automated betting remain disabled.
