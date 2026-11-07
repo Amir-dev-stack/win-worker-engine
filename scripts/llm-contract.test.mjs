@@ -57,7 +57,7 @@ test("provider-neutral LLM contract validates policy, routing and fake adapter r
   assert.ok(validateWinLLMRequest(invalidRequest).includes("preferred_provider_must_be_allowlisted"));
 
   const noBudget = request({ budget: { reservationId: "", reservedUsd: 0 } });
-  assert.ok(validateWinLLMRequest(noBudget).includes("positive_budget_reservation_required"));
+  assert.ok(validateWinLLMRequest(noBudget).includes("nonnegative_budget_reservation_required"));
 
   const candidates = [
     provider({ id: "fake-primary", approved: false, priority: 1 }),
