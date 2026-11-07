@@ -29,3 +29,18 @@ This is an additive, opt-in adapter. Netlify Blobs remains the default until the
 ## Rollback
 
 Because the adapter is opt-in, rollback is to remove `WIN_TRANSACTIONAL_STORE=neon` and return to the current Blobs path, but only before Neon becomes authoritative and only after confirming no writes occurred exclusively in Neon. After any live cutover, rollback requires a reverse reconciliation first; never switch stores blindly.
+
+
+## Live test-branch integration
+
+A separately gated integration command is available:
+
+```powershell
+$env:WIN_NEON_TEST_DATABASE_URL = "<connection string for the dedicated win-memory-schema-test branch>"
+$env:WIN_NEON_TEST_CONFIRM = "1"
+npm run test:neon:integration
+```
+
+Use only the dedicated test branch connection string. Never use the production branch URL. The script creates three uniquely named records, tests concurrent create-only and ETag compare-and-swap behavior, checks reads/metadata/prefix listing, and removes only those exact generated keys in a `finally` block. It is intentionally excluded from the default test suite and GitHub CI because no database secret is stored in the repository.
+
+The test has not been run yet. A successful result is required before enabling the Neon adapter in any deployed environment.
