@@ -15,9 +15,11 @@ test("records actual usage and keeps a healthy poll eligible to continue", () =>
   assert.equal(row.usage.reconciliation,"matched"); assert.equal(row.control.stopFurtherCollection,false);
   assert.equal(row.secretsPersisted,false); assert.equal(row.immutable,true);
 });
-test("stops below the protected reserve", () => {
-  const input=base(); input.headers["x-requests-remaining"]="49";
-  assert.equal(buildOddsCollectionAttempt(input).control.stopReason,"provider_quota_below_protected_reserve");
+test("stops at or below the protected reserve", () => {
+  for (const remaining of ["50","49"]) {
+    const input=base(); input.headers["x-requests-remaining"]=remaining;
+    assert.equal(buildOddsCollectionAttempt(input).control.stopReason,"provider_quota_below_protected_reserve");
+  }
 });
 test("stops when actual usage exceeds estimate", () => {
   const input=base(); input.headers["x-requests-last"]="3";
