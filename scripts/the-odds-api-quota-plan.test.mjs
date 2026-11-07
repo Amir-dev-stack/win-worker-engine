@@ -49,7 +49,7 @@ test("rejects empty, duplicate, fractional, negative and overflowing plans", () 
       { id: "x", marketCount: 1, regionCount: 1, callsPerMonth: 1 }
     ] },
     { monthlyLimitCredits: 500, reserveCredits: 0, requests: [{ id: "x", marketCount: 1.5, regionCount: 1, callsPerMonth: 1 }] },
-    { monthlyLimitCredits: 500, reserveCredits: 0, requests: [{ id: "x", marketCount: 1, regionCount: 1, callsPerMonth: Number.MAX_SAFE_INTEGER }] }
+    { monthlyLimitCredits: 500, reserveCredits: 0, requests: [{ id: "x", marketCount: 2, regionCount: 1, callsPerMonth: Number.MAX_SAFE_INTEGER }] }
   ]) {
     assert.throws(() => planOddsApiMonthlyQuota(input), e => e instanceof OddsApiQuotaPlanError);
   }
