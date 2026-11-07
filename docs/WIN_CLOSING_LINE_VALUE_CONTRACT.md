@@ -91,3 +91,10 @@ Added `netlify/lib/win-odds-quote-normalizer.mts` as a strict adapter boundary. 
 The normalizer rejects missing provenance, fair-probability and prediction-market inputs, unknown/suspended/closed availability, live or post-kickoff observations, invalid timestamps and invalid prices. When the provider does not supply its own quote ID, WIN derives a deterministic SHA-256 identity from the source record revision and quote identity/price fields. A source revision or price change therefore produces a different quote ID.
 
 This is not a live or historical provider integration. It is a fail-closed contract that provider adapters must pass before any quote can be persisted or used for CLV. No provider credentials, external data calls, production migrations or deployment were added.
+
+
+## CI follow-up: quote-normalizer gate assertion
+
+The CI run on commit `f6193bafdc1c3ad94ff71cfe42f1ca134e9731dd` executed all 328 Node tests successfully, but the architecture quality gate failed because its source-text assertion expected the error code `source_provenance_incomplete` while the normalizer correctly emits `quote_provenance_incomplete`. The same single assertion caused both the Netlify validation and WIN build/quality jobs to fail; the worker-engine checks passed.
+
+Corrected the quality-gate assertion to match the implemented error code in commit `26cb2b156ae17c931d77f548bf19428800085c6e`. This is a narrow test-contract correction; it does not weaken runtime validation. The fix commit has been pushed to the roadmap branch. The available PR-triggered workflow lookup has not yet returned a run for this fix commit, so the corrected gate and full suite remain pending CI verification.
