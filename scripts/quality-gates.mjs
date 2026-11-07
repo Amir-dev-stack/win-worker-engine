@@ -1286,7 +1286,7 @@ add("WIN odds evidence schema is append-only, source-pinned and prediction-bound
 const quoteNormalizer = await read("netlify/lib/win-odds-quote-normalizer.mts");
 const quoteNormalizerTests = await read("scripts/win-odds-quote-normalizer.test.mjs");
 add("WIN quote normalization requires explicit source provenance, licence, source role and executable pre-match price",
-  quoteNormalizer.includes("source_provenance_incomplete") &&
+  quoteNormalizer.includes("quote_provenance_incomplete") &&
   quoteNormalizer.includes("source_revision_invalid") &&
   quoteNormalizer.includes("snapshot_role_must_be_source_declared") &&
   quoteNormalizer.includes("executable_back_price_required") &&
