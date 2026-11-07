@@ -35,6 +35,9 @@ export function bindWinMLShadowPredictionToBlendInput(args: {
       input.model.datasetContentSha256 !== evidence.datasetContentSha256) {
     throw new Error("market_blend_registered_model_binding_mismatch");
   }
+  if (prediction.usage !== "shadow_only" || prediction.origin !== "trained_model") {
+    throw new Error("market_blend_registered_shadow_prediction_usage_invalid");
+  }
   if (prediction.predictionRunId !== predictionRunId ||
       prediction.modelId !== model.artifact.modelId ||
       prediction.modelVersion !== model.evaluation.modelVersion ||
