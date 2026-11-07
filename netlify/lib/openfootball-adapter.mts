@@ -19,7 +19,7 @@ export function isPinnedOpenFootballRevision(value: unknown): value is string {
 }
 
 export function buildOpenFootballDatasetSnapshotId(season: string, fileName: string, sourceRevision: string) {
-  if (!normalizedSeason(season) || !/^[a-z]{2}\.\d+\.json$/i.test(fileName) || !isPinnedOpenFootballRevision(sourceRevision)) {
+  if (!normalizedSeason(season) || !/^[a-z]{2,3}\.\d+\.json$/i.test(fileName) || !isPinnedOpenFootballRevision(sourceRevision)) {
     throw new Error("openfootball_dataset_snapshot_identity_invalid");
   }
   return "openfootball-" + season + "-" + fileName.replace(/\.json$/i, "") + "-r" + sourceRevision.toLowerCase();
@@ -96,7 +96,7 @@ export async function syncOpenFootballHistoricalData() {
     try {
       const entries = await getJson(API + "/" + season + "?ref=" + sourceRevision);
       const files = (entries as any[])
-        .filter(x => x.type === "file" && /^[a-z]{2}\.\d+\.json$/i.test(x.name))
+        .filter(x => x.type === "file" && /^[a-z]{2,3}\.\d+\.json$/i.test(x.name))
         .slice(0, MAX_FILES_PER_SEASON);
       for (const file of files) {
         try {
