@@ -38,7 +38,7 @@ npx wrangler deploy
 
 When prompted for the secret, enter the existing WIN internal token locally in the terminal. Do not paste it into ChatGPT, GitHub, this document, `wrangler.toml`, or a browser form.
 
-The origin is currently configured as `https://win-worker-engine.netlify.app` in `wrangler.toml`. Change it only if the production origin changes.
+The origin is currently configured as `https://win-worker-engine.netlify.app` in `wrangler.toml`. Change it only if the production origin changes. Deploy the Worker only after the WIN Netlify release includes the `postMatchFollowup.lastCompletedAt` field in `/api/health`; otherwise the watchdog cannot suppress a duplicate backup run.
 
 ## Verification boundary
 
