@@ -56,6 +56,8 @@ test("research assignment manager enforces approval, lease, untrusted intake and
     limitations:["Sample contains synthetic rows."],evidence:[{title:"Public specification",url:"https://example.org/spec",retrievedAt:"2026-11-07T00:00:00Z"}],
     artifacts:[{name:"audit.json",mediaType:"application/json",sha256:uploaded.sha256,location:uploaded.location,reproductionCommand:"node audit.mjs"}]};
   await assert.rejects(()=>manager.submitResearchAssignment(assignment.id,agent,"wrong-lease",submission,4000),/valid, unexpired/);
+  const forgedLocal={...submission,artifacts:[{...submission.artifacts[0],location:"local-file:C:/temp/audit.json"}]};
+  await assert.rejects(()=>manager.submitResearchAssignment(assignment.id,agent,claim.leaseId,forgedLocal,4000),/Artifact location/);
   const forged={...submission,artifacts:[{...submission.artifacts[0],location:"win-blob://library/research-artifacts/research-artifact-not-found"}]};
   await assert.rejects(()=>manager.submitResearchAssignment(assignment.id,agent,claim.leaseId,forged,4000),/Cloud artifact/);
   const forgedDigest={...submission,artifacts:[{...submission.artifacts[0],sha256:"f".repeat(64)}]};
