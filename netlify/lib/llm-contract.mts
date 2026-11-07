@@ -26,6 +26,8 @@ export type WinLLMRequestV1 = {
 export type WinLLMProviderDescriptor = {
   /** True only when this provider may retain/use submitted prompts under its free-tier terms. */
   requiresRetentionConsent?: boolean;
+  /** False means no hard provider-side or local quota boundary has been verified. */
+  quotaVerified?: boolean;
   id: string;
   enabled: boolean;
   approved: boolean;
@@ -116,6 +118,7 @@ export function selectWinLLMProvider(
     provider.enabled === true &&
     provider.approved === true &&
     provider.pricingVerified === true &&
+    provider.quotaVerified !== false &&
     Array.isArray(provider.models) &&
     (!request.providerPolicy.model || provider.models.includes(request.providerPolicy.model)) &&
     Array.isArray(provider.capabilities) &&
