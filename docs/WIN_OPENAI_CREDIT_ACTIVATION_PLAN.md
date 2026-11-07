@@ -2,11 +2,11 @@
 
 ## Current owner-reported funding
 
-The owner reports purchasing **USD 5.00 of OpenAI API credits**. This is a purchase amount, not a live balance verification. WIN must not assume that the full amount remains available; the owner must inspect the OpenAI API billing/credits dashboard before activation.
+The owner reports purchasing **USD 5.00 of OpenAI API credits** and has now explicitly authorized the WIN research agents to spend OpenAI API credits when their assigned research requires it. This authorization is for OpenAI model calls and OpenAI-hosted research tools only; it does not authorize other AI providers, external agent platforms or third-party tool integrations. The live remaining credit balance is still unverified.
 
 ## Existing safeguards to preserve
 
-- Keep `WIN_AI_BUDGET_APPROVED` unset or `false` until the owner explicitly authorizes a live test.
+- The owner has authorized bounded OpenAI-only research spending. Before the first live run, verify the configured API key, provider balance and usage controls, then activate only the existing bounded WIN execution gate.
 - Preserve the existing WIN application spending stop of **USD 2.95** against the current USD 3 reference cycle. Do not silently raise it to the full purchase amount.
 - Preserve the persistent owner lock. Month rollover, a new task, a retry, a scheduled job, or an agent handoff must not unlock spending.
 - Do not enable automatic recharge or purchase additional credits.
