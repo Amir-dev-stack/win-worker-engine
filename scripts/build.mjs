@@ -63,7 +63,7 @@ const required = [
   "netlify/lib/openfootball-worldcup-adapter.mts",
   "scripts/openfootball-adapter.test.mjs",
   "netlify/functions/openfootball-worldcup-sync.mts",
-  "netlify/functions/research-status.mts",
+  "netlify/functions/research-status.mts",\n  "netlify/lib/win-research-memory.mts",\n  "netlify/lib/win-research-assignment-manager.mts",\n  "netlify/functions/research-assignments.mts",\n  "scripts/win-research-memory.test.mjs",\n  "scripts/win-research-assignment-manager.test.mjs",\n  "scripts/win-research-assignment-api-contract.test.mjs",
   "netlify/functions/learning-data-jobs.mts",
   "netlify/functions/ml-owner-approval.mts",
   "netlify/lib/public-source-discovery.mts",
