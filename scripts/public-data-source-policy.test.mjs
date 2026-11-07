@@ -11,6 +11,27 @@ import { CONSENSUS_SOURCES, isPinnedDatasetRevision } from "../netlify/lib/conse
 import { isPinnedOpenFootballRevision } from "../netlify/lib/openfootball-adapter.mts";
 import { isPinnedOpenFootballWorldCupRevision, readBoundedWorldCupResponse } from "../netlify/lib/openfootball-worldcup-adapter.mts";
 
+
+test("The Odds API stays a zero-cost research candidate until owner licence and quota review", () => {
+  const candidate = DATA_PROVIDER_REGISTRY.find(x => x.id === "the-odds-api");
+  assert.ok(candidate);
+  assert.equal(candidate.accessMode, "licensed_api");
+  assert.equal(candidate.licenceReview, "required");
+  assert.equal(candidate.automationAllowed, false);
+  assert.match(candidate.licenceReference, /^https:\/\/the-odds-api\.com\/terms-and-conditions\.html$/);
+  assert.match(candidate.notes, /500 credits\/month/);
+  assert.match(candidate.notes, /historical odds endpoints are paid-plan-only/);
+  assert.match(candidate.notes, /permit retaining data and using it for statistical\/ML training/);
+  assert.throws(() => assertProviderImportAllowed(candidate.id, ["prematch_odds"]), /automation_disabled/);
+  assert.equal(providerMayRunAutomatically(candidate, {
+    providerId: candidate.id,
+    status: "connected",
+    verifiedAt: "2026-11-07T00:00:00.000Z",
+    enabledDomains: ["prematch_odds"],
+    termsReference: candidate.licenceReference
+  }), false);
+});
+
 test("TipsAudit is discoverable but cannot enter automated data ingestion", () => {
   const candidate = DATA_PROVIDER_REGISTRY.find(x => x.id === "tipsaudit-track-record-public");
   assert.ok(candidate, "the reviewed public data candidate must exist");
