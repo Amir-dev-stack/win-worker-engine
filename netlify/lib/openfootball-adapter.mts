@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { get, put } from "./store.mts";
 import { assertProviderImportAllowed } from "./data-provider-registry.mts";
 
@@ -16,6 +16,13 @@ async function getJson(url: string) {
 
 export function isPinnedOpenFootballRevision(value: unknown): value is string {
   return typeof value === "string" && /^[a-f0-9]{40}$/i.test(value);
+}
+
+export function buildOpenFootballSyncRunId(startedAt: string, sourceRevision: string) {
+  if (!Number.isFinite(Date.parse(startedAt)) || !isPinnedOpenFootballRevision(sourceRevision)) {
+    throw new Error("openfootball_sync_run_identity_invalid");
+  }
+  return "openfootball-" + Date.parse(startedAt).toString(36) + "-" + sourceRevision.slice(0, 12).toLowerCase() + "-" + randomUUID();
 }
 
 function normalizedSeason(name: string) {
@@ -37,7 +44,7 @@ export async function syncOpenFootballHistoricalData() {
   if (previous?.sourceRevision === sourceRevision && previous?.status === "completed") {
     const completedAt = new Date().toISOString();
     const unchanged = {
-      id: "openfootball-" + startedAt.slice(0,10), providerId: "openfootball-football-json",
+      id: buildOpenFootballSyncRunId(startedAt, sourceRevision), providerId: "openfootball-football-json",
       status: "unchanged", startedAt, completedAt, sourceRevision, reusedExistingSnapshot: true,
       seasonsAttempted: previous.seasonsAttempted || [], filesFetched: 0,
       matchesImported: Number(previous.matchesImported || 0), matchesWithScores: Number(previous.matchesWithScores || 0),
@@ -56,7 +63,7 @@ export async function syncOpenFootballHistoricalData() {
     .slice(0, MAX_SEASONS);
 
   const summary: any = {
-    id: "openfootball-" + startedAt.slice(0,10),
+    id: buildOpenFootballSyncRunId(startedAt, sourceRevision),
     providerId: "openfootball-football-json",
     status: "running",
     startedAt,
