@@ -171,6 +171,14 @@ async function executeAssignment(assignment) {
     const filename = assignment.id + "-" + randomUUID() + ".json";
     const artifactPath = resolve(artifactDir, filename);
     await writeFile(artifactPath, bytes, { flag: "wx" });
+    const uploaded = await api("upload_artifact", {
+      assignmentId: assignment.id, leaseId, artifact, sha256
+    });
+    const cloudArtifact = uploaded.artifact;
+    if (!cloudArtifact?.artifactId || cloudArtifact.sha256 !== sha256 ||
+        typeof cloudArtifact.location !== "string" || !cloudArtifact.location.startsWith("win-blob://")) {
+      throw new Error("WIN did not return a verified cloud artifact reference.");
+    }
     const submission = {
       summary: report.summary,
       findings: report.findings,
@@ -181,8 +189,8 @@ async function executeAssignment(assignment) {
       })),
       artifacts: [{
         name: filename, mediaType: "application/json", sha256,
-        location: "local-file:" + artifactPath,
-        reproductionCommand: "Run scripts/win-local-agent-runner.mjs with the same assignment source URLs and model."
+        location: cloudArtifact.location,
+        reproductionCommand: "Retrieve the WIN private research artifact by artifact ID and rerun the approved assignment with the recorded source URLs and model."
       }]
     };
     await api("submit", { assignmentId: assignment.id, leaseId, submission });
