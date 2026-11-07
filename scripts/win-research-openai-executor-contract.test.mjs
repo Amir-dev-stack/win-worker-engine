@@ -9,7 +9,9 @@ test("OpenAI research executor is owner-approved, budget-bounded and memory-awar
   assert.match(executor, /claimResearchAssignment/);
   assert.match(executor, /buildResearchMemoryContext/);
   assert.match(executor, /runScheduledLearning\(brief, assignment\.budgetCeilingUsd\)/);
+  assert.match(executor, /storeResearchArtifact\(assignment\.id, agentId, leaseId, artifact, sha256\)/);
   assert.match(executor, /submitResearchAssignment/);
+  assert.doesNotMatch(executor, /put\("library\/research-artifacts"/);
   assert.match(executor, /releaseResearchAssignment/);
   assert.match(executor, /protocol === "https:"/);
   assert.match(executor, /trustedKnowledgePromotion/);
