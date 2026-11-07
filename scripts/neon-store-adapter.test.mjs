@@ -60,3 +60,18 @@ test("Neon adapter rejects malformed keys and supports deletion", async () => {
   await store.delete("agent-memory/a");
   assert.match(fake.calls[0].text, /DELETE FROM public\.win_memory_records/);
 });
+
+test("OpenAI budget controller and assignment manager share the configured store", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const storeSource = await readFile(new URL("../netlify/lib/store.mts", import.meta.url), "utf8");
+  const budgetSource = await readFile(new URL("../netlify/lib/ai-budget.mts", import.meta.url), "utf8");
+  const assignmentSource = await readFile(new URL("../netlify/lib/win-research-assignment-manager.mts", import.meta.url), "utf8");
+  const aiSource = await readFile(new URL("../netlify/lib/ai.mts", import.meta.url), "utf8");
+
+  assert.match(storeSource, /export async function getStoreAdapter\(/);
+  assert.match(budgetSource, /import \{ getStoreAdapter \} from "\.\/store\.mts"/);
+  assert.match(budgetSource, /return getStoreAdapter\(\)/);
+  assert.doesNotMatch(budgetSource, /import\("@netlify\/blobs"\)/);
+  assert.match(assignmentSource, /from "\.\/store\.mts"/);
+  assert.match(aiSource, /reserveAIRequest, settleAIRequest, releaseAIRequest/);
+});
