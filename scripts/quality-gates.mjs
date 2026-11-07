@@ -1326,6 +1326,19 @@ add("Odds collection attempts reconcile provider-reported usage, preserve audit 
   oddsCollectionLedgerDocs.includes("does not connect a provider"),
   "The offline ledger must reconcile actual quota headers, fail closed on unknown/over-budget usage, retain no secrets, and remain disconnected from live collection.");
 
+const oddsCollectionMigration = await read("database/migrations/20261107_win_odds_collection_attempts.sql");
+const oddsCollectionSchemaTests = await read("scripts/win-odds-collection-schema.test.mjs");
+add("Odds collection ledger database schema is append-only and enforces quota, provenance and stop invariants",
+  oddsCollectionMigration.includes("BEFORE UPDATE OR DELETE") &&
+  oddsCollectionMigration.includes("secrets_persisted = false") &&
+  oddsCollectionMigration.includes("remaining <= reserve_credits") &&
+  oddsCollectionMigration.includes("actual_credits > estimated_credits") &&
+  oddsCollectionMigration.includes("win_odds_collection_attempt_time_order") &&
+  oddsCollectionMigration.includes("win_odds_collection_attempt_usage_shape") &&
+  oddsCollectionSchemaTests.includes("collection attempts are immutable") &&
+  oddsCollectionSchemaTests.includes("database enforces exact usage reconciliation"),
+  "The staged database migration must preserve immutable collection audit records, reject secret persistence, and enforce provider quota and timestamp boundaries.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
