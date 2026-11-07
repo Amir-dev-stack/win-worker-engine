@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { readBoundedJsonObject } from "../lib/bounded-json-request.mts";
 import {
-  claimResearchAssignment, getApprovedResearchAssignments,
+  claimResearchAssignment, getApprovedResearchAssignments, storeResearchArtifact,
   releaseResearchAssignment, submitResearchAssignment
 } from "../lib/win-research-assignment-manager.mts";
 
@@ -46,6 +46,13 @@ export default async (req: Request) => {
         }
       }
       return Response.json({ ok: true, assignment: null });
+    }
+    if (action === "upload_artifact") {
+      const result = await storeResearchArtifact(
+        String(body.assignmentId || ""), agentId, String(body.leaseId || ""),
+        body.artifact, String(body.sha256 || "")
+      );
+      return Response.json({ ok: true, artifact: result }, { headers: { "cache-control": "no-store" } });
     }
     if (action === "submit") {
       const result = await submitResearchAssignment(
