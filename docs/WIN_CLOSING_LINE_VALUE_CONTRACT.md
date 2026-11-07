@@ -34,7 +34,7 @@ type WinCLVQuote = {
 };
 ```
 
-The decision and closing observations must match exactly on source, event, market, selection, period, line, bookmaker, venue and price semantics. Both must be pre-kickoff, non-live, open and carry strict source timestamps. Decimal odds must be finite and greater than 1.
+The decision and closing observations must match exactly on source, event, market, selection, period, line, bookmaker, venue and price semantics. The pinned `sourceRevision` represents the immutable source dataset/release or adapter-contract revision, while `sourceRecordId` identifies one particular immutable observation/snapshot. The record ID is therefore expected to differ between decision-time and closing observations; the revision must remain compatible and match for the same source contract. A per-observation payload hash belongs in the record identity, not in the shared contract revision. Both must be pre-kickoff, non-live, open and carry strict source timestamps. Decimal odds must be finite and greater than 1.
 
 ## Timing and leakage rules
 
