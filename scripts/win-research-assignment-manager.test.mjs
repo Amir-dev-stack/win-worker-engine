@@ -29,7 +29,7 @@ test("research assignment manager enforces approval, lease, untrusted intake and
   const assignment=await manager.createResearchAssignment(base,"owner-1",1000);
   assert.equal(assignment.status,"proposed");
   assert.equal(assignment.budgetCeilingUsd,0);
-  assert.equal(assignment.modelCallLimit,0);
+  assert.equal(assignment.modelCallLimit,0);\n  assert.equal(assignment.toolCallLimit,0);
   await assert.rejects(()=>manager.claimResearchAssignment(assignment.id,"agent-1",2000),/not available/);
   await assert.rejects(()=>manager.approveResearchAssignment(assignment.id,"intruder",2000),/Only the assignment owner/);
   await manager.approveResearchAssignment(assignment.id,"owner-1",2000);
