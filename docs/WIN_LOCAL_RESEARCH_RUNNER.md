@@ -34,8 +34,8 @@ The token must be copied securely to the local PC environment. It must not be pl
 
 1. Install Node.js 22.12 or newer.
 2. Install Ollama from its official installer and start the local service.
-3. Pull a small quantized model appropriate for the available RAM. Start with a 3B-class model and benchmark before trying larger models; AMD GPU acceleration depends on the installed driver/runtime and is not assumed.
-4. Confirm the Ollama OpenAI-compatible endpoint responds at `http://127.0.0.1:11434/v1`.
+3. From the repository root, run `powershell -ExecutionPolicy Bypass -File scripts/setup-win-local-ollama.ps1`. It installs Ollama via WinGet when available, otherwise opens the official installer page, then pulls `llama3.2:3b` (about 2 GB). Benchmark before trying larger models; AMD GPU acceleration depends on the installed driver/runtime and is not assumed.
+4. Confirm the Ollama OpenAI-compatible endpoint responds at `http://127.0.0.1:11434/v1`. The setup helper does not expose Ollama publicly or configure any cloud API.
 
 ## Local environment
 
@@ -44,7 +44,7 @@ Set these in the local terminal session. The runner token must match the server 
 - `WIN_RESEARCH_API_URL=https://win-worker-engine.netlify.app`
 - `WIN_RESEARCH_RUNNER_TOKEN=<same dedicated runner secret>`
 - `WIN_RESEARCH_RUNNER_AGENT_ID=<one ID in the server allowlist>`
-- `WIN_OLLAMA_MODEL=<exact locally pulled model tag>`
+- `WIN_OLLAMA_MODEL=llama3.2:3b` (or another exact locally pulled model tag)
 - `WIN_OLLAMA_BASE_URL=http://127.0.0.1:11434/v1`
 - Optional: `WIN_LOCAL_RUNNER_MAX_TASKS=1` (default and recommended for the first pilot)
 - Optional: `WIN_LOCAL_RUNNER_MAX_IDLE_POLLS=6`
