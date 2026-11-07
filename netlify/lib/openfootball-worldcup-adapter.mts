@@ -40,6 +40,7 @@ export function buildOpenFootballWorldCupSyncRunId(startedAt:string,sourceRevisi
 const UPSTREAM_TIMEOUT_MS=12_000;
 const MAX_REVISION_RESPONSE_BYTES=256_000;
 const MAX_DATASET_RESPONSE_BYTES=4_000_000;
+const MAX_STATUS_DATASET_SAMPLES=25;
 
 export async function readBoundedWorldCupResponse(response:Response,maxBytes=MAX_DATASET_RESPONSE_BYTES):Promise<string>{
  const declared=Number(response.headers.get("content-length"));
@@ -154,8 +155,8 @@ export async function syncOpenFootballWorldCupData(){
 }
 export async function getOpenFootballWorldCupSyncStatus(){
  const state=await get<any>("scheduler-state","openfootball-worldcup-daily-sync");
- const datasets=await list<any>("library/model-lab/historical-event-datasets",500);
+ const datasets=await list<any>("library/model-lab/historical-event-datasets",MAX_STATUS_DATASET_SAMPLES);
  const snapshots=datasets.filter(d=>d.providerId==="openfootball-worldcup-json");
  const tournament=selectLatestOpenFootballWorldCupSnapshots(snapshots);
- return {sampled:true,status:state?.status||"not_yet_run",lastCheck:state?.lastCheck||null,totals:state||null,snapshotCount:snapshots.length,datasetCount:tournament.length,matchCount:tournament.reduce((n,d)=>n+Number(d.totalRows||0),0),scoredMatches:tournament.reduce((n,d)=>n+Number(d.scoredRows||0),0),playerEventCount:tournament.reduce((n,d)=>n+Number(d.playerEventRows||0),0)};
+ return {sampled:true,sampleLimit:MAX_STATUS_DATASET_SAMPLES,status:state?.status||"not_yet_run",lastCheck:state?.lastCheck||null,totals:state||null,snapshotCount:snapshots.length,datasetCount:tournament.length,matchCount:tournament.reduce((n,d)=>n+Number(d.totalRows||0),0),scoredMatches:tournament.reduce((n,d)=>n+Number(d.scoredRows||0),0),playerEventCount:tournament.reduce((n,d)=>n+Number(d.playerEventRows||0),0)};
 }
