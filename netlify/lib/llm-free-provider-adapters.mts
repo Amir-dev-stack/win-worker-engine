@@ -182,10 +182,12 @@ export function buildFreeProviderDescriptors(env: Env): WinLLMProviderDescriptor
   const cfModel = env.WIN_CLOUDFLARE_FREE_MODEL || "";
   const geminiModel = env.WIN_GEMINI_FREE_MODEL || "";
   const ollamaEnabled = env.WIN_ENABLE_OLLAMA_PROVIDER === "true" && !!ollamaModel;
-  const cfEnabled = env.WIN_ENABLE_CLOUDFLARE_FREE_PROVIDER === "true" &&\n    env.WIN_CLOUDFLARE_WORKERS_FREE_PLAN_CONFIRMED === "true" &&
+  const cfEnabled = env.WIN_ENABLE_CLOUDFLARE_FREE_PROVIDER === "true" &&
+    env.WIN_CLOUDFLARE_WORKERS_FREE_PLAN_CONFIRMED === "true" &&
     env.WIN_CLOUDFLARE_FREE_MODEL_APPROVED === "true" && !!cfModel &&
     !!env.CLOUDFLARE_ACCOUNT_ID && !!env.CLOUDFLARE_API_TOKEN;
-  const geminiEnabled = env.WIN_ENABLE_GEMINI_FREE_PROVIDER === "true" &&\n    env.WIN_GEMINI_FREE_TIER_CONFIRMED === "true" && env.WIN_GEMINI_BILLING_DISABLED === "true" &&
+  const geminiEnabled = env.WIN_ENABLE_GEMINI_FREE_PROVIDER === "true" &&
+    env.WIN_GEMINI_FREE_TIER_CONFIRMED === "true" && env.WIN_GEMINI_BILLING_DISABLED === "true" &&
     env.WIN_GEMINI_FREE_MODEL_APPROVED === "true" && !!geminiModel && !!env.GEMINI_API_KEY;
   return [
     {
