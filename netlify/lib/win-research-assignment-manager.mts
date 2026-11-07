@@ -167,7 +167,8 @@ export async function reviewResearchSubmission(id: string, reviewerId: string, d
   const submissionId = String(assignment.value.submissionId || "");
   const submission = await getWithMetadata<any>(SUBMISSIONS, submissionId);
   if (!submission || submission.value.agentId === reviewerId) throw new Error("Submitter and reviewer must be independent.");
-  const status = decision === "accept" ? "accepted_research" : "rejected";\n  const saved = await putIfMatch(SUBMISSIONS, submissionId, {
+  const status = decision === "accept" ? "accepted_research" : "rejected";
+  const saved = await putIfMatch(SUBMISSIONS, submissionId, {
     ...submission.value, status, reviewerId, reviewRationale: clean(rationale, 4000),
     reviewedAt: nowIso(nowMs), trustedKnowledgePromotion: "blocked_pending_separate_owner_approval"
   }, submission.etag);
