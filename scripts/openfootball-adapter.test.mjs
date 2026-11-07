@@ -66,3 +66,13 @@ test("World Cup snapshot status counts only the newest revision per logical data
   assert.ok(latest.some(item => item.sourceRevision === "c".repeat(40)));
   assert.ok(!latest.some(item => item.sourceRevision === "a".repeat(40)));
 });
+
+test("World Cup snapshot selection prefers valid retrieval timestamps over malformed ones", () => {
+  const snapshots = [
+    { id: "openfootball-worldcup-2022-worldcup-full-r" + "a".repeat(40), sourceRevision: "a".repeat(40), retrievedAt: "not-a-date" },
+    { id: "openfootball-worldcup-2022-worldcup-full-r" + "b".repeat(40), sourceRevision: "b".repeat(40), retrievedAt: "2026-11-02T00:00:00.000Z" }
+  ];
+  const latest = selectLatestOpenFootballWorldCupSnapshots(snapshots);
+  assert.equal(latest.length, 1);
+  assert.equal(latest[0].sourceRevision, "b".repeat(40));
+});
