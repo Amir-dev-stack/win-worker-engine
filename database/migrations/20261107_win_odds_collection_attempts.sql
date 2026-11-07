@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS public.win_odds_collection_attempts (
   provider_id text NOT NULL CHECK (provider_id ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'),
   licence_id text NOT NULL CHECK (licence_id ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'),
   sport text NOT NULL CHECK (sport ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$'),
-  markets text[] NOT NULL CHECK (cardinality(markets) > 0 AND array_position(markets, '') IS NULL),
-  regions text[] NOT NULL CHECK (cardinality(regions) > 0 AND array_position(regions, '') IS NULL),
+  markets text[] NOT NULL CHECK (cardinality(markets) > 0 AND array_position(markets, '') IS NULL AND array_position(markets, NULL) IS NULL),
+  regions text[] NOT NULL CHECK (cardinality(regions) > 0 AND array_position(regions, '') IS NULL AND array_position(regions, NULL) IS NULL),
   planned_at timestamptz NOT NULL,
   requested_at timestamptz,
   ingested_at timestamptz NOT NULL,
@@ -50,8 +50,8 @@ CREATE TABLE IF NOT EXISTS public.win_odds_collection_attempts (
     OR (outcome NOT IN ('success','empty'))
   ),
   CONSTRAINT win_odds_collection_attempt_usage_shape CHECK (
-    (actual_credits IS NULL AND estimate_variance IS NULL AND reconciliation = 'unknown')
-    OR (actual_credits = last_request AND estimate_variance = actual_credits - estimated_credits
+    (actual_credits IS NULL AND last_request IS NULL AND estimate_variance IS NULL AND reconciliation = 'unknown')
+    OR (actual_credits IS NOT NULL AND actual_credits = last_request AND estimate_variance = actual_credits - estimated_credits
       AND reconciliation = CASE
         WHEN actual_credits = estimated_credits THEN 'matched'
         WHEN actual_credits < estimated_credits THEN 'under_estimate'
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS public.win_odds_collection_attempts (
     OR (outcome NOT IN ('rate_limited','provider_error','quota_exhausted','not_attempted')
       AND (remaining IS NULL OR last_request IS NULL OR total_used IS NULL) AND stop_further_collection)
     OR (NOT stop_further_collection AND outcome IN ('success','empty')
-      AND total_used IS NOT NULL AND remaining IS NOT NULL AND last_request IS NOT NULL
+      AND total_used IS NOT NULL AND remaining IS NOT NULL AND last_request IS NOT NULL AND actual_credits IS NOT NULL
       AND remaining > reserve_credits AND actual_credits <= estimated_credits)
   ),
   CONSTRAINT win_odds_collection_attempt_stop_reason CHECK (
