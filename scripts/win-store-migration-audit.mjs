@@ -2,12 +2,17 @@ import { createHash } from "node:crypto";
 import { getStore } from "@netlify/blobs";
 import { neon } from "@neondatabase/serverless";
 
-const required = ["NETLIFY_SITE_ID", "NETLIFY_AUTH_TOKEN", "WIN_NEON_TEST_DATABASE_URL"];
+const required = ["NETLIFY_SITE_ID", "NETLIFY_AUTH_TOKEN", "WIN_NEON_TEST_DATABASE_URL", "WIN_NEON_TEST_EXPECTED_DATABASE"];
 for (const name of required) {
   if (!process.env[name]) throw new Error(name + " is required; refusing to guess credentials or database target.");
 }
-if (process.env.WIN_MIGRATION_AUDIT_CONFIRM !== "1") {
-  throw new Error("Read-only audit requires WIN_MIGRATION_AUDIT_CONFIRM=1.");
+if (process.env.WIN_MIGRATION_AUDIT_CONFIRM !== "1" ||
+    process.env.WIN_NEON_TEST_BRANCH_CONFIRM !== "dedicated-test-branch") {
+  throw new Error("Read-only audit requires WIN_MIGRATION_AUDIT_CONFIRM=1 and WIN_NEON_TEST_BRANCH_CONFIRM=dedicated-test-branch.");
+}
+if (process.env.WIN_NEON_DATABASE_URL &&
+    process.env.WIN_NEON_DATABASE_URL === process.env.WIN_NEON_TEST_DATABASE_URL) {
+  throw new Error("Refusing audit because the test URL matches WIN_NEON_DATABASE_URL.");
 }
 if (process.env.WIN_TRANSACTIONAL_STORE === "neon") {
   throw new Error("Run this audit with the current Blobs production path as source; do not switch the runtime store.");
@@ -37,6 +42,10 @@ const source = getStore({
   consistency: "strong"
 });
 const sql = neon(process.env.WIN_NEON_TEST_DATABASE_URL);
+const databaseIdentity = await sql`SELECT current_database() AS name`;
+if (databaseIdentity?.[0]?.name !== process.env.WIN_NEON_TEST_EXPECTED_DATABASE) {
+  throw new Error("Refusing audit because the connected database does not match WIN_NEON_TEST_EXPECTED_DATABASE.");
+}
 const sourceHashes = new Map();
 let sourceCount = 0;
 let missingSourcePayloads = 0;
@@ -66,7 +75,9 @@ while (true) {
     LIMIT 500`;
   if (!rows.length) break;
   for (const row of rows) {
-    destinationCount++;
+    if (++destinationCount > maxRecords) {
+      throw new Error("Destination record cap exceeded; increase the explicit cap only after reviewing expected size.");
+    }
     destinationHashes.set(row.record_key, digest(row.payload));
   }
   cursor = rows[rows.length - 1].record_key;
