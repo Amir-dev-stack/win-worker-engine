@@ -10,7 +10,7 @@ test("local research runner endpoint is separately token-authenticated and owner
   assert.match(route, /timingSafeEqual/);
   assert.match(route, /WIN_RESEARCH_RUNNER_ENABLED === "true"/);
   assert.match(route, /WIN_RESEARCH_RUNNER_AGENT_IDS/);
-  assert.match(route, /case|action === "claim_next"/);
+  assert.match(route, /action === "claim_next"/);
   assert.match(route, /claimResearchAssignment/);
   assert.match(route, /submitResearchAssignment/);
   assert.match(route, /releaseResearchAssignment/);
