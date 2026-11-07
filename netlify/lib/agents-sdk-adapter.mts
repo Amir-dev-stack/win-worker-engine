@@ -10,6 +10,7 @@ type AgentRunner = (input: {
   name: string;
   instructions: string;
   prompt: string;
+  memoryContext?: string;
   model: string;
   apiKey: string;
   webSearch: boolean;
@@ -65,6 +66,7 @@ export function createOpenAIWinLLMAdapter(input: {
   apiKey: string;
   model: string;
   runAgent?: AgentRunner;
+  memoryContextProvider?: (agentId: string) => Promise<string>;
 }): WinLLMProviderAdapter {
   const runner = input.runAgent ?? runWinAgent;
   return {
