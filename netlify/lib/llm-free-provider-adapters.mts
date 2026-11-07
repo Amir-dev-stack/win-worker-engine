@@ -69,8 +69,8 @@ export function createOllamaWinLLMAdapter(input: {
             stream: false
           })
         });
-        const body = await readJson(response);
         if (!response.ok) return failure(request, "ollama", input.model, classifyHttp(response.status), "ollama_http_" + response.status, Date.now() - started);
+        const body = await readJson(response);
         const output = body?.choices?.[0]?.message?.content;
         if (typeof output !== "string" || !output.trim()) return failure(request, "ollama", input.model, "permanent", "ollama_empty_output", Date.now() - started);
         return {
@@ -111,9 +111,11 @@ export function createCloudflareWorkersAIAdapter(input: {
             max_tokens: request.limits.maxOutputTokens
           })
         });
-        const body = await readJson(response);
-        if (!response.ok || body?.success === false) return failure(request, "cloudflare_workers_ai", input.model,
+        if (!response.ok) return failure(request, "cloudflare_workers_ai", input.model,
           classifyHttp(response.status), "cloudflare_http_" + response.status, Date.now() - started);
+        const body = await readJson(response);
+        if (body?.success === false) return failure(request, "cloudflare_workers_ai", input.model,
+          "permanent", "cloudflare_http_" + response.status, Date.now() - started);
         const output = body?.result?.response ?? body?.result?.output_text;
         if (typeof output !== "string" || !output.trim()) return failure(request, "cloudflare_workers_ai", input.model, "permanent", "cloudflare_empty_output", Date.now() - started);
         const usage = body?.result?.usage || {};
@@ -158,8 +160,8 @@ export function createGeminiFreeTierAdapter(input: {
             generationConfig: { maxOutputTokens: request.limits.maxOutputTokens, temperature: 0.2 }
           })
         });
-        const body = await readJson(response);
         if (!response.ok) return failure(request, "gemini_free", input.model, classifyHttp(response.status), "gemini_http_" + response.status, Date.now() - started);
+        const body = await readJson(response);
         const output = body?.candidates?.[0]?.content?.parts?.map((part: any) => part.text || "").join("");
         if (typeof output !== "string" || !output.trim()) return failure(request, "gemini_free", input.model, "permanent", "gemini_empty_output", Date.now() - started);
         const usage = body?.usageMetadata || {};
