@@ -930,7 +930,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -1975,7 +1975,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -2598,7 +2598,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -3207,7 +3207,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -3837,7 +3837,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -4446,7 +4446,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -5069,7 +5069,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
@@ -5678,7 +5678,7 @@ add("WIN pull requests run the complete Node 22 test, architecture and build gat
   winCiWorkflow.includes("pull_request:") &&
   winCiWorkflow.includes("workflow_dispatch:") &&
   winCiWorkflow.includes('node-version: "22"') &&
-  winCiWorkflow.includes("npm install --no-audit --no-fund") &&
+  winCiWorkflow.includes("npm ci --ignore-scripts --no-audit --no-fund") &&
   winCiWorkflow.includes("npm test") &&
   winCiWorkflow.includes("npm run build") &&
   winCiWorkflow.includes("permissions:") &&
