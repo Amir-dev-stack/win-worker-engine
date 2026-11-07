@@ -184,6 +184,26 @@ export async function reviewResearchSubmission(id: string, reviewerId: string, d
   return reviewedAssignment;
 }
 
+export async function getApprovedResearchAssignments(limit = 20) {
+  const assignments = await list<ResearchAssignment>(ASSIGNMENTS, 200);
+  return assignments
+    .filter(item => item.status === "approved" && item.sourceScope.some(source => {
+      try { return new URL(source).protocol === "https:"; } catch { return false; }
+    }))
+    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+    .slice(0, Math.max(1, Math.min(50, Math.floor(limit))));
+}
+
+export async function releaseResearchAssignment(id: string, agentId: string, leaseId: string, reason: string, nowMs = Date.now()) {
+  return mutateAssignment(id, nowMs, current => {
+    if (current.status !== "running" || current.assignedAgentId !== agentId || current.leaseId !== leaseId) {
+      throw new Error("A matching active assignment lease is required to release this task.");
+    }
+    return { ...current, status: "approved", leaseId: null, leaseExpiresAt: null,
+      assignedAgentId: null, lastExecutionError: clean(reason, 1000) || "Runner released assignment." };
+  });
+}
+
 export async function getResearchAssignmentStatus() {
   const [assignments, submissions, challenges] = await Promise.all([
     list<any>(ASSIGNMENTS, 200), list<any>(SUBMISSIONS, 200), list<any>(CHALLENGES, 200)
