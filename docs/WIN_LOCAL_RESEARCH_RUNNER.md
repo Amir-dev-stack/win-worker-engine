@@ -108,3 +108,14 @@ The endpoint remains disabled unless all of the following are configured server-
 The endpoint uses the existing authenticated internal API token. It does not schedule itself, create assignments, place bets, promote strategies or deploy code. If the assignment estimate exceeds its own budget ceiling, the reservation is released and no model request is sent. The API key must never be committed or pasted into chat.
 
 No OpenAI assignment has been executed by this change. The reported API credit purchase and remaining balance have not been independently verified.
+
+
+## Owner workstation smoke test — 2026-11-07
+
+The owner reported that Windows PowerShell successfully reached the local Ollama service:
+
+- `GET http://localhost:11434/api/tags` returned the installed `llama3.2:3b` model.
+- `POST http://localhost:11434/v1/chat/completions` returned a `chat.completion` response for `llama3.2:3b`, with `finish_reason: stop` and usage metadata (32 prompt tokens, 5 completion tokens).
+- The PowerShell formatted summary did not display the nested assistant message content. A direct `$result.choices[0].message.content` inspection is still needed to verify the exact response text.
+
+This verifies local service/API reachability only. It does **not** verify the WIN runner, assignment claiming, source retrieval, artifact submission, or cloud-to-local end-to-end operation. Those remain blocked until the runner endpoint is deployed and its separate token/agent allowlist are configured. The PC is not required for cloud-hosted WIN services to operate, but local Ollama tasks cannot run while the PC is off or the Ollama service is stopped.
