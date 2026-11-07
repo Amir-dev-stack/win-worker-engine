@@ -55,7 +55,7 @@ test("rejects malformed prices, invalid lines, stale post-kickoff data and futur
   const badLine = sample(); badLine[0].bookmakers[0].markets[0].outcomes[0].point = "2.5";
   assert.throws(() => parseOddsApiV4EventOdds(badLine, ingestedAt), /odds_api_line_invalid/);
   const late = sample(); late[0].bookmakers[0].markets[0].last_update = "2026-11-07T18:00:00.000Z";
-  assert.throws(() => parseOddsApiV4EventOdds(late, ingestedAt), /odds_api_observation_not_pre_match/);
+  assert.throws(() => parseOddsApiV4EventOdds(late, "2026-11-07T18:01:00.000Z"), /odds_api_observation_not_pre_match/);
   assert.throws(() => parseOddsApiV4EventOdds(sample(), "2026-11-07T11:00:00.000Z"),
     /odds_api_ingestion_precedes_source_timestamp/);
 });
