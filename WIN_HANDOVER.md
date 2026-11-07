@@ -13,14 +13,14 @@ Last updated: 2026-11-07 (UTC)
 
 ## Recent verification
 
-- Runtime dependency manifests are pinned: `@modelcontextprotocol/sdk` 1.32.2, `@netlify/functions` 6.1.1 and `zod` 4.6.7. A lockfile is still required for full transitive reproducibility.
+- Runtime dependency manifests are pinned: `@modelcontextprotocol/sdk` 1.32.2, `@netlify/functions` 6.1.1 and `zod` 4.6.7. `package-lock.json` (lockfile v3) is committed for transitive reproducibility; it was generated and verified with Node 24.22.1 / npm 11.9.0 using `npm ci --ignore-scripts --no-audit --no-fund` (156 packages).
 - The previous local status record reported **395 passing tests**, quality gates and build-component checks. Those local changes/results were not published and cannot be treated as current remote CI evidence.
 - This branch has no verified current-head hosted test/build result in this handover.
 - The repaired test now checks the literal `startsWith("win-blob://")` contract rather than an over-escaped regular expression. The runner still requires a verified cloud artifact location; local-file locations remain prohibited.
 
 ## Incomplete work and blockers
 
-1. Generate and commit a reproducible dependency lockfile through a verified local install; direct runtime dependencies are pinned, but do not claim `npm ci` support until a lockfile is committed.
+1. Run the complete WIN suite from a clean checkout using `npm ci --ignore-scripts --no-audit --no-fund`; the lockfile is committed, but the full suite is not yet verified at the current remote head.
 2. Run the full test, quality, and build suite against the current branch head and record exact outputs.
 3. Run the Neon integration test only against the dedicated test branch, with its explicit confirmation gate. Do not use production credentials or migrate records.
 4. Before any real-data work, select and approve a licensed football source, record provenance and rights, and complete out-of-sample calibration/settlement validation.
@@ -36,4 +36,4 @@ Last updated: 2026-11-07 (UTC)
 
 ## Next safe task
 
-Establish a clean local checkout at the current branch head, create the lockfile without lifecycle scripts or secret access, then run the contract tests and complete suite locally. Commit only verified changes and update this handover with the exact result.
+Establish a clean local checkout at the current branch head, run `npm ci --ignore-scripts --no-audit --no-fund`, then run the contract tests and complete suite locally. Commit only verified changes and update this handover with the exact result.
