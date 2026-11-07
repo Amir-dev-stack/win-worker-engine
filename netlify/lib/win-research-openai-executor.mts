@@ -1,9 +1,8 @@
 import { createHash } from "node:crypto";
 import { runScheduledLearning } from "./ai.mts";
 import { buildResearchMemoryContext } from "./win-research-memory.mts";
-import { storeResearchArtifact } from "./win-research-assignment-manager.mts";
 import {
-  claimResearchAssignment, releaseResearchAssignment, submitResearchAssignment
+  claimResearchAssignment, releaseResearchAssignment, storeResearchArtifact, submitResearchAssignment
 } from "./win-research-assignment-manager.mts";
 
 function extractLearningCycle(report: string): any | null {
