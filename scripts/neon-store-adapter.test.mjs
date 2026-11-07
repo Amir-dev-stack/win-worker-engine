@@ -82,6 +82,10 @@ test("Blobs-to-Neon audit is read-only and hashes payloads without printing them
   assert.match(auditSource, /READ_ONLY_DRY_RUN/);
   assert.match(auditSource, /createHash\("sha256"\)/);
   assert.match(auditSource, /writesPerformed: 0/);
+  assert.match(auditSource, /WIN_NEON_TEST_BRANCH_CONFIRM !== "dedicated-test-branch"/);
+  assert.match(auditSource, /WIN_NEON_TEST_EXPECTED_DATABASE/);
+  assert.match(auditSource, /SELECT current_database\(\) AS name/);
+  assert.match(auditSource, /Destination record cap exceeded/);
   assert.doesNotMatch(auditSource, /INSERT INTO|UPDATE public\.win_memory_records|DELETE FROM|TRUNCATE TABLE|\.setJSON\(|\.delete\(/i);
   assert.doesNotMatch(auditSource, /console\.log\([^\n]*payload/i);
 });
