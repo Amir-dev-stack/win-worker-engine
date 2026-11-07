@@ -55,6 +55,10 @@ test("rejects malformed headers, invalid dates, contradictory outcomes and bad h
   const x=base(); x.responseSha256="bad";
   assert.throws(()=>buildOddsCollectionAttempt(x),e=>e instanceof OddsCollectionLedgerError);
 });
+test("rejects identifiers that could carry credentials or arbitrary secret text", () => {
+  const x=base(); x.correlationId="Bearer_secret_value";
+  assert.throws(()=>buildOddsCollectionAttempt(x),e=>e instanceof OddsCollectionLedgerError);
+});
 test("source timestamps must be chronological and no later than ingestion", () => {
   const x=base(); x.oldestSourceObservedAt="2026-11-07T10:00:03.000Z";
   assert.throws(()=>buildOddsCollectionAttempt(x),/source_timestamp_range_invalid/);
