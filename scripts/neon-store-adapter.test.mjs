@@ -107,3 +107,18 @@ test("live Neon integration refuses ambiguous or runtime-matching database targe
   assert.match(source, /SELECT current_database\(\) AS name/);
   assert.match(source, /databaseIdentity\?\.\[0\]\?\.name !== expectedDatabase/);
 });
+
+
+test("staged Neon schema matches the transactional store contract", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const schema = await readFile(new URL("../database/migrations/20261107_win_memory_records.sql", import.meta.url), "utf8");
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS public\.win_memory_records/);
+  assert.match(schema, /record_key text PRIMARY KEY/);
+  assert.match(schema, /kind text NOT NULL/);
+  assert.match(schema, /record_id text NOT NULL/);
+  assert.match(schema, /payload jsonb NOT NULL/);
+  assert.match(schema, /etag text NOT NULL/);
+  assert.match(schema, /record_key = kind \|\| '\/' \|\| record_id/);
+  assert.match(schema, /CREATE INDEX IF NOT EXISTS win_memory_records_kind_record_idx/);
+  assert.match(schema, /not executed by CI or deployment/);
+});
