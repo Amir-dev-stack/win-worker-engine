@@ -1308,6 +1308,24 @@ add("WIN quote normalization requires explicit source provenance, licence, sourc
   quoteNormalizerTests.includes("different quote identity"),
   "Provider records cannot become quote evidence unless source/licence/revision/role/timestamps and executable decimal prices are explicit; stable identities preserve revision and price changes.");
 
+const oddsCollectionLedger = await read("netlify/lib/odds-collection-ledger.mts");
+const oddsCollectionLedgerTests = await read("scripts/odds-collection-ledger.test.mjs");
+const oddsCollectionLedgerDocs = await read("docs/WIN_ODDS_COLLECTION_LEDGER.md");
+add("Odds collection attempts reconcile provider-reported usage, preserve audit identity and stop on quota risk",
+  oddsCollectionLedger.includes("x-requests-used") &&
+  oddsCollectionLedger.includes("x-requests-remaining") &&
+  oddsCollectionLedger.includes("x-requests-last") &&
+  oddsCollectionLedger.includes("provider_usage_headers_incomplete") &&
+  oddsCollectionLedger.includes("provider_quota_below_protected_reserve") &&
+  oddsCollectionLedger.includes("actual_usage_exceeded_estimate") &&
+  oddsCollectionLedger.includes("secretsPersisted: false") &&
+  oddsCollectionLedger.includes("immutable: true") &&
+  oddsCollectionLedgerTests.includes("missing usage headers are unknown, never zero") &&
+  oddsCollectionLedgerTests.includes("attempt identity is stable") &&
+  oddsCollectionLedgerDocs.includes("append-only") &&
+  oddsCollectionLedgerDocs.includes("does not connect a provider"),
+  "The offline ledger must reconcile actual quota headers, fail closed on unknown/over-budget usage, retain no secrets, and remain disconnected from live collection.");
+
 const failed = checks.filter(x => !x.ok);
 console.log(JSON.stringify({ status: failed.length ? "failed" : "passed", passed: checks.length - failed.length, total: checks.length, checks }, null, 2));
 if (failed.length) process.exitCode = 1;
