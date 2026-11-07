@@ -16,3 +16,8 @@ Source observation timestamps remain distinct from planned, request and ingestio
 
 ## Activation boundary
 The Odds API registry entry remains licence-review-required and automation-disabled. This contract does not connect a provider, schedule a collector, write to Neon/Blobs, or enable betting. A future collector requires separate owner approval, verified account quota, licence review, secret configuration and persistence design.
+
+
+## Isolated schema verification
+
+The migration was applied to the isolated Neon branch `win-memory-schema-test` only. The resulting table exposed 45 constraints, three indexes (including the primary-key index), and an enabled append-only trigger. A valid synthetic attempt inserted and read back with matching usage reconciliation; separate UPDATE and DELETE probes were rejected by the trigger. All synthetic probe rows were removed, and the trigger was confirmed enabled afterward. The production branch was not changed.
