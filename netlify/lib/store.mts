@@ -44,6 +44,11 @@ async function store(): Promise<StoreAdapter> {
   return getStore({ name: "win-engine", region: "eu-central-1", consistency: "strong" }) as unknown as StoreAdapter;
 }
 
+/** Return the configured shared store for subsystems that need atomic primitives. */
+export async function getStoreAdapter(): Promise<StoreAdapter> {
+  return store();
+}
+
 const key = (kind: string, id: string) => kind + "/" + id;
 
 export async function put(kind: string, id: string, value: unknown) {
