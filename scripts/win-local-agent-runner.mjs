@@ -79,7 +79,7 @@ async function fetchAssignedSources(sourceScope) {
     let url;
     try { url = new URL(rawUrl); } catch { continue; }
     if (url.protocol !== "https:" || url.username || url.password || isIP(url.hostname) ||
-        ["localhost", "127.0.0.1", "::1"].includes(url.hostname)) continue;
+        ["localhost", "127.0.0.1", "::1", "[::1]"].includes(url.hostname)) continue;
     const response = await fetch(url, {
       redirect: "error",
       headers: { accept: "text/html,text/plain,application/json;q=0.9,*/*;q=0.1", "user-agent": "WIN-Local-Research/1.0" },
