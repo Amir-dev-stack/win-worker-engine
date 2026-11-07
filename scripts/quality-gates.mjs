@@ -929,6 +929,18 @@ add("OAuth endpoints enforce bounded UTF-8 form/JSON bodies and reject duplicate
   oauthRequestTests.includes("rejects malformed, non-object and misleading media types"),
   "Authorization and token form requests are capped at 16 KiB (8 KiB for owner authorization); dynamic registration JSON is capped at 16 KiB. Invalid UTF-8, malformed/non-object JSON, duplicate form keys and unsupported media types fail closed.");
 
+const neonStoreSchema = await read("database/migrations/20261107_win_memory_records.sql");
+const neonStoreAdapterTests = await read("scripts/neon-store-adapter.test.mjs");
+add("WIN Neon transactional store schema is staged, keyed and source-contract tested",
+  neonStoreSchema.includes("CREATE TABLE IF NOT EXISTS public.win_memory_records") &&
+  neonStoreSchema.includes("record_key text PRIMARY KEY") &&
+  neonStoreSchema.includes("payload jsonb NOT NULL") &&
+  neonStoreSchema.includes("record_key = kind || '/' || record_id") &&
+  neonStoreSchema.includes("win_memory_records_kind_record_idx") &&
+  neonStoreAdapterTests.includes("staged Neon schema matches the transactional store contract") &&
+  build.includes('"database/migrations/20261107_win_memory_records.sql"'),
+  "The Neon table contract remains staged source only, binds keys to kind/id fields, and is required by the build without applying any database migration.");
+
 const winCiWorkflow = await read(".github/workflows/win-quality.yml");
 add("WIN pull requests run the complete Node 22 test, architecture and build gates without deployment credentials",
   winCiWorkflow.includes("pull_request:") &&
