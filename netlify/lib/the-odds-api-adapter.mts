@@ -50,9 +50,10 @@ const nonEmpty = (v: unknown): v is string =>
 const iso = (v: unknown): v is string =>
   typeof v === "string" && isStrictIsoTimestamp(v);
 
-function stableRevision(value: unknown): string {
-  // A canonical payload fingerprint, NOT a provider-issued revision identifier.
-  return createHash("sha1").update(JSON.stringify(value)).digest("hex");
+function stableRevision(): string {
+  // Stable adapter/source-contract revision shared by all observations parsed
+  // under this contract. It is NOT a provider-issued dataset revision.
+  return createHash("sha1").update("the-odds-api:v4:observation-contract:v1").digest("hex");
 }
 
 function stableId(parts: unknown[]): string {
@@ -105,14 +106,17 @@ export function parseOddsApiV4EventOdds(
             throw new OddsApiAdapterError("odds_api_line_invalid");
           }
           const rawObservation = { event, bookmaker, market, outcome };
+          // Each timestamped observation is a distinct immutable source record.
+          // Include a payload fingerprint so same-time corrections cannot collide.
+          const payloadFingerprint = createHash("sha256").update(JSON.stringify(rawObservation)).digest("hex");
           const sourceRecordId = [
             event.id, bookmaker.key, market.key, outcome.name,
-            outcome.description ?? "", outcome.point ?? ""
+            outcome.description ?? "", outcome.point ?? "", observedAt, payloadFingerprint
           ].join(":");
           output.push({
             providerId: "the-odds-api",
             sourceRecordId,
-            sourceRevision: stableRevision(rawObservation),
+            sourceRevision: stableRevision(),
             eventId: String(event.id),
             sportKey: String(event.sport_key),
             eventStartAt: event.commence_time,
