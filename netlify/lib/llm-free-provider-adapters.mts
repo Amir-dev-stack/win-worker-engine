@@ -43,7 +43,7 @@ export function createOllamaWinLLMAdapter(input: {
 }): WinLLMProviderAdapter {
   const base = (input.baseUrl || "http://127.0.0.1:11434/v1").replace(/\/+$/, "");
   const parsed = new URL(base);
-  if (parsed.protocol !== "http:" || !["127.0.0.1", "localhost", "::1"].includes(parsed.hostname)) {
+  if (parsed.protocol !== "http:" || !["127.0.0.1", "localhost", "::1", "[::1]"].includes(parsed.hostname)) {
     throw new Error("Ollama adapter only permits a loopback HTTP endpoint; never expose the local model port publicly.");
   }
   const fetcher = input.fetchImpl || fetch;
@@ -100,7 +100,7 @@ export function createCloudflareWorkersAIAdapter(input: {
       if (invalid) return failure(request, "cloudflare_workers_ai", input.model, "permanent", invalid, Date.now() - started);
       try {
         const response = await fetcher("https://api.cloudflare.com/client/v4/accounts/" +
-          encodeURIComponent(input.accountId) + "/ai/run/" + encodeURIComponent(input.model), {
+          encodeURIComponent(input.accountId) + "/ai/run/" + encodeURI(input.model), {
           method: "POST", signal,
           headers: { authorization: "Bearer " + input.apiToken, "content-type": "application/json" },
           body: JSON.stringify({
@@ -182,10 +182,10 @@ export function buildFreeProviderDescriptors(env: Env): WinLLMProviderDescriptor
   const cfModel = env.WIN_CLOUDFLARE_FREE_MODEL || "";
   const geminiModel = env.WIN_GEMINI_FREE_MODEL || "";
   const ollamaEnabled = env.WIN_ENABLE_OLLAMA_PROVIDER === "true" && !!ollamaModel;
-  const cfEnabled = env.WIN_ENABLE_CLOUDFLARE_FREE_PROVIDER === "true" &&
+  const cfEnabled = env.WIN_ENABLE_CLOUDFLARE_FREE_PROVIDER === "true" &&\n    env.WIN_CLOUDFLARE_WORKERS_FREE_PLAN_CONFIRMED === "true" &&
     env.WIN_CLOUDFLARE_FREE_MODEL_APPROVED === "true" && !!cfModel &&
     !!env.CLOUDFLARE_ACCOUNT_ID && !!env.CLOUDFLARE_API_TOKEN;
-  const geminiEnabled = env.WIN_ENABLE_GEMINI_FREE_PROVIDER === "true" &&
+  const geminiEnabled = env.WIN_ENABLE_GEMINI_FREE_PROVIDER === "true" &&\n    env.WIN_GEMINI_FREE_TIER_CONFIRMED === "true" && env.WIN_GEMINI_BILLING_DISABLED === "true" &&
     env.WIN_GEMINI_FREE_MODEL_APPROVED === "true" && !!geminiModel && !!env.GEMINI_API_KEY;
   return [
     {
@@ -196,13 +196,13 @@ export function buildFreeProviderDescriptors(env: Env): WinLLMProviderDescriptor
     {
       id: "cloudflare_workers_ai", enabled: cfEnabled, approved: cfEnabled, pricingVerified: cfEnabled,
       capabilities: ["text"], allowedClassifications: ["public"],
-      models: cfModel ? [cfModel] : [], priority: 2
+      models: cfModel ? [cfModel] : [], quotaVerified: cfEnabled, priority: 2
     },
     {
       id: "gemini_free", enabled: geminiEnabled, approved: geminiEnabled, pricingVerified: geminiEnabled,
       requiresRetentionConsent: true,
       capabilities: ["text"], allowedClassifications: ["public"],
-      models: geminiModel ? [geminiModel] : [], priority: 3
+      models: geminiModel ? [geminiModel] : [], quotaVerified: geminiEnabled, priority: 3
     }
   ];
 }
