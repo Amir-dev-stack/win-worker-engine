@@ -69,10 +69,10 @@ Keep orchestration lightweight and provider-neutral. The current OpenAI Agents S
 ## Rollout sequence
 
 1. Keep assignment lifecycle, persistent memory, review and artifact contracts as the shared control plane.
-2. Implement a provider adapter contract and local Ollama polling runner; keep it disabled until the owner installs Ollama and explicitly supplies/approves the local runner connection.
+2. Implement a provider adapter contract and local Ollama polling runner; the adapter, token-authenticated endpoint and bounded local runner script are now staged in code. Keep execution disabled until the endpoint is deployed, the owner configures the server-side token/agent allowlist and Ollama is installed locally.
 3. Add provider health, quota and usage telemetry plus strict zero-cost mode.
-4. Evaluate one Cloudflare Workers AI free model with public-only tasks and a daily free-quota hard stop.
-5. Evaluate one Gemini Free-tier model with public-only tasks and explicit data-use restrictions.
+4. Evaluate one Cloudflare Workers AI free model only after verifying the account is on Workers Free; never activate on Workers Paid. Keep the adapter disabled until a quota monitor and model-specific neuron preflight are implemented.
+5. Evaluate one Gemini Free-tier model only on a project with billing disabled, using public-only tasks and explicit consent to the free-tier data-use terms.
 6. Benchmark all free backends on the same fixed research tasks against quality, latency, reliability, memory use and total marginal cost.
 7. Keep OpenAI as a paid escalation route only under the existing owner-authorized ceiling.
 8. Only then decide which providers deserve production routing. Remove adapters that are unreliable or not genuinely free.
