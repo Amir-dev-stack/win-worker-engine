@@ -31,8 +31,16 @@ async function main() {
   if (!expectedOrigin.test(command("git", ["remote", "get-url", "origin"]))) throw new Error("Unrecognized git origin.");
 
   let opencode = "not found";
-  try { opencode = command("opencode", ["--version"]).split(/\r?\n/)[0].slice(0, 100); }
-  catch { /* Do not install, log in, or contact providers automatically. */ }
+  if (process.platform === "win32") {
+    // Detect the Windows .cmd shim without executing it through a shell.
+    try {
+      const locations = command("where.exe", ["opencode"]).split(/\r?\n/).filter(Boolean);
+      if (locations.length) opencode = "installed (Windows CLI shim; version not executed)";
+    } catch { /* No CLI found on PATH. */ }
+  } else {
+    try { opencode = command("opencode", ["--version"]).split(/\r?\n/)[0].slice(0, 100); }
+    catch { /* No CLI found on PATH. */ }
+  }
 
   let ollama = "unavailable";
   let models = [];
