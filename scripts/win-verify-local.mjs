@@ -15,16 +15,18 @@ if (unknown.length) {
   process.exit(2);
 }
 
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+const npm = process.execPath;
+const npx = process.execPath;
+const npmCli = resolve(dirname(process.execPath), "node_modules/npm/bin/npm-cli.js");
+const npxCli = resolve(dirname(process.execPath), "node_modules/npm/bin/npx-cli.js");
 const checks = [
-  ["Test suite and quality gates", npm, ["test"]],
-  ["Production build checks", npm, ["run", "build"]],
+  ["Test suite and quality gates", npm, [npmCli, "test"]],
+  ["Production build checks", npm, [npmCli, "run", "build"]],
   ["Dashboard JavaScript syntax", process.execPath, ["--check", "public/app.js"]],
 ];
 if (includeBundle) checks.push([
   "Netlify function bundles (may download pinned esbuild; no deployment)",
-  npx, ["--yes", "esbuild@0.25.0", "--bundle", "--packages=external",
+  npx, [npxCli, "--yes", "esbuild@0.25.0", "--bundle", "--packages=external",
     "--platform=node", "--target=node22", "--format=esm",
     "--outdir=" + resolve(tmpdir(), "win-local-bundles"), "netlify/functions/*.mts"],
 ]);
@@ -41,7 +43,7 @@ for (const [label, command, args] of checks) {
   const run = spawnSync(command, args, {
     cwd: root,
     stdio: "inherit",
-    shell: process.platform === "win32",
+    shell: false,
     env: process.env,
   });
   if (run.error || run.status !== 0) {

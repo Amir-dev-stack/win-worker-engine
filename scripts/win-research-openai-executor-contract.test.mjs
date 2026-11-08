@@ -19,7 +19,7 @@ test("OpenAI research executor is owner-approved, budget-bounded and memory-awar
   assert.match(ai, /budget\.reservedUsd > Number\(maxBudgetUsd\)/);
   assert.match(ai, /releaseAIRequest\(requestBudgetId/);
   assert.match(route, /requireAuth\(req\)/);
-  assert.match(route, /WIN_RESEARCH_OPENAI_EXECUTOR_ENABLED === "true"/);
+  assert.match(route, /WIN_RESEARCH_OPENAI_EXECUTOR_ENABLED !== "true"/);
   assert.match(route, /WIN_RESEARCH_OPENAI_AGENT_IDS/);
 });
 
