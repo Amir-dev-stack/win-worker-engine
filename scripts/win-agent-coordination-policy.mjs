@@ -18,6 +18,8 @@ export function planLocalResearchTask(assignment, requested = {}) {
   const reject = reason => Object.freeze({ eligible: false, reason, execution: "none" });
   if (!assignment || typeof assignment !== "object" || Array.isArray(assignment))
     return reject("invalid_assignment");
+  if (!requested || typeof requested !== "object" || Array.isArray(requested))
+    return reject("invalid_request");
   if (!DIVISIONS.has(assignment.division)) return reject("unknown_division");
   if (assignment.status !== "approved") return reject("not_approved");
   if (assignment.approvalRequired !== true || !assignment.approvedBy || !assignment.approvedAt)
@@ -34,16 +36,23 @@ export function planLocalResearchTask(assignment, requested = {}) {
   if (typeof assignment.objective !== "string" || !assignment.objective.trim() ||
       assignment.objective.length > 5000)
     return reject("invalid_objective");
-  for (const field of ["acceptanceCriteria", "sourceScope", "dataRestrictions", "expectedArtifacts"]) {
+  const bounds = {
+    acceptanceCriteria: [12, 1000], sourceScope: [20, 500],
+    dataRestrictions: [20, 500], expectedArtifacts: [12, 500],
+  };
+  for (const [field, [maxCount, maxLength]] of Object.entries(bounds)) {
     if (!Array.isArray(assignment[field]) || !assignment[field].length ||
-        assignment[field].some(x => typeof x !== "string" || !x.trim()))
-      return reject("missing_" + field);
+        assignment[field].length > maxCount ||
+        assignment[field].some(x => typeof x !== "string" || !x.trim() || x.length > maxLength))
+      return reject("invalid_" + field);
   }
   if (!Number.isFinite(assignment.budgetCeilingUsd) || assignment.budgetCeilingUsd !== 0)
     return reject("nonzero_task_budget");
-  if (typeof assignment.dueAt === "string" && assignment.dueAt &&
-      (!Number.isFinite(Date.parse(assignment.dueAt)) || Date.parse(assignment.dueAt) < Date.now()))
-    return reject("invalid_or_expired_due_date");
+  if (assignment.dueAt !== null && assignment.dueAt !== undefined && assignment.dueAt !== "") {
+    if (typeof assignment.dueAt !== "string" ||
+        !Number.isFinite(Date.parse(assignment.dueAt)) || Date.parse(assignment.dueAt) < Date.now())
+      return reject("invalid_or_expired_due_date");
+  }
   const scope = [assignment.objective, ...assignment.sourceScope,
     ...assignment.dataRestrictions, ...assignment.expectedArtifacts].join("\n");
   if (FORBIDDEN_SCOPES.test(scope)) return reject("sensitive_or_prohibited_scope");
