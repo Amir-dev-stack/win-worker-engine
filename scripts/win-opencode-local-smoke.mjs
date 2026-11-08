@@ -74,7 +74,15 @@ function main() {
     console.log("No GitHub task execution, no repository edits, and no paid provider selected.");
     console.log("Note: OpenCode may still write its own session/cache metadata outside WIN-Agent.");
   } finally {
-    rmSync(scratch, { recursive: true, force: true });
+    // Windows may temporarily hold the child process working directory open.
+    // Cleanup must never mask the actual inference result or its error.
+    try {
+      rmSync(scratch, { recursive: true, force: true, maxRetries: 8, retryDelay: 300 });
+    } catch (cleanupError) {
+      console.warn("WIN temporary workspace could not be removed immediately.");
+      console.warn("Temporary folder: " + scratch);
+      console.warn("Cleanup error code: " + (cleanupError.code || "unknown"));
+    }
   }
 }
 try { main(); } catch (error) {
