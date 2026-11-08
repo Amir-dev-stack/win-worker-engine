@@ -11,8 +11,19 @@ If Codex runs out of quota or an active task ends, WIN must preserve a durable c
 - `scripts/win-development-failover-policy.mjs` from [draft PR #35](https://github.com/Amir-dev-stack/win-worker-engine/pull/35): explicit approval + lease-expiration failover proposal.
 - `scripts/win-cloud-backup-review-worker.mjs`: guards the backup against taking Codex's active lease, limits task scope and input/output bytes, validates permitted paths, enforces declared zero-cost read-only provider mode, and returns an **unverified proposal** only.
 - `scripts/win-cloud-backup-review-worker.test.mjs`: synthetic fixture tests for healthy primary, local-offline separation, scope, output size, paid-provider fallback, failure handling, and pure review proposal.
+- `scripts/win-cloudflare-free-adapter.mjs` and `scripts/win-cloudflare-free-adapter.test.mjs`: optional authenticated REST adapter and mocked offline free-tier tests; no live model call is made.
 - Existing GitHub coordination issue #20, PR checkpoint design, and existing Neon `win-memory` resource available to investigate. These do **not** yet implement a trusted cloud task queue or atomic failover.
 - Existing Netlify WIN site available. No change to its production deployment or secrets was made.
+
+### Cloudflare Workers AI Free candidate (code now prepared, not connected)
+
+`scripts/win-cloudflare-free-adapter.mjs` and corresponding offline tests provide a narrowly allowed candidate adapter for `@cf/zai-org/glm-4.7-flash`, which Cloudflare lists as available on Workers Free as of November 2026. It can make one bounded read-only remote review request when a **trusted** host supplies a verified account ID, scoped token, explicit private-code-transfer approval, Free plan verification, and the input from a trusted lease/source path. It never retries 403/429, selects paid fallback models, or enables tool calls.
+
+- Official Cloudflare Workers AI pricing: https://developers.cloudflare.com/workers-ai/platform/pricing/ (10,000 free neurons/day, free-plan exhaustion fails; some models require paid access).
+- Free-tier eligible model update: https://developers.cloudflare.com/changelog/post/2026-07-28-models-require-workers-paid/ .
+- Official authenticated REST endpoint: https://developers.cloudflare.com/workers-ai/get-started/rest-api/ .
+
+**No Cloudflare account, token or Workers Free plan is connected through WIN tools yet.** The adapter's caller-supplied `freePlanVerified` and `providerCostUsd` values are *not billing enforcement*. Host integration must independently verify eligibility, current quotas and account billing status. Never paste private tokens into GitHub issues or chat messages.
 
 ### What is still required before this becomes an operational agent
 
@@ -35,7 +46,7 @@ If Codex runs out of quota or an active task ends, WIN must preserve a durable c
 Run from a **clean isolated checkout of the exact feature branch**, not the user's modified WIN checkout:
 
 ```powershell
-node --test scripts/win-development-failover-policy.test.mjs scripts/win-cloud-backup-review-worker.test.mjs
+node --test scripts/win-development-failover-policy.test.mjs scripts/win-cloud-backup-review-worker.test.mjs scripts/win-cloudflare-free-adapter.test.mjs
 node --experimental-strip-types --test scripts/*.test.mjs
 node scripts/quality-gates.mjs
 node scripts/build.mjs
