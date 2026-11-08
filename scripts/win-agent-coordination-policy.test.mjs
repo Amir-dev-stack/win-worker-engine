@@ -63,3 +63,22 @@ test("rejects missing task bounds, sensitive requests, and expired tasks", () =>
   assert.equal(planLocalResearchTask(expired, requested).eligible, false);
   assert.equal(planLocalResearchTask(null, requested).eligible, false);
 });
+
+test("invalid requests fail closed without throwing", () => {
+  assert.deepEqual(planLocalResearchTask(valid(), null), {
+    eligible: false, reason: "invalid_request", execution: "none",
+  });
+  assert.equal(planLocalResearchTask(valid(), [] ).eligible, false);
+  assert.equal(planLocalResearchTask(valid(), "read_only_analysis").eligible, false);
+});
+
+test("enforces the assignment manager array and string bounds", () => {
+  const overlongObjective = valid(); overlongObjective.objective = "x".repeat(5001);
+  assert.equal(planLocalResearchTask(overlongObjective, requested).eligible, false);
+  const tooManySources = valid(); tooManySources.sourceScope = Array(21).fill("https://example.org");
+  assert.equal(planLocalResearchTask(tooManySources, requested).eligible, false);
+  const tooLongCriterion = valid(); tooLongCriterion.acceptanceCriteria = ["x".repeat(1001)];
+  assert.equal(planLocalResearchTask(tooLongCriterion, requested).eligible, false);
+  const badDueAt = valid(); badDueAt.dueAt = { toString: () => "2028-01-01" };
+  assert.equal(planLocalResearchTask(badDueAt, requested).eligible, false);
+});
