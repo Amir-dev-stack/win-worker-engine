@@ -1,9 +1,29 @@
+import { createHash } from "node:crypto";
 import { get, list, putIfNew } from "./store.mts";
 
 const PRIVATE = "library/research-agent-memory";
 const SHARED = "library/research-network-memory";
 const safe = (value: unknown, max = 1500) => typeof value === "string" ? value.trim().slice(0,max) : "";
-const idPart = (value: string) => value.replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,120);
+// v2 keys bind the complete normalized identities, avoiding lossy punctuation replacement.
+// A digest is an opaque stable lookup key, not an authentication or secrecy primitive.
+export const researchMemoryKey = (agentId: string, assignmentId: string) =>
+  "v2_" + createHash("sha256").update(JSON.stringify([agentId, assignmentId])).digest("hex");
+const legacyIdPart = (value: string) => value.replace(/[^a-zA-Z0-9._-]/g,"_").slice(0,120);
+function legacyKey(agentId: string, assignmentId: string) {
+  return legacyIdPart(agentId) + "__" + legacyIdPart(assignmentId);
+}
+async function findExactPrivateMemory(agentId: string, assignmentId: string) {
+  const id = researchMemoryKey(agentId, assignmentId);
+  const modern = await get<ResearchMemoryEntry>(PRIVATE, id);
+  if (modern) {
+    if (modern.agentId !== agentId || modern.assignmentId !== assignmentId)
+      throw new Error("Research memory identity mismatch; manual reconciliation required.");
+    return modern;
+  }
+  // Migration-safe exact match: never treat a colliding legacy record as this assignment.
+  const old = await get<ResearchMemoryEntry>(PRIVATE, legacyKey(agentId, assignmentId));
+  return old?.agentId === agentId && old?.assignmentId === assignmentId ? old : null;
+}
 
 export type ResearchMemoryEntry = {
   id: string; agentId: string; assignmentId: string; division: string;
@@ -21,7 +41,9 @@ export async function rememberResearchSubmission(input: {
 }) {
   const agentId=safe(input.agentId,120), assignmentId=safe(input.assignmentId,160);
   if(!agentId || !assignmentId) throw new Error("Agent and assignment identity are required for memory.");
-  const id=idPart(agentId)+"__"+idPart(assignmentId);
+  const previous = await findExactPrivateMemory(agentId, assignmentId);
+  if (previous) return previous;
+  const id = researchMemoryKey(agentId, assignmentId);
   const entry: ResearchMemoryEntry={
     id,agentId,assignmentId,division:safe(input.division,8),summary:safe(input.summary,4000),
     findings:(input.findings||[]).slice(0,20).map(x=>safe(x,1000)),
@@ -30,20 +52,32 @@ export async function rememberResearchSubmission(input: {
     status:"private_unreviewed",createdAt:input.now||new Date().toISOString()
   };
   const result=await putIfNew(PRIVATE,id,entry);
-  if(!result?.modified) return await get<ResearchMemoryEntry>(PRIVATE,id);
+  if (!result?.modified) {
+    const existing = await get<ResearchMemoryEntry>(PRIVATE,id);
+    if (!existing || existing.agentId !== agentId || existing.assignmentId !== assignmentId)
+      throw new Error("Research memory identity mismatch; manual reconciliation required.");
+    return existing;
+  }
   return entry;
 }
 
 export async function promoteReviewedResearchMemory(input: {
   agentId:string; assignmentId:string; reviewerId:string; reviewedAt?:string;
 }) {
-  const id=idPart(safe(input.agentId,120))+"__"+idPart(safe(input.assignmentId,160));
-  const entry=await get<ResearchMemoryEntry>(PRIVATE,id);
-  if(!entry) throw new Error("Private research memory entry not found.");
+  const agentId = safe(input.agentId,120), assignmentId = safe(input.assignmentId,160);
+  if (!agentId || !assignmentId) throw new Error("Agent and assignment identity are required for promotion.");
+  const entry = await findExactPrivateMemory(agentId, assignmentId);
+  if(!entry) throw new Error("Private research memory entry not found for exact identities.");
+  const id = entry.id;
   const accepted:ResearchMemoryEntry={...entry,status:"reviewer_accepted",reviewerId:safe(input.reviewerId,120),reviewedAt:input.reviewedAt||new Date().toISOString()};
   // A unique immutable shared record; it remains separate from WIN's trusted knowledge library.
   const saved=await putIfNew(SHARED,id,accepted);
-  if(!saved?.modified) return await get<ResearchMemoryEntry>(SHARED,id);
+  if(!saved?.modified) {
+    const existing = await get<ResearchMemoryEntry>(SHARED,id);
+    if (!existing || existing.agentId !== agentId || existing.assignmentId !== assignmentId)
+      throw new Error("Shared research memory identity mismatch; manual reconciliation required.");
+    return existing;
+  }
   return accepted;
 }
 
