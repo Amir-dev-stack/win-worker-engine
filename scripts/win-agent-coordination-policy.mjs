@@ -22,11 +22,20 @@ export function planLocalResearchTask(assignment, requested = {}) {
     return reject("invalid_request");
   if (!DIVISIONS.has(assignment.division)) return reject("unknown_division");
   if (assignment.status !== "approved") return reject("not_approved");
-  if (assignment.approvalRequired !== true || !assignment.approvedBy || !assignment.approvedAt)
-    return reject("missing_explicit_approval");
+  if (assignment.approvalRequired !== true ||
+      typeof assignment.approvedBy !== "string" || !assignment.approvedBy.trim() ||
+      typeof assignment.approvedAt !== "string" ||
+      !Number.isFinite(Date.parse(assignment.approvedAt)) ||
+      Date.parse(assignment.approvedAt) > Date.now())
+    return reject("missing_or_invalid_approval");
   if (typeof assignment.ownerId !== "string" || !assignment.ownerId.trim() ||
       assignment.approvedBy !== assignment.ownerId)
     return reject("owner_approval_mismatch");
+  if (assignment.createdAt !== undefined &&
+      (typeof assignment.createdAt !== "string" ||
+       !Number.isFinite(Date.parse(assignment.createdAt)) ||
+       Date.parse(assignment.createdAt) > Date.parse(assignment.approvedAt)))
+    return reject("invalid_creation_time");
   if (typeof assignment.independentReviewerId !== "string" ||
       !assignment.independentReviewerId.trim() ||
       assignment.independentReviewerId === assignment.ownerId)
@@ -56,6 +65,10 @@ export function planLocalResearchTask(assignment, requested = {}) {
   const scope = [assignment.objective, ...assignment.sourceScope,
     ...assignment.dataRestrictions, ...assignment.expectedArtifacts].join("\n");
   if (FORBIDDEN_SCOPES.test(scope)) return reject("sensitive_or_prohibited_scope");
+  // Extra caller-provided options must not become implicit privileges later.
+  const allowedRequestKeys = new Set(["action", "model", "tools", "allowWrite"]);
+  if (Object.keys(requested).some(key => !allowedRequestKeys.has(key)))
+    return reject("unknown_request_option");
   if (requested.action !== ALLOWED_ACTION) return reject("action_not_allowlisted");
   if (!LOCAL_MODELS.has(requested.model)) return reject("non_local_model");
   if (requested.tools !== "deny_all" || requested.allowWrite !== false)
