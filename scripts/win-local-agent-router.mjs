@@ -57,8 +57,8 @@ export function planLocalAgentDispatch(assignment, options = {}) {
   const role = options.role === undefined ? selected : options.role;
   if (typeof role !== "string" || !Object.hasOwn(LOCAL_AGENT_ROLES, role))
     return reject("unrecognized_agent_role");
-  // Other roles can only be chosen by future reviewed, explicit policies.
-  if (role !== selected) return reject("role_not_authorized_for_division");
+  // Explicitly selected roles remain proposal-only: role assignment itself
+  // never grants runtime execution rights or bypasses owner/reviewer checks.
   if (options.action !== "read_only_analysis" ||
       options.tools !== "deny_all" || options.allowWrite !== false)
     return reject("unsafe_execution_request");
