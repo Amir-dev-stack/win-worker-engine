@@ -82,3 +82,26 @@ test("enforces the assignment manager array and string bounds", () => {
   const badDueAt = valid(); badDueAt.dueAt = { toString: () => "2028-01-01" };
   assert.equal(planLocalResearchTask(badDueAt, requested).eligible, false);
 });
+
+test("rejects missing or future-dated approvals and backward chronology", () => {
+  const cases = [
+    a => { a.approvedAt = "not-a-date"; },
+    a => { a.approvedAt = "2999-01-01T00:00:00Z"; },
+    a => { a.approvedAt = 4; },
+    a => { a.approvedBy = { owner: true }; },
+    a => { a.createdAt = "2999-01-01T00:00:00Z"; },
+  ];
+  for (const mutate of cases) {
+    const a = valid(); mutate(a);
+    assert.equal(planLocalResearchTask(a, requested).eligible, false);
+  }
+});
+
+test("rejects unrecognized request permissions even when base fields are safe", () => {
+  assert.equal(planLocalResearchTask(valid(), {
+    ...requested, allowNetwork: true,
+  }).eligible, false);
+  assert.equal(planLocalResearchTask(valid(), {
+    ...requested, shell: "enabled",
+  }).eligible, false);
+});
