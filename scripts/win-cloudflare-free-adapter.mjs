@@ -36,7 +36,7 @@ export function createWorkersAiFreeAdapter(config) {
     toolsEnabled: false,
     async generate({ prompt, maxOutputBytes, taskId }) {
       if (typeof prompt !== "string" || byteLength(prompt) > MAX_PROMPT_BYTES ||
-          maxOutputBytes > MAX_RESPONSE_BYTES || maxOutputBytes < 1 ||
+          !Number.isSafeInteger(maxOutputBytes) || maxOutputBytes > MAX_RESPONSE_BYTES || maxOutputBytes < 1 ||
           typeof taskId !== "string" || !/^[A-Za-z0-9._-]{1,120}$/.test(taskId)) {
         throw new Error("Invalid cloud review request");
       }
