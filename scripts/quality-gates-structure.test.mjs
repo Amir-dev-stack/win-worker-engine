@@ -17,7 +17,7 @@ assert.equal(
 );
 
 assert.equal(
-  (source.match(/^const checks = \\[\\];$/gm) ?? []).length,
+  (source.match(/^const checks = \[\];$/gm) ?? []).length,
   1,
   "All quality-gate sections must share one cumulative check collection.",
 );
