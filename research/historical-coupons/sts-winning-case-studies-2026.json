@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0",
+  "dataset": "sts_publicly_reported_winning_coupon_case_studies",
+  "recorded_on": "2026-11-16",
+  "purpose": "Historical case studies for WIN Departments 5, 7 and 8; not supervised winning-pick labels or proof of predictive accuracy",
+  "status": "research_only_not_live_ingested",
+  "rules": [
+    "Payout figures follow their sources and may use different tax conventions.",
+    "Reporting/publication date is not necessarily wager settlement date.",
+    "Use historical wins to study construction, markets, correlation and settlement; include losses and independently verified results before training or estimating probabilities.",
+    "Do not infer missing individual selections, original prices, probabilities or match dates.",
+    "Never expose player identities or confidential bookmaker account data."
+  ],
+  "cases": [
+    {
+      "id": "sts-2026-multi-26",
+      "reported_payout_pln": 970543.9,
+      "total_stake_pln": 183,
+      "coupon_count": 26,
+      "selection_count": null,
+      "reported_date": "2026-06-02",
+      "sports": [
+        "football"
+      ],
+      "construction": "26 long-term outright league-champion bets across tickets; 25 winning selections described in secondary source, ticket-level decomposition unavailable",
+      "combined_odds": null,
+      "source_urls": [
+        "https://e-play.pl/kolejna-gigantyczna-wygrana-w-sts-gracz-wygral-ponad-970-tysiecy-zlotych/",
+        "https://przegladsportowy.onet.pl/inne-sporty/kolejna-gigantyczna-wygrana-w-sts-gracz-wygral-ponad-970-tysiecy-zlotych/1h0j0yx"
+      ],
+      "evidence_level": "secondary_report",
+      "verification_status": "partial",
+      "notes": "Do not treat highest ticket odds 6635.97 as combined odds for all 26 tickets."
+    },
+    {
+      "id": "sts-2026-22-ako-limit",
+      "reported_payout_pln": 900000,
+      "total_stake_pln": 10,
+      "coupon_count": 1,
+      "selection_count": 22,
+      "reported_date": "2026-11-03",
+      "sports": [
+        "football"
+      ],
+      "construction": "22-leg accumulator; capped by bookmaker maximum per bet",
+      "combined_odds": 228243.66,
+      "source_urls": [
+        "https://www.legalsport.pl/vademecum/wygrane/sts-najwyzsze-wygrane-na-zakladach/"
+      ],
+      "evidence_level": "secondary_report",
+      "verification_status": "partial",
+      "notes": "Reported payout after tax; verify all individual selections and the exact GameChanger effects before modeling."
+    },
+    {
+      "id": "sts-2026-9-high-odds",
+      "reported_payout_pln": 859107.77,
+      "total_stake_pln": 2,
+      "coupon_count": 1,
+      "selection_count": 9,
+      "reported_date": null,
+      "sports": [
+        "football",
+        "ice hockey"
+      ],
+      "construction": "9-leg high-underdog-odds accumulator",
+      "combined_odds": 542365.78,
+      "source_urls": [
+        "https://www.legalsport.pl/vademecum/wygrane/sts-najwyzsze-wygrane-na-zakladach/"
+      ],
+      "evidence_level": "secondary_report",
+      "verification_status": "partial",
+      "notes": "Report appeared in 2026; exact settlement date not independently verified. Do not assume win likelihood from outcome."
+    },
+    {
+      "id": "sts-2026-11-1x2",
+      "reported_payout_pln": 628576.21,
+      "total_stake_pln": 1400,
+      "coupon_count": 1,
+      "selection_count": 11,
+      "reported_date": "2026-10-27",
+      "sports": [
+        "football"
+      ],
+      "construction": "11 full-time 1X2 outcomes, including two draws in Polish Cup",
+      "combined_odds": 566.9,
+      "source_urls": [
+        "https://www.legalsport.pl/vademecum/wygrane/sts-najwyzsze-wygrane-na-zakladach/"
+      ],
+      "evidence_level": "secondary_report",
+      "verification_status": "partial",
+      "notes": "Source describes ticket placed 27 October; report date and final settlement date need independent confirmation."
+    }
+  ]
+}
