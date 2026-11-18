@@ -73,7 +73,7 @@ export function selectVerifiedModel(category, evidence, now=new Date()){
   if(!Number.isFinite(start)||!Number.isFinite(expiry)||start>current||expiry<=current
      ||expiry-start>86400000)throw Error('MODEL_EVIDENCE_STALE');
   const allowed=(evidence.models||[]).filter(m=>m&&typeof m.id==='string'&&m.available===true
-     &&m.allowed===true&&(!m.cooldownUntil||Date.parse(m.cooldownUntil)<=current));
+     &&m.allowed===true&&(!m.cooldownUntil||(Number.isFinite(Date.parse(m.cooldownUntil))&&Date.parse(m.cooldownUntil)<=current)));
   const candidates=category==='simple'
     ?[{model:MODEL_PLAN.simple.model,effort:'low'},{model:MODEL_PLAN.standard.model,effort:'low'}]
     :category==='review'
@@ -96,7 +96,10 @@ export async function runRouter(argv,deps={}){
   try{evidence=JSON.parse(read(resolve(opts.verifiedModels),'utf8'));}
   catch{throw Error('MODEL_EVIDENCE_UNREADABLE');}
   const selected=selectVerifiedModel(category,evidence,deps.now||new Date());
-  const plan={category,model:selected.model,effort:selected.effort,cwd,reviewAfter:opts.reviewAfter,modelAvailability:'owner-verified',fallbackBeforeDispatch:selected.model!==requested.model};
+  // Prevalidate optional reviewer BEFORE a writable implementation starts.
+  const reviewModel=opts.reviewAfter&&category!=='review'
+    ?selectVerifiedModel('review',evidence,deps.now||new Date()):null;
+  const plan={category,model:selected.model,effort:selected.effort,cwd,reviewAfter:opts.reviewAfter,reviewModel:reviewModel?.model||null,modelAvailability:'owner-verified',fallbackBeforeDispatch:selected.model!==requested.model};
   if(opts.verifyOnly)return {verified:true,...plan};
   const git=(deps.spawnSyncFn||spawnSync)('git',['-C',cwd,'rev-parse','--show-toplevel'],{encoding:'utf8',timeout:5000,windowsHide:true});
   if(git.status!==0||!git.stdout?.trim())throw Error('NOT_A_GIT_WORKTREE');
@@ -107,7 +110,6 @@ export async function runRouter(argv,deps={}){
   if(!result.success)return {success:false,stage:'implementation',exitCode:result.code,...plan};
   if(!opts.reviewAfter||category==='review')return {success:true,stage:'implementation',...plan};
   const prompt=`Review ONLY current uncommitted changes in this worktree for correctness, security and regressions. Do not modify files, deploy, or access secrets. Provide severity-ranked findings. Goal: ${opts.task}`;
-  const reviewModel=selectVerifiedModel('review',evidence,deps.now||new Date());
   const review=await invoke(buildCodexArgs({category:'review',task:prompt,cwd:dir,selection:reviewModel}));
   return {success:review.success,stage:'review',reviewExitCode:review.code,...plan};
 }
