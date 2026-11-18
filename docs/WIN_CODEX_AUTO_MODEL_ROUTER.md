@@ -3,7 +3,7 @@
 This is a **separate CLI task launcher**, not an in-chat Codex Desktop model switch. It selects a **requested candidate** model (not guaranteed available in the current account) for each new CLI task and uses the existing `codex login` authentication. No new API key and no paid account is created.
 
 ## Prerequisites
-- Node.js 20+ and a working `codex` command on PATH. Check `codex --version` and `codex login status` in PowerShell before using.
+- Node.js 20+ and a **ChatGPT-authenticated** `codex` command on PATH. API-key-based login is explicitly blocked for live tasks to prevent unapproved usage billing. Check `codex --version` and `codex login status` in PowerShell before using.
 - Open a clean **writable development worktree**, NEVER the frozen PR #36 checkout.
 - Verify the model IDs in the account's supported model menu or `codex models`/CLI equivalent; a requested ID can be unavailable due to plan/capacity. The labels `gpt-6.1-terra`, `gpt-6.2-sol`, `gpt-6.2-astra` are candidate values and may require adaptation to the installed CLI. Do not hardcode a new account or billing route as a fallback.
 
@@ -85,3 +85,7 @@ Approved pre-dispatch routing:
 These are *requested Codex model IDs*, not guaranteed model entitlement or the same as the sports-agent Workers AI provider. `--verify-only` validates the proposed model without running Codex or changing files.
 
 If Codex fails, times out, or starts but loses connectivity, the launcher **never automatically replays an implementation task on another model**; doing so could repeat side effects. It stops with an error and requires evidence-based recovery. Optional independent review eligibility is checked before coding starts, so missing review capacity does not cause a silently unreviewed write. Model switches happen only **before a new task**, not within an existing CLI session. No background agent, usage-limit reset listener, or guaranteed PC-off Codex execution is implemented.
+
+### Security and verification clarification
+
+The JavaScript router and PowerShell launcher both check `codex login status` for **ChatGPT authentication** before running an actual task. An API-key login or an unrecognized login mode stops the task. The owner-specific `.win-codex-models.json` file is ignored by Git and should stay local. The model file is a policy/availability attestation; it is **not an authenticated API session or proof that all models will remain available when dispatched**. Never automatically charge, upgrade or refresh paid credits. Also confirm `codex exec --help` and the locally installed CLI version before any live task.
