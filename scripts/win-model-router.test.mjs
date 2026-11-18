@@ -105,8 +105,8 @@ test('cooldown blocks selection and does not replay failed tasks',async()=>{
 
 test('review entitlement is checked before implementation starts',async()=>{
  let called=0;
- await assert.rejects(runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
-   readFileSyncFn:()=>JSON.stringify({...validEvidence,models:[{id:'gpt-6.2-sol',available:true,allowed:true}]}),
+ await assert.rejects(runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Update README','--cwd','/repo'],{
+   readFileSyncFn:()=>JSON.stringify({...validEvidence,models:[{id:'gpt-6.1-terra',available:true,allowed:true}]}),
    now:new Date('2026-11-18T15:30:00Z'),
    spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
    invokeFn:async()=>{called++;return {success:true,code:0};}
