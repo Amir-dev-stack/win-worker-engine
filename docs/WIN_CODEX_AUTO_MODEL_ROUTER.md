@@ -41,3 +41,27 @@ Manually override task classification using `--category simple|standard|complex|
 ```powershell
 node --test scripts/win-model-router.test.mjs
 ```
+
+## Windows launcher (added after prototype)
+
+`scripts/Start-WINAutoModels.ps1` classifies tasks with the Node router and launches the existing Codex CLI from PowerShell. This avoids relying on Node to spawn npm's Windows .cmd shim. It still needs a valid Codex CLI login, an allowed writable Git worktree and model availability.
+
+Clone **this router branch into a new folder** (do not overwrite frozen PR #36 or Codex's dirty PR #49 worktree):
+
+```powershell
+cd C:\Users\PC\source
+gh repo clone Amir-dev-stack/win-worker-engine WIN-AutoRouter -- --branch feat/win-auto-model-router-20261118
+cd WIN-AutoRouter
+node --test scripts/win-model-router.test.mjs
+.\scripts\Start-WINAutoModels.ps1 -Task 'Implement a bounded WIN worker service'
+```
+
+The last command is only a dry-run. It should print the automatically selected model **without consuming Codex usage**. For a real scoped task on the **existing writable PR #49 worktree**:
+
+```powershell
+.\scripts\Start-WINAutoModels.ps1 -Run -Task 'Implement and test a bounded worker service'
+```
+
+Add `-ReviewAfter` **only for completed milestones**; it initiates one read-only Astra review after the coding Codex process exits successfully. For complex troubleshooting, omit the costly review until needed. Use `-Worktree 'C:\path\to\your\safe\worktree'` if PR #49's directory changed. `-Category` overrides the automatic classifier when necessary.
+
+**Known activation limitations**: Windows Codex Desktop app login and CLI login are not necessarily identical. The actual installed `codex --version`, `codex exec --help` and account-supported model identifiers must be checked on the user's PC. This assistant cannot run commands on the user's PC. The router does not auto-switch the in-progress Desktop model or bypass model limits. No unattended indefinite execution is implemented; each invocation handles one bounded task.
