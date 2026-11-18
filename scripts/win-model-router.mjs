@@ -107,7 +107,7 @@ export function discoverCodexModels({spawnFn=spawn,timeoutMs=12000,now=new Date(
     };
     const timeout=setTimeout(()=>finish('CODEX_MODEL_DISCOVERY_TIMEOUT'),timeoutMs);
     const send=obj=>{
-      try{child.stdin.write(JSON.stringify(obj)+'\\n');}
+      try{child.stdin.write(JSON.stringify(obj)+'\n');}
       catch{finish('CODEX_MODEL_DISCOVERY_PROTOCOL');}
     };
     const ask=()=>{
@@ -121,8 +121,8 @@ export function discoverCodexModels({spawnFn=spawn,timeoutMs=12000,now=new Date(
       if(closed)return;
       buffer+=data.toString('utf8');
       if(buffer.length>1048576)return finish('CODEX_MODEL_DISCOVERY_OVERSIZE');
-      while(buffer.includes('\\n')&&!closed){
-        const at=buffer.indexOf('\\n');const line=buffer.slice(0,at).trim();buffer=buffer.slice(at+1);
+      while(buffer.includes('\n')&&!closed){
+        const at=buffer.indexOf('\n');const line=buffer.slice(0,at).trim();buffer=buffer.slice(at+1);
         if(!line)continue;
         let msg;try{msg=JSON.parse(line);}catch{return finish('CODEX_MODEL_DISCOVERY_PROTOCOL');}
         if(msg.id===1){
