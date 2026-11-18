@@ -123,3 +123,10 @@ Before the PC-off smoke test, review this draft, obtain separate owner
 authorization for one bounded execution, and verify a permitted no-new-spend
 cloud runtime, supported dispatch interface, and least-privilege authentication.
 Define the task, timeout, stop and evidence criteria before running it.
+
+Malformed supervisor claim inputs are rejected before the snapshot lock or state
+file is touched. Null, missing, non-integer, non-positive and non-numeric task or
+fence values return `false` from checkpoint and dispatch. The regression test
+compares the serialized snapshot after every rejection and confirms no lock is
+left behind. This is input hardening for the local mock and does not validate a
+real provider adapter or distributed queue.

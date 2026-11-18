@@ -44,6 +44,12 @@ function validKey(value) {
   return typeof value === 'string' && /^[a-zA-Z0-9:_-]{1,128}$/.test(value);
 }
 
+function validClaim(claim) {
+  return record(claim)
+    && integer(claim.taskId, 1, Number.MAX_SAFE_INTEGER)
+    && integer(claim.fence, 1, Number.MAX_SAFE_INTEGER);
+}
+
 function validTask(task, id, stopped) {
   if (!record(task) || task.id !== id || !validKey(task.idempotencyKey)
     || typeof task.jobType !== 'string' || !Object.hasOwn(routes, task.jobType)
@@ -254,6 +260,7 @@ export class MockSupervisor {
   }
 
   #withLease(claim, operation) {
+    if (!validClaim(claim)) return false;
     return this.#update((state, now) => {
       const task = state.tasks.find(task => task.id === claim.taskId);
       if (task?.status !== 'running' || task.lease.fence !== claim.fence

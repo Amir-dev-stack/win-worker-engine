@@ -261,3 +261,27 @@ test('budget guard uses integer cents at claim and rechecks before dispatch', t 
   assert.equal(tasks.filter(task => task.dispatches > 0).length, 1);
   assert.equal(audit.filter(event => event.code === 'budget_stop').length, invalidSpend.length + 1);
 });
+
+test('malformed claims fail closed without changing persistent state', t => {
+  const { file, enqueue, supervisor } = fixture(t);
+  enqueue();
+  const valid = supervisor.claim(controls);
+  assert.ok(valid);
+  const before = readFileSync(file, 'utf8');
+  const malformedClaims = [
+    null, undefined, {}, { taskId: 1 }, { fence: 1 },
+    { taskId: 0, fence: 1 }, { taskId: 1, fence: 0 },
+    { taskId: '1', fence: 1 }, { taskId: 1, fence: '1' },
+    { taskId: 1.5, fence: 1 }, { taskId: 1, fence: Number.NaN },
+  ];
+
+  for (const claim of malformedClaims) {
+    assert.equal(supervisor.checkpoint(claim, 1), false);
+    assert.equal(supervisor.dispatch(claim, controls), false);
+    assert.equal(readFileSync(file, 'utf8'), before);
+    assert.equal(existsSync(file + '.lock'), false);
+  }
+
+  assert.equal(supervisor.dispatch(valid, controls), true);
+  assert.equal(supervisor.snapshot().tasks[0].status, 'completed');
+});
