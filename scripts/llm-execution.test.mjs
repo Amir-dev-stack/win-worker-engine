@@ -28,7 +28,7 @@ test("execution selects approved provider and validates its response", async () 
 test("provider timeout aborts adapter and is classified as uncertain without retry", async () => {
   let observedSignal;
   const result = await executeWinLLMWithPolicy({
-    request: request({ limits: { maxOutputTokens: 200, maxToolCalls: 0, timeoutMs: 10 } }),
+    request: request({ limits: { maxOutputTokens: 200, maxToolCalls: 0, timeoutMs: 100 } }),
     providers: [descriptor],
     adapters: [{ providerId: "fake", execute(_input, signal) {
       observedSignal = signal;
@@ -63,4 +63,29 @@ test("missing approved adapter does not call an arbitrary provider", async () =>
   called = result.response.error.code === "approved_provider_adapter_missing";
   assert.equal(called, true);
   assert.equal(result.response.status, "failed");
+});
+
+test("unverified provider quota and unapproved retention fail closed before adapter execution", async () => {
+  let calls = 0;
+  const adapter = { providerId: "fake", async execute(input) { calls++; return success(input); } };
+  const unverifiedQuota = await executeWinLLMWithPolicy({
+    request: request(), providers: [{ ...descriptor, quotaVerified: false }], adapters: [adapter]
+  });
+  assert.equal(unverifiedQuota.response.error.code, "no_eligible_provider");
+
+  const retentionRequired = await executeWinLLMWithPolicy({
+    request: request(), providers: [{ ...descriptor, requiresRetentionConsent: true }], adapters: [adapter]
+  });
+  assert.equal(retentionRequired.response.error.code, "no_eligible_provider");
+  assert.equal(calls, 0);
+});
+
+test("an explicit zero-cost reservation remains contract-valid", async () => {
+  const result = await executeWinLLMWithPolicy({
+    request: request({ budget: { reservationId: "free-tier-reservation", reservedUsd: 0 } }),
+    providers: [descriptor],
+    adapters: [{ providerId: "fake", async execute(input) { return success(input); } }]
+  });
+  assert.equal(result.response.status, "completed");
+  assert.deepEqual(result.validationErrors, []);
 });
