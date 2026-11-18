@@ -1,0 +1,43 @@
+name: WIN Codex cloud host readiness (no model calls)
+
+on:
+  push:
+    branches:
+      - feat/win-auto-model-router-20261118
+    paths:
+      - .github/workflows/win-codex-host-readiness.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-auth-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Verify pinned Codex CLI availability in ephemeral runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes --package=@openai/codex@0.167.0 -- codex --version
+      - name: Verify ChatGPT CLI authentication is NOT present on this runner
+        shell: bash
+        env:
+          CODEX_HOME: ${{ runner.temp }}/win-codex-empty-home
+        run: |
+          set -euo pipefail
+          mkdir -p "$CODEX_HOME"
+          unset OPENAI_API_KEY CODEX_API_KEY CODEX_ACCESS_TOKEN
+          if npx --yes --package=@openai/codex@0.167.0 -- codex login status >/dev/null 2>&1; then
+            echo "::error::Unexpected authentication in isolated ephemeral runner. Do not dispatch Codex tasks."
+            exit 1
+          fi
+          {
+            echo "### WIN Codex host readiness"
+            echo "- Ephemeral GitHub Actions Linux host: **available**."
+            echo "- Codex CLI installed: **yes**."
+            echo "- ChatGPT-authenticated runtime: **not configured in this isolated job**."
+            echo "- Codex model request / cloud task dispatch: **not performed**."
+            echo "- Status: **blocked before execution**; never infer login from a GitHub token."
+          } >> "$GITHUB_STEP_SUMMARY"
