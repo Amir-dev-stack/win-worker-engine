@@ -10,7 +10,7 @@ const request = (overrides = {}) => ({
   limits: { maxOutputTokens: 200, maxToolCalls: 0, timeoutMs: 100 }, privacy: { classification: "internal", allowProviderRetention: false },
   budget: { reservationId: "budget-reservation-1", reservedUsd: 0.01 }, ...overrides
 });
-const descriptor = { id: "fake", enabled: true, approved: true, pricingVerified: true, capabilities: ["text"], allowedClassifications: ["internal"], models: ["fake-model"], priority: 1 };
+const descriptor = { id: "fake", enabled: true, approved: true, pricingVerified: true, quotaVerified: true, capabilities: ["text"], allowedClassifications: ["internal"], models: ["fake-model"], priority: 1 };
 const success = input => ({
   contractVersion: WIN_LLM_CONTRACT_VERSION, requestId: input.requestId, providerId: "fake", model: "fake-model",
   status: "completed", output: "synthetic result", citations: [], usage: { inputTokens: 10, outputTokens: 5 },
@@ -68,16 +68,53 @@ test("missing approved adapter does not call an arbitrary provider", async () =>
 test("unverified provider quota and unapproved retention fail closed before adapter execution", async () => {
   let calls = 0;
   const adapter = { providerId: "fake", async execute(input) { calls++; return success(input); } };
-  const unverifiedQuota = await executeWinLLMWithPolicy({
-    request: request(), providers: [{ ...descriptor, quotaVerified: false }], adapters: [adapter]
-  });
-  assert.equal(unverifiedQuota.response.error.code, "no_eligible_provider");
+  for (const provider of [
+    { ...descriptor, quotaVerified: false },
+    { ...descriptor, quotaVerified: undefined },
+    (({ quotaVerified: _omitted, ...withoutQuota }) => withoutQuota)(descriptor),
+  ]) {
+    const unverifiedQuota = await executeWinLLMWithPolicy({
+      request: request(), providers: [provider], adapters: [adapter]
+    });
+    assert.equal(unverifiedQuota.response.error.code, "no_eligible_provider");
+  }
 
   const retentionRequired = await executeWinLLMWithPolicy({
     request: request(), providers: [{ ...descriptor, requiresRetentionConsent: true }], adapters: [adapter]
   });
   assert.equal(retentionRequired.response.error.code, "no_eligible_provider");
   assert.equal(calls, 0);
+});
+
+test("malformed provider allowlists and metadata return fixed failures without throwing", async () => {
+  const malformedAllowlists = [{}, true, 1, "fake", ["fake", {}], ["fake", "fake"]];
+  for (const allowedProviders of malformedAllowlists) {
+    const result = await executeWinLLMWithPolicy({
+      request: request({ providerPolicy: { allowedProviders, requiredCapabilities: ["text"] } }),
+      providers: [descriptor], adapters: []
+    });
+    assert.equal(result.response.error.code, "request_validation_failed");
+    assert.ok(result.validationErrors.includes(
+      Array.isArray(allowedProviders) && allowedProviders.every(value => typeof value === "string")
+        ? "duplicate_provider_allowlist_entry"
+        : "approved_provider_allowlist_required"
+    ));
+  }
+
+  const malformedProviders = [
+    null, {}, { ...descriptor, id: {} },
+    { ...descriptor, models: {} }, { ...descriptor, capabilities: {} },
+    { ...descriptor, allowedClassifications: {} }, { ...descriptor, priority: "1" },
+  ];
+  const noProvider = await executeWinLLMWithPolicy({
+    request: request(), providers: malformedProviders, adapters: []
+  });
+  assert.equal(noProvider.response.error.code, "no_eligible_provider");
+
+  const nonArrayProviders = await executeWinLLMWithPolicy({
+    request: request(), providers: {}, adapters: []
+  });
+  assert.equal(nonArrayProviders.response.error.code, "no_eligible_provider");
 });
 
 test("an explicit zero-cost reservation remains contract-valid", async () => {

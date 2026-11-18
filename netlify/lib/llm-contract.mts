@@ -69,15 +69,17 @@ function nonEmpty(value: unknown): value is string {
 
 export function validateWinLLMRequest(request: WinLLMRequestV1): string[] {
   const errors: string[] = [];
+  const allowedProviders = request?.providerPolicy?.allowedProviders;
+  const preferredProvider = request?.providerPolicy?.preferredProvider;
   if (!request || request.contractVersion !== WIN_LLM_CONTRACT_VERSION) errors.push("unsupported_contract_version");
   if (!nonEmpty(request?.requestId)) errors.push("request_id_required");
   if (!nonEmpty(request?.taskId)) errors.push("task_id_required");
   if (!nonEmpty(request?.agentId)) errors.push("agent_id_required");
-  if (!Array.isArray(request?.providerPolicy?.allowedProviders) ||
-      request.providerPolicy.allowedProviders.length === 0 ||
-      request.providerPolicy.allowedProviders.some(id => !nonEmpty(id))) errors.push("approved_provider_allowlist_required");
-  if (request?.providerPolicy?.preferredProvider &&
-      !request.providerPolicy.allowedProviders?.includes(request.providerPolicy.preferredProvider)) {
+  if (!Array.isArray(allowedProviders) ||
+      allowedProviders.length === 0 ||
+      allowedProviders.some(id => !nonEmpty(id))) errors.push("approved_provider_allowlist_required");
+  if (preferredProvider &&
+      (!Array.isArray(allowedProviders) || !allowedProviders.includes(preferredProvider))) {
     errors.push("preferred_provider_must_be_allowlisted");
   }
   if (request?.providerPolicy?.model !== undefined && !nonEmpty(request.providerPolicy.model)) errors.push("model_policy_invalid");
@@ -98,7 +100,7 @@ export function validateWinLLMRequest(request: WinLLMRequestV1): string[] {
       !Number.isFinite(request?.budget?.reservedUsd) || request.budget.reservedUsd < 0) errors.push("nonnegative_budget_reservation_required");
   const promptSize = (request?.prompt?.instructions?.length || 0) + (request?.prompt?.input?.length || 0);
   if (promptSize > 1_000_000) errors.push("prompt_size_limit_exceeded");
-  if (new Set(request?.providerPolicy?.allowedProviders || []).size !== (request?.providerPolicy?.allowedProviders || []).length) {
+  if (Array.isArray(allowedProviders) && new Set(allowedProviders).size !== allowedProviders.length) {
     errors.push("duplicate_provider_allowlist_entry");
   }
   return errors;
@@ -116,7 +118,7 @@ export function selectWinLLMProvider(
     provider.enabled === true &&
     provider.approved === true &&
     provider.pricingVerified === true &&
-    provider.quotaVerified !== false &&
+    provider.quotaVerified === true &&
     Array.isArray(provider.models) &&
     (!request.providerPolicy.model || provider.models.includes(request.providerPolicy.model)) &&
     Array.isArray(provider.capabilities) &&

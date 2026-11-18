@@ -82,3 +82,12 @@ Exact-HEAD evidence and the final clean commit are recorded in issue #57 and its
 draft PR. The targeted tests pass 9/9, full Node tests pass 41/41, quality gates
 pass 107/107, and the build passes 61 required-file plus 44 architecture checks.
 No deployment, migration, external provider request or spending occurred.
+
+PR #58 review hardening now requires `quotaVerified === true`. An omitted,
+undefined or false value makes the provider ineligible before adapter lookup.
+Request validation checks that provider allowlists are arrays before duplicate
+inspection, so malformed runtime objects return fixed validation errors.
+Regression coverage also passes malformed provider arrays, fields and a
+non-array provider collection and verifies a fixed `no_eligible_provider`
+result without adapter execution. Updated verification is targeted 10/10,
+full Node 42/42, quality gates 107/107, and build 61 plus 44.
