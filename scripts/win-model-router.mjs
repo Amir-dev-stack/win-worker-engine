@@ -20,10 +20,11 @@ export function categorize(task){
   return 'standard';
 }
 export function optionsFromArgs(argv){
-  const out={run:false,reviewAfter:false,help:false,task:'',category:null,cwd:process.cwd(),verifiedModels:null};
+  const out={run:false,verifyOnly:false,reviewAfter:false,help:false,task:'',category:null,cwd:process.cwd(),verifiedModels:null};
   for(let i=0;i<argv.length;i++){
     const a=argv[i];
     if(a==='--run')out.run=true;
+    else if(a==='--verify-only')out.verifyOnly=true;
     else if(a==='--review-after')out.reviewAfter=true;
     else if(a==='--help')out.help=true;
     else if(['--task','--category','--cwd','--verified-models'].includes(a)){
@@ -31,6 +32,7 @@ export function optionsFromArgs(argv){
       out[a.slice(2)]=argv[++i];
     }else throw Error('UNKNOWN_ARGUMENT');
   }
+  if(out.run&&out.verifyOnly)throw Error('VERIFY_ONLY_CONFLICT');
   if(!out.help && (!out.task.trim()||out.task.length>12000))throw Error('INVALID_TASK');
   if(out.category&&!CATEGORIES.has(out.category))throw Error('UNSUPPORTED_CATEGORY');
   return out;
@@ -87,7 +89,7 @@ export async function runRouter(argv,deps={}){
   const category=opts.category||categorize(opts.task);
   const cwd=resolve(opts.cwd);
   const requested=MODEL_PLAN[category];
-  if(!opts.run)return {dryRun:true,category,model:requested.model,effort:requested.effort,cwd,reviewAfter:opts.reviewAfter,modelAvailability:'unverified'};
+  if(!opts.run&&!opts.verifyOnly)return {dryRun:true,category,model:requested.model,effort:requested.effort,cwd,reviewAfter:opts.reviewAfter,modelAvailability:'unverified'};
   if(!opts.verifiedModels)throw Error('VERIFIED_MODELS_REQUIRED');
   const read=deps.readFileSyncFn||readFileSync;
   let evidence;
@@ -95,6 +97,7 @@ export async function runRouter(argv,deps={}){
   catch{throw Error('MODEL_EVIDENCE_UNREADABLE');}
   const selected=selectVerifiedModel(category,evidence,deps.now||new Date());
   const plan={category,model:selected.model,effort:selected.effort,cwd,reviewAfter:opts.reviewAfter,modelAvailability:'owner-verified',fallbackBeforeDispatch:selected.model!==requested.model};
+  if(opts.verifyOnly)return {verified:true,...plan};
   const git=(deps.spawnSyncFn||spawnSync)('git',['-C',cwd,'rev-parse','--show-toplevel'],{encoding:'utf8',timeout:5000,windowsHide:true});
   if(git.status!==0||!git.stdout?.trim())throw Error('NOT_A_GIT_WORKTREE');
   const real=deps.realpathSyncFn||realpathSync;
