@@ -230,3 +230,22 @@ test('Codex model discovery fails closed on auth errors and timeouts',async()=>{
  await assert.rejects(discoverCodexModels({spawnFn:()=>createChild('auth-error'),platform:'linux',timeoutMs:80}),/CODEX_MODEL_DISCOVERY_AUTH/);
  await assert.rejects(discoverCodexModels({spawnFn:()=>createChild('timeout'),platform:'linux',timeoutMs:20}),/CODEX_MODEL_DISCOVERY_TIMEOUT/);
 });
+
+test('model family switching resolves version changes only from approved visible catalog',()=>{
+  const now=new Date('2026-11-18T15:30:00Z');
+  const evidence={...validEvidence,models:[
+    {id:'gpt-6.1-sol',available:true,allowed:true,supportedEfforts:['low','medium','high']},
+    {id:'gpt-6.1-terra',available:true,allowed:true,supportedEfforts:['low','medium']},
+    {id:'gpt-6.1-astra',available:true,allowed:true,supportedEfforts:['high']}
+  ]};
+  assert.equal(selectVerifiedModel('standard',evidence,now).model,'gpt-6.1-sol');
+  assert.equal(selectVerifiedModel('complex',evidence,now).model,'gpt-6.1-sol');
+  assert.equal(selectVerifiedModel('review',evidence,now).model,'gpt-6.1-astra');
+  assert.equal(selectVerifiedModel('simple',evidence,now).model,'gpt-6.1-terra');
+  const upgrades={...evidence,models:[...evidence.models,{id:'gpt-6.3-sol',available:true,allowed:true,supportedEfforts:['low','medium','high']}]};
+  assert.equal(selectVerifiedModel('standard',upgrades,now).model,'gpt-6.3-sol');
+  const notAllowed={...evidence,models:[{id:'gpt-6.3-sol',available:true,allowed:false,supportedEfforts:['medium']}]};
+  assert.throws(()=>selectVerifiedModel('standard',notAllowed,now),/NO_VERIFIED_MODEL/);
+  const badFamily={...evidence,models:[{id:'gpt-6.3-unknown',available:true,allowed:true,supportedEfforts:['medium']}]};
+  assert.throws(()=>selectVerifiedModel('standard',badFamily,now),/NO_VERIFIED_MODEL/);
+});
