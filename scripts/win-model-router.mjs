@@ -20,11 +20,12 @@ export function categorize(task){
   return 'standard';
 }
 export function optionsFromArgs(argv){
-  const out={run:false,verifyOnly:false,reviewAfter:false,help:false,task:'',category:null,cwd:process.cwd(),verifiedModels:null};
+  const out={run:false,verifyOnly:false,reviewAfter:false,help:false,task:'',category:null,cwd:process.cwd(),verifiedModels:null,liveModels:false};
   for(let i=0;i<argv.length;i++){
     const a=argv[i];
     if(a==='--run')out.run=true;
     else if(a==='--verify-only')out.verifyOnly=true;
+    else if(a==='--live-models')out.liveModels=true;
     else if(a==='--review-after')out.reviewAfter=true;
     else if(a==='--help')out.help=true;
     else if(['--task','--category','--cwd','--verified-models'].includes(a)){
@@ -33,6 +34,7 @@ export function optionsFromArgs(argv){
     }else throw Error('UNKNOWN_ARGUMENT');
   }
   if(out.run&&out.verifyOnly)throw Error('VERIFY_ONLY_CONFLICT');
+  if(out.liveModels&&out.verifiedModels)throw Error('MODEL_SOURCE_CONFLICT');
   if(!out.help && (!out.task.trim()||out.task.length>12000))throw Error('INVALID_TASK');
   if(out.category&&!CATEGORIES.has(out.category))throw Error('UNSUPPORTED_CATEGORY');
   return out;
@@ -82,8 +84,73 @@ export function selectVerifiedModel(category, evidence, now=new Date()){
     :category==='review'
       ?[{...MODEL_PLAN.review},{model:MODEL_PLAN.standard.model,effort:'high'}]
       :[{...MODEL_PLAN[category]}];
-  for(const candidate of candidates)if(allowed.some(m=>m.id===candidate.model))return candidate;
+  for(const candidate of candidates)if(allowed.some(m=>m.id===candidate.model
+    &&(!Array.isArray(m.supportedEfforts)||m.supportedEfforts.includes(candidate.effort))))return candidate;
   throw Error('NO_VERIFIED_MODEL_FOR_TASK');
+}
+
+
+/** Query the current ChatGPT-authenticated Codex app-server, without starting a model turn. */
+export function discoverCodexModels({spawnFn=spawn,timeoutMs=12000,now=new Date(),platform=process.platform}={}){
+  return new Promise((resolveResult,rejectResult)=>{
+    const windows=platform==='win32';
+    const command=windows?'cmd.exe':'codex';
+    const args=windows?['/d','/s','/c','codex app-server']:['app-server'];
+    let child;
+    try{child=spawnFn(command,args,{shell:false,windowsHide:true,stdio:['pipe','pipe','ignore']});}
+    catch{rejectResult(Error('CODEX_MODEL_DISCOVERY_UNAVAILABLE'));return;}
+    let closed=false,buffer='',models=[],cursor=null,pages=0;
+    const finish=(err,value)=>{
+      if(closed)return;closed=true;clearTimeout(timeout);
+      try{child.kill();}catch{}
+      if(err)rejectResult(Error(err));else resolveResult(value);
+    };
+    const timeout=setTimeout(()=>finish('CODEX_MODEL_DISCOVERY_TIMEOUT'),timeoutMs);
+    const send=obj=>{
+      try{child.stdin.write(JSON.stringify(obj)+'\\n');}
+      catch{finish('CODEX_MODEL_DISCOVERY_PROTOCOL');}
+    };
+    const ask=()=>{
+      const params={limit:100,includeHidden:false};
+      if(cursor)params.cursor=cursor;
+      send({method:'model/list',id:2+pages,params});
+    };
+    child.once('error',()=>finish('CODEX_MODEL_DISCOVERY_UNAVAILABLE'));
+    child.once('exit',()=>finish('CODEX_MODEL_DISCOVERY_INTERRUPTED'));
+    child.stdout.on('data',data=>{
+      if(closed)return;
+      buffer+=data.toString('utf8');
+      if(buffer.length>1048576)return finish('CODEX_MODEL_DISCOVERY_OVERSIZE');
+      while(buffer.includes('\\n')&&!closed){
+        const at=buffer.indexOf('\\n');const line=buffer.slice(0,at).trim();buffer=buffer.slice(at+1);
+        if(!line)continue;
+        let msg;try{msg=JSON.parse(line);}catch{return finish('CODEX_MODEL_DISCOVERY_PROTOCOL');}
+        if(msg.id===1){
+          if(msg.error||!msg.result)return finish('CODEX_MODEL_DISCOVERY_AUTH');
+          send({method:'initialized',params:{}});ask();
+        }else if(msg.id===2+pages){
+          if(msg.error||!Array.isArray(msg.result?.data))return finish('CODEX_MODEL_DISCOVERY_FAILED');
+          models.push(...msg.result.data);
+          if(models.length>500)return finish('CODEX_MODEL_DISCOVERY_OVERSIZE');
+          cursor=msg.result.nextCursor;
+          if(cursor){if(++pages>=8)return finish('CODEX_MODEL_DISCOVERY_PAGINATION');ask();}
+          else{
+            const whitelist=new Set(Object.values(MODEL_PLAN).map(v=>v.model));
+            const approved=models.filter(v=>v&&v.hidden!==true&&typeof (v.model||v.id)==='string'
+             &&whitelist.has(v.model||v.id)).map(v=>({
+              id:v.model||v.id,available:true,allowed:true,
+              supportedEfforts:Array.isArray(v.supportedReasoningEfforts)
+                ?v.supportedReasoningEfforts.map(x=>x.reasoningEffort).filter(x=>typeof x==='string'):[]
+            }));
+            const start=now.toISOString();
+            finish(null,{source:'codex-app-server:model/list',verifiedAt:start,
+              expiresAt:new Date(now.getTime()+3600000).toISOString(),models:approved});
+          }
+        }
+      }
+    });
+    send({method:'initialize',id:1,params:{clientInfo:{name:'win_codex_router',title:'WIN Codex Router',version:'1.0.0'}}});
+  });
 }
 
 export async function runRouter(argv,deps={}){
@@ -93,11 +160,17 @@ export async function runRouter(argv,deps={}){
   const cwd=resolve(opts.cwd);
   const requested=MODEL_PLAN[category];
   if(!opts.run&&!opts.verifyOnly)return {dryRun:true,category,model:requested.model,effort:requested.effort,cwd,reviewAfter:opts.reviewAfter,modelAvailability:'unverified'};
-  if(!opts.verifiedModels)throw Error('VERIFIED_MODELS_REQUIRED');
-  const read=deps.readFileSyncFn||readFileSync;
+  if(!opts.verifiedModels&&!opts.liveModels)throw Error('VERIFIED_MODELS_REQUIRED');
   let evidence;
-  try{evidence=JSON.parse(read(resolve(opts.verifiedModels),'utf8'));}
-  catch{throw Error('MODEL_EVIDENCE_UNREADABLE');}
+  if(opts.liveModels){
+    const auth=(deps.spawnSyncFn||spawnSync)('codex',['login','status'],{encoding:'utf8',timeout:8000,windowsHide:true});
+    if(auth.status!==0||!isChatGPTLogin(auth.stdout))throw Error('CODEX_CHATGPT_AUTH_REQUIRED');
+    evidence=await (deps.discoverModelsFn||discoverCodexModels)({now:deps.now||new Date()});
+  }else{
+    const read=deps.readFileSyncFn||readFileSync;
+    try{evidence=JSON.parse(read(resolve(opts.verifiedModels),'utf8'));}
+    catch{throw Error('MODEL_EVIDENCE_UNREADABLE');}
+  }
   const selected=selectVerifiedModel(category,evidence,deps.now||new Date());
   // Prevalidate optional reviewer BEFORE a writable implementation starts.
   const reviewModel=opts.reviewAfter&&category!=='review'
