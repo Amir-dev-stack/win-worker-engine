@@ -144,7 +144,7 @@ test('authenticated app-server model list discovers approved model IDs only',asy
       if(message.method==='initialize')queueMicrotask(()=>child.stdout.write(JSON.stringify({id:1,result:{userAgent:'Codex'}})+'\n'));
       if(message.method==='account/rateLimits/read')queueMicrotask(()=>child.stdout.write(JSON.stringify({id:999,result:{
         rateLimits:{limitId:'codex',primary:{usedPercent:20,windowDurationMins:300,resetsAt:1891234567},secondary:null,rateLimitReachedType:null}
-      }})+'\\n'));
+      }})+'\n'));
       if(message.method==='model/list')queueMicrotask(()=>child.stdout.write(JSON.stringify({id:2,result:{
         data:[
           {id:'visible-sol',model:'gpt-6.2-sol',hidden:false,supportedReasoningEfforts:[{reasoningEffort:'high'},{reasoningEffort:'medium'},{reasoningEffort:'low'}]},
