@@ -121,6 +121,8 @@ test('invalid cooldown cannot be used to bypass model unavailability',()=>{
 test('API-key or unauthenticated CLI cannot start a Codex task',async()=>{
   assert.equal(isChatGPTLogin('Logged in using ChatGPT'),true);
   assert.equal(isChatGPTLogin('Logged in using an API key'),false);
+  assert.equal(isChatGPTLogin('Not logged in using ChatGPT'),false);
+  assert.equal(isChatGPTLogin('Failed: logged in using ChatGPT'),false);
   let invokes=0;
   await assert.rejects(runRouter(['--run','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
     readFileSyncFn:()=>JSON.stringify(validEvidence),now:new Date('2026-11-18T15:30:00Z'),
