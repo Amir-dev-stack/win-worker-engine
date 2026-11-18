@@ -187,8 +187,20 @@ and offline. No network data, provider call, credential, live odds, wager,
 deployment, migration or spending occurred.
 
 This milestone does not establish licensed real-world statistics coverage.
+Reported percentages measure only the explicitly supplied synthetic input
+universe. Even 100% does not establish complete team/player rosters, verified
+licensing, real provider coverage or approval for prediction or training.
 Before predictive or training use, WIN still needs a qualified provider whose
 licence permits the intended access, storage and betting-research use, plus
 measured competition/season/player coverage, stable cross-provider identity,
 forward-only snapshots and independent quality validation. Cross-league
 strength correction and correlated Bet Builder work remain later phases.
+
+PR #61 review hardening separates prior-event `historical_stats` from same-event
+`match_stats`. Historical statistics require a different source event plus
+strict source-kickoff, available-at, observed-at and target-kickoff ordering;
+same-event actuals cannot raise pre-match coverage. Mixed canonical/provider
+player identifiers require an explicit source-labelled trusted crosswalk.
+Multiple result records for one event invalidate result coverage regardless of
+input order. Regression verification is targeted 14/14, full Node 67/67,
+quality gates 107/107 and build 63 required files plus 44 architecture checks.

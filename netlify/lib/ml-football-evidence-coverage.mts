@@ -20,12 +20,21 @@ export type WinFootballPlayerEvidence = {
   teamId: string;
   playerId?: string;
   providerPlayerIds?: string[];
-  kind: "lineup" | "availability" | "match_stats";
+  kind: "lineup" | "availability" | "historical_stats" | "match_stats";
   observedAt: string;
+  availableAt?: string;
+  sourceEventId?: string;
+  sourceEventKickoff?: string;
   competitionId: string;
   season: string;
   status?: "confirmed" | "likely" | "unknown";
   sourceId?: string;
+};
+
+export type WinFootballTrustedPlayerIdentityCrosswalk = {
+  playerId: string;
+  providerPlayerId: string;
+  sourceId: string;
 };
 
 export type WinFootballEvidenceResult = WinFootballCoverageResult & {
@@ -62,6 +71,7 @@ export type WinFootballEvidenceCoverageReport = {
   };
   fixtures: WinFootballFixtureEvidenceCoverage[];
   excludedEvidenceCount: number;
+  coverageScope: "explicit_synthetic_input_universe";
   completeForResearch: false;
   trainingApprovalGranted: false;
   reasons: string[];
@@ -86,6 +96,7 @@ export function assessWinFootballEvidenceCoverage(args: {
   oddsSnapshots: WinFootballSeasonOddsSnapshot[];
   requiredMarketIds: string[];
   playerEvidence: WinFootballPlayerEvidence[];
+  trustedIdentityCrosswalks?: WinFootballTrustedPlayerIdentityCrosswalk[];
 }): WinFootballEvidenceCoverageReport {
   const competitionId = text(args?.competitionId) ? args.competitionId : "";
   const season = text(args?.season) ? args.season : "";
@@ -120,25 +131,33 @@ export function assessWinFootballEvidenceCoverage(args: {
 
   const fixtureByEvent = new Map(selectedFixtures.map(fixture => [fixture.eventId, fixture]));
   const validResults: WinFootballEvidenceResult[] = [];
-  const resultEvents = new Set<string>();
+  const resultGroups = new Map<string, WinFootballEvidenceResult[]>();
   for (const result of Array.isArray(args?.results) ? args.results : []) {
-    const fixture = fixtureByEvent.get(result?.eventId);
+    const key = text(result?.eventId) ? result.eventId : "";
+    if (!resultGroups.has(key)) resultGroups.set(key, []);
+    resultGroups.get(key)!.push(result);
+  }
+  for (const [eventId, candidates] of resultGroups) {
+    const fixture = fixtureByEvent.get(eventId);
+    if (candidates.length !== 1) {
+      excludedEvidenceCount += candidates.length;
+      reasons.push("duplicate_result_ambiguous:" + (eventId || "unknown"));
+      continue;
+    }
+    const result = candidates[0];
     const availableAt = parseStrictIsoTimestamp(result?.resultAvailableAt);
     const kickoff = fixture ? parseStrictIsoTimestamp(fixture.kickoff) : null;
     const teamsMatch = fixture &&
       (!text(result.homeTeamId) || result.homeTeamId === fixture.homeTeamId) &&
       (!text(result.awayTeamId) || result.awayTeamId === fixture.awayTeamId);
-    if (!fixture || availableAt === null || kickoff === null || availableAt < kickoff ||
-        !teamsMatch || resultEvents.has(result.eventId)) {
+    if (!fixture || availableAt === null || kickoff === null || availableAt < kickoff || !teamsMatch) {
       excludedEvidenceCount++;
       if (!fixture) reasons.push("result_without_selected_fixture");
       else if (availableAt === null) reasons.push("result_timestamp_invalid:" + fixture.eventId);
       else if (kickoff !== null && availableAt < kickoff) reasons.push("result_before_kickoff_excluded:" + fixture.eventId);
       else if (!teamsMatch) reasons.push("result_team_mismatch:" + fixture.eventId);
-      else reasons.push("duplicate_result:" + fixture.eventId);
       continue;
     }
-    resultEvents.add(result.eventId);
     validResults.push(result);
   }
 
@@ -152,6 +171,10 @@ export function assessWinFootballEvidenceCoverage(args: {
     g.competitionId === competitionId && g.season === season);
 
   const evidenceByEvent = new Map<string, WinFootballPlayerEvidence[]>();
+  const trustedCrosswalks = new Set((Array.isArray(args?.trustedIdentityCrosswalks)
+    ? args.trustedIdentityCrosswalks : []).filter(mapping =>
+      text(mapping?.playerId) && text(mapping?.providerPlayerId) && text(mapping?.sourceId))
+    .map(mapping => mapping.playerId + "::" + mapping.providerPlayerId));
   for (const evidence of Array.isArray(args?.playerEvidence) ? args.playerEvidence : []) {
     const fixture = selectedFixtures.find(item => item.eventId === evidence?.eventId);
     const observedAt = parseStrictIsoTimestamp(evidence?.observedAt);
@@ -159,20 +182,31 @@ export function assessWinFootballEvidenceCoverage(args: {
     const providerIds = Array.isArray(evidence?.providerPlayerIds)
       ? [...new Set(evidence.providerPlayerIds.filter(text))] : [];
     const identityKnown = text(evidence?.playerId) || providerIds.length === 1;
-    const identityAmbiguous = providerIds.length > 1;
+    const mixedIdentityTrusted = !text(evidence?.playerId) || providerIds.length === 0 ||
+      providerIds.every(providerId => trustedCrosswalks.has(evidence.playerId + "::" + providerId));
+    const identityAmbiguous = (!text(evidence?.playerId) && providerIds.length > 1) || !mixedIdentityTrusted;
+    const sourceKickoff = parseStrictIsoTimestamp(evidence?.sourceEventKickoff);
+    const availableAt = parseStrictIsoTimestamp(evidence?.availableAt);
+    const historicalStatsValid = evidence?.kind !== "historical_stats" ||
+      (text(evidence.sourceEventId) && evidence.sourceEventId !== fixture?.eventId &&
+       sourceKickoff !== null && availableAt !== null && observedAt !== null && kickoff !== null &&
+       sourceKickoff < availableAt && availableAt <= observedAt && observedAt < kickoff);
+    const sameEventStats = evidence?.kind === "match_stats";
     if (!fixture || evidence?.competitionId !== competitionId || evidence?.season !== season ||
         !text(evidence?.teamId) ||
         (evidence.teamId !== fixture.homeTeamId && evidence.teamId !== fixture.awayTeamId) ||
         observedAt === null || kickoff === null || observedAt >= kickoff ||
-        !["lineup", "availability", "match_stats"].includes(evidence?.kind) ||
-        !identityKnown || identityAmbiguous) {
+        !["lineup", "availability", "historical_stats", "match_stats"].includes(evidence?.kind) ||
+        !identityKnown || identityAmbiguous || !historicalStatsValid || sameEventStats) {
       excludedEvidenceCount++;
       if (!fixture) reasons.push("player_evidence_without_selected_fixture");
       else if (evidence?.competitionId !== competitionId || evidence?.season !== season)
         reasons.push("transfer_or_league_context_mismatch:" + fixture.eventId);
       else if (observedAt === null) reasons.push("player_evidence_timestamp_invalid:" + fixture.eventId);
       else if (kickoff !== null && observedAt >= kickoff) reasons.push("post_kickoff_player_evidence_excluded:" + fixture.eventId);
-      else if (!identityKnown || identityAmbiguous) reasons.push("player_identity_ambiguous_or_unknown:" + fixture.eventId);
+      else if (!identityKnown || identityAmbiguous) reasons.push("player_identity_ambiguous_or_untrusted:" + fixture.eventId);
+      else if (sameEventStats) reasons.push("same_event_match_stats_not_pre_match_evidence:" + fixture.eventId);
+      else if (!historicalStatsValid) reasons.push("historical_stats_provenance_invalid:" + fixture.eventId);
       else reasons.push("player_evidence_team_or_kind_invalid:" + fixture.eventId);
       continue;
     }
@@ -188,7 +222,7 @@ export function assessWinFootballEvidenceCoverage(args: {
     const playerIdentityCovered = evidence.length > 0;
     const lineup = evidence.filter(item => item.kind === "lineup");
     const availability = evidence.filter(item => item.kind === "availability");
-    const playerStats = evidence.filter(item => item.kind === "match_stats");
+    const playerStats = evidence.filter(item => item.kind === "historical_stats");
     const lineupCovered = lineup.some(item => item.status === "confirmed");
     const availabilityCovered = availability.some(item => item.status === "confirmed");
     const playerStatsCovered = playerStats.length > 0;
@@ -239,6 +273,7 @@ export function assessWinFootballEvidenceCoverage(args: {
       playerStats: pct(covered("playerStatsCovered"), fixtures.length)
     },
     fixtures, excludedEvidenceCount,
+    coverageScope: "explicit_synthetic_input_universe",
     completeForResearch: false,
     trainingApprovalGranted: false,
     reasons: [...new Set(reasons)]
