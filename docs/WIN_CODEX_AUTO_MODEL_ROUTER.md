@@ -89,3 +89,23 @@ If Codex fails, times out, or starts but loses connectivity, the launcher **neve
 ### Security and verification clarification
 
 The JavaScript router and PowerShell launcher both check `codex login status` for **ChatGPT authentication** before running an actual task. An API-key login or an unrecognized login mode stops the task. The owner-specific `.win-codex-models.json` file is ignored by Git and should stay local. The model file is a policy/availability attestation; it is **not an authenticated API session or proof that all models will remain available when dispatched**. Never automatically charge, upgrade or refresh paid credits. Also confirm `codex exec --help` and the locally installed CLI version before any live task.
+
+## Authenticated live model discovery (preferred where supported)
+
+On a machine already signed in to the **ChatGPT** Codex CLI, the *same existing router* can query Codex's App Server `model/list` interface and select a model from account-visible entries. The query performs no model generation, task execution, or billing change. The router excludes hidden and non-WIN-plan models and requires an available reasoning effort; unknown catalogs fail closed. The `model/list` protocol and its supported effort metadata are documented at https://learn.chatgpt.com/docs/app-server#list-models-modellist .
+
+Check the selection without launching a coding task:
+
+```powershell
+node scripts/win-model-router.mjs --verify-only --live-models --task "Implement a bounded worker service"
+```
+
+Use the Windows launcher for a real task (the JavaScript direct process launcher may not handle the npm Windows CLI shim):
+
+```powershell
+.\scripts\Start-WINAutoModels.ps1 -Run -UseLiveModels -Task 'Implement and test a bounded WIN worker service'
+```
+
+Add `-ReviewAfter` only when an approved reviewer model is listed. The script checks that review model **before** implementation. `-VerifiedModels PATH` is an offline/manual alternative; do not use both together. This is still a *single task launcher*, not a persistent background dispatcher.
+
+**Honest verification boundary:** the App Server discovery protocol is unit-tested using a simulated JSON-lines server; the integration has **not** been run against this owner's Windows Codex CLI, authenticated catalog or live model limits. Model availability varies by account and client version. If `--live-models` fails or returns no eligible model, stop instead of inventing entitlement, silently dropping the review, switching to API-key authentication, or bypassing the account's limit. Current Windows/Codex CLI runtime compatibility still needs live confirmation. A quota exhaustion **after a task starts** is not a safe signal to repeat it on another model because the first run may already have changed files.
