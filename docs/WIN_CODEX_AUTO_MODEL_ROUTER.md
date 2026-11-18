@@ -14,16 +14,16 @@ Dry-run without launching Codex:
 node scripts/win-model-router.mjs --task "Implement a bounded worker service"
 ```
 
-Run a single implementation task (selects Sol Medium for ordinary coding):
+Run a single implementation task (requires a recently validated model catalog):
 
 ```powershell
-node scripts/win-model-router.mjs --run --task "Implement a bounded worker service"
+node scripts/win-model-router.mjs --run --verified-models .win-codex-models.json --task "Implement a bounded worker service"
 ```
 
 Ask for one **read-only Astra review** after successful implementation (explicit opt-in):
 
 ```powershell
-node scripts/win-model-router.mjs --run --review-after --task "Implement and test the worker service"
+node scripts/win-model-router.mjs --run --verified-models .win-codex-models.json --review-after --task "Implement and test the worker service"
 ```
 
 Manually override task classification using `--category simple|standard|complex|review`. The router uses simple → Terra Low, standard → Sol Medium, complex → Sol High, review → Astra High. No infinite retries. Each model call is a new Codex CLI session; it does not change the model inside a running Codex Desktop chat.
@@ -59,7 +59,7 @@ node --test scripts/win-model-router.test.mjs
 The last command is only a dry-run. It should print the automatically selected model **without consuming Codex usage**. For a real scoped task, first switch to an **authorized clean writable WIN worktree** (the launcher now uses your current directory by default):
 
 ```powershell
-.\scripts\Start-WINAutoModels.ps1 -Run -Task 'Implement and test a bounded worker service'
+.\scripts\Start-WINAutoModels.ps1 -Run -VerifiedModels '.win-codex-models.json' -Task 'Implement and test a bounded worker service'
 ```
 
 Add `-ReviewAfter` **only for completed milestones**; it initiates one read-only Astra review after the coding Codex process exits successfully. For complex troubleshooting, omit the costly review until needed. Use `-Worktree 'C:\path\to\your\safe\worktree'` to explicitly select another authorized Git root. The old PR #49 default was removed; PR #36 remains protected. `-Category` overrides the automatic classifier when necessary.
@@ -69,3 +69,19 @@ Add `-ReviewAfter` **only for completed milestones**; it initiates one read-only
 ## Repaired branch validation (November 18, 2026)
 
 The Windows launcher now defaults to the current Git worktree and derives read-only review model selection from the single JavaScript `MODEL_PLAN`; the previously hard-coded PR #49 path and separate review model were removed. Two test dependencies missing on this older feature branch (`netlify/lib/llm-contract.mts` and `netlify/lib/ml-football-season-coverage.mts`) were restored unchanged from `main` to allow complete CI validation. **Do not claim CI passed until a run for the latest commit reports success.** This remains a local authenticated Codex CLI launcher, not unattended Codex Cloud dispatch or verified model-limit failover.
+
+## Model validation and safe fallback — current original router
+
+`--run` and `--verify-only` now **require** `--verified-models PATH` (the PowerShell wrapper uses `-VerifiedModels PATH`). A human-approved, recently refreshed, local JSON record is required; **the router cannot yet query the signed-in account automatically**. See `scripts/win-codex-models.example.json` for the structure. It is intentionally expired and all models disabled, so copying it directly cannot dispatch anything. Never commit your real local approval file, credentials, usage identifiers or account data. Ideally save it outside the public repository.
+
+The trusted source for available model IDs is the **authenticated Codex App Server `model/list` response** (not the bundled model list or a guess). It supports `id`, `supportedReasoningEfforts`, hidden visibility, and pagination. Reference: https://learn.chatgpt.com/docs/app-server#list-models-modellist . Inspect only models available to your signed-in account and approve which categories may use them. Mark `available:true` and `allowed:true` only after validation. Set `verifiedAt` and `expiresAt` as UTC ISO timestamps no more than 24 hours apart and never in the past. `source` must equal `codex-app-server:model/list`. Expired/invalid files block execution. If an approved model is temporarily limited, set an ISO `cooldownUntil` in the future. **Cooldown information is externally supplied; the router cannot currently detect account quotas or refresh them itself.**
+
+Approved pre-dispatch routing:
+- simple → Terra Low; if unavailable, Sol Low (both require explicit approval)
+- standard → Sol Medium
+- complex → Sol High
+- review → Astra High; if unavailable, Sol High (review always read-only)
+
+These are *requested Codex model IDs*, not guaranteed model entitlement or the same as the sports-agent Workers AI provider. `--verify-only` validates the proposed model without running Codex or changing files.
+
+If Codex fails, times out, or starts but loses connectivity, the launcher **never automatically replays an implementation task on another model**; doing so could repeat side effects. It stops with an error and requires evidence-based recovery. Optional independent review eligibility is checked before coding starts, so missing review capacity does not cause a silently unreviewed write. Model switches happen only **before a new task**, not within an existing CLI session. No background agent, usage-limit reset listener, or guaranteed PC-off Codex execution is implemented.
