@@ -54,6 +54,11 @@ if ($target -match '(?i)([\\/])pr36([\\/]|$)|pr36-review|pr36-safety') {
 if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
     throw "Codex CLI is unavailable in PowerShell. Check 'codex --version' and login first."
 }
+# Require ChatGPT login so a CLI API-key session cannot silently create usage-based charges.
+$authText = (& codex login status 2>&1 | Out-String).Trim()
+if ($LASTEXITCODE -ne 0 -or $authText -notmatch '(?i)logged in (using|via) chatgpt') {
+    throw "ChatGPT-authenticated Codex CLI is required; API-key or unknown login modes are blocked."
+}
 $mode = if ($plan.category -eq 'review') { 'read-only' } else { 'workspace-write' }
 Write-Host "Starting one bounded Codex task in $target"
 & codex exec -C $target --model $plan.model -c ('model_reasoning_effort="{0}"' -f $plan.effort) --sandbox $mode $Task
