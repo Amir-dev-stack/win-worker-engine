@@ -102,3 +102,18 @@ test('cooldown blocks selection and does not replay failed tasks',async()=>{
  });
  assert.equal(invocations,1);assert.equal(result.success,false);
 });
+
+test('review entitlement is checked before implementation starts',async()=>{
+ let called=0;
+ await assert.rejects(runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
+   readFileSyncFn:()=>JSON.stringify({...validEvidence,models:[{id:'gpt-6.2-sol',available:true,allowed:true}]}),
+   now:new Date('2026-11-18T15:30:00Z'),
+   spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
+   invokeFn:async()=>{called++;return {success:true,code:0};}
+ }),/NO_VERIFIED_MODEL_FOR_TASK/);
+ assert.equal(called,0);
+});
+test('invalid cooldown cannot be used to bypass model unavailability',()=>{
+ const evidence={...validEvidence,models:[{id:'gpt-6.2-sol',available:true,allowed:true,cooldownUntil:'not-a-date'}]};
+ assert.throws(()=>selectVerifiedModel('standard',evidence,new Date('2026-11-18T15:30:00Z')),/NO_VERIFIED_MODEL_FOR_TASK/);
+});
