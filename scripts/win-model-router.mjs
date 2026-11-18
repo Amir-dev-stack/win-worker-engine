@@ -86,7 +86,7 @@ export function selectVerifiedModel(category, evidence, now=new Date()){
   // Version numbers change; only signed-in catalog-listed Terra/Sol/Astra
   // families may substitute. Preserve the original departmental model preferences.
   const catalogFamily=model=>{
-    const match=/^gpt-\\d+(?:\\.\\d+)?-(terra|sol|astra)$/.exec(model);
+    const match=/^gpt-\d+(?:\.\d+)?-(terra|sol|astra)$/.exec(model);
     return match?.[1]||null;
   };
   const ranked=(family,effort)=>allowed
@@ -159,7 +159,7 @@ export function discoverCodexModels({spawnFn=spawn,timeoutMs=12000,now=new Date(
           if(cursor){if(++pages>=8)return finish('CODEX_MODEL_DISCOVERY_PAGINATION');ask();}
           else{
             const approved=models.filter(v=>v&&v.hidden!==true&&typeof (v.model||v.id)==='string'
-             &&/^gpt-\\d+(?:\\.\\d+)?-(terra|sol|astra)$/.test(v.model||v.id)).map(v=>({
+             &&/^gpt-\d+(?:\.\d+)?-(terra|sol|astra)$/.test(v.model||v.id)).map(v=>({
               id:v.model||v.id,available:true,allowed:true,
               supportedEfforts:Array.isArray(v.supportedReasoningEfforts)
                 ?v.supportedReasoningEfforts.map(x=>x.reasoningEffort).filter(x=>typeof x==='string'):[]
