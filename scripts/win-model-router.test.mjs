@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {categorize,optionsFromArgs,buildCodexArgs,workspaceCheck,runRouter,selectVerifiedModel,isChatGPTLogin,discoverCodexModels} from './win-model-router.mjs';
+import {categorize,optionsFromArgs,buildCodexArgs,workspaceCheck,runRouter,selectVerifiedModel,isChatGPTLogin,discoverCodexModels,codexAuthCommand} from './win-model-router.mjs';
 const validEvidence={source:'codex-app-server:model/list',verifiedAt:'2026-11-18T15:00:00Z',expiresAt:'2026-11-18T18:00:00Z',models:[{id:'gpt-6.1-terra',available:true,allowed:true},{id:'gpt-6.2-sol',available:true,allowed:true},{id:'gpt-6.2-astra',available:true,allowed:true}]};
 test('routes routine, complex and review',()=>{
   assert.equal(categorize('Update README documentation'),'simple');
@@ -171,4 +171,24 @@ test('live account discovery verifies model selection without launching Codex',a
 test('live discovery does not accept unsupported reasoning effort',()=>{
  const evidence={...validEvidence,models:[{id:'gpt-6.2-sol',allowed:true,available:true,supportedEfforts:['low']}]};
  assert.throws(()=>selectVerifiedModel('complex',evidence,new Date('2026-11-18T15:30:00Z')),/NO_VERIFIED_MODEL/);
+});
+
+test('Windows account checks use the existing Codex cmd shim safely',()=>{
+ const win=codexAuthCommand('win32');
+ assert.equal(win.command,'cmd.exe');
+ assert.deepEqual(win.args,['/d','/s','/c','codex login status']);
+ const linux=codexAuthCommand('linux');
+ assert.equal(linux.command,'codex');
+ assert.deepEqual(linux.args,['login','status']);
+});
+test('PowerShell launcher supports live model discovery and reviewer preflight',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const {fileURLToPath}=await import('node:url');
+ const {join,dirname}=await import('node:path');
+ const script=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'Start-WINAutoModels.ps1'),'utf8');
+ assert.match(script,/\[switch\]\$UseLiveModels/);
+ assert.match(script,/\$verifiedArgs \+= '--live-models'/);
+ assert.match(script,/\$reviewArgs \+= '--live-models'/);
+ assert.match(script,/if \(\$ReviewAfter\) \{ \$verifiedArgs \+= '--review-after' \}/);
+ assert.match(script,/\(\?i\)\^Logged in/);
 });
