@@ -109,3 +109,13 @@ Use the Windows launcher for a real task (the JavaScript direct process launcher
 Add `-ReviewAfter` only when an approved reviewer model is listed. The script checks that review model **before** implementation. `-VerifiedModels PATH` is an offline/manual alternative; do not use both together. This is still a *single task launcher*, not a persistent background dispatcher.
 
 **Honest verification boundary:** the App Server discovery protocol is unit-tested using a simulated JSON-lines server; the integration has **not** been run against this owner's Windows Codex CLI, authenticated catalog or live model limits. Model availability varies by account and client version. If `--live-models` fails or returns no eligible model, stop instead of inventing entitlement, silently dropping the review, switching to API-key authentication, or bypassing the account's limit. Current Windows/Codex CLI runtime compatibility still needs live confirmation. A quota exhaustion **after a task starts** is not a safe signal to repeat it on another model because the first run may already have changed files.
+
+## Automatic version selection and quota preflight — November 18, 2026
+
+The original Terra/Sol/Astra task routing stays unchanged. When an exact candidate version is not available, the router checks **only the current authenticated model catalog** for another approved version in the *same* model family with the requested reasoning effort. Unknown model families, hidden models and unsupported efforts are excluded. This is a **pre-dispatch** model switch, not an attempt to change an active Codex session.
+
+For `--live-models` / PowerShell `-UseLiveModels`, discovery now also reads `account/rateLimits/read` from the existing Codex App Server. All reported ChatGPT quota windows must be parseable and under 100% usage; a reached limit, missing usage data or failed rate-limit lookup blocks dispatch. No earned reset credit is consumed, and no paid credits are added. This global read-only check does not guarantee that every individual model has available capacity, nor does it automatically resume a task at the next reset. The model and quota responses are simulated in CI; **live account confirmation remains required**.
+
+References:
+- https://learn.chatgpt.com/docs/app-server#list-models-modellist
+- https://learn.chatgpt.com/docs/app-server (account/rateLimits/read)
