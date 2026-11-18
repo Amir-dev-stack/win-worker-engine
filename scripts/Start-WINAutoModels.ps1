@@ -56,7 +56,7 @@ if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
 }
 # Require ChatGPT login so a CLI API-key session cannot silently create usage-based charges.
 $authText = (& codex login status 2>&1 | Out-String).Trim()
-if ($LASTEXITCODE -ne 0 -or $authText -notmatch '(?i)logged in (using|via) chatgpt') {
+if ($LASTEXITCODE -ne 0 -or $authText -notmatch '(?i)^Logged in (using|via) chatgpt\b') {
     throw "ChatGPT-authenticated Codex CLI is required; API-key or unknown login modes are blocked."
 }
 $mode = if ($plan.category -eq 'review') { 'read-only' } else { 'workspace-write' }
