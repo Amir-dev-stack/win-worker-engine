@@ -130,3 +130,36 @@ fence values return `false` from checkpoint and dispatch. The regression test
 compares the serialized snapshot after every rejection and confirms no lock is
 left behind. This is input hardening for the local mock and does not validate a
 real provider adapter or distributed queue.
+
+## Issue #57 missing-module repair — 2026-11-18
+
+The isolated `fix/57-missing-modules` branch starts from main at
+`ca2b557945690951372c93815f5a43ea8f0a67e5`. The two reported import failures
+were an incomplete dependency recovery. The LLM execution test lacked its
+provider-neutral contract. The season coverage test lacked the season module,
+historical coverage assessment and strict timestamp validator. The recovered
+source uses the latest compatible versions already present in repository
+history. It keeps provider approval, pricing, quota, retention consent, privacy,
+bounded execution and nonnegative reservation checks. No provider is called by
+these tests.
+
+Restoring the imports exposed a stale 10 ms timeout fixture below the contract's
+existing 100 ms minimum. The test now uses 100 ms. Added regression checks prove
+that an explicitly unverified quota or missing retention consent prevents
+adapter execution and that an explicitly reserved zero-cost task is accepted.
+The football coverage path remains descriptive, excludes invalid and post-kickoff
+evidence, and never grants research or training approval.
+
+Exact-HEAD evidence and the final clean commit are recorded in issue #57 and its
+draft PR. The targeted tests pass 9/9, full Node tests pass 41/41, quality gates
+pass 107/107, and the build passes 61 required-file plus 44 architecture checks.
+No deployment, migration, external provider request or spending occurred.
+
+PR #58 review hardening now requires `quotaVerified === true`. An omitted,
+undefined or false value makes the provider ineligible before adapter lookup.
+Request validation checks that provider allowlists are arrays before duplicate
+inspection, so malformed runtime objects return fixed validation errors.
+Regression coverage also passes malformed provider arrays, fields and a
+non-array provider collection and verifies a fixed `no_eligible_provider`
+result without adapter execution. Updated verification is targeted 10/10,
+full Node 42/42, quality gates 107/107, and build 61 plus 44.
