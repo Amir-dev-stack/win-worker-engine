@@ -47,6 +47,10 @@ export function buildCodexArgs({category,task,cwd,selection=null}){
   return ['exec','-C',cwd,'--model',model,'--config',`model_reasoning_effort="${effort}"`,
     '--sandbox',category==='review'?'read-only':'workspace-write',task];
 }
+export function codexAuthCommand(platform=process.platform){
+  return platform==='win32'?{command:'cmd.exe',args:['/d','/s','/c','codex login status']}
+    :{command:'codex',args:['login','status']};
+}
 export function isChatGPTLogin(status){
   return typeof status==='string'&&/^\s*Logged in (?:using|via) ChatGPT(?:\b|[.!])/i.test(status.trim());
 }
@@ -163,7 +167,8 @@ export async function runRouter(argv,deps={}){
   if(!opts.verifiedModels&&!opts.liveModels)throw Error('VERIFIED_MODELS_REQUIRED');
   let evidence;
   if(opts.liveModels){
-    const auth=(deps.spawnSyncFn||spawnSync)('codex',['login','status'],{encoding:'utf8',timeout:8000,windowsHide:true});
+    const {command, args}=codexAuthCommand(deps.platform||process.platform);
+    const auth=(deps.spawnSyncFn||spawnSync)(command,args,{encoding:'utf8',timeout:8000,windowsHide:true});
     if(auth.status!==0||!isChatGPTLogin(auth.stdout))throw Error('CODEX_CHATGPT_AUTH_REQUIRED');
     evidence=await (deps.discoverModelsFn||discoverCodexModels)({now:deps.now||new Date()});
   }else{
@@ -178,7 +183,8 @@ export async function runRouter(argv,deps={}){
   const plan={category,model:selected.model,effort:selected.effort,cwd,reviewAfter:opts.reviewAfter,reviewModel:reviewModel?.model||null,modelAvailability:'owner-verified',fallbackBeforeDispatch:selected.model!==requested.model};
   if(opts.verifyOnly)return {verified:true,...plan};
   // ChatGPT subscription authentication only: API-key sessions may incur usage-based charges.
-  const auth=(deps.spawnSyncFn||spawnSync)('codex',['login','status'],{encoding:'utf8',timeout:8000,windowsHide:true});
+  const {command, args}=codexAuthCommand(deps.platform||process.platform);
+    const auth=(deps.spawnSyncFn||spawnSync)(command,args,{encoding:'utf8',timeout:8000,windowsHide:true});
   if(auth.status!==0||!isChatGPTLogin(auth.stdout))throw Error('CODEX_CHATGPT_AUTH_REQUIRED');
   const git=(deps.spawnSyncFn||spawnSync)('git',['-C',cwd,'rev-parse','--show-toplevel'],{encoding:'utf8',timeout:5000,windowsHide:true});
   if(git.status!==0||!git.stdout?.trim())throw Error('NOT_A_GIT_WORKTREE');
