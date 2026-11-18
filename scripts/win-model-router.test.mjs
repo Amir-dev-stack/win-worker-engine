@@ -192,3 +192,16 @@ test('PowerShell launcher supports live model discovery and reviewer preflight',
  assert.match(script,/if \(\$ReviewAfter\) \{ \$verifiedArgs \+= '--review-after' \}/);
  assert.match(script,/\(\?i\)\^Logged in/);
 });
+
+test('standard and complex tasks switch only to eligible model before task begins',()=>{
+ const now=new Date('2026-11-18T15:30:00Z');
+ const evidence={...validEvidence,models:[
+   {id:'gpt-6.1-terra',available:true,allowed:true,supportedEfforts:['medium']},
+   {id:'gpt-6.2-astra',available:true,allowed:true,supportedEfforts:['high']}
+ ]};
+ const standard=selectVerifiedModel('standard',evidence,now);
+ assert.deepEqual(standard,{model:'gpt-6.1-terra',effort:'medium'});
+ const complex=selectVerifiedModel('complex',evidence,now);
+ assert.deepEqual(complex,{model:'gpt-6.2-astra',effort:'high'});
+ assert.throws(()=>selectVerifiedModel('review',{...evidence,models:[]},now),/NO_VERIFIED_MODEL/);
+});
