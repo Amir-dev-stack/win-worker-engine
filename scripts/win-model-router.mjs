@@ -46,7 +46,7 @@ export function buildCodexArgs({category,task,cwd,selection=null}){
     '--sandbox',category==='review'?'read-only':'workspace-write',task];
 }
 export function isChatGPTLogin(status){
-  return typeof status==='string'&&/logged in (?:using|via) chatgpt/i.test(status);
+  return typeof status==='string'&&/^\s*Logged in (?:using|via) ChatGPT(?:\b|[.!])/i.test(status.trim());
 }
 export function workspaceCheck(root,gitRoot){
   if(normalize(root).toLowerCase()!==normalize(gitRoot).toLowerCase())throw Error('WORKSPACE_MUST_BE_GIT_ROOT');
