@@ -214,3 +214,19 @@ test('direct Node dispatch on Windows requires PowerShell rather than unsafe cmd
    realpathSyncFn:x=>x
  }),/USE_WINDOWS_POWERSHELL_LAUNCHER/);
 });
+
+test('Codex model discovery fails closed on auth errors and timeouts',async()=>{
+ const {EventEmitter}=await import('node:events');
+ const {PassThrough}=await import('node:stream');
+ const createChild=mode=>{
+   const child=new EventEmitter();child.stdout=new PassThrough();child.kill=()=>{};
+   child.stdin={write(data){
+     const req=JSON.parse(data.toString().trim());
+     if(req.method==='initialize'&&mode==='auth-error')queueMicrotask(()=>
+       child.stdout.write(JSON.stringify({id:1,error:{code:-32001,message:'untrusted details'}})+'\n'));
+   }};
+   return child;
+ };
+ await assert.rejects(discoverCodexModels({spawnFn:()=>createChild('auth-error'),platform:'linux',timeoutMs:80}),/CODEX_MODEL_DISCOVERY_AUTH/);
+ await assert.rejects(discoverCodexModels({spawnFn:()=>createChild('timeout'),platform:'linux',timeoutMs:20}),/CODEX_MODEL_DISCOVERY_TIMEOUT/);
+});
