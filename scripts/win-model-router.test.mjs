@@ -54,3 +54,15 @@ test('PowerShell launcher shares router model choices and uses current worktree 
   assert.match(launcher,/--model \$reviewPlan\.model/);
   assert.doesNotMatch(launcher,/pr49-safety-hardening|--model 'gpt-6\.2-astra'/);
 });
+
+test('review task does not spawn an additional review process',async()=>{
+  const launched=[];
+  const result=await runRouter(['--run','--review-after','--task','Final review','--cwd','/repo'],{
+    spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
+    invokeFn:async args=>{launched.push(args);return {success:true,code:0};}
+  });
+  assert.equal(launched.length,1);
+  assert.equal(result.category,'review');
+  assert.ok(launched[0].includes('read-only'));
+  assert.equal(result.success,true);
+});
