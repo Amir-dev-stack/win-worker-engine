@@ -205,3 +205,12 @@ test('standard and complex tasks switch only to eligible model before task begin
  assert.deepEqual(complex,{model:'gpt-6.2-astra',effort:'high'});
  assert.throws(()=>selectVerifiedModel('review',{...evidence,models:[]},now),/NO_VERIFIED_MODEL/);
 });
+
+test('direct Node dispatch on Windows requires PowerShell rather than unsafe cmd spawning',async()=>{
+ const evidence=JSON.stringify(validEvidence);
+ await assert.rejects(runRouter(['--run','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
+   platform:'win32',readFileSyncFn:()=>evidence,now:new Date('2026-11-18T15:30:00Z'),
+   spawnSyncFn:(cmd)=>cmd==='cmd.exe'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},
+   realpathSyncFn:x=>x
+ }),/USE_WINDOWS_POWERSHELL_LAUNCHER/);
+});
