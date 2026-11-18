@@ -111,6 +111,26 @@ export function selectVerifiedModel(category, evidence, now=new Date()){
 }
 
 
+/** Read-only quota gate: uncertain, malformed or exhausted buckets block task dispatch. */
+export function validateCodexRateLimits(result){
+  if(!result||typeof result!=='object')throw Error('CODEX_RATE_LIMIT_UNKNOWN');
+  const source=result.rateLimitsByLimitId&&typeof result.rateLimitsByLimitId==='object'
+    ?Object.values(result.rateLimitsByLimitId):[result.rateLimits];
+  const buckets=source.filter(b=>b&&typeof b==='object');
+  if(!buckets.length)throw Error('CODEX_RATE_LIMIT_UNKNOWN');
+  for(const bucket of buckets){
+    if(bucket.rateLimitReachedType)throw Error('CODEX_LIMIT_REACHED');
+    const windows=[bucket.primary,bucket.secondary].filter(Boolean);
+    if(!windows.length)throw Error('CODEX_RATE_LIMIT_UNKNOWN');
+    for(const w of windows){
+      if(typeof w.usedPercent!=='number'||!Number.isFinite(w.usedPercent)||w.usedPercent<0)
+        throw Error('CODEX_RATE_LIMIT_UNKNOWN');
+      if(w.usedPercent>=100)throw Error('CODEX_LIMIT_REACHED');
+    }
+  }
+  return true;
+}
+
 /** Query the current ChatGPT-authenticated Codex app-server, without starting a model turn. */
 export function discoverCodexModels({spawnFn=spawn,timeoutMs=12000,now=new Date(),platform=process.platform}={}){
   return new Promise((resolveResult,rejectResult)=>{
@@ -120,7 +140,7 @@ export function discoverCodexModels({spawnFn=spawn,timeoutMs=12000,now=new Date(
     let child;
     try{child=spawnFn(command,args,{shell:false,windowsHide:true,stdio:['pipe','pipe','ignore']});}
     catch{rejectResult(Error('CODEX_MODEL_DISCOVERY_UNAVAILABLE'));return;}
-    let closed=false,buffer='',models=[],cursor=null,pages=0;
+    let closed=false,buffer='',models=[],cursor=null,pages=0,pendingEvidence=null;
     const finish=(err,value)=>{
       if(closed)return;closed=true;clearTimeout(timeout);
       try{child.kill();}catch{}
@@ -165,9 +185,15 @@ export function discoverCodexModels({spawnFn=spawn,timeoutMs=12000,now=new Date(
                 ?v.supportedReasoningEfforts.map(x=>x.reasoningEffort).filter(x=>typeof x==='string'):[]
             }));
             const start=now.toISOString();
-            finish(null,{source:'codex-app-server:model/list',verifiedAt:start,
-              expiresAt:new Date(now.getTime()+3600000).toISOString(),models:approved});
+            pendingEvidence={source:'codex-app-server:model/list',verifiedAt:start,
+              expiresAt:new Date(now.getTime()+3600000).toISOString(),models:approved};
+            send({method:'account/rateLimits/read',id:999});
           }
+        }else if(msg.id===999&&pendingEvidence){
+          if(msg.error)return finish('CODEX_RATE_LIMIT_UNKNOWN');
+          try{validateCodexRateLimits(msg.result);}
+          catch(e){return finish(e.message);}
+          finish(null,{...pendingEvidence,limitGate:'verified-not-exhausted'});
         }
       }
     });
