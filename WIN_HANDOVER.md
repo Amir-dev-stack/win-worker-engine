@@ -163,3 +163,44 @@ Regression coverage also passes malformed provider arrays, fields and a
 non-array provider collection and verifies a fixed `no_eligible_provider`
 result without adapter execution. Updated verification is targeted 10/10,
 full Node 42/42, quality gates 107/107, and build 61 plus 44.
+
+## Issue #41 football evidence coverage V1 — 2026-11-18 UTC
+
+Branch `feat/41-football-evidence-temporal-v1` starts from `main` at
+`844efeba8ad1d20dbe587e286ed5546b81eb5baa`. Implementation commit
+`6fc5773a10615cd176299a9494a4593a65b11cf4` adds an offline-only
+competition-season evidence report that reuses the historical and season
+coverage modules. It reports fixture-level result, pre-kickoff odds, team and
+player identity, lineup, availability, player-stat and provenance coverage.
+
+Malformed or post-kickoff timestamps, pre-kickoff results, duplicate fixtures
+or results, mismatched teams, out-of-scope transfer/league context and unknown
+or ambiguous player identities are excluded with fixed blocked reasons.
+Uncertain lineup or availability evidence remains blocked from predictive use.
+The report always returns `completeForResearch:false` and
+`trainingApprovalGranted:false`.
+
+Verification after the implementation commit: targeted football coverage tests
+11/11; full Node tests 64/64; quality gates 107/107; build 63 required files and
+44 architecture checks; `git diff --check` passed. All fixtures are synthetic
+and offline. No network data, provider call, credential, live odds, wager,
+deployment, migration or spending occurred.
+
+This milestone does not establish licensed real-world statistics coverage.
+Reported percentages measure only the explicitly supplied synthetic input
+universe. Even 100% does not establish complete team/player rosters, verified
+licensing, real provider coverage or approval for prediction or training.
+Before predictive or training use, WIN still needs a qualified provider whose
+licence permits the intended access, storage and betting-research use, plus
+measured competition/season/player coverage, stable cross-provider identity,
+forward-only snapshots and independent quality validation. Cross-league
+strength correction and correlated Bet Builder work remain later phases.
+
+PR #61 review hardening separates prior-event `historical_stats` from same-event
+`match_stats`. Historical statistics require a different source event plus
+strict source-kickoff, available-at, observed-at and target-kickoff ordering;
+same-event actuals cannot raise pre-match coverage. Mixed canonical/provider
+player identifiers require an explicit source-labelled trusted crosswalk.
+Multiple result records for one event invalidate result coverage regardless of
+input order. Regression verification is targeted 14/14, full Node 67/67,
+quality gates 107/107 and build 63 required files plus 44 architecture checks.
