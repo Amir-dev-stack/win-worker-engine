@@ -2,7 +2,7 @@
  * node scripts/win-model-router.mjs --task "Implement worker" [--run] [--review-after]
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
+import { realpathSync, readFileSync } from 'node:fs';
 import { resolve, normalize } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -20,13 +20,13 @@ export function categorize(task){
   return 'standard';
 }
 export function optionsFromArgs(argv){
-  const out={run:false,reviewAfter:false,help:false,task:'',category:null,cwd:process.cwd()};
+  const out={run:false,reviewAfter:false,help:false,task:'',category:null,cwd:process.cwd(),verifiedModels:null};
   for(let i=0;i<argv.length;i++){
     const a=argv[i];
     if(a==='--run')out.run=true;
     else if(a==='--review-after')out.reviewAfter=true;
     else if(a==='--help')out.help=true;
-    else if(['--task','--category','--cwd'].includes(a)){
+    else if(['--task','--category','--cwd','--verified-models'].includes(a)){
       if(!argv[i+1]||argv[i+1].startsWith('--'))throw Error('MISSING_ARGUMENT');
       out[a.slice(2)]=argv[++i];
     }else throw Error('UNKNOWN_ARGUMENT');
@@ -35,10 +35,11 @@ export function optionsFromArgs(argv){
   if(out.category&&!CATEGORIES.has(out.category))throw Error('UNSUPPORTED_CATEGORY');
   return out;
 }
-export function buildCodexArgs({category,task,cwd}){
+export function buildCodexArgs({category,task,cwd,selection=null}){
   if(!CATEGORIES.has(category))throw Error('UNSUPPORTED_CATEGORY');
   if(typeof task!=='string'||!task.trim()||task.length>12000)throw Error('INVALID_TASK');
-  const {model,effort}=MODEL_PLAN[category];
+  const {model,effort}=selection||MODEL_PLAN[category];
+  if(!/^[a-z0-9][a-z0-9.\\-]{2,79}$/.test(model)||!['low','medium','high'].includes(effort))throw Error('INVALID_MODEL_SELECTION');
   return ['exec','-C',cwd,'--model',model,'--config',`model_reasoning_effort="${effort}"`,
     '--sandbox',category==='review'?'read-only':'workspace-write',task];
 }
@@ -56,23 +57,55 @@ export async function invokeCodex(args,{command='codex',timeoutMs=1200000,spawnF
     child.once('exit',(code)=>{if(!settled){settled=true;clearTimeout(timeout);done({success:code===0,code});}});
   });
 }
+
+/**
+ * Evidence for a model's availability is local, expiring and owner-supplied.
+ * CLI cannot safely infer entitlement from a model name or a successful unrelated session.
+ * This only selects the model BEFORE dispatch; never replays a potentially-mutating task.
+ */
+export function selectVerifiedModel(category, evidence, now=new Date()){
+  if(!CATEGORIES.has(category))throw Error('UNSUPPORTED_CATEGORY');
+  if(!evidence||evidence.source!=='codex-app-server:model/list'||!Array.isArray(evidence.models)
+      ||typeof evidence.verifiedAt!=='string'||typeof evidence.expiresAt!=='string')throw Error('MODEL_EVIDENCE_INVALID');
+  const start=Date.parse(evidence.verifiedAt),expiry=Date.parse(evidence.expiresAt),current=now.getTime();
+  if(!Number.isFinite(start)||!Number.isFinite(expiry)||start>current||expiry<=current
+     ||expiry-start>86400000)throw Error('MODEL_EVIDENCE_STALE');
+  const allowed=(evidence.models||[]).filter(m=>m&&typeof m.id==='string'&&m.available===true
+     &&m.allowed===true&&(!m.cooldownUntil||Date.parse(m.cooldownUntil)<=current));
+  const candidates=category==='simple'
+    ?[{model:MODEL_PLAN.simple.model,effort:'low'},{model:MODEL_PLAN.standard.model,effort:'low'}]
+    :category==='review'
+      ?[{...MODEL_PLAN.review},{model:MODEL_PLAN.standard.model,effort:'high'}]
+      :[{...MODEL_PLAN[category]}];
+  for(const candidate of candidates)if(allowed.some(m=>m.id===candidate.model))return candidate;
+  throw Error('NO_VERIFIED_MODEL_FOR_TASK');
+}
+
 export async function runRouter(argv,deps={}){
   const opts=optionsFromArgs(argv);
   if(opts.help)return {help:true};
   const category=opts.category||categorize(opts.task);
   const cwd=resolve(opts.cwd);
-  const plan={category,model:MODEL_PLAN[category].model,effort:MODEL_PLAN[category].effort,cwd,reviewAfter:opts.reviewAfter};
-  if(!opts.run)return {dryRun:true,...plan};
+  const requested=MODEL_PLAN[category];
+  if(!opts.run)return {dryRun:true,category,model:requested.model,effort:requested.effort,cwd,reviewAfter:opts.reviewAfter,modelAvailability:'unverified'};
+  if(!opts.verifiedModels)throw Error('VERIFIED_MODELS_REQUIRED');
+  const read=deps.readFileSyncFn||readFileSync;
+  let evidence;
+  try{evidence=JSON.parse(read(resolve(opts.verifiedModels),'utf8'));}
+  catch{throw Error('MODEL_EVIDENCE_UNREADABLE');}
+  const selected=selectVerifiedModel(category,evidence,deps.now||new Date());
+  const plan={category,model:selected.model,effort:selected.effort,cwd,reviewAfter:opts.reviewAfter,modelAvailability:'owner-verified',fallbackBeforeDispatch:selected.model!==requested.model};
   const git=(deps.spawnSyncFn||spawnSync)('git',['-C',cwd,'rev-parse','--show-toplevel'],{encoding:'utf8',timeout:5000,windowsHide:true});
   if(git.status!==0||!git.stdout?.trim())throw Error('NOT_A_GIT_WORKTREE');
   const real=deps.realpathSyncFn||realpathSync;
   const dir=workspaceCheck(real(cwd),real(git.stdout.trim()));
   const invoke=deps.invokeFn||invokeCodex;
-  const result=await invoke(buildCodexArgs({category,task:opts.task,cwd:dir}));
+  const result=await invoke(buildCodexArgs({category,task:opts.task,cwd:dir,selection:selected}));
   if(!result.success)return {success:false,stage:'implementation',exitCode:result.code,...plan};
   if(!opts.reviewAfter||category==='review')return {success:true,stage:'implementation',...plan};
   const prompt=`Review ONLY current uncommitted changes in this worktree for correctness, security and regressions. Do not modify files, deploy, or access secrets. Provide severity-ranked findings. Goal: ${opts.task}`;
-  const review=await invoke(buildCodexArgs({category:'review',task:prompt,cwd:dir}));
+  const reviewModel=selectVerifiedModel('review',evidence,deps.now||new Date());
+  const review=await invoke(buildCodexArgs({category:'review',task:prompt,cwd:dir,selection:reviewModel}));
   return {success:review.success,stage:'review',reviewExitCode:review.code,...plan};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
