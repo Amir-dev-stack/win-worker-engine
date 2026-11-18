@@ -29,7 +29,7 @@ export function optionsFromArgs(argv){
     else if(a==='--help')out.help=true;
     else if(['--task','--category','--cwd','--verified-models'].includes(a)){
       if(!argv[i+1]||argv[i+1].startsWith('--'))throw Error('MISSING_ARGUMENT');
-      out[a.slice(2)]=argv[++i];
+      out[a==='--verified-models'?'verifiedModels':a.slice(2)]=argv[++i];
     }else throw Error('UNKNOWN_ARGUMENT');
   }
   if(out.run&&out.verifyOnly)throw Error('VERIFY_ONLY_CONFLICT');
