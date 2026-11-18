@@ -45,6 +45,9 @@ export function buildCodexArgs({category,task,cwd,selection=null}){
   return ['exec','-C',cwd,'--model',model,'--config',`model_reasoning_effort="${effort}"`,
     '--sandbox',category==='review'?'read-only':'workspace-write',task];
 }
+export function isChatGPTLogin(status){
+  return typeof status==='string'&&/logged in (?:using|via) chatgpt/i.test(status);
+}
 export function workspaceCheck(root,gitRoot){
   if(normalize(root).toLowerCase()!==normalize(gitRoot).toLowerCase())throw Error('WORKSPACE_MUST_BE_GIT_ROOT');
   if(/([\\/])pr36([\\/]|$)|pr36-review|pr36-safety/i.test(root))throw Error('FROZEN_PR36_WORKSPACE');
@@ -101,6 +104,9 @@ export async function runRouter(argv,deps={}){
     ?selectVerifiedModel('review',evidence,deps.now||new Date()):null;
   const plan={category,model:selected.model,effort:selected.effort,cwd,reviewAfter:opts.reviewAfter,reviewModel:reviewModel?.model||null,modelAvailability:'owner-verified',fallbackBeforeDispatch:selected.model!==requested.model};
   if(opts.verifyOnly)return {verified:true,...plan};
+  // ChatGPT subscription authentication only: API-key sessions may incur usage-based charges.
+  const auth=(deps.spawnSyncFn||spawnSync)('codex',['login','status'],{encoding:'utf8',timeout:8000,windowsHide:true});
+  if(auth.status!==0||!isChatGPTLogin(auth.stdout))throw Error('CODEX_CHATGPT_AUTH_REQUIRED');
   const git=(deps.spawnSyncFn||spawnSync)('git',['-C',cwd,'rev-parse','--show-toplevel'],{encoding:'utf8',timeout:5000,windowsHide:true});
   if(git.status!==0||!git.stdout?.trim())throw Error('NOT_A_GIT_WORKTREE');
   const real=deps.realpathSyncFn||realpathSync;
