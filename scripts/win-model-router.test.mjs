@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {categorize,optionsFromArgs,buildCodexArgs,workspaceCheck,runRouter,selectVerifiedModel,isChatGPTLogin} from './win-model-router.mjs';
+import {categorize,optionsFromArgs,buildCodexArgs,workspaceCheck,runRouter,selectVerifiedModel,isChatGPTLogin,discoverCodexModels} from './win-model-router.mjs';
 const validEvidence={source:'codex-app-server:model/list',verifiedAt:'2026-11-18T15:00:00Z',expiresAt:'2026-11-18T18:00:00Z',models:[{id:'gpt-6.1-terra',available:true,allowed:true},{id:'gpt-6.2-sol',available:true,allowed:true},{id:'gpt-6.2-astra',available:true,allowed:true}]};
 test('routes routine, complex and review',()=>{
   assert.equal(categorize('Update README documentation'),'simple');
@@ -130,4 +130,45 @@ test('API-key or unauthenticated CLI cannot start a Codex task',async()=>{
     invokeFn:()=>{invokes++;return {success:true,code:0};}
   }),/CODEX_CHATGPT_AUTH_REQUIRED/);
   assert.equal(invokes,0);
+});
+
+test('authenticated app-server model list discovers approved model IDs only',async()=>{
+  const {EventEmitter}=await import('node:events');
+  const {PassThrough}=await import('node:stream');
+  const requested=[];
+  const fakeSpawn=(cmd,args)=>{
+    assert.equal(cmd,'codex');assert.deepEqual(args,['app-server']);
+    const child=new EventEmitter();child.stdout=new PassThrough();child.kill=()=>{};
+    child.stdin={write(data){
+      const message=JSON.parse(data.toString().trim());requested.push(message.method);
+      if(message.method==='initialize')queueMicrotask(()=>child.stdout.write(JSON.stringify({id:1,result:{userAgent:'Codex'}})+'\n'));
+      if(message.method==='model/list')queueMicrotask(()=>child.stdout.write(JSON.stringify({id:2,result:{
+        data:[
+          {id:'visible-sol',model:'gpt-6.2-sol',hidden:false,supportedReasoningEfforts:[{reasoningEffort:'high'},{reasoningEffort:'medium'},{reasoningEffort:'low'}]},
+          {id:'hidden-astra',model:'gpt-6.2-astra',hidden:true,supportedReasoningEfforts:[{reasoningEffort:'high'}]},
+          {id:'unapproved',model:'some-other-model',hidden:false,supportedReasoningEfforts:[{reasoningEffort:'high'}]}
+        ],nextCursor:null}})+'\n'));
+    }};
+    return child;
+  };
+  const evidence=await discoverCodexModels({spawnFn:fakeSpawn,platform:'linux',now:new Date('2026-11-18T15:30:00Z'),timeoutMs:1000});
+  assert.equal(evidence.models.length,1);
+  assert.equal(evidence.models[0].id,'gpt-6.2-sol');
+  assert.deepEqual(evidence.models[0].supportedEfforts,['high','medium','low']);
+  assert.deepEqual(requested,['initialize','initialized','model/list']);
+  assert.equal(selectVerifiedModel('standard',evidence,new Date('2026-11-18T15:30:00Z')).model,'gpt-6.2-sol');
+});
+test('live account discovery verifies model selection without launching Codex',async()=>{
+  let launches=0;
+  const selected=await runRouter(['--verify-only','--live-models','--task','Implement worker'],{
+    spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},
+    now:new Date('2026-11-18T15:30:00Z'),
+    discoverModelsFn:async()=>validEvidence,invokeFn:()=>{launches++;throw Error('unexpected');}
+  });
+  assert.equal(selected.model,'gpt-6.2-sol');assert.equal(launches,0);
+  assert.equal(selected.verified,true);
+});
+test('live discovery does not accept unsupported reasoning effort',()=>{
+ const evidence={...validEvidence,models:[{id:'gpt-6.2-sol',allowed:true,available:true,supportedEfforts:['low']}]};
+ assert.throws(()=>selectVerifiedModel('complex',evidence,new Date('2026-11-18T15:30:00Z')),/NO_VERIFIED_MODEL/);
 });
