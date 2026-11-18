@@ -39,7 +39,7 @@ test('one successful implementation invokes at most one Astra review',async()=>{
 });
 test('failed implementation never invokes Astra',async()=>{
   let count=0;
-  const r=await runRouter(['--run','--review-after','--task','Implement worker','--cwd','/repo'],{
+  const r=await runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
     spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
     readFileSyncFn:()=>JSON.stringify(validEvidence), now:new Date('2026-11-18T15:30:00Z'),
     invokeFn:async()=>{count++;return {success:false,code:1};}});
