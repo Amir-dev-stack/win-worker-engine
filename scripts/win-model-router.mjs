@@ -84,10 +84,12 @@ export function selectVerifiedModel(category, evidence, now=new Date()){
   const allowed=(evidence.models||[]).filter(m=>m&&typeof m.id==='string'&&m.available===true
      &&m.allowed===true&&(!m.cooldownUntil||(Number.isFinite(Date.parse(m.cooldownUntil))&&Date.parse(m.cooldownUntil)<=current)));
   const candidates=category==='simple'
-    ?[{model:MODEL_PLAN.simple.model,effort:'low'},{model:MODEL_PLAN.standard.model,effort:'low'}]
-    :category==='review'
-      ?[{...MODEL_PLAN.review},{model:MODEL_PLAN.standard.model,effort:'high'}]
-      :[{...MODEL_PLAN[category]}];
+    ?[{...MODEL_PLAN.simple},{model:MODEL_PLAN.standard.model,effort:'low'}]
+    :category==='standard'
+      ?[{...MODEL_PLAN.standard},{model:MODEL_PLAN.simple.model,effort:'medium'}]
+      :category==='complex'
+        ?[{...MODEL_PLAN.complex},{model:MODEL_PLAN.review.model,effort:'high'}]
+        :[{...MODEL_PLAN.review},{model:MODEL_PLAN.standard.model,effort:'high'}];
   for(const candidate of candidates)if(allowed.some(m=>m.id===candidate.model
     &&(!Array.isArray(m.supportedEfforts)||m.supportedEfforts.includes(candidate.effort))))return candidate;
   throw Error('NO_VERIFIED_MODEL_FOR_TASK');
