@@ -6,7 +6,7 @@ No auto billing, no retries, PR #36 stays frozen.
 #>
 param(
     [Parameter(Mandatory=$true)][string]$Task,
-    [string]$Worktree = "C:\Users\PC\.codex\worktrees\pr49-safety-hardening\win-pr49-validation-a2a9cd1",
+    [string]$Worktree = (Get-Location).Path,
     [ValidateSet('simple','standard','complex','review')][string]$Category,
     [switch]$Run,
     [switch]$ReviewAfter
@@ -30,7 +30,7 @@ if (-not $Run) {
     return
 }
 if (-not (Test-Path -LiteralPath $Worktree -PathType Container)) {
-    throw "PR #49 worktree not found: $Worktree"
+    throw "Git worktree not found: $Worktree"
 }
 $target = (Resolve-Path -LiteralPath $Worktree).ProviderPath
 $gitRoot = (& git -C $target rev-parse --show-toplevel 2>$null)
@@ -40,7 +40,7 @@ if ($target.TrimEnd('\','/') -ine $gitCanonical.TrimEnd('\','/')) {
     throw "The supplied path must be the Git worktree root."
 }
 if ($target -match '(?i)([\\/])pr36([\\/]|$)|pr36-review|pr36-safety') {
-    throw "PR #36 is frozen; use the isolated PR #49 worktree."
+    throw "PR #36 is frozen; choose a different authorized Git worktree."
 }
 if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
     throw "Codex CLI is unavailable in PowerShell. Check 'codex --version' and login first."
@@ -52,8 +52,12 @@ $taskCode = $LASTEXITCODE
 if ($taskCode -ne 0) { throw "Codex task failed; Astra review skipped. Exit code: $taskCode" }
 if ($ReviewAfter -and $plan.category -ne 'review') {
     $reviewPrompt = "Read-only security and regression review of the CURRENT UNCOMMITTED changes in this worktree. Do not change files, deploy, merge, read secrets, or alter billing. Report prioritized findings. Goal: " + $Task
-    Write-Host "Launching one Astra milestone review (read-only)..."
-    & codex exec -C $target --model 'gpt-6.2-astra' -c 'model_reasoning_effort="high"' --sandbox 'read-only' $reviewPrompt
+    Write-Host "Launching one read-only model review..."
+    $reviewArgs = @($jsRouter, '--task', $reviewPrompt, '--cwd', $target, '--category', 'review')
+    $reviewPlanText = & node @reviewArgs
+    if ($LASTEXITCODE -ne 0) { throw "WIN review plan validation failed." }
+    $reviewPlan = $reviewPlanText | ConvertFrom-Json
+    & codex exec -C $target --model $reviewPlan.model -c ('model_reasoning_effort="{0}"' -f $reviewPlan.effort) --sandbox 'read-only' $reviewPrompt
     if ($LASTEXITCODE -ne 0) { throw "Astra review was not completed." }
 }
 Write-Host "WIN model-routed task completed. Review code and tests before any deployment."
