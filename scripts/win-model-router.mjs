@@ -192,6 +192,8 @@ export async function runRouter(argv,deps={}){
   if(git.status!==0||!git.stdout?.trim())throw Error('NOT_A_GIT_WORKTREE');
   const real=deps.realpathSyncFn||realpathSync;
   const dir=workspaceCheck(real(cwd),real(git.stdout.trim()));
+  // Direct Node spawn of npm's Windows .cmd shim is unreliable; use the reviewed PowerShell launcher.
+  if((deps.platform||process.platform)==='win32'&&!deps.invokeFn)throw Error('USE_WINDOWS_POWERSHELL_LAUNCHER');
   const invoke=deps.invokeFn||invokeCodex;
   const result=await invoke(buildCodexArgs({category,task:opts.task,cwd:dir,selection:selected}));
   if(!result.success)return {success:false,stage:'implementation',exitCode:result.code,...plan};
