@@ -122,6 +122,8 @@ export function discoverCodexModels({spawnFn=spawn,timeoutMs=12000,now=new Date(
       send({method:'model/list',id:2+pages,params});
     };
     child.once('error',()=>finish('CODEX_MODEL_DISCOVERY_UNAVAILABLE'));
+    child.stdin?.on?.('error',()=>finish('CODEX_MODEL_DISCOVERY_PROTOCOL'));
+    child.stdout?.on?.('error',()=>finish('CODEX_MODEL_DISCOVERY_PROTOCOL'));
     child.once('exit',()=>finish('CODEX_MODEL_DISCOVERY_INTERRUPTED'));
     child.stdout.on('data',data=>{
       if(closed)return;
