@@ -1,0 +1,25 @@
+{
+  "source": "codex-app-server:model/list",
+  "verifiedAt": "1970-01-01T00:00:00Z",
+  "expiresAt": "1970-01-01T00:00:00Z",
+  "models": [
+    {
+      "id": "gpt-6.1-terra",
+      "available": false,
+      "allowed": false,
+      "cooldownUntil": null
+    },
+    {
+      "id": "gpt-6.2-sol",
+      "available": false,
+      "allowed": false,
+      "cooldownUntil": null
+    },
+    {
+      "id": "gpt-6.2-astra",
+      "available": false,
+      "allowed": false,
+      "cooldownUntil": null
+    }
+  ]
+}
