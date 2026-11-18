@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {categorize,optionsFromArgs,buildCodexArgs,workspaceCheck,runRouter,selectVerifiedModel} from './win-model-router.mjs';
+import {categorize,optionsFromArgs,buildCodexArgs,workspaceCheck,runRouter,selectVerifiedModel,isChatGPTLogin} from './win-model-router.mjs';
 const validEvidence={source:'codex-app-server:model/list',verifiedAt:'2026-11-18T15:00:00Z',expiresAt:'2026-11-18T18:00:00Z',models:[{id:'gpt-6.1-terra',available:true,allowed:true},{id:'gpt-6.2-sol',available:true,allowed:true},{id:'gpt-6.2-astra',available:true,allowed:true}]};
 test('routes routine, complex and review',()=>{
   assert.equal(categorize('Update README documentation'),'simple');
@@ -30,7 +30,7 @@ test('cannot run in frozen PR36 or subdirectory',()=>{
 test('one successful implementation invokes at most one Astra review',async()=>{
   const args=[];
   const r=await runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
-    spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
+    spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},realpathSyncFn:x=>x,
     readFileSyncFn:()=>JSON.stringify(validEvidence), now:new Date('2026-11-18T15:30:00Z'),
     invokeFn:async x=>{args.push(x);return {success:true,code:0};}});
   assert.equal(r.stage,'review');assert.equal(args.length,2);
@@ -40,7 +40,7 @@ test('one successful implementation invokes at most one Astra review',async()=>{
 test('failed implementation never invokes Astra',async()=>{
   let count=0;
   const r=await runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
-    spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
+    spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},realpathSyncFn:x=>x,
     readFileSyncFn:()=>JSON.stringify(validEvidence), now:new Date('2026-11-18T15:30:00Z'),
     invokeFn:async()=>{count++;return {success:false,code:1};}});
   assert.equal(count,1);assert.equal(r.stage,'implementation');
@@ -61,7 +61,7 @@ test('PowerShell launcher shares router model choices and uses current worktree 
 test('review task does not spawn an additional review process',async()=>{
   const launched=[];
   const result=await runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Final review','--cwd','/repo'],{
-    spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
+    spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},realpathSyncFn:x=>x,
     readFileSyncFn:()=>JSON.stringify(validEvidence), now:new Date('2026-11-18T15:30:00Z'),
     invokeFn:async args=>{launched.push(args);return {success:true,code:0};}
   });
@@ -97,7 +97,7 @@ test('cooldown blocks selection and does not replay failed tasks',async()=>{
  let invocations=0;
  const result=await runRouter(['--run','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
   readFileSyncFn:()=>JSON.stringify(validEvidence),now,
-  spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
+  spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},realpathSyncFn:x=>x,
   invokeFn:async()=>{invocations++;return {success:false,code:1};}
  });
  assert.equal(invocations,1);assert.equal(result.success,false);
@@ -108,7 +108,7 @@ test('review entitlement is checked before implementation starts',async()=>{
  await assert.rejects(runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Update README','--cwd','/repo'],{
    readFileSyncFn:()=>JSON.stringify({...validEvidence,models:[{id:'gpt-6.1-terra',available:true,allowed:true}]}),
    now:new Date('2026-11-18T15:30:00Z'),
-   spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
+   spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},realpathSyncFn:x=>x,
    invokeFn:async()=>{called++;return {success:true,code:0};}
  }),/NO_VERIFIED_MODEL_FOR_TASK/);
  assert.equal(called,0);
@@ -116,4 +116,16 @@ test('review entitlement is checked before implementation starts',async()=>{
 test('invalid cooldown cannot be used to bypass model unavailability',()=>{
  const evidence={...validEvidence,models:[{id:'gpt-6.2-sol',available:true,allowed:true,cooldownUntil:'not-a-date'}]};
  assert.throws(()=>selectVerifiedModel('standard',evidence,new Date('2026-11-18T15:30:00Z')),/NO_VERIFIED_MODEL_FOR_TASK/);
+});
+
+test('API-key or unauthenticated CLI cannot start a Codex task',async()=>{
+  assert.equal(isChatGPTLogin('Logged in using ChatGPT'),true);
+  assert.equal(isChatGPTLogin('Logged in using an API key'),false);
+  let invokes=0;
+  await assert.rejects(runRouter(['--run','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
+    readFileSyncFn:()=>JSON.stringify(validEvidence),now:new Date('2026-11-18T15:30:00Z'),
+    spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using an API key'}:{status:0,stdout:'/repo\n'},
+    invokeFn:()=>{invokes++;return {success:true,code:0};}
+  }),/CODEX_CHATGPT_AUTH_REQUIRED/);
+  assert.equal(invokes,0);
 });
