@@ -83,6 +83,16 @@ export function selectVerifiedModel(category, evidence, now=new Date()){
      ||expiry-start>86400000)throw Error('MODEL_EVIDENCE_STALE');
   const allowed=(evidence.models||[]).filter(m=>m&&typeof m.id==='string'&&m.available===true
      &&m.allowed===true&&(!m.cooldownUntil||(Number.isFinite(Date.parse(m.cooldownUntil))&&Date.parse(m.cooldownUntil)<=current)));
+  // Version numbers change; only signed-in catalog-listed Terra/Sol/Astra
+  // families may substitute. Preserve the original departmental model preferences.
+  const catalogFamily=model=>{
+    const match=/^gpt-\\d+(?:\\.\\d+)?-(terra|sol|astra)$/.exec(model);
+    return match?.[1]||null;
+  };
+  const ranked=(family,effort)=>allowed
+    .filter(m=>catalogFamily(m.id)===family
+      &&(!Array.isArray(m.supportedEfforts)||m.supportedEfforts.includes(effort)))
+    .sort((a,b)=>b.id.localeCompare(a.id,undefined,{numeric:true}))[0]?.id||null;
   const candidates=category==='simple'
     ?[{...MODEL_PLAN.simple},{model:MODEL_PLAN.standard.model,effort:'low'}]
     :category==='standard'
@@ -90,8 +100,13 @@ export function selectVerifiedModel(category, evidence, now=new Date()){
       :category==='complex'
         ?[{...MODEL_PLAN.complex},{model:MODEL_PLAN.review.model,effort:'high'}]
         :[{...MODEL_PLAN.review},{model:MODEL_PLAN.standard.model,effort:'high'}];
-  for(const candidate of candidates)if(allowed.some(m=>m.id===candidate.model
-    &&(!Array.isArray(m.supportedEfforts)||m.supportedEfforts.includes(candidate.effort))))return candidate;
+  for(const candidate of candidates){
+    if(allowed.some(m=>m.id===candidate.model
+      &&(!Array.isArray(m.supportedEfforts)||m.supportedEfforts.includes(candidate.effort))))return candidate;
+    const family=catalogFamily(candidate.model);
+    const resolved=family&&ranked(family,candidate.effort);
+    if(resolved)return {model:resolved,effort:candidate.effort};
+  }
   throw Error('NO_VERIFIED_MODEL_FOR_TASK');
 }
 
@@ -143,9 +158,8 @@ export function discoverCodexModels({spawnFn=spawn,timeoutMs=12000,now=new Date(
           cursor=msg.result.nextCursor;
           if(cursor){if(++pages>=8)return finish('CODEX_MODEL_DISCOVERY_PAGINATION');ask();}
           else{
-            const whitelist=new Set(Object.values(MODEL_PLAN).map(v=>v.model));
             const approved=models.filter(v=>v&&v.hidden!==true&&typeof (v.model||v.id)==='string'
-             &&whitelist.has(v.model||v.id)).map(v=>({
+             &&/^gpt-\\d+(?:\\.\\d+)?-(terra|sol|astra)$/.test(v.model||v.id)).map(v=>({
               id:v.model||v.id,available:true,allowed:true,
               supportedEfforts:Array.isArray(v.supportedReasoningEfforts)
                 ?v.supportedReasoningEfforts.map(x=>x.reasoningEffort).filter(x=>typeof x==='string'):[]
