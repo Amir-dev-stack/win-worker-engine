@@ -58,3 +58,28 @@ Implement a **mock-only** durable supervisor state machine in an isolated branch
 ## Recovery fidelity
 
 The source review found 22 Desktop session exports, 5,320 extracted messages and 1,152 candidate owner-message entries; six sessions had no readable messages. The local report classified 12 owner decisions, 10 completed-scope tasks, eight unresolved issues and six uncertainties. Only a concise source-linked summary is published here. **The private raw transcripts, local paths, suspected credentials and personal content were deliberately excluded.**
+
+## Issue #55 checkpoint — 2026-11-18 16:25 UTC
+
+Branch `feat/55-mock-cloud-supervisor` starts from main at
+`ca2b557945690951372c93815f5a43ea8f0a67e5`. The implementation is in
+`drafts/cloud-supervisor-v1/supervisor.mjs` and its acceptance tests are in
+`scripts/win-cloud-supervisor.test.mjs`. It adapts the lease, idempotency and
+retry fields from PR #49 and the role-based routing tiers from PR #51. The
+referenced Desktop `drafts/persistent-worker-v1/` directory is absent from the
+available Git refs.
+
+The prototype uses a local atomic snapshot with one writer process and a
+scripted provider. Checkpoints, dispatch receipts and terminal status survive
+process restart. Simultaneous writer processes, host power loss, and exactly-once
+side effects with a real provider require additional design and verification.
+
+Run `node --test scripts/win-cloud-supervisor.test.mjs`, `npm test`,
+`npm run build` and `git diff --check HEAD^ HEAD`. The unchanged main baseline
+already has two test import errors for missing `llm-contract.mts` and
+`ml-football-season-coverage.mts`. See [issue #55](https://github.com/Amir-dev-stack/win-worker-engine/issues/55)
+for the exact tested commit, clean worktree status and results.
+
+Next verify official dispatch and auth support, then run a separately authorized
+PC-off smoke test on a permitted host. The simulated quota tests establish
+behavior only within the mock.
