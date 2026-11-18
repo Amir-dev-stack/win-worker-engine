@@ -10,6 +10,7 @@ param(
     [ValidateSet('simple','standard','complex','review')][string]$Category,
     [switch]$Run,
     [string]$VerifiedModels,
+    [switch]$UseLiveModels,
     [switch]$ReviewAfter
 )
 $ErrorActionPreference = 'Stop'
@@ -30,10 +31,18 @@ if (-not $Run) {
     Write-Host "Dry run only. Add -Run to execute with the selected model."
     return
 }
-if (-not $VerifiedModels) { throw "Live tasks require -VerifiedModels PATH containing fresh account model/list evidence." }
-if (-not (Test-Path -LiteralPath $VerifiedModels -PathType Leaf)) { throw "Verified model evidence file not found." }
-$verifiedArgs = @($jsRouter, '--task', $Task, '--cwd', $Worktree, '--verified-models', $VerifiedModels, '--verify-only')
+if ($UseLiveModels -and $VerifiedModels) { throw "Choose one model evidence source, not both." }
+if (-not $UseLiveModels -and -not $VerifiedModels) {
+    throw "Live tasks require -UseLiveModels or -VerifiedModels PATH."
+}
+if ($VerifiedModels -and -not (Test-Path -LiteralPath $VerifiedModels -PathType Leaf)) {
+    throw "Verified model evidence file not found."
+}
+$verifiedArgs = @($jsRouter, '--task', $Task, '--cwd', $Worktree, '--verify-only')
+if ($UseLiveModels) { $verifiedArgs += '--live-models' }
+else { $verifiedArgs += @('--verified-models', $VerifiedModels) }
 if ($Category) { $verifiedArgs += @('--category', $Category) }
+if ($ReviewAfter) { $verifiedArgs += '--review-after' }
 $verifiedText = & node @verifiedArgs
 if ($LASTEXITCODE -ne 0) { throw "WIN model evidence is invalid, stale or unavailable." }
 $plan = $verifiedText | ConvertFrom-Json
@@ -67,7 +76,9 @@ if ($taskCode -ne 0) { throw "Codex task failed; Astra review skipped. Exit code
 if ($ReviewAfter -and $plan.category -ne 'review') {
     $reviewPrompt = "Read-only security and regression review of the CURRENT UNCOMMITTED changes in this worktree. Do not change files, deploy, merge, read secrets, or alter billing. Report prioritized findings. Goal: " + $Task
     Write-Host "Launching one read-only model review..."
-    $reviewArgs = @($jsRouter, '--task', $reviewPrompt, '--cwd', $target, '--category', 'review', '--verify-only', '--verified-models', $VerifiedModels)
+    $reviewArgs = @($jsRouter, '--task', $reviewPrompt, '--cwd', $target, '--category', 'review', '--verify-only')
+    if ($UseLiveModels) { $reviewArgs += '--live-models' }
+    else { $reviewArgs += @('--verified-models', $VerifiedModels) }
     $reviewPlanText = & node @reviewArgs
     if ($LASTEXITCODE -ne 0) { throw "WIN review plan validation failed." }
     $reviewPlan = $reviewPlanText | ConvertFrom-Json
