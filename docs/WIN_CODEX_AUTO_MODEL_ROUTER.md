@@ -1,6 +1,6 @@
 # WIN automatic Codex model router — initial prototype
 
-This is a **separate CLI task launcher**, not an in-chat Codex Desktop model switch. It chooses an available **requested** model for each new CLI task and uses the existing `codex login` authentication. No new API key and no paid account is created.
+This is a **separate CLI task launcher**, not an in-chat Codex Desktop model switch. It selects a **requested candidate** model (not guaranteed available in the current account) for each new CLI task and uses the existing `codex login` authentication. No new API key and no paid account is created.
 
 ## Prerequisites
 - Node.js 20+ and a working `codex` command on PATH. Check `codex --version` and `codex login status` in PowerShell before using.
@@ -56,12 +56,16 @@ node --test scripts/win-model-router.test.mjs
 .\scripts\Start-WINAutoModels.ps1 -Task 'Implement a bounded WIN worker service'
 ```
 
-The last command is only a dry-run. It should print the automatically selected model **without consuming Codex usage**. For a real scoped task on the **existing writable PR #49 worktree**:
+The last command is only a dry-run. It should print the automatically selected model **without consuming Codex usage**. For a real scoped task, first switch to an **authorized clean writable WIN worktree** (the launcher now uses your current directory by default):
 
 ```powershell
 .\scripts\Start-WINAutoModels.ps1 -Run -Task 'Implement and test a bounded worker service'
 ```
 
-Add `-ReviewAfter` **only for completed milestones**; it initiates one read-only Astra review after the coding Codex process exits successfully. For complex troubleshooting, omit the costly review until needed. Use `-Worktree 'C:\path\to\your\safe\worktree'` if PR #49's directory changed. `-Category` overrides the automatic classifier when necessary.
+Add `-ReviewAfter` **only for completed milestones**; it initiates one read-only Astra review after the coding Codex process exits successfully. For complex troubleshooting, omit the costly review until needed. Use `-Worktree 'C:\path\to\your\safe\worktree'` to explicitly select another authorized Git root. The old PR #49 default was removed; PR #36 remains protected. `-Category` overrides the automatic classifier when necessary.
 
 **Known activation limitations**: Windows Codex Desktop app login and CLI login are not necessarily identical. The actual installed `codex --version`, `codex exec --help` and account-supported model identifiers must be checked on the user's PC. This assistant cannot run commands on the user's PC. The router does not auto-switch the in-progress Desktop model or bypass model limits. No unattended indefinite execution is implemented; each invocation handles one bounded task.
+
+## Repaired branch validation (November 18, 2026)
+
+The Windows launcher now defaults to the current Git worktree and derives read-only review model selection from the single JavaScript `MODEL_PLAN`; the previously hard-coded PR #49 path and separate review model were removed. Two test dependencies missing on this older feature branch (`netlify/lib/llm-contract.mts` and `netlify/lib/ml-football-season-coverage.mts`) were restored unchanged from `main` to allow complete CI validation. **Do not claim CI passed until a run for the latest commit reports success.** This remains a local authenticated Codex CLI launcher, not unattended Codex Cloud dispatch or verified model-limit failover.
