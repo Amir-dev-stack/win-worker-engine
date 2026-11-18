@@ -9,6 +9,7 @@ param(
     [string]$Worktree = (Get-Location).Path,
     [ValidateSet('simple','standard','complex','review')][string]$Category,
     [switch]$Run,
+    [string]$VerifiedModels,
     [switch]$ReviewAfter
 )
 $ErrorActionPreference = 'Stop'
@@ -29,6 +30,14 @@ if (-not $Run) {
     Write-Host "Dry run only. Add -Run to execute with the selected model."
     return
 }
+if (-not $VerifiedModels) { throw "Live tasks require -VerifiedModels PATH containing fresh account model/list evidence." }
+if (-not (Test-Path -LiteralPath $VerifiedModels -PathType Leaf)) { throw "Verified model evidence file not found." }
+$verifiedArgs = @($jsRouter, '--task', $Task, '--cwd', $Worktree, '--verified-models', $VerifiedModels, '--verify-only')
+if ($Category) { $verifiedArgs += @('--category', $Category) }
+$verifiedText = & node @verifiedArgs
+if ($LASTEXITCODE -ne 0) { throw "WIN model evidence is invalid, stale or unavailable." }
+$plan = $verifiedText | ConvertFrom-Json
+Write-Host ("Verified selection: {0} ({1}), pre-dispatch fallback: {2}" -f $plan.model,$plan.effort,$plan.fallbackBeforeDispatch)
 if (-not (Test-Path -LiteralPath $Worktree -PathType Container)) {
     throw "Git worktree not found: $Worktree"
 }
@@ -53,7 +62,7 @@ if ($taskCode -ne 0) { throw "Codex task failed; Astra review skipped. Exit code
 if ($ReviewAfter -and $plan.category -ne 'review') {
     $reviewPrompt = "Read-only security and regression review of the CURRENT UNCOMMITTED changes in this worktree. Do not change files, deploy, merge, read secrets, or alter billing. Report prioritized findings. Goal: " + $Task
     Write-Host "Launching one read-only model review..."
-    $reviewArgs = @($jsRouter, '--task', $reviewPrompt, '--cwd', $target, '--category', 'review')
+    $reviewArgs = @($jsRouter, '--task', $reviewPrompt, '--cwd', $target, '--category', 'review', '--verify-only', '--verified-models', $VerifiedModels)
     $reviewPlanText = & node @reviewArgs
     if ($LASTEXITCODE -ne 0) { throw "WIN review plan validation failed." }
     $reviewPlan = $reviewPlanText | ConvertFrom-Json
