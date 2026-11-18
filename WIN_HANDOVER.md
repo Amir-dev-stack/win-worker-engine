@@ -83,3 +83,43 @@ for the exact tested commit, clean worktree status and results.
 Next verify official dispatch and auth support, then run a separately authorized
 PC-off smoke test on a permitted host. The simulated quota tests establish
 behavior only within the mock.
+
+## PR #56 review hardening — 2026-11-18 16:30 UTC
+
+The mock requires one writer transaction at a time on a local filesystem
+with atomic directory creation and same-filesystem rename. All supervisor
+instances using the same canonical file path share its `<snapshot>.lock`
+directory. An overlapping mutation fails with `SNAPSHOT_WRITER_LOCKED`.
+After a crash during a transaction, keep the lock until an operator confirms
+the writer has exited and has exclusive access. Inspect the committed snapshot
+before removing the empty lock directory, then restart. Temporary directories
+left by a crash are never read or promoted. Direct edits and distributed
+or mixed-version writers are outside the storage contract.
+
+The writer flushes the new file and atomically renames it over the previous
+snapshot. Linux SIGKILL tests cover both sides of rename and validate recovery
+after manual lock clearance. Read-only inspection can see the previous or new
+complete snapshot. No directory fsync or host power-loss guarantee is provided.
+Snapshot validation rejects malformed tasks, leases, counters and audit events.
+The storage directory must be trusted. Idempotency keys are stored in task
+records, so use synthetic, non-sensitive keys. Audit events contain only task
+ID, timestamp, state and a fixed diagnostic code.
+
+The USD 2.95 operating stop is a mock input check at claim and dispatch.
+Integer values from 0 through 294 cents are accepted. Invalid values or 295
+cents and above block simulated dispatch. This does not account for spending
+or reserve funds, and the prototype has no real provider call path.
+
+Baseline reproduction uses a clean archive of
+`ca2b557945690951372c93815f5a43ea8f0a67e5` and Node v24.22.1.
+`node --experimental-strip-types --test scripts/llm-execution.test.mjs scripts/ml-football-season-coverage.test.mjs`
+fails both imports with `ERR_MODULE_NOT_FOUND`. The baseline `npm test` reports
+32 passed and 2 failed. The baseline tracks the importers introduced in
+`674b341` and `2bba14f`, but lacks both imported modules. The module
+introductions `d2f917a` and `3664733` are available in other Git refs.
+This PR does not incorporate those unrelated changes.
+
+Before the PC-off smoke test, review this draft, obtain separate owner
+authorization for one bounded execution, and verify a permitted no-new-spend
+cloud runtime, supported dispatch interface, and least-privilege authentication.
+Define the task, timeout, stop and evidence criteria before running it.

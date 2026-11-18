@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -145,4 +145,119 @@ test('audit records only allowlisted status metadata', t => {
     { taskId: 1, status: 'running', code: 'claimed', at: 0 },
     { taskId: 1, status: 'failed', code: 'failed', at: 0 },
   ]);
+});
+
+test('malformed snapshots fail closed without resetting or exposing stored data', t => {
+  const { enqueue, supervisor, file } = fixture(t);
+  enqueue();
+  supervisor.claim(controls);
+  const original = supervisor.snapshot();
+  const malformed = [
+    '{"version":1,"synthetic-private-text',
+    'null',
+    ...[
+      state => { state.stopped = 'false'; },
+      state => { state.tasks[0] = null; },
+      state => { state.tasks[0].lease = null; },
+      state => { state.tasks[0].lease.fence = 0; },
+      state => { state.tasks[0].lease.expiresAt = 0; },
+      state => { state.tasks[0].attempts = 21; },
+      state => { state.tasks[0].model = 'unrecognized'; },
+      state => { state.tasks[0].dispatches = 2; },
+      state => { state.tasks[0].status = 'unknown'; },
+      state => { state.tasks.push({ ...state.tasks[0], id: 2 }); },
+      state => { state.audit.pop(); },
+      state => { state.audit[0].code = 'synthetic-private-text'; },
+      state => { state.audit[0].details = 'synthetic-private-text'; },
+    ].map(corrupt => {
+      const state = structuredClone(original);
+      corrupt(state);
+      return JSON.stringify(state);
+    }),
+  ];
+  for (const contents of malformed) {
+    writeFileSync(file, contents);
+    assert.throws(() => supervisor.snapshot(), { message: 'INVALID_SNAPSHOT' });
+    assert.throws(() => supervisor.claim(controls), { message: 'INVALID_SNAPSHOT' });
+    assert.equal(readFileSync(file, 'utf8'), contents);
+    assert.equal(existsSync(file + '.lock'), false);
+  }
+});
+
+const supervisorModule = new URL('../drafts/cloud-supervisor-v1/supervisor.mjs', import.meta.url).href;
+
+test('overlapping independent writer fails before changing the snapshot', t => {
+  const { file, enqueue, supervisor } = fixture(t);
+  enqueue();
+  const holdingWriter = new MockSupervisor(file, { clock: () => {
+    const child = spawnSync(process.execPath, ['--input-type=module', '-e', `
+      import assert from 'node:assert/strict';
+      import { MockSupervisor } from ${JSON.stringify(supervisorModule)};
+      const writer = new MockSupervisor(process.argv[1]);
+      assert.throws(() => writer.stop(), { message: 'SNAPSHOT_WRITER_LOCKED' });
+    `, file], { timeout: 5_000 });
+    assert.equal(child.status, 0, child.stderr?.toString());
+    return 0;
+  } });
+  assert.ok(holdingWriter.claim(controls));
+  assert.equal(supervisor.snapshot().stopped, false);
+  assert.equal(supervisor.snapshot().tasks[0].status, 'running');
+});
+
+for (const crashBeforeRename of [true, false]) {
+  test(`SIGKILL ${crashBeforeRename ? 'before' : 'after'} rename preserves a complete snapshot`, t => {
+    const { file, enqueue, supervisor, setTime, task } = fixture(t, [], { leaseMs: 10 });
+    enqueue();
+    const claim = supervisor.claim(controls);
+    assert.equal(supervisor.checkpoint(claim, 3), true);
+    const child = spawnSync(process.execPath, ['--input-type=module', '-e', `
+      import fs from 'node:fs';
+      import { syncBuiltinESMExports } from 'node:module';
+      const { MockSupervisor } = await import(${JSON.stringify(supervisorModule)});
+      const rename = fs.renameSync;
+      fs.renameSync = (...args) => {
+        if (!${crashBeforeRename}) rename(...args);
+        process.kill(process.pid, 'SIGKILL');
+      };
+      syncBuiltinESMExports();
+      const writer = new MockSupervisor(process.argv[1], { clock: () => 1, leaseMs: 10 });
+      writer.dispatch(${JSON.stringify(claim)}, { authenticated: true, spendCents: 0 });
+    `, file], { timeout: 5_000 });
+    assert.equal(child.signal, 'SIGKILL');
+    assert.equal(task().checkpoint, 3);
+    assert.equal(task().status, crashBeforeRename ? 'running' : 'completed');
+    assert.equal(task().dispatches, crashBeforeRename ? 0 : 1);
+    assert.throws(() => supervisor.claim(controls), { message: 'SNAPSHOT_WRITER_LOCKED' });
+
+    // spawnSync has confirmed the writer exited. Simulate operator recovery.
+    rmdirSync(file + '.lock');
+    setTime(11);
+    if (crashBeforeRename) {
+      const recovered = dispatch(supervisor);
+      assert.equal(recovered.checkpoint, 3);
+      assert.equal(recovered.fence, 2);
+    }
+    assert.equal(supervisor.claim(controls), null);
+    assert.equal(task().dispatches, 1);
+    assert.equal(task().status, 'completed');
+  });
+}
+
+test('budget guard uses integer cents at claim and rechecks before dispatch', t => {
+  const { enqueue, supervisor } = fixture(t);
+  const invalidSpend = [undefined, null, -1, 294.5, '294', NaN, Infinity, 295, 500];
+  for (const [index, spendCents] of invalidSpend.entries()) {
+    enqueue({ idempotencyKey: `budget-${index}` });
+    assert.equal(supervisor.claim({ authenticated: true, spendCents }), null);
+  }
+  enqueue({ idempotencyKey: 'last-eligible-cent' });
+  const claim = supervisor.claim({ authenticated: true, spendCents: 294 });
+  assert.ok(claim);
+  assert.equal(supervisor.dispatch(claim, { authenticated: true, spendCents: 295 }), false);
+  enqueue({ idempotencyKey: 'allowed-mock-dispatch' });
+  const allowed = { authenticated: true, spendCents: 294 };
+  assert.equal(supervisor.dispatch(supervisor.claim(allowed), allowed), true);
+  const { tasks, audit } = supervisor.snapshot();
+  assert.equal(tasks.filter(task => task.dispatches > 0).length, 1);
+  assert.equal(audit.filter(event => event.code === 'budget_stop').length, invalidSpend.length + 1);
 });

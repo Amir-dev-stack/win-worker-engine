@@ -1,9 +1,10 @@
-// Portable single-process mock. Every public mutation is synchronous and
-// reloads the snapshot before committing it with an atomic rename.
+// Local mock with one writer transaction at a time. Overlapping writers
+// and abandoned locks fail closed.
 import {
-  closeSync, fsyncSync, mkdtempSync, openSync, readFileSync, renameSync, rmSync, writeFileSync,
+  closeSync, fsyncSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync,
+  realpathSync, renameSync, rmdirSync, rmSync, writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 
 const minute = 60_000;
 const maxBackoff = 60 * minute;
@@ -18,6 +19,90 @@ const active = new Set(['queued', 'running', 'waiting_for_quota', 'blocked_human
 
 function integer(value, min, max) {
   return Number.isSafeInteger(value) && value >= min && value <= max;
+}
+
+const auditCodes = {
+  queued: ['scheduled', 'lease_expired', 'retry', 'model_fallback'],
+  running: ['claimed', 'checkpoint'],
+  waiting_for_quota: ['quota'],
+  blocked_human: ['denied', 'missing_auth', 'sensitive_approval'],
+  completed: ['completed'],
+  failed: ['failed'],
+  dead_letter: ['lease_expired', 'quota', 'retry', 'unavailable'],
+  stopped: ['scheduled', 'kill_switch', 'budget_stop', 'unavailable'],
+};
+
+function record(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function timestamp(value) {
+  return integer(value, 0, Number.MAX_SAFE_INTEGER);
+}
+
+function validKey(value) {
+  return typeof value === 'string' && /^[a-zA-Z0-9:_-]{1,128}$/.test(value);
+}
+
+function validTask(task, id, stopped) {
+  if (!record(task) || task.id !== id || !validKey(task.idempotencyKey)
+    || typeof task.jobType !== 'string' || !Object.hasOwn(routes, task.jobType)
+    || typeof task.status !== 'string' || !Object.hasOwn(auditCodes, task.status)
+    || task.owner !== 'mock-owner' || typeof task.sensitive !== 'boolean'
+    || task.reviewEligible !== (!task.sensitive && task.jobType === 'review')
+    || !integer(task.maxAttempts, 1, 20) || !integer(task.attempts, 0, task.maxAttempts)
+    || !integer(task.dispatches, 0, task.attempts)
+    || !integer(task.quotaWaits, 0, task.dispatches)
+    || !timestamp(task.checkpoint) || !timestamp(task.nextRun) || !timestamp(task.updatedAt)
+    || (stopped && active.has(task.status))) return false;
+
+  const [role, models] = routes[task.jobType];
+  if (task.role !== role || !integer(task.modelIndex, 0, models.length - 1)
+    || task.model !== models[task.modelIndex]) return false;
+
+  if (task.status === 'running') {
+    return record(task.lease) && task.attempts > task.dispatches
+      && task.lease.fence === task.attempts && timestamp(task.lease.expiresAt)
+      && task.lease.expiresAt > task.updatedAt;
+  }
+  if (task.lease !== null) return false;
+  if (task.status === 'waiting_for_quota') {
+    return task.quotaWaits > 0 && task.attempts < task.maxAttempts && task.nextRun > task.updatedAt;
+  }
+  if (task.status === 'queued') return task.attempts < task.maxAttempts;
+  if (task.status === 'dead_letter') return task.attempts === task.maxAttempts;
+  if (task.status === 'completed' || task.status === 'failed') return task.dispatches > 0;
+  return true;
+}
+
+function validateSnapshot(state) {
+  if (!record(state) || state.version !== 1 || typeof state.stopped !== 'boolean'
+    || !Array.isArray(state.tasks) || !Array.isArray(state.audit)) {
+    throw new Error('INVALID_SNAPSHOT');
+  }
+  const keys = new Set();
+  for (const [index, task] of state.tasks.entries()) {
+    if (!validTask(task, index + 1, state.stopped) || keys.has(task.idempotencyKey)) {
+      throw new Error('INVALID_SNAPSHOT');
+    }
+    keys.add(task.idempotencyKey);
+  }
+
+  const lastEvents = new Map();
+  for (const event of state.audit) {
+    if (!record(event) || Object.keys(event).length !== 4
+      || !integer(event.taskId, 1, state.tasks.length) || !timestamp(event.at)
+      || typeof event.status !== 'string' || !Object.hasOwn(auditCodes, event.status)
+      || !auditCodes[event.status].includes(event.code)) throw new Error('INVALID_SNAPSHOT');
+    lastEvents.set(event.taskId, event);
+  }
+  for (const task of state.tasks) {
+    const event = lastEvents.get(task.id);
+    if (event?.status !== task.status || event.at !== task.updatedAt) {
+      throw new Error('INVALID_SNAPSHOT');
+    }
+  }
+  return state;
 }
 
 function transition(state, task, status, code, now) {
@@ -37,30 +122,54 @@ export class MockSupervisor {
 
   constructor(file, { clock = Date.now, leaseMs = minute, script = [] } = {}) {
     if (!integer(leaseMs, 1, maxBackoff)) throw new Error('INVALID_LEASE');
-    this.#file = file;
+    const path = resolve(file);
+    this.#file = join(realpathSync(dirname(path)), basename(path));
     this.#clock = clock;
     this.#leaseMs = leaseMs;
     this.#script = structuredClone(script);
   }
 
   snapshot() {
+    let info;
     try {
-      const state = JSON.parse(readFileSync(this.#file, 'utf8'));
-      if (state.version !== 1 || !Array.isArray(state.tasks) || !Array.isArray(state.audit)) {
-        throw new Error('INVALID_SNAPSHOT');
-      }
-      return state;
+      info = lstatSync(this.#file);
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
       return { version: 1, stopped: false, tasks: [], audit: [] };
     }
+    if (!info.isFile() || info.nlink !== 1) throw new Error('INVALID_SNAPSHOT');
+    const contents = readFileSync(this.#file, 'utf8');
+    let state;
+    try {
+      state = JSON.parse(contents);
+    } catch {
+      // JSON parse errors can quote raw contents.
+      throw new Error('INVALID_SNAPSHOT');
+    }
+    return validateSnapshot(state);
   }
 
   #update(operation) {
-    const now = this.#clock();
-    if (!integer(now, 0, Number.MAX_SAFE_INTEGER - maxBackoff)) throw new Error('INVALID_CLOCK');
-    const state = this.snapshot();
-    const result = operation(state, now);
+    const lock = this.#file + '.lock';
+    try {
+      mkdirSync(lock, { mode: 0o700 });
+    } catch (error) {
+      if (error.code === 'EEXIST') throw new Error('SNAPSHOT_WRITER_LOCKED');
+      throw error;
+    }
+    try {
+      const now = this.#clock();
+      if (!integer(now, 0, Number.MAX_SAFE_INTEGER - maxBackoff)) throw new Error('INVALID_CLOCK');
+      const state = this.snapshot();
+      const result = operation(state, now);
+      this.#commit(state);
+      return result;
+    } finally {
+      rmdirSync(lock);
+    }
+  }
+
+  #commit(state) {
     const directory = mkdtempSync(this.#file + '.tmp-');
     const temporary = join(directory, 'snapshot');
     try {
@@ -75,11 +184,10 @@ export class MockSupervisor {
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
-    return result;
   }
 
   enqueue({ idempotencyKey, jobType, maxAttempts = 5, runAfter, sensitive = false }) {
-    if (typeof idempotencyKey !== 'string' || !/^[a-zA-Z0-9:_-]{1,128}$/.test(idempotencyKey)
+    if (!validKey(idempotencyKey)
       || typeof jobType !== 'string' || !Object.hasOwn(routes, jobType) || !integer(maxAttempts, 1, 20)
       || typeof sensitive !== 'boolean') {
       throw new Error('INVALID_TASK');
@@ -115,7 +223,7 @@ export class MockSupervisor {
   #admit(state, task, controls, now) {
     if (state.stopped) {
       transition(state, task, 'stopped', 'kill_switch', now);
-    } else if (!integer(controls.spendCents, 0, 294)) {
+    } else if (!integer(controls?.spendCents, 0, 294)) {
       transition(state, task, 'stopped', 'budget_stop', now);
     } else if (controls.authenticated !== true) {
       transition(state, task, 'blocked_human', 'missing_auth', now);
