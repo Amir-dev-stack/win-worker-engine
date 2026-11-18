@@ -42,3 +42,15 @@ test('failed implementation never invokes Astra',async()=>{
     invokeFn:async()=>{count++;return {success:false,code:1};}});
   assert.equal(count,1);assert.equal(r.stage,'implementation');
 });
+
+// Guard against the Windows launcher silently diverging from the single JS model plan.
+test('PowerShell launcher shares router model choices and uses current worktree by default',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const {fileURLToPath}=await import('node:url');
+  const {join,dirname}=await import('node:path');
+  const launcher=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'Start-WINAutoModels.ps1'),'utf8');
+  assert.match(launcher,/\$Worktree\s*=\s*\(Get-Location\)\.Path/);
+  assert.match(launcher,/--category', 'review'/);
+  assert.match(launcher,/--model \$reviewPlan\.model/);
+  assert.doesNotMatch(launcher,/pr49-safety-hardening|--model 'gpt-6\.2-astra'/);
+});
