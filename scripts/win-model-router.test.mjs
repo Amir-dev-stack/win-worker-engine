@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {categorize,optionsFromArgs,buildCodexArgs,workspaceCheck,runRouter} from './win-model-router.mjs';
+import {categorize,optionsFromArgs,buildCodexArgs,workspaceCheck,runRouter,selectVerifiedModel} from './win-model-router.mjs';
+const validEvidence={source:'codex-app-server:model/list',verifiedAt:'2026-11-18T15:00:00Z',expiresAt:'2026-11-18T18:00:00Z',models:[{id:'gpt-6.1-terra',available:true,allowed:true},{id:'gpt-6.2-sol',available:true,allowed:true},{id:'gpt-6.2-astra',available:true,allowed:true}]};
 test('routes routine, complex and review',()=>{
   assert.equal(categorize('Update README documentation'),'simple');
   assert.equal(categorize('Implement worker service'),'standard');
@@ -28,8 +29,9 @@ test('cannot run in frozen PR36 or subdirectory',()=>{
 });
 test('one successful implementation invokes at most one Astra review',async()=>{
   const args=[];
-  const r=await runRouter(['--run','--review-after','--task','Implement worker','--cwd','/repo'],{
+  const r=await runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
     spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
+    readFileSyncFn:()=>JSON.stringify(validEvidence), now:new Date('2026-11-18T15:30:00Z'),
     invokeFn:async x=>{args.push(x);return {success:true,code:0};}});
   assert.equal(r.stage,'review');assert.equal(args.length,2);
   assert.ok(args[0].includes('gpt-6.2-sol'));
@@ -39,6 +41,7 @@ test('failed implementation never invokes Astra',async()=>{
   let count=0;
   const r=await runRouter(['--run','--review-after','--task','Implement worker','--cwd','/repo'],{
     spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
+    readFileSyncFn:()=>JSON.stringify(validEvidence), now:new Date('2026-11-18T15:30:00Z'),
     invokeFn:async()=>{count++;return {success:false,code:1};}});
   assert.equal(count,1);assert.equal(r.stage,'implementation');
 });
@@ -57,12 +60,45 @@ test('PowerShell launcher shares router model choices and uses current worktree 
 
 test('review task does not spawn an additional review process',async()=>{
   const launched=[];
-  const result=await runRouter(['--run','--review-after','--task','Final review','--cwd','/repo'],{
+  const result=await runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Final review','--cwd','/repo'],{
     spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
+    readFileSyncFn:()=>JSON.stringify(validEvidence), now:new Date('2026-11-18T15:30:00Z'),
     invokeFn:async args=>{launched.push(args);return {success:true,code:0};}
   });
   assert.equal(launched.length,1);
   assert.equal(result.category,'review');
   assert.ok(launched[0].includes('read-only'));
   assert.equal(result.success,true);
+});
+
+test('live dispatch fails closed without fresh verified catalog',async()=>{
+  await assert.rejects(runRouter(['--run','--task','Implement worker']),/VERIFIED_MODELS_REQUIRED/);
+  await assert.rejects(runRouter(['--verify-only','--verified-models','/catalog.json','--task','Implement worker'],{
+    readFileSyncFn:()=>JSON.stringify({...validEvidence,expiresAt:'2026-11-18T15:00:00Z'}),
+    now:new Date('2026-11-18T15:30:00Z')}),/MODEL_EVIDENCE_STALE/);
+});
+test('verified plan selects a pre-dispatch fallback without executing',async()=>{
+ const evidence={...validEvidence,models:[{id:'gpt-6.2-sol',available:true,allowed:true}]};
+ const plan=await runRouter(['--verify-only','--verified-models','/catalog.json','--task','Update README'],{
+  readFileSyncFn:()=>JSON.stringify(evidence),now:new Date('2026-11-18T15:30:00Z'),
+  invokeFn:()=>{throw Error('must not execute');}});
+ assert.equal(plan.verified,true);assert.equal(plan.model,'gpt-6.2-sol');
+ assert.equal(plan.fallbackBeforeDispatch,true);assert.equal(plan.effort,'low');
+});
+test('unapproved models and expired evidence fail closed',()=>{
+ const now=new Date('2026-11-18T15:30:00Z');
+ assert.throws(()=>selectVerifiedModel('complex',{...validEvidence,models:[{id:'gpt-6.2-sol',available:true,allowed:false}]},now),/NO_VERIFIED_MODEL/);
+ assert.throws(()=>selectVerifiedModel('standard',{...validEvidence,verifiedAt:'2026-11-15T15:00:00Z'},now),/MODEL_EVIDENCE_STALE/);
+ assert.throws(()=>selectVerifiedModel('simple',{...validEvidence,source:'guessed'},now),/MODEL_EVIDENCE_INVALID/);
+});
+test('cooldown blocks selection and does not replay failed tasks',async()=>{
+ const now=new Date('2026-11-18T15:30:00Z');
+ assert.throws(()=>selectVerifiedModel('standard',{...validEvidence,models:[{id:'gpt-6.2-sol',allowed:true,available:true,cooldownUntil:'2026-11-18T16:00:00Z'}]},now),/NO_VERIFIED_MODEL/);
+ let invocations=0;
+ const result=await runRouter(['--run','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
+  readFileSyncFn:()=>JSON.stringify(validEvidence),now,
+  spawnSyncFn:()=>({status:0,stdout:'/repo\n'}),realpathSyncFn:x=>x,
+  invokeFn:async()=>{invocations++;return {success:false,code:1};}
+ });
+ assert.equal(invocations,1);assert.equal(result.success,false);
 });
