@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {categorize,optionsFromArgs,buildCodexArgs,workspaceCheck,runRouter,selectVerifiedModel,isChatGPTLogin,discoverCodexModels,codexAuthCommand} from './win-model-router.mjs';
+import {categorize,optionsFromArgs,buildCodexArgs,workspaceCheck,runRouter,selectVerifiedModel,isChatGPTLogin,discoverCodexModels,codexAuthCommand,validateCodexRateLimits} from './win-model-router.mjs';
 const validEvidence={source:'codex-app-server:model/list',verifiedAt:'2026-11-18T15:00:00Z',expiresAt:'2026-11-18T18:00:00Z',models:[{id:'gpt-6.1-terra',available:true,allowed:true},{id:'gpt-6.2-sol',available:true,allowed:true},{id:'gpt-6.2-astra',available:true,allowed:true}]};
 test('routes routine, complex and review',()=>{
   assert.equal(categorize('Update README documentation'),'simple');
@@ -142,6 +142,9 @@ test('authenticated app-server model list discovers approved model IDs only',asy
     child.stdin={write(data){
       const message=JSON.parse(data.toString().trim());requested.push(message.method);
       if(message.method==='initialize')queueMicrotask(()=>child.stdout.write(JSON.stringify({id:1,result:{userAgent:'Codex'}})+'\n'));
+      if(message.method==='account/rateLimits/read')queueMicrotask(()=>child.stdout.write(JSON.stringify({id:999,result:{
+        rateLimits:{limitId:'codex',primary:{usedPercent:20,windowDurationMins:300,resetsAt:1891234567},secondary:null,rateLimitReachedType:null}
+      }})+'\\n'));
       if(message.method==='model/list')queueMicrotask(()=>child.stdout.write(JSON.stringify({id:2,result:{
         data:[
           {id:'visible-sol',model:'gpt-6.2-sol',hidden:false,supportedReasoningEfforts:[{reasoningEffort:'high'},{reasoningEffort:'medium'},{reasoningEffort:'low'}]},
@@ -155,7 +158,7 @@ test('authenticated app-server model list discovers approved model IDs only',asy
   assert.equal(evidence.models.length,1);
   assert.equal(evidence.models[0].id,'gpt-6.2-sol');
   assert.deepEqual(evidence.models[0].supportedEfforts,['high','medium','low']);
-  assert.deepEqual(requested,['initialize','initialized','model/list']);
+  assert.deepEqual(requested,['initialize','initialized','model/list','account/rateLimits/read']);
   assert.equal(selectVerifiedModel('standard',evidence,new Date('2026-11-18T15:30:00Z')).model,'gpt-6.2-sol');
 });
 test('live account discovery verifies model selection without launching Codex',async()=>{
@@ -248,4 +251,14 @@ test('model family switching resolves version changes only from approved visible
   assert.throws(()=>selectVerifiedModel('standard',notAllowed,now),/NO_VERIFIED_MODEL/);
   const badFamily={...evidence,models:[{id:'gpt-6.3-unknown',available:true,allowed:true,supportedEfforts:['medium']}]};
   assert.throws(()=>selectVerifiedModel('standard',badFamily,now),/NO_VERIFIED_MODEL/);
+});
+
+test('account quota check blocks exhausted or unknown windows without dispatch',()=>{
+ const ok={rateLimits:{limitId:'codex',primary:{usedPercent:75,windowDurationMins:300,resetsAt:1891234567},secondary:null,rateLimitReachedType:null}};
+ assert.equal(validateCodexRateLimits(ok),true);
+ assert.throws(()=>validateCodexRateLimits({rateLimits:{...ok.rateLimits,primary:{...ok.rateLimits.primary,usedPercent:100}}}),/CODEX_LIMIT_REACHED/);
+ assert.throws(()=>validateCodexRateLimits({rateLimits:{...ok.rateLimits,rateLimitReachedType:'primary'}}),/CODEX_LIMIT_REACHED/);
+ assert.throws(()=>validateCodexRateLimits({rateLimits:{...ok.rateLimits,primary:{usedPercent:'unknown'}}}),/CODEX_RATE_LIMIT_UNKNOWN/);
+ assert.throws(()=>validateCodexRateLimits({}),/CODEX_RATE_LIMIT_UNKNOWN/);
+ assert.throws(()=>validateCodexRateLimits({rateLimitsByLimitId:{codex:ok.rateLimits,other:{primary:{usedPercent:100}}}}),/CODEX_LIMIT_REACHED/);
 });
