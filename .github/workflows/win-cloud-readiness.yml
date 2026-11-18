@@ -1,0 +1,30 @@
+name: WIN Cloud Readiness (offline)
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: win-cloud-readiness
+  cancel-in-progress: true
+
+jobs:
+  offline-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check out WIN
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Check cloud model policy without secrets or network inference
+        run: |
+          node --experimental-strip-types --test scripts/win-cloud-readiness.test.mjs scripts/win-cloud-model-plan.test.mjs
+          node --experimental-strip-types scripts/win-cloud-readiness.mjs
