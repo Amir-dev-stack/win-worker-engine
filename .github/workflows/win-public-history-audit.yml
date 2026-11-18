@@ -1,0 +1,68 @@
+name: WIN Public History Secret Audit
+on:
+  push:
+    branches:
+      - audit/public-history-scan-20261118
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch reachable repository and PR refs
+        run: |
+          git fetch --no-tags origin '+refs/heads/*:refs/remotes/origin/*' '+refs/pull/*/head:refs/remotes/audit-pr-head/*' '+refs/pull/*/merge:refs/remotes/audit-pr-merge/*'
+          git fetch --tags origin
+      - name: Offline read-only history scan (redacted findings only)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import collections, json, re, subprocess, sys
+          objects=subprocess.check_output(["git","rev-list","--objects","--all"],text=True).splitlines()
+          items={}
+          for row in objects:
+              sha,_,path=row.partition(" ")
+              items.setdefault(sha,path)
+          patterns=[
+            ("openai_key",rb"sk-(?:proj-)?[A-Za-z0-9_-]{18,}"),
+            ("github_token",rb"(?:github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9]{30,})"),
+            ("aws_access_key",rb"AKIA[0-9A-Z]{16}"),
+            ("slack_token",rb"xox[baprs]-[A-Za-z0-9-]{15,}"),
+            ("private_key_header",rb"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
+            ("cloudflare_api_token",rb"(?i)cloudflare[_-]?api[_-]?token\\s*[:=]\\s*[\"']?[A-Za-z0-9_-]{35,}"),
+            ("credentialed_database_uri",rb"(?i)(?:postgres(?:ql)?|mysql|mongodb(?:\\+srv)?|redis)://[^\\s\"'<>]{1,200}:[^\\s\"'<>]{6,200}@"),
+          ]
+          rx=[(name,re.compile(p)) for name,p in patterns]
+          kv=re.compile(rb"(?im)^\\s*(?:export\\s+)?(?:[A-Z0-9_]*(?:API_KEY|ACCESS_TOKEN|AUTH_TOKEN|SECRET_KEY|PRIVATE_KEY|DATABASE_URL|DB_PASSWORD|WEBHOOK_SECRET|SERVICE_ROLE_KEY|PASSWORD))\\s*[:=]\\s*[\"']?([^\\s\"'#]{20,})")
+          placeholders=(b"example",b"placeholder",b"changeme",b"your_",b"process.env",b"import.meta",b"dummy",b"not-a-real",b"xxxx",b"test-",b"${")
+          proc=subprocess.Popen(["git","cat-file","--batch"],stdin=subprocess.PIPE,stdout=subprocess.PIPE)
+          found=[]; scanned=0; skipped=0; bytes_scanned=0
+          for sha,path in items.items():
+              proc.stdin.write((sha+"\n").encode());proc.stdin.flush()
+              hdr=proc.stdout.readline().split()
+              if len(hdr)<3 or hdr[1]!=b"blob":
+                  if len(hdr)>=3:
+                      size=int(hdr[2]);proc.stdout.read(size+1)
+                  continue
+              size=int(hdr[2]);data=proc.stdout.read(size);proc.stdout.read(1)
+              if size>8000000:
+                  skipped+=1;continue
+              scanned+=1;bytes_scanned+=size
+              labels={name for name,regex in rx if regex.search(data)}
+              for m in kv.finditer(data):
+                  candidate=m.group(1)
+                  if not any(x in candidate.lower() for x in placeholders) and len(set(candidate))>=12:
+                      labels.add("possible_embedded_secret_assignment")
+              if labels:
+                  safe_path=path.replace("\n","_")[:160]
+                  found.append({"sha_prefix":sha[:12],"path":safe_path,"detectors":sorted(labels)})
+          proc.stdin.close();proc.wait(timeout=20)
+          summary={"result":"CANDIDATES_NEED_PRIVATE_REVIEW" if found else "NO_PATTERN_MATCH_IN_SCANNED_BLOBS","reachable_objects":len(items),"blob_count_scanned":scanned,"bytes_scanned":bytes_scanned,"large_blobs_skipped":skipped,"findings_count":len(found),"detector_counts":dict(collections.Counter(z for v in found for z in v["detectors"])),"findings_metadata_only":found[:50]}
+          print("AUDIT_SUMMARY_JSON="+json.dumps(summary,separators=(",",":")))
+          if skipped or found:sys.exit(1)
+          PY
