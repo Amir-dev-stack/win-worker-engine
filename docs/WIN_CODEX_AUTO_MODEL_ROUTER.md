@@ -119,3 +119,18 @@ For `--live-models` / PowerShell `-UseLiveModels`, discovery now also reads `acc
 References:
 - https://learn.chatgpt.com/docs/app-server#list-models-modellist
 - https://learn.chatgpt.com/docs/app-server (account/rateLimits/read)
+
+## Cloud-host readiness evidence — November 18, 2026
+
+The original PR #51 contains an **isolated, non-executing** GitHub Actions workflow:
+`.github/workflows/win-codex-host-readiness.yml`. It is branch-scoped and has only `contents: read`. The host installs pinned `codex-cli 0.167.0`, creates an intentionally empty `CODEX_HOME`, clears potentially inherited API-key environment variables, checks `codex login status` without displaying its output and **does not launch a model**.
+
+[GitHub Actions run #44380091949](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44380091949) **PASSED**. Verified conclusion: an independent PC-off GitHub Actions runner exists and can install a Codex binary, but the isolated runner **does not have ChatGPT-authenticated Codex execution**. This does *not* prove Codex Cloud task submission, unrestricted model usage or credentials availability.
+
+**IMPORTANT — public repository security:** OpenAI's official non-interactive mode guidance explicitly says **not to seed personal `~/.codex/auth.json` credentials into CI for public or open-source repositories**, even using the advanced ChatGPT-managed authentication pattern. WIN is public. Do **not** add this user's `auth.json`, access/refresh tokens, browser session cookies, device codes or personal credentials to GitHub Actions, repository secrets, issues or PRs. The official `openai/codex-action@v1` is an API-key path with usage-based billing and is also **not authorized** by the owner. Never fall back to it automatically.
+
+References:
+- https://learn.chatgpt.com/docs/non-interactive-mode
+- https://learn.chatgpt.com/docs/github-action
+
+The valid remaining routes require independently authorized infrastructure (for example a trusted private authenticated host with suitable access/entitlement, or an officially supported Codex Cloud task dispatch mechanism). Such a host or dispatcher has **not been verified or provisioned in this project**. Keep cloud agent task execution and paid-path triggers disabled until explicit security and budget approval. Current WIN GitHub Actions may still run non-generative tests and monitoring tasks with PC off.
