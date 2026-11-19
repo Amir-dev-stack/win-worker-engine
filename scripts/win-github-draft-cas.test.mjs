@@ -12,7 +12,7 @@ function req(overrides={}) {
    draftOnly:true,paths:["scripts/review-proposal.mjs"],...overrides};
 }
 function services(options={}) {
- let writes=0,reads=0,heads=0;
+ let writes=0,reads=0,heads=0,inspections=0;
  const lease={task_id:"win-1",owner_id:"cloud-reviewer-1",fence:"3",
    status:"running",approved:true,source_commit_sha:C,
    expires_at:new Date(Date.now()+3600000).toISOString(),...options.lease};
@@ -25,6 +25,12 @@ function services(options={}) {
   git:{
     atomicCompareAndSwapVerified:options.casVerified??true,
     getHead:async()=>{heads++;if(options.headError)throw Error("no log");return options.head??A;},
+    inspectProposedCommit:async()=>{
+      inspections++;
+      if(options.inspectError) throw Error("untrusted commit");
+      return options.commit??{sha:B,parents:[A],
+        files:["scripts/review-proposal.mjs"],secretScanPassed:true,sourceVerified:true};
+    },
     updateHeadIfEquals:async write=>{
       writes++;
       if(options.writeError)throw Error("uncertain after write");
@@ -32,7 +38,7 @@ function services(options={}) {
     }
   }
  };
- return {io,counts:()=>({writes,reads,heads})};
+ return {io,counts:()=>({writes,reads,heads,inspections})};
 }
 test("valid fenced approval and unchanged draft head invokes one atomic GitHub CAS",async()=>{
  const fixture=services();
@@ -41,7 +47,7 @@ test("valid fenced approval and unchanged draft head invokes one atomic GitHub C
  assert.equal(result.head,B);
  assert.equal(result.requiresIndependentReview,true);
  assert.equal(result.writeOperations,1);
- assert.deepEqual(fixture.counts(),{writes:1,reads:2,heads:1});
+ assert.deepEqual(fixture.counts(),{writes:1,reads:2,heads:1,inspections:1});
 });
 test("invalid requests never invoke lease or GitHub",async()=>{
  const invalid=[
@@ -58,7 +64,7 @@ test("invalid requests never invoke lease or GitHub",async()=>{
   const f=services();
   await assert.rejects(guardedDraftUpdate(req(change),f.io),
     /UNSAFE_DRAFT_WRITE_REQUEST/,JSON.stringify(change));
-  assert.deepEqual(f.counts(),{writes:0,reads:0,heads:0});
+  assert.deepEqual(f.counts(),{writes:0,reads:0,heads:0,inspections:0});
  }
 });
 test("missing or unverified atomic CAS adapter cannot write",async()=>{
@@ -102,4 +108,33 @@ test("uncertain post-write error, mismatched CAS result, or conflict never trigg
   assert.equal(result.reason,"GITHUB_CAS_UNCERTAIN_OR_REJECTED");
   assert.equal(f.counts().writes,1,"must not retry uncertain remote writes");
  }
+});
+
+test("proposed commit must have exactly the expected sole parent and verified exact paths",async()=>{
+ const bad=[
+  {sha:C,parents:[A],files:["scripts/review-proposal.mjs"],secretScanPassed:true,sourceVerified:true},
+  {sha:B,parents:[C],files:["scripts/review-proposal.mjs"],secretScanPassed:true,sourceVerified:true},
+  {sha:B,parents:[A,C],files:["scripts/review-proposal.mjs"],secretScanPassed:true,sourceVerified:true},
+  {sha:B,parents:[],files:["scripts/review-proposal.mjs"],secretScanPassed:true,sourceVerified:true},
+  {sha:B,parents:[A],files:["scripts/extra.mjs"],secretScanPassed:true,sourceVerified:true},
+  {sha:B,parents:[A],files:["scripts/review-proposal.mjs","scripts/hidden.mjs"],secretScanPassed:true,sourceVerified:true},
+  {sha:B,parents:[A],files:["scripts/review-proposal.mjs",".env"],secretScanPassed:true,sourceVerified:true},
+  {sha:B,parents:[A],files:["scripts/review-proposal.mjs"],secretScanPassed:false,sourceVerified:true},
+  {sha:B,parents:[A],files:["scripts/review-proposal.mjs"],secretScanPassed:true,sourceVerified:false}
+ ];
+ for(const commit of bad){
+  const f=services({commit});
+  const result=await guardedDraftUpdate(req(),f.io);
+  assert.equal(result.reason,"PROPOSED_COMMIT_UNVERIFIED",JSON.stringify(commit));
+  assert.equal(f.counts().writes,0);
+ }
+ const f=services({inspectError:true});
+ assert.equal((await guardedDraftUpdate(req(),f.io)).reason,"PROPOSED_COMMIT_UNVERIFIED");
+ assert.equal(f.counts().writes,0);
+});
+test("inspector must be independently supplied before any lease or GitHub operation",async()=>{
+ const f=services();
+ delete f.io.git.inspectProposedCommit;
+ assert.equal((await guardedDraftUpdate(req(),f.io)).reason,"TRUSTED_IO_NOT_CONFIGURED");
+ assert.deepEqual(f.counts(),{writes:0,reads:0,heads:0,inspections:0});
 });
