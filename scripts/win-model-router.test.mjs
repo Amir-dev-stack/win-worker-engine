@@ -206,8 +206,7 @@ test('standard and complex tasks switch only to eligible model before task begin
  ]};
  const standard=selectVerifiedModel('standard',evidence,now);
  assert.deepEqual(standard,{model:'gpt-6.1-terra',effort:'medium'});
- const complex=selectVerifiedModel('complex',evidence,now);
- assert.deepEqual(complex,{model:'gpt-6.2-astra',effort:'high'});
+ assert.throws(()=>selectVerifiedModel('complex',evidence,now),/NO_VERIFIED_MODEL/);
  assert.throws(()=>selectVerifiedModel('review',{...evidence,models:[]},now),/NO_VERIFIED_MODEL/);
 });
 
