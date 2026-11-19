@@ -61,17 +61,17 @@ jobs:
           New-Item -ItemType Directory -Path $fakeBin -Force | Out-Null
           $fakeCmd = Join-Path $fakeBin 'codex.cmd'
           @'
-@echo off
-if "%1"=="login" if "%2"=="status" (
-  echo Logged in using ChatGPT
-  exit /b 0
-)
-if "%1"=="cloud" if "%2"=="list" (
-  echo {"tasks":[]}
-  exit /b 0
-)
-exit /b 87
-'@ | Set-Content -LiteralPath $fakeCmd -Encoding ascii
+          @echo off
+          if "%1"=="login" if "%2"=="status" (
+            echo Logged in using ChatGPT
+            exit /b 0
+          )
+          if "%1"=="cloud" if "%2"=="list" (
+            echo {"tasks":[]}
+            exit /b 0
+          )
+          exit /b 87
+          '@ | Set-Content -LiteralPath $fakeCmd -Encoding ascii
           $env:PATH = "$fakeBin;$env:PATH"
           $probe = Join-Path (Get-Location).Path 'scripts/Test-WINCodexCloud.ps1'
           $cloudOutput = (& $probe 6>&1 | Out-String)
