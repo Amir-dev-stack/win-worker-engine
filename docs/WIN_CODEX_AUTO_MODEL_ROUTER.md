@@ -194,6 +194,16 @@ References:
 
 **Owner-side read-only discovery (do not commit login tokens):**
 
+The checked-in `scripts/Test-WINCodexCloud.ps1` runs `codex.cmd cloud list --limit 1 --json`, checks that a valid ChatGPT CLI login exists, then prints **only** endpoint availability—not any private cloud task content. From the updated local repo run:
+
+```powershell
+.\\scripts\\Test-WINCodexCloud.ps1
+```
+
+This is a non-generative check and does **not** verify that a published environment exists. On an account without cloud access, it fails without creating tasks.
+
+For direct manual inspection, the official commands are:
+
 ```powershell
 cd C:\Users\PC\source\WIN-AutoRouter
 codex.cmd cloud --help
