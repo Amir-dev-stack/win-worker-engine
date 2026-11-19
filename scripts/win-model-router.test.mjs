@@ -262,3 +262,19 @@ test('account quota check blocks exhausted or unknown windows without dispatch',
  assert.throws(()=>validateCodexRateLimits({}),/CODEX_RATE_LIMIT_UNKNOWN/);
  assert.throws(()=>validateCodexRateLimits({rateLimitsByLimitId:{codex:ok.rateLimits,other:{primary:{usedPercent:100}}}}),/CODEX_LIMIT_REACHED/);
 });
+
+test('review preflight remembers both approved model and effort',async()=>{
+  const p=await runRouter(['--verify-only','--verified-models','/catalog.json','--review-after','--task','Implement worker','--cwd','/repo'],{
+    readFileSyncFn:()=>JSON.stringify(validEvidence),
+    now:new Date('2026-11-18T15:30:00Z')
+  });
+  assert.equal(p.reviewModel,'gpt-6.2-astra');
+  assert.equal(p.reviewEffort,'high');
+  const {readFileSync}=await import('node:fs');
+  const {fileURLToPath}=await import('node:url');
+  const {join,dirname}=await import('node:path');
+  const launcher=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'Start-WINAutoModels.ps1'),'utf8');
+  assert.match(launcher,/\$reviewPlan\.model -ne \$plan\.reviewModel/);
+  assert.match(launcher,/\$reviewPlan\.effort -ne \$plan\.reviewEffort/);
+  assert.match(launcher,/--model \$plan\.reviewModel/);
+});
