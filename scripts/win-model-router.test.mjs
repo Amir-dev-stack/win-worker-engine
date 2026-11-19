@@ -350,3 +350,18 @@ test('Windows CLI calls bypass npm PowerShell shim while preserving exit checks'
   assert.ok(!launcher.includes('& codex login status 2>&1'));
   assert.ok(!launcher.includes('& codex exec'));
 });
+
+test('Codex Cloud readiness probe cannot submit tasks or reveal task JSON',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const {fileURLToPath}=await import('node:url');
+  const {join,dirname}=await import('node:path');
+  const probe=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'Test-WINCodexCloud.ps1'),'utf8');
+  assert.ok(probe.includes('Get-Command codex.cmd'));
+  assert.ok(probe.includes('codex.cmd login status 2>&1'));
+  assert.ok(probe.includes('cloud list --limit 1 --json'));
+  assert.ok(probe.includes('ConvertFrom-Json'));
+  assert.ok(probe.includes('No task was submitted'));
+  assert.ok(!probe.includes('cloud exec'));
+  assert.ok(!probe.includes('OPENAI_API_KEY'));
+  assert.ok(!probe.includes('auth.json'));
+});
