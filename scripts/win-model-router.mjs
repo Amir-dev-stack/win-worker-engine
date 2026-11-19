@@ -18,7 +18,9 @@ export const MODEL_PLAN=Object.freeze({
 });
 const CATEGORIES=new Set(Object.keys(MODEL_PLAN));
 export function categorize(task){
-  if (/\b(security audit|architecture review|final review|milestone review)\b/i.test(task)) return 'review';
+  // Routine milestone/final reviews use economical QA, not Astra.
+  if (/\b(security audit|architecture review|critical security review|high.risk architecture review)\b/i.test(task)) return 'review';
+  if (/\b(final review|milestone review|code review|regression review|test review)\b/i.test(task)) return 'qa';
   if (/\b(system architecture|architectural blueprint|distributed system design|database migration design|new service architecture)\b/i.test(task)) return 'architecture';
   if (/\b(race condition|deadlock|concurrency|data corruption|critical bug|deep debug|hard to reproduce)\b/i.test(task)) return 'complex';
   if (/\b(readme|documentation|typo|format|rename|comment only|small text)\b/i.test(task)) return 'simple';
