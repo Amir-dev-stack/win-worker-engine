@@ -1,5 +1,7 @@
 import { list } from "./store.mts";
 import { SPORT_REGISTRY } from "./sport-registry.mts";
+import { DATA_PROVIDER_REGISTRY } from "./data-provider-registry.mts";
+import { buildCoverageInventory } from "./coverage-inventory.mts";
 
 type Evidence = Record<string, any>;
 const REQUIRED_DOMAINS = [
@@ -88,6 +90,7 @@ export async function buildCoverageReport(now = new Date()) {
   return {
     generatedAt: now.toISOString(),
     evidence: { total: evidence.length, observedSports: [...observedSports].sort(), domains: domainRows },
+    inventory: buildCoverageInventory(evidence, DATA_PROVIDER_REGISTRY),
     sports,
     humanIntelligence: {
       importedSourceRecords: imports.length, sourceCounts,
@@ -104,6 +107,7 @@ export async function buildCoverageReport(now = new Date()) {
       "Coverage is calculated only from records actually stored in WIN; missing records are not inferred.",
       "Freshness windows are monitoring thresholds, not guarantees that the underlying source is correct.",
       "A registry entry is not a connected provider. Live API access and historical data rights must be verified separately.",
+      "Competition, season, team, player and market counts use explicit identities only; unresolved aliases remain separate.",
       "No strategy is considered validated solely because a simulation or a candidate lesson exists."
     ]
   };

@@ -12,6 +12,8 @@
 
 Coverage is computed from records in `library/research-evidence`, not from sport registry membership or source catalog entries. Each sport reports observed record counts and freshness for fixtures, results, odds, lineups, injuries, team/player statistics and market rules. A missing or stale domain remains visibly missing or stale.
 
+The coverage inventory also reports bounded distinct competition/league, season, team/participant, player/athlete and market identities found explicitly in those records. It reports how many records do not carry each identity and does not merge aliases without a verified mapping. Approved open/no-credential provider registry entries appear separately as `registry_approved_not_live_verified`; they never count as connected evidence.
+
 Freshness thresholds are operational alerts, not proof of source correctness. Data must still carry a source, retrieval timestamp, event/entity identity and confidence/provenance before it can be used in a decision.
 
 ## Settlement contract
