@@ -60,6 +60,13 @@ jobs:
             sudo apt-get install -y -qq postgresql-client >/dev/null
           fi
           command -v psql
+      - name: Probe disposable PostgreSQL service connectivity
+        env:
+          PGPASSWORD: synthetic_ci_only
+          PGSSLMODE: disable
+          PGPASSFILE: /dev/null
+        run: |
+          test "$(psql -X -qAt -h 127.0.0.1 -p 5432 -U win_local_tester -d win_lease_test_ci -c 'SELECT 1')" = "1"
       - name: Verify competing claims, revocation, expiry and stale fencing
         env:
           WIN_LEASE_LOCAL_PG_TEST: run
