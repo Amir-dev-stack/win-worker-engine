@@ -291,3 +291,14 @@ test('PowerShell read-only account smoke check exits before actual Codex dispatc
   const invoke=script.indexOf('& codex exec');
   assert.ok(preflight>0 && invoke>preflight);
 });
+
+test('Windows model-only validation does not mislabel offline evidence as live quota check',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const {fileURLToPath}=await import('node:url');
+  const {join,dirname}=await import('node:path');
+  const launcher=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'Start-WINAutoModels.ps1'),'utf8');
+  assert.match(launcher,/if \(\$UseLiveModels\) \{/);
+  assert.match(launcher,/Live Codex account model and quota preflight passed/);
+  assert.match(launcher,/Account quota was NOT queried/);
+  assert.match(launcher,/if \(\$VerifyModelsOnly\) \{/);
+});
