@@ -122,6 +122,10 @@ This PR does not incorporate those unrelated changes.
 Before the PC-off smoke test, review this draft, obtain separate owner
 authorization for one bounded execution, and verify a permitted no-new-spend
 cloud runtime, supported dispatch interface, and least-privilege authentication.
+
+## Supervisor/lease takeover reconciliation — 2026-11-19
+
+Issue #81 B3 adds an offline supervisor composition on PR #76's fenced lease base. It requires `draft_only_development`, renews as an immediate heartbeat/fence check, honors cancellation before effects, and relies on an idempotent operation sink. Deterministic tests cover two workers, stale takeover, revocation, cancellation, lost acknowledgement and reconciliation without duplicate effects. This is mock-only evidence: no PostgreSQL/Neon connection, migration, cloud host, GitHub writer or production side effect was used. B3 remains incomplete pending authorized isolated PostgreSQL cross-process evidence.
 Define the task, timeout, stop and evidence criteria before running it.
 
 Malformed supervisor claim inputs are rejected before the snapshot lock or state
