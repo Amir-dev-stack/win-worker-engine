@@ -1,0 +1,84 @@
+name: WIN Codex Windows launcher offline smoke (no model calls)
+
+on:
+  push:
+    branches:
+      - feat/win-auto-model-router-20261118
+    paths:
+      - scripts/win-model-router.mjs
+      - scripts/Start-WINAutoModels.ps1
+      - scripts/Test-WINCodexCloud.ps1
+      - scripts/win-model-router.test.mjs
+      - .github/workflows/win-codex-windows-offline-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-offline-preflight:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate PowerShell launcher dry run and offline model evidence without Codex
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $launcher = Join-Path (Get-Location).Path 'scripts/Start-WINAutoModels.ps1'
+          # No Codex login, no API key, no model calls, no dispatch. Both paths must stop before execution.
+          $dryText = (& $launcher -Task 'Update README documentation' 6>&1 | Out-String)
+          if ($dryText -notmatch 'Dry run only') { throw 'Dry-run unexpectedly failed or attempted dispatch.' }
+          # Use the same Node clock/ISO parser as the actual router for deterministic evidence.
+          $start = (& node -e 'console.log(new Date(Date.now() - 300000).toISOString())').Trim()
+          $end = (& node -e 'console.log(new Date(Date.now() + 1500000).toISOString())').Trim()
+          $catalog = @{
+            source = 'codex-app-server:model/list'
+            verifiedAt = $start
+            expiresAt = $end
+            models = @(@{ id = 'gpt-6.1-terra'; available = $true; allowed = $true; supportedEfforts = @('low') })
+          } | ConvertTo-Json -Depth 8
+          $evidencePath = Join-Path $env:RUNNER_TEMP 'win-codex-offline-evidence.json'
+          Set-Content -LiteralPath $evidencePath -Value $catalog -Encoding utf8
+          $verifyText = (& $launcher -Task 'Update README documentation' -VerifyModelsOnly -VerifiedModels $evidencePath 6>&1 | Out-String)
+          if ($verifyText -notmatch 'Account quota was NOT queried') { throw 'Offline preflight incorrectly claimed live quota verification.' }
+          if ($verifyText -match 'Starting one bounded Codex task') { throw 'Offline smoke attempted a coding task.' }
+          # Expired evidence must not be accepted.
+          $expired = $catalog | ConvertFrom-Json
+          $expired.expiresAt = '2000-01-01T00:00:00.000Z'
+          $expired | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $evidencePath -Encoding utf8
+          $rejected = $false
+          try { & $launcher -Task 'Update README documentation' -VerifyModelsOnly -VerifiedModels $evidencePath | Out-Null }
+          catch { $rejected = $true }
+          if (-not $rejected) { throw 'Expired model evidence was incorrectly accepted.' }
+          # An intentional negative native-process test leaves LASTEXITCODE=1 even after the throw is caught.
+          $global:LASTEXITCODE = 0
+          # The cloud read-only probe must work with a fake CLI, without network/model/auth.
+          $fakeBin = Join-Path $env:RUNNER_TEMP 'win-codex-fake-cli'
+          New-Item -ItemType Directory -Path $fakeBin -Force | Out-Null
+          $fakeCmd = Join-Path $fakeBin 'codex.cmd'
+          @'
+          @echo off
+          if "%1"=="login" if "%2"=="status" (
+            echo Logged in using ChatGPT
+            exit /b 0
+          )
+          if "%1"=="cloud" if "%2"=="list" (
+            echo {"tasks":[]}
+            exit /b 0
+          )
+          exit /b 87
+          '@ | Set-Content -LiteralPath $fakeCmd -Encoding ascii
+          $env:PATH = "$fakeBin;$env:PATH"
+          $probe = Join-Path (Get-Location).Path 'scripts/Test-WINCodexCloud.ps1'
+          $cloudOutput = (& $probe 6>&1 | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $cloudOutput -notmatch 'listing endpoint: accessible') {
+            throw 'Windows synthetic cloud listing probe failed.'
+          }
+          if ($cloudOutput -match 'cloud exec|auth.json|tasks.*\[') {
+            throw 'Cloud probe leaked task payload or executable task command.'
+          }
+          "Windows offline smoke PASSED: no credentials, no model calls, no task execution." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append

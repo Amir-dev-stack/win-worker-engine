@@ -5,3 +5,6 @@ node_modules/
 !.env.example
 dist/
 .DS_Store
+
+# Local Codex account model approval evidence (never commit account data)
+.win-codex-models.json
