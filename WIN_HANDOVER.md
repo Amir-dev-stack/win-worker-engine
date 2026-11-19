@@ -163,3 +163,9 @@ Regression coverage also passes malformed provider arrays, fields and a
 non-array provider collection and verifies a fixed `no_eligible_provider`
 result without adapter execution. Updated verification is targeted 10/10,
 full Node 42/42, quality gates 107/107, and build 61 plus 44.
+
+## C2 StatsBomb research-reader reconciliation — 2026-11-19
+
+Branch `win-draft/c2-statsbomb-reader-reconcile-20261119` starts from main exact `844efeba8ad1d20dbe587e286ed5546b81eb5baa`. Implementation commit `4678dfa` extracts only the research-only StatsBomb Open Data reader from stale mixed PR #49. It excludes that PR's database migration and credentialed API-Football preview code. Fixed resource paths, positive IDs, a 5 MB cap, bounded timeout, content-type validation, streaming cancellation, fixed diagnostics and retrieval-clock validation fail closed. Returned data remains `researchOnly`, licence/attribution review required, usage unapproved and without a freshness guarantee.
+
+Targeted tests pass 7/7. Full `npm test` passes 62/62 Node tests and 108/108 quality gates. `npm run build` passes 62 required files, 44 architecture checks and 108/108 gates. All tests use injected responses; no StatsBomb data was downloaded. The module is not connected to storage, a function or schedule. Provider rights, attribution, intended use, actual coverage and freshness remain unverified, and registry automation remains disabled.
