@@ -108,7 +108,7 @@ test('cooldown blocks selection and does not replay failed tasks',async()=>{
 test('review entitlement is checked before implementation starts',async()=>{
  let called=0;
  await assert.rejects(runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Update README','--cwd','/repo'],{
-   readFileSyncFn:()=>JSON.stringify({...validEvidence,models:[{id:'gpt-6.1-terra',available:true,allowed:true}]}),
+   readFileSyncFn:()=>JSON.stringify({...validEvidence,models:[{id:'gpt-6.1-terra',available:true,allowed:true,supportedEfforts:['low']}]}),
    now:new Date('2026-11-18T15:30:00Z'),
    spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},realpathSyncFn:x=>x,
    invokeFn:async()=>{called++;return {success:true,code:0};}
