@@ -2,6 +2,21 @@
 
 This is a **separate CLI task launcher**, not an in-chat Codex Desktop model switch. It selects a **requested candidate** model (not guaranteed available in the current account) for each new CLI task and uses the existing `codex login` authentication. No new API key and no paid account is created.
 
+## Model specialty and credit-safety update (draft review only)
+
+This revision extends the **existing** Codex coding router rather than creating a second one. It recognizes *authenticated, actually listed* Luna/Terra/Sol/Astra model IDs across versions and routes tasks at the next safe invocation. The user's picker showed GPT-5.6 Luna/Terra/Sol, GPT-6 Luna/Sol/Astra, GPT-6.1 Terra/Sol, GPT-6.2 Sol/Astra; menu labels alone do **not** establish CLI availability, per-model quota, API prices or subscription credits.
+
+- **Simple / repetitive:** prefer verified Luna Low; otherwise Terra Low, then Sol Low if eligible. No architecture call.
+- **Standard coding:** prefer verified Sol Medium; a suitable Terra Medium can substitute at pre-dispatch when Sol is absent.
+- **Complex debugging:** Sol High preferred; only fall back to verified Astra High where justified.
+- **QA read-only:** Sol Medium by default; `--review-after` now selects this cheaper QA role.
+- **Explicit high-risk review:** the existing `review` category retains Astra High preference. Use deliberately, not on every commit.
+- **Explicit architecture:** the new `architecture` category uses Astra High preference, **always read-only**. This should be used only for significant system design. Implementation later happens in a separate, task-scoped coding invocation.
+
+The Windows launcher obtains the selection and reasoning effort from the JS router, and preserves read-only sandboxes for `qa`, `review`, and `architecture`. **No automatic replay of failed or partially writable tasks.** Selection from saved evidence is fail-closed on staleness; live model discovery also queries authenticated account rate limits. Model-family and version preferences are capability hypotheses rather than measured subscription credit rates; measure successful task outcomes per actual usage before claiming cost savings.
+
+**Important scope:** This is a local Codex CLI router and an isolated draft code change. It does not alter Codex Cloud task scheduling, automate independent Cloudflare takeover, or directly dispatch while the PC is off. See separate cloud/backup design PR #67 and WIN inference failover PR #68.
+
 ## Prerequisites
 - Node.js 20+ and a **ChatGPT-authenticated** `codex` command on PATH. API-key-based login is explicitly blocked for live tasks to prevent unapproved usage billing. Check `codex --version` and `codex login status` in PowerShell before using.
 - Open a clean **writable development worktree**, NEVER the frozen PR #36 checkout.
@@ -26,7 +41,7 @@ Ask for one **read-only Astra review** after successful implementation (explicit
 node scripts/win-model-router.mjs --run --verified-models .win-codex-models.json --review-after --task "Implement and test the worker service"
 ```
 
-Manually override task classification using `--category simple|standard|complex|review`. The router uses simple → Terra Low, standard → Sol Medium, complex → Sol High, review → Astra High. No infinite retries. Each model call is a new Codex CLI session; it does not change the model inside a running Codex Desktop chat.
+Manually override task classification using `--category simple|standard|complex|review`. The router uses simple → Luna Low where verified (Terra Low fallback), standard → Sol Medium (Terra Medium fallback), complex → Sol High without automatic Astra escalation, ordinary QA → Sol Medium, and explicit high-risk review/architecture → Astra High (read-only). No infinite retries. Each model call is a new Codex CLI session; it does not change the model inside a running Codex Desktop chat.
 
 **Caveats:** `--review-after` checks only that the implementation Codex process exited successfully; it does **not** assert tests passed. Inspect test logs and diff before any merge or production deployment. The review sees the current worktree's uncommitted changes; committed diffs are not currently included. The router does not yet queue recurring work, manage credit balance, distinguish rate-limit errors for automatic fallback or guarantee actual savings. Usage limits may be shared across models. This prototype does not start the user’s VM or run WIN 24/7.
 

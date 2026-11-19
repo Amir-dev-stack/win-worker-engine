@@ -7,7 +7,7 @@ No auto billing, no retries, PR #36 stays frozen.
 param(
     [Parameter(Mandatory=$true)][string]$Task,
     [string]$Worktree = (Get-Location).Path,
-    [ValidateSet('simple','standard','complex','review')][string]$Category,
+    [ValidateSet('simple','standard','complex','qa','review','architecture')][string]$Category,
     [switch]$Run,
     [string]$VerifiedModels,
     [switch]$UseLiveModels,
@@ -88,7 +88,7 @@ $authCode = $LASTEXITCODE
 if ($authCode -ne 0 -or $authText -notmatch '(?i)^Logged in (using|via) chatgpt\b') {
     throw "ChatGPT-authenticated Codex CLI is required; API-key or unknown login modes are blocked."
 }
-$mode = if ($ReadOnlySmoke -or $plan.category -eq 'review') { 'read-only' } else { 'workspace-write' }
+$mode = if ($ReadOnlySmoke -or $plan.category -in @('review','qa','architecture')) { 'read-only' } else { 'workspace-write' }
 if ($ReadOnlySmoke) {
     Write-Host "Safe execution smoke: forcing read-only sandbox; no automatic review or retry."
 }
@@ -103,11 +103,11 @@ try {
 } finally {
     $ErrorActionPreference = $previousErrorAction
 }
-if ($taskCode -ne 0) { throw "Codex task failed; Astra review skipped. Exit code: $taskCode" }
-if ($ReviewAfter -and $plan.category -ne 'review') {
+if ($taskCode -ne 0) { throw "Codex task failed; optional read-only review skipped. Exit code: $taskCode" }
+if ($ReviewAfter -and $plan.category -notin @('review','qa','architecture')) {
     $reviewPrompt = "Read-only security and regression review of the CURRENT UNCOMMITTED changes in this worktree. Do not change files, deploy, merge, read secrets, or alter billing. Report prioritized findings. Goal: " + $Task
     Write-Host "Launching one read-only model review..."
-    $reviewArgs = @($jsRouter, '--task', $reviewPrompt, '--cwd', $target, '--category', 'review', '--verify-only')
+    $reviewArgs = @($jsRouter, '--task', $reviewPrompt, '--cwd', $target, '--category', 'qa', '--verify-only')
     if ($UseLiveModels) { $reviewArgs += '--live-models' }
     else { $reviewArgs += @('--verified-models', $VerifiedModels) }
     $reviewPlanText = & node @reviewArgs

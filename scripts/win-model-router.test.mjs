@@ -6,12 +6,32 @@ test('routes routine, complex and review',()=>{
   assert.equal(categorize('Update README documentation'),'simple');
   assert.equal(categorize('Implement worker service'),'standard');
   assert.equal(categorize('Debug database concurrency'),'complex');
-  assert.equal(categorize('Final review'),'review');
+  assert.equal(categorize('Final review'),'qa');
+  assert.equal(categorize('Milestone review'),'qa');
+  assert.equal(categorize('Code review'),'qa');
+  assert.equal(categorize('Security audit'),'review');
+  assert.equal(categorize('Architecture review'),'review');
 });
 test('dry-run launches no subprocesses',async()=>{
   const r=await runRouter(['--task','Implement worker','--cwd','/repo'],{
     spawnSyncFn(){throw Error('unexpected');},invokeFn(){throw Error('unexpected');}});
   assert.equal(r.dryRun,true);assert.equal(r.model,'gpt-6.2-sol');
+});
+test('simple dry-run preview matches actual Luna-first routing without generating tokens',async()=>{
+  const dry=await runRouter(['--task','Update README'],{
+    invokeFn(){throw Error('unexpected model invocation');}
+  });
+  assert.equal(dry.dryRun,true);
+  assert.equal(dry.category,'simple');
+  assert.equal(dry.model,'gpt-6-luna');
+  const evidence={...validEvidence,models:[
+    {id:'gpt-6.1-terra',available:true,allowed:true,supportedEfforts:['low']}
+  ]};
+  const verified=await runRouter(['--verify-only','--verified-models','/catalog.json','--task','Update README'],{
+    readFileSyncFn:()=>JSON.stringify(evidence),now:new Date('2026-11-18T15:30:00Z')
+  });
+  assert.equal(verified.model,'gpt-6.1-terra');
+  assert.equal(verified.fallbackBeforeDispatch,true);
 });
 test('rejects invalid args and category',()=>{
   assert.throws(()=>optionsFromArgs([]),/INVALID_TASK/);
@@ -27,7 +47,7 @@ test('cannot run in frozen PR36 or subdirectory',()=>{
   assert.throws(()=>workspaceCheck('C:\\Users\\PC\\.codex\\worktrees\\pr36\\WIN','C:\\Users\\PC\\.codex\\worktrees\\pr36\\WIN'),/FROZEN_PR36/);
   assert.throws(()=>workspaceCheck('/repo/sub','/repo'),/WORKSPACE_MUST/);
 });
-test('one successful implementation invokes at most one Astra review',async()=>{
+test('one successful implementation uses an economical Sol read-only QA review',async()=>{
   const args=[];
   const r=await runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
     spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},realpathSyncFn:x=>x,
@@ -35,9 +55,11 @@ test('one successful implementation invokes at most one Astra review',async()=>{
     invokeFn:async x=>{args.push(x);return {success:true,code:0};}});
   assert.equal(r.stage,'review');assert.equal(args.length,2);
   assert.ok(args[0].includes('gpt-6.2-sol'));
-  assert.ok(args[1].includes('gpt-6.2-astra'));
+  assert.ok(args[1].includes('gpt-6.2-sol'));
+  assert.ok(args[1].includes('read-only'));
+  assert.ok(!args[1].includes('gpt-6.2-astra'));
 });
-test('failed implementation never invokes Astra',async()=>{
+test('failed implementation never invokes any review model',async()=>{
   let count=0;
   const r=await runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
     spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},realpathSyncFn:x=>x,
@@ -53,14 +75,28 @@ test('PowerShell launcher shares router model choices and uses current worktree 
   const {join,dirname}=await import('node:path');
   const launcher=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'Start-WINAutoModels.ps1'),'utf8');
   assert.match(launcher,/\$Worktree\s*=\s*\(Get-Location\)\.Path/);
-  assert.match(launcher,/--category', 'review'/);
+  assert.match(launcher,/--category', 'qa'/);
   assert.match(launcher,/--model \$plan\.reviewModel/);
   assert.doesNotMatch(launcher,/pr49-safety-hardening|--model 'gpt-6\.2-astra'/);
 });
 
+test('routine review chooses Sol QA without triggering Astra credit usage',()=>{
+  const now=new Date('2026-11-18T15:30:00Z');
+  const evidence={...validEvidence,models:[
+    {id:'gpt-6.2-sol',available:true,allowed:true,supportedEfforts:['medium']},
+    {id:'gpt-6.2-astra',available:true,allowed:true,supportedEfforts:['high']}
+  ]};
+  assert.equal(categorize('Final review of implementation'), 'qa');
+  assert.deepEqual(selectVerifiedModel(categorize('Final review of implementation'),evidence,now),
+    {model:'gpt-6.2-sol',effort:'medium'});
+  assert.equal(categorize('Security audit of authentication'), 'review');
+  assert.deepEqual(selectVerifiedModel('review',evidence,now),
+    {model:'gpt-6.2-astra',effort:'high'});
+});
+
 test('review task does not spawn an additional review process',async()=>{
   const launched=[];
-  const result=await runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Final review','--cwd','/repo'],{
+  const result=await runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Security audit','--cwd','/repo'],{
     spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},realpathSyncFn:x=>x,
     readFileSyncFn:()=>JSON.stringify(validEvidence), now:new Date('2026-11-18T15:30:00Z'),
     invokeFn:async args=>{launched.push(args);return {success:true,code:0};}
@@ -106,7 +142,7 @@ test('cooldown blocks selection and does not replay failed tasks',async()=>{
 test('review entitlement is checked before implementation starts',async()=>{
  let called=0;
  await assert.rejects(runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Update README','--cwd','/repo'],{
-   readFileSyncFn:()=>JSON.stringify({...validEvidence,models:[{id:'gpt-6.1-terra',available:true,allowed:true}]}),
+   readFileSyncFn:()=>JSON.stringify({...validEvidence,models:[{id:'gpt-6.1-terra',available:true,allowed:true,supportedEfforts:['low']}]}),
    now:new Date('2026-11-18T15:30:00Z'),
    spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},realpathSyncFn:x=>x,
    invokeFn:async()=>{called++;return {success:true,code:0};}
@@ -204,8 +240,7 @@ test('standard and complex tasks switch only to eligible model before task begin
  ]};
  const standard=selectVerifiedModel('standard',evidence,now);
  assert.deepEqual(standard,{model:'gpt-6.1-terra',effort:'medium'});
- const complex=selectVerifiedModel('complex',evidence,now);
- assert.deepEqual(complex,{model:'gpt-6.2-astra',effort:'high'});
+ assert.throws(()=>selectVerifiedModel('complex',evidence,now),/NO_VERIFIED_MODEL/);
  assert.throws(()=>selectVerifiedModel('review',{...evidence,models:[]},now),/NO_VERIFIED_MODEL/);
 });
 
@@ -268,8 +303,8 @@ test('review preflight remembers both approved model and effort',async()=>{
     readFileSyncFn:()=>JSON.stringify(validEvidence),
     now:new Date('2026-11-18T15:30:00Z')
   });
-  assert.equal(p.reviewModel,'gpt-6.2-astra');
-  assert.equal(p.reviewEffort,'high');
+  assert.equal(p.reviewModel,'gpt-6.2-sol');
+  assert.equal(p.reviewEffort,'medium');
   const {readFileSync}=await import('node:fs');
   const {fileURLToPath}=await import('node:url');
   const {join,dirname}=await import('node:path');
@@ -329,7 +364,7 @@ test('Windows read-only smoke requires verified live account and never permits o
   const launcher=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'Start-WINAutoModels.ps1'),'utf8');
   assert.match(launcher,/\[switch\]\$ReadOnlySmoke/);
   assert.match(launcher,/\$ReadOnlySmoke -and \(-not \$Run -or \$VerifyModelsOnly -or \$ReviewAfter -or -not \$UseLiveModels\)/);
-  assert.match(launcher,/if \(\$ReadOnlySmoke -or \$plan\.category -eq 'review'\) \{ 'read-only' \}/);
+  assert.match(launcher,/if \(\$ReadOnlySmoke -or \$plan\.category -in @\('review','qa','architecture'\)\) \{ 'read-only' \}/);
   assert.match(launcher,/Safe execution smoke: forcing read-only sandbox/);
   const readOnlyIndex=launcher.indexOf('$mode = if ($ReadOnlySmoke');
   const dispatchIndex=launcher.indexOf('& $codexCmd.Source exec');
@@ -364,4 +399,43 @@ test('Codex Cloud readiness probe cannot submit tasks or reveal task JSON',async
   assert.ok(!probe.includes('cloud exec'));
   assert.ok(!probe.includes('OPENAI_API_KEY'));
   assert.ok(!probe.includes('auth.json'));
+});
+
+test('visible Luna versions win lightweight work but unverified Luna is never fabricated',()=>{
+ const now=new Date('2026-11-18T15:30:00Z');
+ const evidence={...validEvidence,models:[
+   {id:'gpt-5.6-luna',available:true,allowed:true,supportedEfforts:['low']},
+   {id:'gpt-6-luna',available:true,allowed:true,supportedEfforts:['low']},
+   {id:'gpt-6.1-terra',available:true,allowed:true,supportedEfforts:['low']}
+ ]};
+ assert.deepEqual(selectVerifiedModel('simple',evidence,now),{model:'gpt-6-luna',effort:'low'});
+ assert.equal(selectVerifiedModel('simple',{...evidence,models:evidence.models.filter(m=>m.id!=='gpt-6-luna')},now).model,'gpt-5.6-luna');
+ assert.equal(selectVerifiedModel('simple',{...evidence,models:evidence.models.filter(m=>!m.id.includes('luna'))},now).model,'gpt-6.1-terra');
+ assert.throws(()=>selectVerifiedModel('simple',{...evidence,models:[{id:'gpt-6-luna',available:false,allowed:true}]},now),/NO_VERIFIED_MODEL/);
+});
+
+test('major architecture stays read-only and uses verified Astra, but ordinary QA uses Sol',()=>{
+ const now=new Date('2026-11-18T15:30:00Z');
+ const evidence={...validEvidence,models:[
+   {id:'gpt-6.2-astra',available:true,allowed:true,supportedEfforts:['high']},
+   {id:'gpt-6.2-sol',available:true,allowed:true,supportedEfforts:['medium','high']}
+ ]};
+ assert.equal(categorize('Architectural blueprint for new service'), 'architecture');
+ assert.deepEqual(selectVerifiedModel('architecture',evidence,now),{model:'gpt-6.2-astra',effort:'high'});
+ assert.deepEqual(selectVerifiedModel('qa',evidence,now),{model:'gpt-6.2-sol',effort:'medium'});
+ assert.ok(buildCodexArgs({category:'architecture',task:'Describe the high-level design',cwd:'/repo',selection:{model:'gpt-6.2-astra',effort:'high'}}).includes('read-only'));
+ assert.ok(buildCodexArgs({category:'qa',task:'Review code',cwd:'/repo'}).includes('read-only'));
+ assert.ok(buildCodexArgs({category:'standard',task:'Implement code',cwd:'/repo'}).includes('workspace-write'));
+});
+
+test('version-aware selection respects live effort, cooldown and explicit approval',()=>{
+ const now=new Date('2026-11-18T15:30:00Z');
+ const evidence={...validEvidence,models:[
+  {id:'gpt-5.6-sol',available:true,allowed:true,supportedEfforts:['medium']},
+  {id:'gpt-6.1-sol',available:true,allowed:true,supportedEfforts:['medium'],cooldownUntil:'2026-11-18T16:00:00Z'},
+  {id:'gpt-6.2-sol',available:true,allowed:true,supportedEfforts:['high']},
+  {id:'gpt-6.3-sol',available:false,allowed:true,supportedEfforts:['medium']}
+ ]};
+ assert.deepEqual(selectVerifiedModel('standard',evidence,now),{model:'gpt-5.6-sol',effort:'medium'});
+ assert.throws(()=>selectVerifiedModel('standard',{...evidence,models:[{id:'gpt-6.1-sol',available:true,allowed:false,supportedEfforts:['medium']}]},now),/NO_VERIFIED_MODEL/);
 });
