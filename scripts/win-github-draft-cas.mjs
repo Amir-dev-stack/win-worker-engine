@@ -52,6 +52,20 @@ function validLease(lease, request) {
     (typeof lease.expires_at === "string" || lease.expires_at instanceof Date) &&
     Date.parse(lease.expires_at) > Date.now();
 }
+// The proposed commit must be independently read back from trusted GitHub
+// metadata, not described by a caller-supplied changed-paths assertion.
+function validProposedCommit(commit, request) {
+  if (!commit || typeof commit !== "object" || Array.isArray(commit) ||
+      commit.sha !== request.proposedCommit ||
+      !Array.isArray(commit.parents) || commit.parents.length !== 1 ||
+      commit.parents[0] !== request.expectedHead ||
+      !Array.isArray(commit.files) || !validPaths(commit.files) ||
+      commit.files.length !== request.paths.length ||
+      !request.paths.every(path => commit.files.includes(path)) ||
+      commit.secretScanPassed !== true ||
+      commit.sourceVerified !== true) return false;
+  return true;
+}
 function hold(reason) {
   // Closed output; don't serialize provider tokens, source, or exceptions.
   return Object.freeze({status:"hold",reason,writeOperations:0});
@@ -69,6 +83,7 @@ export async function guardedDraftUpdate(request, {leaseReader, git} = {}) {
   validRequest(request);
   if (!leaseReader || typeof leaseReader.getCurrent !== "function" ||
       !git || typeof git.getHead !== "function" ||
+      typeof git.inspectProposedCommit !== "function" ||
       typeof git.updateHeadIfEquals !== "function" ||
       git.atomicCompareAndSwapVerified !== true) return hold("TRUSTED_IO_NOT_CONFIGURED");
   let lease;
@@ -81,6 +96,11 @@ export async function guardedDraftUpdate(request, {leaseReader, git} = {}) {
     head = await git.getHead(REPOSITORY,request.branch);
   } catch { return hold("HEAD_UNVERIFIED"); }
   if (head !== request.expectedHead) return hold("BRANCH_HEAD_CHANGED");
+  let commit;
+  try {
+    commit = await git.inspectProposedCommit(REPOSITORY,request.proposedCommit);
+  } catch { return hold("PROPOSED_COMMIT_UNVERIFIED"); }
+  if (!validProposedCommit(commit,request)) return hold("PROPOSED_COMMIT_UNVERIFIED");
   // Narrow the time-of-check window, without pretending this is sufficient
   // for atomicity across the two systems. The GitHub write must be atomic CAS.
   try {
