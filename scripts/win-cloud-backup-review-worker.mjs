@@ -104,6 +104,9 @@ export async function requestCloudBackupReview(prepared, adapter) {
       adapter.toolsEnabled !== false || typeof adapter.generate !== "function") {
     return stop("free_read_only_provider_not_configured");
   }
+  // Consume the capability synchronously, before awaiting any provider I/O.
+  // Failed/uncertain calls must never be replayed automatically.
+  preparedCapabilities.delete(prepared);
   // Provider credentials stay with an isolated host runner, never this module.
   let response;
   try {
