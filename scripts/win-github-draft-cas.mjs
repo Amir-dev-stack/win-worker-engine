@@ -48,7 +48,11 @@ function validLease(lease, request) {
     Number.isSafeInteger(Number(lease.fence)) &&
     Number(lease.fence) === request.fence &&
     lease.status === "running" && lease.approved === true &&
-    lease.source_commit_sha && SHA.test(lease.source_commit_sha) &&
+    // A read-only review lease can NEVER authorize a GitHub mutation.
+    lease.task_type === "draft_only_development" &&
+    // Strict initial-source gate: checkpoint descendant support requires
+    // separate trusted ancestry proof, not a caller-declared relationship.
+    lease.source_commit_sha === request.expectedHead &&
     (typeof lease.expires_at === "string" || lease.expires_at instanceof Date) &&
     Date.parse(lease.expires_at) > Date.now();
 }
