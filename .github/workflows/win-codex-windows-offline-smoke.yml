@@ -31,12 +31,13 @@ jobs:
           # No Codex login, no API key, no model calls, no dispatch. Both paths must stop before execution.
           $dryText = (& $launcher -Task 'Update README documentation' 6>&1 | Out-String)
           if ($dryText -notmatch 'Dry run only') { throw 'Dry-run unexpectedly failed or attempted dispatch.' }
-          $start = [DateTime]::UtcNow.AddMinutes(-5)
-          $end = [DateTime]::UtcNow.AddMinutes(25)
+          # Use the same Node clock/ISO parser as the actual router for deterministic evidence.
+          $start = (& node -e 'console.log(new Date(Date.now() - 300000).toISOString())').Trim()
+          $end = (& node -e 'console.log(new Date(Date.now() + 1500000).toISOString())').Trim()
           $catalog = @{
             source = 'codex-app-server:model/list'
-            verifiedAt = $start.ToString('o')
-            expiresAt = $end.ToString('o')
+            verifiedAt = $start
+            expiresAt = $end
             models = @(@{ id = 'gpt-6.1-terra'; available = $true; allowed = $true; supportedEfforts = @('low') })
           } | ConvertTo-Json -Depth 8
           $evidencePath = Join-Path $env:RUNNER_TEMP 'win-codex-offline-evidence.json'
@@ -46,7 +47,7 @@ jobs:
           if ($verifyText -match 'Starting one bounded Codex task') { throw 'Offline smoke attempted a coding task.' }
           # Expired evidence must not be accepted.
           $expired = $catalog | ConvertFrom-Json
-          $expired.expiresAt = [DateTime]::UtcNow.AddMinutes(-1).ToString('o')
+          $expired.expiresAt = '2000-01-01T00:00:00.000Z'
           $expired | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $evidencePath -Encoding utf8
           $rejected = $false
           try { & $launcher -Task 'Update README documentation' -VerifyModelsOnly -VerifiedModels $evidencePath | Out-Null }
