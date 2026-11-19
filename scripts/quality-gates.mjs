@@ -36,6 +36,7 @@ const learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts"
 const mcpApi = await read("netlify/functions/mcp.mts");
 const oauthStore = await read("netlify/lib/oauth-store.mts");
 const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
+const statsBombReader = await read("scripts/win-statsbomb-open-data.mjs");
 add("WIN exposes a dedicated read-only audit scope through OAuth", oauthStore.includes('"win:audit"') && oauthAuthorize.includes("Read-only WIN diagnostics") && mcpApi.includes('securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]'), "The user can authorize diagnostics separately from research permissions.");
 add("OAuth authorization requires explicit least-privilege scopes", oauthAuthorize.includes("const requested = value.trim() ? value.trim().split") && oauthAuthorize.includes(": [];") && oauthAuthorize.includes("!requested.length"), "An omitted scope is rejected instead of silently granting every supported permission.");
 add("WIN audit consent accurately describes read-only research-run metadata", oauthAuthorize.includes("read-only research-run records") && oauthAuthorize.includes("Cannot start research") && mcpApi.includes("read-only research-run metadata"), "The audit scope may read run metadata but cannot start research or mutate data.");
@@ -83,6 +84,7 @@ add("Coverage is calculated from persisted evidence", coverage.includes("library
 add("Every registered sport is reported", coverage.includes("SPORT_REGISTRY.map") && coverage.includes("requiredDomains"), "Sport coverage is based on the current registry.");
 add("Coverage API is authenticated", coverageApi.includes("requireAuth") && coverageApi.includes("/api/coverage"), "GET /api/coverage requires authentication.");
 add("Coverage snapshots run without AI", monitor.includes('schedule: "0 */6 * * *"') && !monitor.includes("runWinAgent"), "Six-hour snapshots use stored data only.");
+add("StatsBomb Open Data reader stays bounded and research-only", statsBombReader.includes("MAX_BYTES = 5_000_000") && statsBombReader.includes("MAX_TIMEOUT_MS = 30_000") && statsBombReader.includes("Response exceeds byte limit") && statsBombReader.includes("licenceReviewRequired: true") && statsBombReader.includes("usageApprovalGranted: false") && statsBombReader.includes('freshnessGuarantee: "none"'), "The reconciled reader is disconnected, bounded and cannot grant data rights, freshness or production approval.");
 add("Human settlement claims cannot auto-settle", settlement.includes("pending_independent_review") && settlement.includes("outcomeApplied: false") && settlement.includes("coupon.outcome"), "Evidence submissions stay pending and do not change coupon outcomes.");
 add("Original tipster post cannot verify itself", settlement.includes("coupon.source") && settlement.includes("evidenceUrl"), "Original post is rejected as its own settlement evidence.");
 add("Public human imports require explicit content class", source.includes('"original human coupon", "single human pick"') && source.includes("contentClass"), "Only original coupons and single picks enter public archive.");
