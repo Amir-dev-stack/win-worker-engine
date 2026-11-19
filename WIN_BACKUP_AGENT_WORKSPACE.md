@@ -25,6 +25,44 @@
 
 Official references: https://developers.cloudflare.com/workers-ai/platform/pricing/ and https://developers.cloudflare.com/changelog/post/2026-07-28-models-require-workers-paid/ .
 
+## Cost-aware Codex model routing — use the EXISTING single router
+
+The owner clarifies: **do not use Astra (or the highest model) to draft architecture for every task**. Architecture-first is mandatory only for **new or substantially changed system design, cross-service contracts, high-risk security/storage/migrations, concurrency/leases, or work that would otherwise need a costly architectural rewrite**. A small bug fix, documentation change or straightforward feature should skip the Astra architecture step entirely.
+
+The model-switching code belongs in the **existing** [draft PR #51](https://github.com/Amir-dev-stack/win-worker-engine/pull/51) router `scripts/win-model-router.mjs` and launcher `scripts/Start-WINAutoModels.ps1`. Do not create a second router or hardcode different assignments in PowerShell.
+
+| Assignment | Preferred verified model / effort | Expensive architecture call? | Allowed outcome |
+| --- | --- | --- | --- |
+| Simple docs, small tests, mechanical fixes | Terra / low | No | Scoped changes and tests |
+| Ordinary coding, isolated feature, routine debugging | Sol / medium or Terra if validated suitable | No | Scoped implementation and tests |
+| Hard debugging, complex algorithms, constrained cross-file changes | Sol / high | Only if unresolved architectural risk is proven | Implementation and focused verification |
+| Genuine major architecture or high-risk change | Astra / high or strongest *verified* suitable model, **one bounded read-only plan** | Yes, if adequate plan credit/quota exists | Architecture decision record: constraints, components, risks, acceptance tests, implementer task splits; **zero code changes** |
+| Independent code/QA review | Sol / medium-high by default; Astra only by exceptional high-risk gate | Not automatically | Read-only, findings with evidence |
+
+**Live model names, entitlement, supported reasoning effort, quota and costs must come from the authenticated `model/list` and verified usage/limits—not from names, past assumptions, or an assistant's ranking.** A previous read-only local Terra run was reported completed, but this does not verify Sol/Astra entitlement. Select before dispatch; switching after failed/partial writable work requires a clean checkpoint and duplicate-write protection. Do not automatically retry an exhausted model.
+
+### Adaptive execution and economical escalation
+
+1. **Classify first, without an expensive model call**: task scope, architectural novelty, security/data integrity, required reasoning, available model catalog and effective limit buckets. If classification is uncertain, choose safe analysis rather than invoking Astra speculatively.
+2. **Skip heavyweight planning for routine tasks.** Terra or Sol directly edits a scoped isolated branch and runs targeted tests. For major tasks, use *one* read-only high-capability architecture call to produce `ARCHITECTURE.md` or an equivalent sanitized plan in the task branch, with acceptance criteria and change boundaries, before cheaper implementers write code.
+3. Handoff the approved architecture/acceptance criteria to Sol/Terra. They may switch models **between bounded task stages**, based on actual complexity and fresh eligibility. Do not repeatedly use Astra to code, debug test failures, run mechanical fixes, or review every commit.
+4. Allow Astra second-pass architecture clarification only when concrete evidence shows a design contradiction or high-risk unresolved choice, never on an unbounded loop; record why the call is justified, actual credit usage if known, and stop on exhausted/unknown quota.
+5. Use tests, static gates and deterministic tools before invoking any expensive AI review. Routine review by Sol; independent Astra review is exceptional, not the default for `--review-after`.
+6. When Codex is **truly unavailable**, attempt trusted backup failover under section 2: Cloudflare only if verified free-capable hosted runtime / lease / approved source transfer exists, otherwise OpenCode/Ollama only with PC online. Maintain a separate proposal branch. Do not equate switching Codex models with switching to an independent backup host.
+7. On Codex return, independently audit backup output for alignment with the original architecture, tests and active main. `ACCEPTED`, `REPAIR_REQUIRED` or `REJECTED` follow the mandatory review gate; never merge backup branch automatically.
+
+### Acceptance tests for PR #51 / failover integration
+
+- Routine docs/feature/debug tasks **never call Astra automatically**; small work skips architecture.
+- Significant architecture/security/migration cases request exactly one **read-only** architecture plan before implementation; the architect command cannot mutate source even if the prompt asks.
+- Normal implementation is assigned a verified lower-tier model and can change tier only at a safe checkpoint; mismatch/expired model list fails closed.
+- Unknown or exhausted quotas, unauthenticated session, paid API auth, unsupported effort, or unknown credit budget cannot initiate expensive calls.
+- Reviewer selected by the JS router and PowerShell launcher is consistent; no unconditional Astra `--review-after`.
+- A failed or partially completed write is never replayed on another model without verified resume/idempotency and ownership.
+- Backup does not activate for momentary silence, absent cloud environment listing or active Codex lease; verified expired lease triggers at most one bounded takeover attempt when an independently authenticated runner is truly available.
+- Backup commits remain isolated, Codex return performs independent code+architecture review, and acceptance is not automatic production merge.
+- Report actual model invocations/credits per task when available; label quota, cost and cloud availability `UNVERIFIED` otherwise. Do not claim savings without before/after comparison or reliable cost data.
+
 ## 2. When backup is allowed to take an assignment
 
 Backup may proceed ONLY if (a) a task is explicitly in WIN scope and authorized; (b) Codex has explicitly handed it off, completed it or a **trusted** primary lease has expired / an actual quota failure is verified; (c) the assignment is not already owned by an active primary or another backup; (d) the backup runtime, model, quota, repo access and working directory are verified; and (e) safety/cost and file-scope gates pass.
