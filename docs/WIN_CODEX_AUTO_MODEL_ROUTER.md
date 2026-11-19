@@ -148,3 +148,23 @@ Run this from the root of an authorized local WIN worktree with Node.js and a **
 The Windows launcher also retains the **model and reasoning effort selected for an optional read-only review**. Before review, it revalidates eligibility; if the new selection differs from the original approved preflight, it stops instead of switching review models silently.
 
 **Verification:** GitHub Actions [run #44460602618](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44460602618) passed **87/87 tests**. This is a mock/structural validation, not proof of execution on the owner's Windows PC.
+
+## Windows PowerShell offline smoke verification — November 19, 2026
+
+The **same** original PowerShell launcher now has an isolated Windows GitHub Actions workflow: `.github/workflows/win-codex-windows-offline-smoke.yml`. It runs on a GitHub-hosted `windows-latest` runner with repository read permission and **no Codex credentials, no model requests, no API keys, no coding-task execution**.
+
+The workflow exercises:
+- ordinary dry run without `-Run`;
+- `-VerifyModelsOnly -VerifiedModels PATH` with an ephemeral, synthetic fresh model catalog;
+- rejection of synthetic expired model evidence;
+- correct output distinction: offline evidence verification **does not** establish live quota verification.
+
+**Latest Windows workflow validation:** [run #44461376172](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44461376172) **SUCCESS** on commit `3f87dc37f7bb6a765a0e55b58abd1bb71b5b32f9`. The corresponding [Netlify/Node validation #44461382084](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44461382084) also **SUCCESS**. These tests do not prove that this owner's ChatGPT account is authenticated on Windows or that a model would execute; they only verify the native launcher paths in a sandboxed runner.
+
+A safe, **non-executing live-account** preflight command on the owner's already signed-in Windows PC is:
+
+```powershell
+.\scripts\Start-WINAutoModels.ps1 -VerifyModelsOnly -UseLiveModels -Task 'Update README documentation'
+```
+
+Do not use `-Run` until account model availability, quota details and the authorized writable worktree have been independently checked. The cloud GitHub runner intentionally cannot pass that live check; do not upload personal auth tokens to GitHub to circumvent it.
