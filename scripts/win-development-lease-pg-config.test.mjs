@@ -17,9 +17,9 @@ test("local PostgreSQL config clears inherited libpq routing and hidden service 
  const env=result.environment;
  assert.equal(env.PATH,"/usr/bin");
  assert.equal(env.PGPASSWORD,"dummy_password");
- assert.equal(env.PGHOSTADDR,"");
- assert.equal(env.PGSERVICE,"");
- assert.equal(env.PGOPTIONS,"");
+ assert.equal(Object.hasOwn(env,"PGHOSTADDR"),false);
+ assert.equal(Object.hasOwn(env,"PGSERVICE"),false);
+ assert.equal(Object.hasOwn(env,"PGOPTIONS"),false);
  assert.equal(env.PGSSLMODE,"disable");
  for(const key of ["PGHOST","PGPORT","PGSERVICEFILE","PGTARGETSESSIONATTRS",
                     "DATABASE_URL","WIN_LEASE_TEST_DATABASE_URL"]) {
