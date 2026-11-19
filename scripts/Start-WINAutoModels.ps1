@@ -50,7 +50,11 @@ if ($LASTEXITCODE -ne 0) { throw "WIN model evidence is invalid, stale or unavai
 $plan = $verifiedText | ConvertFrom-Json
 Write-Host ("Verified selection: {0} ({1}), pre-dispatch fallback: {2}" -f $plan.model,$plan.effort,$plan.fallbackBeforeDispatch)
 if ($VerifyModelsOnly) {
-    Write-Host "WIN Codex account model and quota preflight passed. No coding task was executed."
+    if ($UseLiveModels) {
+        Write-Host "Live Codex account model and quota preflight passed. No coding task was executed."
+    } else {
+        Write-Host "Local model evidence validation passed. Account quota was NOT queried; no coding task was executed."
+    }
     return
 }
 if (-not (Test-Path -LiteralPath $Worktree -PathType Container)) {
