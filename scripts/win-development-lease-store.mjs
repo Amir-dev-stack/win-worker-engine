@@ -86,29 +86,70 @@ function singleRow(result) {
   return result.rowCount === 1 ? result.rows[0] : null;
 }
 
+// Database clients commonly return BIGINT as decimal strings. Reject unsafe
+// precision and malformed fields rather than claiming a lease from any 1-row
+// response. The trusted host must still bind authenticated actor identity.
+function validFence(value) {
+  if (typeof value !== "string" && typeof value !== "number") return false;
+  const text = String(value);
+  if (!/^[1-9][0-9]*$/.test(text)) return false;
+  const n = Number(text);
+  return Number.isSafeInteger(n) && n > 0;
+}
+function validExpiry(value) {
+  const time = value instanceof Date ? value.getTime() :
+    typeof value === "string" ? Date.parse(value) : NaN;
+  return Number.isFinite(time) && time > 0;
+}
+function checkResult(operation, row, expected) {
+  if (row === null) return null; // Zero affected rows: no lease or lost CAS.
+  const isObject = row && typeof row === "object" && !Array.isArray(row);
+  const sameTask = isObject && row.task_id === expected.taskId;
+  const fenceOk = sameTask && validFence(row.fence) &&
+    (operation === "claim" || operation === "quarantineExpired" ||
+       Number(row.fence) === expected.fence);
+  const shapeOk = operation === "claim"
+    ? SHA.test(row?.source_commit_sha) &&
+      ["read_only_review", "draft_only_development"].includes(row?.task_type) &&
+      validExpiry(row?.expires_at) &&
+      (row?.checkpoint_commit_sha == null || SHA.test(row.checkpoint_commit_sha))
+    : operation === "renew"
+      ? validExpiry(row?.expires_at)
+      : operation === "checkpoint"
+        ? row?.checkpoint_commit_sha === expected.commitSha
+        : row?.status === (operation === "complete" ? "completed" : "blocked_uncertain");
+  if (!sameTask || !fenceOk || !shapeOk) throw Error("INVALID_DATABASE_RESULT");
+  return row;
+}
+
 export function createFencedLeaseStore(db) {
   if (!db || typeof db.query !== "function") throw Error("TRUSTED_DB_REQUIRED");
   return Object.freeze({
     async claim(taskId, actorId, ttlSeconds) {
-      return singleRow(await db.query(LEASE_SQL.claim, leaseClaimArgs(taskId, actorId, ttlSeconds)));
+      return checkResult("claim", singleRow(await db.query(LEASE_SQL.claim,
+        leaseClaimArgs(taskId, actorId, ttlSeconds))), {taskId});
     },
     async renew(taskId, actorId, fence, ttlSeconds) {
       const args = guardArgs(taskId, actorId, fence);
       if (!Number.isSafeInteger(ttlSeconds) || ttlSeconds < 5 || ttlSeconds > 900)
         throw Error("INVALID_LEASE_PARAMETER");
-      return singleRow(await db.query(LEASE_SQL.renew, [...args, ttlSeconds]));
+      return checkResult("renew", singleRow(await db.query(LEASE_SQL.renew,
+        [...args, ttlSeconds])), {taskId, fence});
     },
     async checkpoint(taskId, actorId, fence, commitSha) {
       const args = guardArgs(taskId, actorId, fence);
       assertId(commitSha, SHA);
-      return singleRow(await db.query(LEASE_SQL.checkpoint, [...args, commitSha]));
+      return checkResult("checkpoint", singleRow(await db.query(LEASE_SQL.checkpoint,
+        [...args, commitSha])), {taskId, fence, commitSha});
     },
     async complete(taskId, actorId, fence) {
-      return singleRow(await db.query(LEASE_SQL.complete, guardArgs(taskId, actorId, fence)));
+      return checkResult("complete", singleRow(await db.query(LEASE_SQL.complete,
+        guardArgs(taskId, actorId, fence))), {taskId, fence});
     },
     async quarantineExpired(taskId) {
       assertId(taskId, TASK);
-      return singleRow(await db.query(LEASE_SQL.quarantineExpired, [taskId]));
+      return checkResult("quarantineExpired", singleRow(await db.query(
+        LEASE_SQL.quarantineExpired, [taskId])), {taskId});
     }
   });
 }
