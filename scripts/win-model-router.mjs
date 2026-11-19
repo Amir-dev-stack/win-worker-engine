@@ -112,7 +112,7 @@ export function selectVerifiedModel(category, evidence, now=new Date()){
     :category==='standard'
       ?[{...MODEL_PLAN.standard},{model:MODEL_PLAN.simple.model,effort:'medium'}]
       :category==='complex'
-        ?[{...MODEL_PLAN.complex},{model:MODEL_PLAN.review.model,effort:'high'}]
+        ?[{...MODEL_PLAN.complex}]
         :category==='qa'
           ?[{...MODEL_PLAN.qa},{model:MODEL_PLAN.simple.model,effort:'medium'}]
           :[{...MODEL_PLAN[category]},{model:MODEL_PLAN.standard.model,effort:'high'}];
