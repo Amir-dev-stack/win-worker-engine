@@ -1,5 +1,6 @@
 import {
   selectWinLLMProvider,
+  selectWinLLMProviders,
   validateWinLLMRequest,
   validateWinLLMResponse,
   type WinLLMProviderDescriptor,
@@ -14,6 +15,7 @@ export type WinLLMExecutionResult = {
   timedOut: boolean;
   validationErrors: string[];
   retryPermitted: boolean;
+  attempts?: Array<{ providerId: string; model: string; status: WinLLMResponseV1["status"]; errorCode?: string }>;
 };
 
 function failedResponse(request: WinLLMRequestV1, providerId: string, category: "retryable" | "permanent" | "uncertain", code: string, latencyMs: number): WinLLMResponseV1 {
@@ -87,4 +89,51 @@ export async function executeWinLLMWithPolicy(input: {
   } finally {
     if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
   }
+}
+
+/**
+ * Bounded model/provider failover for explicitly retryable failures only.
+ * Timeout, exception and validation outcomes remain uncertain/permanent and
+ * are never replayed because a provider may have accepted the request.
+ * Each attempt uses the same caller-created reservation; callers must reserve
+ * enough budget for the configured bound before invoking this helper.
+ */
+export async function executeWinLLMWithFailover(input: {
+  request: WinLLMRequestV1;
+  providers: WinLLMProviderDescriptor[];
+  adapters: WinLLMProviderAdapter[];
+  maxAttempts?: number;
+}): Promise<WinLLMExecutionResult> {
+  const requestErrors = validateWinLLMRequest(input.request);
+  if (requestErrors.length) {
+    const response = failedResponse(input.request, "none", "permanent", "request_validation_failed", 0);
+    return { providerId: "none", response, timedOut: false, validationErrors: requestErrors, retryPermitted: false, attempts: [] };
+  }
+  const candidates = selectWinLLMProviders(input.request, input.providers);
+  if (!candidates.length) {
+    const response = failedResponse(input.request, "none", "permanent", "no_eligible_provider", 0);
+    return { providerId: "none", response, timedOut: false, validationErrors: [], retryPermitted: false, attempts: [] };
+  }
+  const attemptPlans = candidates.flatMap(provider =>
+    (input.request.providerPolicy.model ? [input.request.providerPolicy.model] : provider.models)
+      .map(model => ({ provider, model }))
+  );
+  const maxAttempts = Math.min(Math.max(Number.isSafeInteger(input.maxAttempts) ? input.maxAttempts : 2, 1), attemptPlans.length);
+  let last: WinLLMExecutionResult | undefined;
+  const attempts: NonNullable<WinLLMExecutionResult["attempts"]> = [];
+  for (const { provider, model } of attemptPlans.slice(0, maxAttempts)) {
+    const adapter = input.adapters.find(candidate => candidate.providerId === provider.id);
+    const request = {
+      ...input.request,
+      providerPolicy: { ...input.request.providerPolicy, model }
+    };
+    const result = adapter
+      ? await executeWinLLMWithPolicy({ request, providers: [provider], adapters: [adapter] })
+      : { providerId: provider.id, response: failedResponse(request, provider.id, "permanent", "approved_provider_adapter_missing", 0), timedOut: false, validationErrors: [], retryPermitted: false };
+    const errorCode = result.response.error?.code;
+    attempts.push({ providerId: provider.id, model, status: result.response.status, ...(errorCode ? { errorCode } : {}) });
+    last = { ...result, attempts };
+    if (result.response.status === "completed" || !result.retryPermitted) return last;
+  }
+  return last!;
 }

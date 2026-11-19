@@ -110,7 +110,15 @@ export function selectWinLLMProvider(
   request: WinLLMRequestV1,
   providers: WinLLMProviderDescriptor[]
 ): WinLLMProviderDescriptor | null {
-  if (validateWinLLMRequest(request).length || !Array.isArray(providers)) return null;
+  return selectWinLLMProviders(request, providers)[0] || null;
+}
+
+/** Returns the complete deterministic, fail-closed provider order for bounded fallback. */
+export function selectWinLLMProviders(
+  request: WinLLMRequestV1,
+  providers: WinLLMProviderDescriptor[]
+): WinLLMProviderDescriptor[] {
+  if (validateWinLLMRequest(request).length || !Array.isArray(providers)) return [];
   const allowed = new Set(request.providerPolicy.allowedProviders);
   const required = new Set(request.providerPolicy.requiredCapabilities);
   const candidates = providers.filter(provider =>
@@ -119,7 +127,8 @@ export function selectWinLLMProvider(
     provider.approved === true &&
     provider.pricingVerified === true &&
     provider.quotaVerified === true &&
-    Array.isArray(provider.models) &&
+    Array.isArray(provider.models) && provider.models.length > 0 &&
+    provider.models.every(model => nonEmpty(model)) &&
     (!request.providerPolicy.model || provider.models.includes(request.providerPolicy.model)) &&
     Array.isArray(provider.capabilities) &&
     [...required].every(capability => provider.capabilities.includes(capability)) &&
@@ -134,7 +143,7 @@ export function selectWinLLMProvider(
     a.priority - b.priority ||
     a.id.localeCompare(b.id)
   );
-  return candidates[0] || null;
+  return candidates;
 }
 
 export function validateWinLLMResponse(
