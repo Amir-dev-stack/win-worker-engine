@@ -66,6 +66,20 @@ test("real local PostgreSQL permits only one competing worker, quarantines expir
     const owner=alpha?"worker-alpha":"worker-beta";
     const lease=await sql(db,prefix+"SELECT owner_id,fence,status FROM win_dev_lease_tasks WHERE task_id='win-local-test'");
     assert.match(lease,new RegExp("^"+owner+"\\|1\\|running$"));
+    // Revoking an active task must immediately block every owner mutation,
+    // even while its original lease is still unexpired.
+    await sql(db,prefix+"UPDATE win_dev_lease_tasks SET approved=false WHERE task_id='win-local-test'");
+    const deniedRenew=await sql(db,prefix+"PREPARE denied_renew(text,text,bigint,integer) AS "+LEASE_SQL.renew+
+      "; EXECUTE denied_renew('win-local-test',"+quote(owner)+",1,60)");
+    assert.equal(deniedRenew,"","revoked task must not renew");
+    const deniedCheckpoint=await sql(db,prefix+"PREPARE denied_checkpoint(text,text,bigint,text) AS "+LEASE_SQL.checkpoint+
+      "; EXECUTE denied_checkpoint('win-local-test',"+quote(owner)+",1,'"+sourceSha+"')");
+    assert.equal(deniedCheckpoint,"","revoked task must not checkpoint");
+    const deniedComplete=await sql(db,prefix+"PREPARE denied_complete(text,text,bigint) AS "+LEASE_SQL.complete+
+      "; EXECUTE denied_complete('win-local-test',"+quote(owner)+",1)");
+    assert.equal(deniedComplete,"","revoked task must not complete");
+    // Reenable solely for the remaining isolated expiry/fencing scenario.
+    await sql(db,prefix+"UPDATE win_dev_lease_tasks SET approved=true WHERE task_id='win-local-test'");
     // Expired worker cannot renew. A third worker cannot steal it as queued.
     await sql(db,prefix+"UPDATE win_dev_lease_tasks SET expires_at=clock_timestamp()-interval '1 second' WHERE task_id='win-local-test'");
     const renew=await sql(db,prefix+"PREPARE lease_renew(text,text,bigint,integer) AS "+LEASE_SQL.renew+
