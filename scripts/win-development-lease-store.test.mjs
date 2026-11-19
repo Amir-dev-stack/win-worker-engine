@@ -2,13 +2,25 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LEASE_SQL, createFencedLeaseStore } from './win-development-lease-store.mjs';
 
-function fakeDB(rows=[{task_id:'win-lease-1',fence:5}]) {
+function fakeDB(rows=null) {
   const calls=[];
   return {
     calls,
     db:{async query(sql,params) {
       calls.push({sql,params});
-      return {rowCount:rows.length,rows};
+      const op=sql.includes("checkpoint_commit_sha = $4") ? 'checkpoint' :
+        sql.includes("status = 'completed'") ? 'complete' :
+        sql.includes("status = 'blocked_uncertain'") ? 'quarantine' :
+        sql.includes("SET expires_at") ? 'renew' : 'claim';
+      const generated={
+        task_id:params[0], fence:op==='claim'?5:op==='quarantine'?6:params[2],
+        source_commit_sha:'a'.repeat(40),task_type:'read_only_review',
+        expires_at:new Date('2030-01-01T00:00:00Z'),
+        checkpoint_commit_sha:op==='checkpoint'?params[3]:null,
+        status:op==='complete'?'completed':'blocked_uncertain'
+      };
+      const resultRows=rows===null?[generated]:rows;
+      return {rowCount:resultRows.length,rows:resultRows};
     }}
   };
 }
@@ -91,4 +103,48 @@ test('schema draft forbids paid/production work and has a DB-level owner consist
  assert.match(sql,/win_lease_owner_consistency/);
  assert.match(sql,/REVOKE ALL ON win_dev_lease_tasks FROM PUBLIC/);
  assert.doesNotMatch(sql,/DROP TABLE|TRUNCATE|DELETE FROM/);
+});
+
+test('rejects wrong task, wrong fence, invalid SHA, missing expiry and wrong status responses',async()=>{
+ const good={task_id:'task-1',fence:'5',source_commit_sha:'a'.repeat(40),
+   task_type:'read_only_review',expires_at:new Date('2030-01-01T00:00:00Z'),
+   checkpoint_commit_sha:null};
+ const cases=[
+   ['claim',{...good,task_id:'wrong-task'},s=>s.claim('task-1','worker',60)],
+   ['claim',{...good,source_commit_sha:'not-a-sha'},s=>s.claim('task-1','worker',60)],
+   ['claim',{...good,expires_at:null},s=>s.claim('task-1','worker',60)],
+   ['claim',{...good,task_type:'production_deploy'},s=>s.claim('task-1','worker',60)],
+   ['claim',{...good,fence:Number.MAX_SAFE_INTEGER+1},s=>s.claim('task-1','worker',60)],
+   ['renew',{...good,fence:'6'},s=>s.renew('task-1','worker',5,60)],
+   ['checkpoint',{...good,checkpoint_commit_sha:'b'.repeat(40)},s=>s.checkpoint('task-1','worker',5,'a'.repeat(40))],
+   ['complete',{...good,status:'running'},s=>s.complete('task-1','worker',5)],
+   ['quarantine',{...good,status:'running'},s=>s.quarantineExpired('task-1')]
+ ];
+ for(const [operation,row,invoke] of cases) {
+   const store=createFencedLeaseStore({query:async()=>({rowCount:1,rows:[row]})});
+   await assert.rejects(invoke(store),/INVALID_DATABASE_RESULT/,operation);
+ }
+});
+
+test('accepts PostgreSQL BIGINT fence strings and valid operation-specific rows',async()=>{
+ const claim={task_id:'task-1',source_commit_sha:'a'.repeat(40),
+   task_type:'draft_only_development',fence:'5',
+   expires_at:'2030-01-01T00:00:00Z',checkpoint_commit_sha:null};
+ const s=createFencedLeaseStore({query:async(sql,params)=>{
+   const row=sql.includes("checkpoint_commit_sha = $4")
+    ? {task_id:'task-1',fence:'5',checkpoint_commit_sha:params[3]}
+    : sql.includes("status = 'completed'")
+      ? {task_id:'task-1',fence:'5',status:'completed'}
+      : sql.includes("status = 'blocked_uncertain'")
+        ? {task_id:'task-1',fence:'6',status:'blocked_uncertain'}
+        : sql.includes('SET expires_at')
+          ? {task_id:'task-1',fence:'5',expires_at:new Date('2030-01-01T00:00:00Z')}
+          : claim;
+   return {rowCount:1,rows:[row]};
+ }});
+ assert.equal((await s.claim('task-1','worker',120)).fence,'5');
+ assert.equal((await s.renew('task-1','worker',5,60)).fence,'5');
+ assert.equal((await s.checkpoint('task-1','worker',5,'b'.repeat(40))).checkpoint_commit_sha,'b'.repeat(40));
+ assert.equal((await s.complete('task-1','worker',5)).status,'completed');
+ assert.equal((await s.quarantineExpired('task-1')).status,'blocked_uncertain');
 });
