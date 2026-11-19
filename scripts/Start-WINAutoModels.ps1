@@ -12,6 +12,7 @@ param(
     [string]$VerifiedModels,
     [switch]$UseLiveModels,
     [switch]$VerifyModelsOnly,
+    [switch]$ReadOnlySmoke,
     [switch]$ReviewAfter
 )
 $ErrorActionPreference = 'Stop'
@@ -29,6 +30,9 @@ if ($LASTEXITCODE -ne 0) { throw "WIN router validation failed." }
 $plan = $planText | ConvertFrom-Json
 Write-Host ("WIN selected model: {0} ({1}), task type: {2}" -f $plan.model,$plan.effort,$plan.category)
 if ($Run -and $VerifyModelsOnly) { throw "Use -VerifyModelsOnly without -Run." }
+if ($ReadOnlySmoke -and (-not $Run -or $VerifyModelsOnly -or $ReviewAfter -or -not $UseLiveModels)) {
+    throw "ReadOnlySmoke requires -Run -UseLiveModels and disallows -VerifyModelsOnly or -ReviewAfter."
+}
 if (-not $Run -and -not $VerifyModelsOnly) {
     Write-Host "Dry run only. Add -Run to execute with the selected model."
     return
@@ -78,7 +82,10 @@ $authText = (& codex login status 2>&1 | Out-String).Trim()
 if ($LASTEXITCODE -ne 0 -or $authText -notmatch '(?i)^Logged in (using|via) chatgpt\b') {
     throw "ChatGPT-authenticated Codex CLI is required; API-key or unknown login modes are blocked."
 }
-$mode = if ($plan.category -eq 'review') { 'read-only' } else { 'workspace-write' }
+$mode = if ($ReadOnlySmoke -or $plan.category -eq 'review') { 'read-only' } else { 'workspace-write' }
+if ($ReadOnlySmoke) {
+    Write-Host "Safe execution smoke: forcing read-only sandbox; no automatic review or retry."
+}
 Write-Host "Starting one bounded Codex task in $target"
 & codex exec -C $target --model $plan.model -c ('model_reasoning_effort="{0}"' -f $plan.effort) --sandbox $mode $Task
 $taskCode = $LASTEXITCODE
