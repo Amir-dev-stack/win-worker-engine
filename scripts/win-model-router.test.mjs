@@ -274,7 +274,7 @@ test('review preflight remembers both approved model and effort',async()=>{
   const {fileURLToPath}=await import('node:url');
   const {join,dirname}=await import('node:path');
   const launcher=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'Start-WINAutoModels.ps1'),'utf8');
-  assert.match(launcher,/\$plan\.reviewModel -ne \$plan\.reviewModel/);
+  assert.match(launcher,/\$reviewPlan\.model -ne \$plan\.reviewModel/);
   assert.match(launcher,/\$reviewPlan\.effort -ne \$plan\.reviewEffort/);
   assert.match(launcher,/--model \$plan\.reviewModel/);
 });
