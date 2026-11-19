@@ -35,15 +35,22 @@ function safeTimestamp(clock) {
   return value.toISOString();
 }
 
-async function boundedBody(response, maxBytes) {
+function cancelBestEffort(reader) {
+  // A non-cooperative stream may never settle its cancellation promise. Attach
+  // a rejection handler, but never let cleanup extend the caller's deadline.
+  void Promise.resolve().then(() => reader.cancel()).catch(() => {});
+}
+
+async function boundedBody(response, maxBytes, withinDeadline) {
   const declared = Number(response.headers?.get?.("content-length"));
   if (Number.isFinite(declared) && declared > maxBytes) throw new Error("Response exceeds byte limit");
-  const contentType = response.headers?.get?.("content-type");
-  if (contentType && !/^(application\/json|text\/plain)(?:;|$)/iu.test(contentType.trim())) {
+  const contentType = response.headers?.get?.("content-type")?.trim();
+  if (!contentType || !/^(application\/json|text\/plain)(?:;|$)/iu.test(contentType)) {
     throw new Error("Unexpected response content type");
   }
   if (!response.body?.getReader) {
-    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (typeof response.arrayBuffer !== "function") throw new Error("Invalid response body");
+    const bytes = new Uint8Array(await withinDeadline(() => response.arrayBuffer()));
     if (bytes.byteLength > maxBytes) throw new Error("Response exceeds byte limit");
     return bytes;
   }
@@ -51,20 +58,28 @@ async function boundedBody(response, maxBytes) {
   const reader = response.body.getReader();
   const chunks = [];
   let total = 0;
+  let complete = false;
   try {
     while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      const { done, value } = await withinDeadline(() => reader.read());
+      if (done) {
+        complete = true;
+        break;
+      }
       if (!(value instanceof Uint8Array)) throw new Error("Invalid response stream");
       total += value.byteLength;
       if (total > maxBytes) {
-        await reader.cancel().catch(() => {});
         throw new Error("Response exceeds byte limit");
       }
       chunks.push(value);
     }
   } finally {
-    reader.releaseLock();
+    if (!complete) cancelBestEffort(reader);
+    try {
+      reader.releaseLock();
+    } catch {
+      // The read result and fixed diagnostics take precedence over cleanup.
+    }
   }
   const bytes = new Uint8Array(total);
   let offset = 0;
@@ -91,25 +106,38 @@ export async function readStatsBombOpenData(kind, keys = {}, options = {}) {
 
   const controller = new AbortController();
   const externalSignal = options.signal;
-  const abort = () => controller.abort();
-  if (externalSignal?.aborted) controller.abort();
-  else externalSignal?.addEventListener?.("abort", abort, { once: true });
-  const timer = setTimeout(abort, timeoutMs);
+  const deadlineError = new Error("StatsBomb Open Data deadline exceeded");
+  const externalAbortError = new Error("StatsBomb Open Data request aborted");
+  let rejectStop;
+  const stop = new Promise((_resolve, reject) => { rejectStop = reject; });
+  const stopWith = error => {
+    controller.abort();
+    rejectStop(error);
+  };
+  const externalAbort = () => stopWith(externalAbortError);
+  if (externalSignal?.aborted) throw externalAbortError;
+  externalSignal?.addEventListener?.("abort", externalAbort, { once: true });
+  const timer = setTimeout(() => stopWith(deadlineError), timeoutMs);
+  const withinDeadline = operation => Promise.race([
+    Promise.resolve().then(operation),
+    stop
+  ]);
   try {
     let response;
     try {
-      response = await fetcher(url, {
+      response = await withinDeadline(() => fetcher(url, {
         headers: { accept: "application/json" },
         signal: controller.signal
-      });
-    } catch {
+      }));
+    } catch (error) {
+      if (error === deadlineError || error === externalAbortError) throw error;
       throw new Error("StatsBomb Open Data request failed");
     }
     if (!response || response.ok !== true) {
       const status = Number.isInteger(response?.status) ? response.status : 0;
       throw new Error(`StatsBomb Open Data HTTP ${status}`);
     }
-    const bytes = await boundedBody(response, maxBytes);
+    const bytes = await boundedBody(response, maxBytes, withinDeadline);
     let records;
     try {
       records = JSON.parse(new TextDecoder().decode(bytes));
@@ -134,7 +162,7 @@ export async function readStatsBombOpenData(kind, keys = {}, options = {}) {
     };
   } finally {
     clearTimeout(timer);
-    externalSignal?.removeEventListener?.("abort", abort);
+    externalSignal?.removeEventListener?.("abort", externalAbort);
   }
 }
 

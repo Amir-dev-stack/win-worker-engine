@@ -40,6 +40,7 @@ test("fails closed for oversized, malformed, unavailable or wrong-content data",
   await assert.rejects(readStatsBombOpenData("competitions", {}, { fetcher: fake({ foo: 1 }) }), /not an array/u);
   await assert.rejects(readStatsBombOpenData("competitions", {}, { fetcher: fake([], { status: 404 }) }), /HTTP 404/u);
   await assert.rejects(readStatsBombOpenData("competitions", {}, { fetcher: fake([], { contentType: "text/html" }) }), /content type/u);
+  await assert.rejects(readStatsBombOpenData("competitions", {}, { fetcher: fake([], { contentType: null }) }), /content type/u);
 });
 
 test("invalid clock, timeout and fetch configuration fail without a provider call", async () => {
@@ -52,14 +53,80 @@ test("invalid clock, timeout and fetch configuration fail without a provider cal
   await assert.rejects(readStatsBombOpenData("competitions", {}, { fetcher: "bad" }), /fetch implementation/u);
 });
 
-test("timeout aborts a stalled request and never retries", async () => {
+test("deadline settles a stalled fetch that ignores AbortSignal and never retries", async () => {
   let calls = 0;
-  const fetcher = async (_url, { signal }) => {
+  const fetcher = async () => {
     calls++;
-    return new Promise((_resolve, reject) => signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true }));
+    return new Promise(() => {});
   };
-  await assert.rejects(readStatsBombOpenData("competitions", {}, { fetcher, timeoutMs: 5 }), /request failed/u);
+  await assert.rejects(readStatsBombOpenData("competitions", {}, { fetcher, timeoutMs: 5 }), /deadline exceeded/u);
   assert.equal(calls, 1);
+});
+
+test("deadline settles a stalled stream read despite stalled cancellation", async () => {
+  let cancelled = 0;
+  const reader = {
+    read: async () => new Promise(() => {}),
+    cancel: async () => { cancelled++; return new Promise(() => {}); },
+    releaseLock() {}
+  };
+  const fetcher = async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: key => key === "content-type" ? "application/json" : null },
+    body: { getReader: () => reader }
+  });
+  await assert.rejects(readStatsBombOpenData("competitions", {}, { fetcher, timeoutMs: 5 }), /deadline exceeded/u);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(cancelled, 1);
+});
+
+test("deadline bounds a fallback arrayBuffer that ignores AbortSignal", async () => {
+  const fetcher = async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: key => key === "content-type" ? "application/json" : null },
+    arrayBuffer: async () => new Promise(() => {})
+  });
+  await assert.rejects(readStatsBombOpenData("competitions", {}, { fetcher, timeoutMs: 5 }), /deadline exceeded/u);
+});
+
+test("external abort settles a stalled read with a fixed diagnostic and no retry", async () => {
+  let calls = 0;
+  const controller = new AbortController();
+  const reader = {
+    read: async () => new Promise(() => {}),
+    cancel: async () => {},
+    releaseLock() {}
+  };
+  const fetcher = async () => {
+    calls++;
+    return {
+      ok: true,
+      status: 200,
+      headers: { get: key => key === "content-type" ? "application/json" : null },
+      body: { getReader: () => reader }
+    };
+  };
+  const request = readStatsBombOpenData("competitions", {}, {
+    fetcher,
+    signal: controller.signal,
+    timeoutMs: 100
+  });
+  setImmediate(() => controller.abort());
+  await assert.rejects(request, /request aborted/u);
+  assert.equal(calls, 1);
+});
+
+test("an already aborted external signal prevents the provider call", async () => {
+  let calls = 0;
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(readStatsBombOpenData("competitions", {}, {
+    fetcher: async () => { calls++; return fake([])(); },
+    signal: controller.signal
+  }), /request aborted/u);
+  assert.equal(calls, 0);
 });
 
 test("stream over the byte cap is cancelled", async () => {
@@ -77,7 +144,23 @@ test("stream over the byte cap is cancelled", async () => {
     body: { getReader: () => reader }
   });
   await assert.rejects(readStatsBombOpenData("competitions", {}, { fetcher, maxBytes: 5 }), /byte limit/u);
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(cancelled, 1);
+});
+
+test("stream overflow settles without awaiting stalled cancellation", async () => {
+  const reader = {
+    async read() { return { done: false, value: new Uint8Array(6) }; },
+    async cancel() { return new Promise(() => {}); },
+    releaseLock() {}
+  };
+  const fetcher = async () => ({
+    ok: true,
+    status: 200,
+    headers: { get: key => key === "content-type" ? "application/json" : null },
+    body: { getReader: () => reader }
+  });
+  await assert.rejects(readStatsBombOpenData("competitions", {}, { fetcher, maxBytes: 5 }), /byte limit/u);
 });
 
 test("summarizes event types without inventing player or match metrics", () => {
