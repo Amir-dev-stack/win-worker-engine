@@ -54,6 +54,11 @@ export function codexAuthCommand(platform=process.platform){
 export function isChatGPTLogin(status){
   return typeof status==='string'&&/^\s*Logged in (?:using|via) ChatGPT(?:\b|[.!])/i.test(status.trim());
 }
+/** Codex CLI versions may print login status to stderr even on success. */
+export function hasChatGPTCliAuth(result){
+  if(result?.status!==0)return false;
+  return [result.stdout,result.stderr].some(line=>isChatGPTLogin(line));
+}
 export function workspaceCheck(root,gitRoot){
   if(normalize(root).toLowerCase()!==normalize(gitRoot).toLowerCase())throw Error('WORKSPACE_MUST_BE_GIT_ROOT');
   if(/([\\/])pr36([\\/]|$)|pr36-review|pr36-safety/i.test(root))throw Error('FROZEN_PR36_WORKSPACE');
@@ -213,7 +218,7 @@ export async function runRouter(argv,deps={}){
   if(opts.liveModels){
     const {command, args}=codexAuthCommand(deps.platform||process.platform);
     const auth=(deps.spawnSyncFn||spawnSync)(command,args,{encoding:'utf8',timeout:8000,windowsHide:true});
-    if(auth.status!==0||!isChatGPTLogin(auth.stdout))throw Error('CODEX_CHATGPT_AUTH_REQUIRED');
+    if(!hasChatGPTCliAuth(auth))throw Error('CODEX_CHATGPT_AUTH_REQUIRED');
     evidence=await (deps.discoverModelsFn||discoverCodexModels)({now:deps.now||new Date()});
   }else{
     const read=deps.readFileSyncFn||readFileSync;
@@ -229,7 +234,7 @@ export async function runRouter(argv,deps={}){
   // ChatGPT subscription authentication only: API-key sessions may incur usage-based charges.
   const {command, args}=codexAuthCommand(deps.platform||process.platform);
     const auth=(deps.spawnSyncFn||spawnSync)(command,args,{encoding:'utf8',timeout:8000,windowsHide:true});
-  if(auth.status!==0||!isChatGPTLogin(auth.stdout))throw Error('CODEX_CHATGPT_AUTH_REQUIRED');
+  if(!hasChatGPTCliAuth(auth))throw Error('CODEX_CHATGPT_AUTH_REQUIRED');
   const git=(deps.spawnSyncFn||spawnSync)('git',['-C',cwd,'rev-parse','--show-toplevel'],{encoding:'utf8',timeout:5000,windowsHide:true});
   if(git.status!==0||!git.stdout?.trim())throw Error('NOT_A_GIT_WORKTREE');
   const real=deps.realpathSyncFn||realpathSync;
