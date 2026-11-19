@@ -78,6 +78,12 @@ The draft write policy now requires an injected **trusted Git commit inspector**
 
 The booleans are **interface attestations only**: this standalone code cannot prove that a real scanner ran, that metadata was cryptographically authenticated or that a host's GitHub update implements atomic expected-head compare-and-swap. A real external GitHub integration and scanner must be independently implemented and verified, with adversarial source tests, least-privilege credentials and zero-permission-to-merge/deploy. Passing mocked commit-inspection tests does not permit automatic production writes.
 
+## Asynchronous draft-request mutation defense (2026-11-19)
+
+The GitHub draft CAS gate now **copies and freezes the complete validated write request (including a separate copy of its changed-path list) before any database or GitHub `await`**. This closes a time-of-check/time-of-use problem: previously an injected caller could mutate the original `request.branch`, `request.proposedCommit` or `request.paths` while the guard waited for lease/head/commit inspection, potentially redirecting the actual write away from the validated parameters. A new controlled concurrency regression test pauses the first async lease read, mutates every sensitive original request field, then resumes and confirms the only permitted write still uses the original approved draft branch/commit/task/fence/file set.
+
+This is a *local input integrity* safeguard, not proof of a trusted live GitHub adapter, secret scanner, authenticated worker identity or atomic GitHub/Neon cross-service operation. The live writer remains unconnected and no unattended cloud task is enabled.
+
 ## Next acceptance gates
 - Independent review of the proposed schema, least-privilege database permissions and status transitions.
 - Provision or reuse a trusted durable store **without touching production**. Confirm API credentials, quotas, owner approval and limits separately.
