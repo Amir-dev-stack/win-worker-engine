@@ -215,3 +215,17 @@ The first command describes CLI support; the second **lists** at most one recent
 **Future submission (do not run until the environment is verified):** `codex.cmd cloud exec --env REAL_ENV_ID --attempts 1 "Review the WIN router read-only; do not merge, deploy or access secrets."` This is a **real model task** and uses the user's permitted Codex plan usage. Review the cloud task and results before applying any diff; do not assume every CLI model/fallback option is honored by Codex Cloud. No unsupported model-ID flags, billing fallback, or implicit environment choice.
 
 **Security and architecture boundaries:** no personal `auth.json`, access tokens, refresh tokens, GitHub CI secret copies, API keys, billing changes, or unattended GitHub runner Codex execution. Publishing the environment and invoking a cloud task require authenticated owner actions. The current router's local Terra/Sol/Astra choices are already live-tested for a simple task; the cloud execution backend and its model/effort controls are **not yet live-tested**. The router must not silently conflate the two backends. GitHub Actions can continue non-generative monitoring while the PC is off.
+
+## Confirmed CLI/new Codex Cloud environment mismatch — November 19, 2026
+
+**Do not search for or guess a CLI-compatible environment ID from the attached runtime.** The owner verified a browser Codex Cloud read-only task in `/workspace/win-worker-engine`, but their Windows CLI v0.170.0 lists `{"tasks":[],"cursor":null}` and offers only `All Environments (Global)` in `codex cloud`. The attached runtime reported a `ccarenv_b64_...` identifier, explicitly **not** established as a Cloud Tasks environment ID or selector.
+
+OpenAI's public tracker documents the same cross-client catalog mismatch:
+- https://github.com/openai/codex/issues/50182 — new Codex Cloud environments visible/usable in the browser, but CLI environment discovery empty; CLI resolver rejects before selecting by name/ID.
+- https://github.com/openai/codex/issues/58145 — CLI `/wham/environments` responds with `[]`, picker shows only Global, task listing empty.
+- https://github.com/openai/codex/issues/56995 — even a stable current `asenvcfg_` environment configuration ID is *not* a reliable fix for the legacy `wham/tasks` submission path.
+- https://github.com/openai/codex/issues/56350 — cloud model/effort overrides also must not be assumed to honor local router choices.
+
+Therefore **PC-off browser Codex task execution is verified**; **automatic `codex cloud exec` dispatch is not**. The `scripts/Test-WINCodexCloud.ps1` probe proves task-list endpoint connectivity *only*, not environment availability or ability to submit tasks. Its previous success must not be read as authorization or readiness for cloud dispatch. Continue bounded, owner-approved tasks through supported Codex Cloud browser UI, without duplicating environments, exporting personal authentication, bypassing first-party private endpoints, or using separately billed OpenAI API credentials.
+
+**Unblock condition:** a future supported Codex CLI release exposes the owner's current published WIN environment in the *CLI* environment picker; then obtain its CLI-recognized ID from the supported catalog and test a single explicit owner-approved read-only cloud task. Keep cloud-dispatch code disabled until then; the existing local Codex model router remains verified and functional.
