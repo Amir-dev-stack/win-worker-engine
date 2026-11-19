@@ -19,6 +19,12 @@ A local-only, single-use JS review envelope prevents duplicates inside one proce
 6. Keep `checkpoint_commit_sha` restricted to a reviewed, secret-scanned draft commit; do not store prompts, source files, private keys, tokens or arbitrary assistant messages in the lease database. Source GitHub SHA must be verified by the trusted host before enqueuing.
 7. The DB schema is a draft for Neon. Do not apply, create credentials, change billing, or grant access without separate independent security review and explicit owner authorization. PostgreSQL-specific CI tests under an actual database and concurrent worker stress tests are still necessary.
 
+## Database response validation (2026-11-19)
+
+The adapter now validates each affected row **after** checking that exactly one row was returned. A zero-row update still means no lease / lost compare-and-swap. A one-row response is not automatically accepted: it must identify the requested task; a claim must include a well-formed original source SHA, supported task type, valid lease expiry, safe positive fencing generation and valid optional checkpoint SHA. Renew/checkpoint/complete must return exactly the requested fence, and checkpoint/terminal results must match the intended SHA/status. PostgreSQL drivers may return bigint fences as decimal strings; they are accepted only when safely representable as JS integers. Missing, mismatched, malformed or unsafe values fail closed with `INVALID_DATABASE_RESULT`.
+
+These checks protect the **application adapter** against inconsistent or malformed driver results and prevent false success claims. They do **not** authenticate the database, prove the actor owns its identity, establish a real distributed lease, prevent a rogue caller from bypassing the adapter, or replace database transactional/concurrency tests. Real PostgreSQL sessions and least-privilege role validation remain essential before deployment.
+
 ## Next acceptance gates
 - Independent review of the proposed schema, least-privilege database permissions and status transitions.
 - Provision or reuse a trusted durable store **without touching production**. Confirm API credentials, quotas, owner approval and limits separately.
