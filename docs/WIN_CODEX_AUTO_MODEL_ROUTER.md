@@ -182,3 +182,26 @@ git pull --ff-only
 The test makes **one real authenticated Codex model request**, which may use an allowance from the ChatGPT plan; it is *not* a no-model-call preflight and should not be run in untrusted environments. The owner must choose whether to run it locally. Record the command's exit/result and compare the git status before and after; `-ReadOnlySmoke` does not attest a successful model response until run on the owner's computer.
 
 [Node CI #44462818828](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44462818828) and [Windows offline CI #44462812573](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44462812573) both passed for code commit `82d5b5fb3c8557d2f73ac555a0b2a3d342419b39`. CI did **not** invoke a model.
+
+## Official Codex Cloud path for PC-off coding — November 19, 2026
+
+**Newly verified official capability, not yet activated in WIN.** OpenAI's Codex Cloud executes tasks on OpenAI-managed computers; a task in a published cloud environment can continue while the user's Windows PC is asleep/offline. On supported CLI installations, `codex cloud exec --env ENV_ID "TASK"` submits a task using the existing ChatGPT CLI credentials. The `--env` value is a real Codex Cloud environment ID, **not** a GitHub Actions runner, Git branch, or invented environment.
+
+References:
+- https://help.openai.com/en/articles/20001545-using-codex-cloud
+- https://learn.chatgpt.com/docs/developer-commands (section `codex cloud`)
+- https://learn.chatgpt.com/docs/environments/cloud-environments
+
+**Owner-side read-only discovery (do not commit login tokens):**
+
+```powershell
+cd C:\Users\PC\source\WIN-AutoRouter
+codex.cmd cloud --help
+codex.cmd cloud list --limit 1 --json
+```
+
+The first command describes CLI support; the second **lists** at most one recent cloud task but neither executes nor creates one. A successful list call establishes access to the list endpoint, **not necessarily an available published environment**. The JSON may include private task titles and summaries: don't publish raw output to PRs or CI logs. To find/select an available cloud environment, open `codex.cmd cloud` interactively or use Codex Cloud on the web with the same ChatGPT account. Create and publish an environment connected to the WIN GitHub repository if the account's plan and permissions allow it.
+
+**Future submission (do not run until the environment is verified):** `codex.cmd cloud exec --env REAL_ENV_ID --attempts 1 "Review the WIN router read-only; do not merge, deploy or access secrets."` This is a **real model task** and uses the user's permitted Codex plan usage. Review the cloud task and results before applying any diff; do not assume every CLI model/fallback option is honored by Codex Cloud. No unsupported model-ID flags, billing fallback, or implicit environment choice.
+
+**Security and architecture boundaries:** no personal `auth.json`, access tokens, refresh tokens, GitHub CI secret copies, API keys, billing changes, or unattended GitHub runner Codex execution. Publishing the environment and invoking a cloud task require authenticated owner actions. The current router's local Terra/Sol/Astra choices are already live-tested for a simple task; the cloud execution backend and its model/effort controls are **not yet live-tested**. The router must not silently conflate the two backends. GitHub Actions can continue non-generative monitoring while the PC is off.
