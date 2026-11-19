@@ -2,9 +2,9 @@
  * Read-only verifier for a WIN draft commit before any GitHub CAS writer.
  *
  * This module never updates refs, creates branches, scans arbitrary content,
- * or retries an uncertain read. The injected reader must be an independently
- * authenticated GitHub read operation; its output is treated as untrusted
- * metadata and is reduced to a closed, safe summary.
+ * or retries an uncertain read. The injected readers must be independently
+ * authenticated GitHub metadata and pinned scanner-evidence operations; their
+ * outputs are treated as untrusted data and reduced to a closed safe summary.
  */
 const REPOSITORY = "Amir-dev-stack/win-worker-engine";
 const SHA = /^[0-9a-f]{40}$/;
@@ -37,11 +37,18 @@ function validCommit(commit, input) {
     commit.sha !== input.commitSha || !Array.isArray(commit.parents) ||
     commit.parents.length !== 1 || commit.parents[0] !== input.expectedParent ||
     !Array.isArray(commit.files) || commit.files.length === 0 || commit.files.length > 25 ||
-    new Set(commit.files).size !== commit.files.length || !commit.files.every(safePath) ||
-    commit.sourceVerified !== true || commit.secretScanPassed !== true) return false;
+    new Set(commit.files).size !== commit.files.length || !commit.files.every(safePath)) return false;
   if (input.expectedPaths && (commit.files.length !== input.expectedPaths.length ||
       !input.expectedPaths.every(path => commit.files.includes(path)))) return false;
   return true;
+}
+
+function validEvidence(evidence, input) {
+  return evidence && typeof evidence === "object" && !Array.isArray(evidence) &&
+    evidence.commitSha === input.commitSha && evidence.secretScanPassed === true &&
+    Number.isSafeInteger(evidence.scannerAppId) && evidence.scannerAppId > 0 &&
+    typeof evidence.checkName === "string" && evidence.checkName.length > 0 &&
+    typeof evidence.completedAt === "string" && Number.isFinite(Date.parse(evidence.completedAt));
 }
 
 function snapshotInput(input) {
@@ -58,11 +65,14 @@ function snapshotInput(input) {
  * No writer is accepted by this API, so a successful result cannot itself
  * mutate GitHub.
  */
-export async function inspectDraftCommit(input, { commitReader } = {}) {
+export async function inspectDraftCommit(input, { commitReader, evidenceReader } = {}) {
   if (!validInput(input)) throw Error("UNSAFE_COMMIT_INSPECTION_REQUEST");
   const request = snapshotInput(input);
   if (!commitReader || typeof commitReader.readCommit !== "function") {
     return hold("COMMIT_READER_NOT_CONFIGURED");
+  }
+  if (!evidenceReader || typeof evidenceReader.readEvidence !== "function") {
+    return hold("EVIDENCE_READER_NOT_CONFIGURED");
   }
   let commit;
   try {
@@ -71,6 +81,13 @@ export async function inspectDraftCommit(input, { commitReader } = {}) {
     return hold("COMMIT_UNVERIFIED");
   }
   if (!validCommit(commit, request)) return hold("COMMIT_UNVERIFIED");
+  let evidence;
+  try {
+    evidence = await evidenceReader.readEvidence(request.repository, request.commitSha);
+  } catch {
+    return hold("SCAN_EVIDENCE_UNVERIFIED");
+  }
+  if (!validEvidence(evidence, request)) return hold("SCAN_EVIDENCE_UNVERIFIED");
   return Object.freeze({
     status: "verified",
     repository: request.repository,
@@ -79,6 +96,11 @@ export async function inspectDraftCommit(input, { commitReader } = {}) {
     changedPaths: Object.freeze([...commit.files]),
     sourceVerified: true,
     secretScanPassed: true,
+    scanEvidence: Object.freeze({
+      scannerAppId: evidence.scannerAppId,
+      checkName: evidence.checkName,
+      completedAt: evidence.completedAt
+    }),
     writeOperations: 0
   });
 }
