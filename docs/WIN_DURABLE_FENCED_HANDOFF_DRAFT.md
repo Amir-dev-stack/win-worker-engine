@@ -43,6 +43,12 @@ The URL above is an **illustrative dummy**, not a real credential. Do not commit
 
 Fencing counter arithmetic is now explicitly bounded to JavaScript's maximum safe integer at the table and claim/quarantine levels. An exhausted counter cannot be silently wrapped or interpreted imprecisely; claim/quarantine then update zero rows and require manual reconciliation.
 
+## Approval-revocation gate (2026-11-19)
+
+The current draft CAS statements now require `approved = true` not just when acquiring the task but also when **renewing, checkpointing and completing** an active lease. If a trusted supervisor revokes approval during a running task, those DB operations will affect zero rows, and the caller must stop without treating the write as successful. Expired leases may still be quarantined without renewed approval, because quarantining is a safety action, not permission to continue work.
+
+Regression tests check all three SQL guards. The optional local PostgreSQL test adds an active-lease revocation scenario; it is **not run in ordinary CI** and remains unverified against real Postgres. Note that the database gate cannot revoke an already executing external model call or a separately authorized GitHub credential. A trusted worker must check the approval and fence again immediately before any external side effect and use GitHub exact-head CAS where writes are allowed. No automatically retried uncertain requests.
+
 ## Next acceptance gates
 - Independent review of the proposed schema, least-privilege database permissions and status transitions.
 - Provision or reuse a trusted durable store **without touching production**. Confirm API credentials, quotas, owner approval and limits separately.
