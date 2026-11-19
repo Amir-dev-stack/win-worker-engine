@@ -29,7 +29,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $launcher = Join-Path (Get-Location).Path 'scripts/Start-WINAutoModels.ps1'
           # No Codex login, no API key, no model calls, no dispatch. Both paths must stop before execution.
-          $dryText = (& $launcher -Task 'Update README documentation' | Out-String)
+          $dryText = (& $launcher -Task 'Update README documentation' 6>&1 | Out-String)
           if ($dryText -notmatch 'Dry run only') { throw 'Dry-run unexpectedly failed or attempted dispatch.' }
           $start = [DateTime]::UtcNow.AddMinutes(-5)
           $end = [DateTime]::UtcNow.AddMinutes(25)
@@ -41,7 +41,7 @@ jobs:
           } | ConvertTo-Json -Depth 8
           $evidencePath = Join-Path $env:RUNNER_TEMP 'win-codex-offline-evidence.json'
           Set-Content -LiteralPath $evidencePath -Value $catalog -Encoding utf8
-          $verifyText = (& $launcher -Task 'Update README documentation' -VerifyModelsOnly -VerifiedModels $evidencePath | Out-String)
+          $verifyText = (& $launcher -Task 'Update README documentation' -VerifyModelsOnly -VerifiedModels $evidencePath 6>&1 | Out-String)
           if ($verifyText -notmatch 'Account quota was NOT queried') { throw 'Offline preflight incorrectly claimed live quota verification.' }
           if ($verifyText -match 'Starting one bounded Codex task') { throw 'Offline smoke attempted a coding task.' }
           # Expired evidence must not be accepted.
