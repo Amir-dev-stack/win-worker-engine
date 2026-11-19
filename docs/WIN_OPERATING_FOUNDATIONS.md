@@ -14,6 +14,8 @@ Coverage is computed from records in `library/research-evidence`, not from sport
 
 The coverage inventory also reports bounded distinct competition/league, season, team/participant, player/athlete and market identities found explicitly in those records. It reports how many records do not carry each identity and does not merge aliases without a verified mapping. Approved open/no-credential provider registry entries appear separately as `registry_approved_not_live_verified`; they never count as connected evidence.
 
+The sport/domain gap matrix compares persisted evidence with conservative provider-registry declarations for fixtures/event identity, results, team statistics, player statistics, injuries, lineups, tactics/matchups and odds/markets. Statuses distinguish `observed_in_persisted_evidence`, `approved_open_candidate_only`, `blocked_candidate_only` and `no_known_coverage`. Candidate-only statuses are planning signals, not connectivity, rights, completeness or freshness evidence.
+
 Freshness thresholds are operational alerts, not proof of source correctness. Data must still carry a source, retrieval timestamp, event/entity identity and confidence/provenance before it can be used in a decision.
 
 ## Settlement contract

@@ -58,6 +58,22 @@ test("provider inventory distinguishes open candidates from live connections", (
   assert.match(report.providers.warning, /not proof of current connectivity/i);
 });
 
+test("domain gap matrix separates observed, approved-open, blocked and unknown coverage", () => {
+  const report = buildCoverageInventory([
+    { sport: "football", domain: "injury report", retrievedAt: "2026-11-19T10:00:00Z" }
+  ], providers, ["football", "tennis"]);
+  const football = report.domainMatrix.bySport.find(item => item.sportId === "football");
+  const tennis = report.domainMatrix.bySport.find(item => item.sportId === "tennis");
+  const domain = (sport, id) => sport.domains.find(item => item.id === id);
+  assert.equal(domain(football, "fixtures").status, "approved_open_candidate_only");
+  assert.equal(domain(football, "injuries").status, "observed_in_persisted_evidence");
+  assert.equal(domain(football, "lineups").status, "blocked_candidate_only");
+  assert.equal(domain(football, "tactics_matchups").status, "no_known_coverage");
+  assert.equal(domain(tennis, "fixtures").status, "no_known_coverage");
+  assert.deepEqual(domain(football, "fixtures").approvedOpenCandidateProviderIds, ["open-source"]);
+  assert.deepEqual(domain(football, "lineups").blockedCandidateProviderIds, ["rights-pending"]);
+});
+
 test("empty or malformed evidence remains explicit and bounded", () => {
   const report = buildCoverageInventory([null, [], "bad"], []);
   assert.equal(report.evidenceRecords, 0);
