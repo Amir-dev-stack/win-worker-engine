@@ -288,7 +288,7 @@ test('PowerShell read-only account smoke check exits before actual Codex dispatc
   assert.match(script,/\$Run -and \$VerifyModelsOnly/);
   assert.match(script,/\$VerifyModelsOnly\) \{[\s\S]*?return/);
   const preflight=script.indexOf('if ($VerifyModelsOnly) {',script.indexOf('Verified selection:'));
-  const invoke=script.indexOf('& codex exec');
+  const invoke=script.indexOf('& $codexCmd.Source exec');
   assert.ok(preflight>0 && invoke>preflight);
 });
 
@@ -332,6 +332,21 @@ test('Windows read-only smoke requires verified live account and never permits o
   assert.match(launcher,/if \(\$ReadOnlySmoke -or \$plan\.category -eq 'review'\) \{ 'read-only' \}/);
   assert.match(launcher,/Safe execution smoke: forcing read-only sandbox/);
   const readOnlyIndex=launcher.indexOf('$mode = if ($ReadOnlySmoke');
-  const dispatchIndex=launcher.indexOf('& codex exec');
+  const dispatchIndex=launcher.indexOf('& $codexCmd.Source exec');
   assert.ok(readOnlyIndex>0 && dispatchIndex>readOnlyIndex);
+});
+
+test('Windows CLI calls bypass npm PowerShell shim while preserving exit checks',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const {fileURLToPath}=await import('node:url');
+  const {join,dirname}=await import('node:path');
+  const launcher=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'Start-WINAutoModels.ps1'),'utf8');
+  assert.ok(launcher.includes('Get-Command codex.cmd'));
+  assert.ok(launcher.includes("cmd.exe /d /s /c 'codex.cmd login status 2>&1'"));
+  assert.ok(launcher.includes('$authCode -ne 0'));
+  assert.ok(launcher.includes("$ErrorActionPreference = 'Continue'"));
+  assert.ok(launcher.includes('$taskCode = $LASTEXITCODE'));
+  assert.ok(launcher.includes('$reviewCode = $LASTEXITCODE'));
+  assert.ok(!launcher.includes('& codex login status 2>&1'));
+  assert.ok(!launcher.includes('& codex exec'));
 });
