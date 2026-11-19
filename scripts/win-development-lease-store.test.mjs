@@ -62,6 +62,17 @@ test('all mutations after claim require exact owner + fencing epoch and unexpire
   assert.match(LEASE_SQL.checkpoint,/\$4 ~/);
 });
 
+test('revoked task approval prevents lease renewal, checkpoint and completion',()=>{
+  for(const mutation of ['renew','checkpoint','complete']) {
+    const sql=LEASE_SQL[mutation];
+    assert.match(sql,/AND approved = true/,`${mutation} must require continuing approval`);
+    assert.match(sql,/AND owner_id = \$2 AND fence = \$3/);
+  }
+  // Quarantine must remain possible after approval revocation to fence
+  // an expired, potentially still-running worker.
+  assert.doesNotMatch(LEASE_SQL.quarantineExpired,/approved = true/);
+});
+
 test('store returns no ownership when database CAS updates zero rows',async()=>{
   const {db}=fakeDB([]);
   const store=createFencedLeaseStore(db);
