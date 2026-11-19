@@ -42,7 +42,7 @@ test("reads exact commit metadata using one authenticated GET and discards claim
     expectedPaths: [filename]
   }, { commitReader: reader }), {
     status: "hold",
-    reason: "COMMIT_UNVERIFIED",
+    reason: "EVIDENCE_READER_NOT_CONFIGURED",
     writeOperations: 0
   });
 });
