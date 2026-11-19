@@ -72,6 +72,12 @@ The previously opt-in concurrency test **has now passed against a real isolated 
 
 **Critical limit:** There is **no real GitHub branch mutation adapter or authenticated cloud supervisor wired into this module**. A caller-supplied `atomicCompareAndSwapVerified` flag is an interface assertion, not cryptographic proof or enforceable GitHub atomicity. A real host must independently validate the adapter and GitHub permissions, approved commit ancestry, path policy and secret scanning. A preflight DB lease check and subsequent GitHub CAS cannot by themselves create an atomic cross-service transaction, so external side-effect/revocation races and crash recovery still require a trusted reconciliation protocol. The module is not currently used to make any live writes, and nobody should treat a mocked passing test as proof of a production-ready cloud writer.
 
+## Proposed Git commit inspection before any draft update (2026-11-19)
+
+The draft write policy now requires an injected **trusted Git commit inspector**, `git.inspectProposedCommit(repository, proposedSha)`, before attempting a draft branch update. It must return verified metadata fetched from the trusted repository, not from an LLM or user-supplied object. The guard checks that the proposed commit is exactly the requested SHA, has **one and only one parent equal to the current expected branch head** (rejecting merges and unrelated commits), has a changed-file list exactly matching the approved path set with no extra, duplicate or unsafe path, and carries independently verified `secretScanPassed` and `sourceVerified` attestations. Missing, malformed or inconsistent metadata blocks any GitHub write attempt.
+
+The booleans are **interface attestations only**: this standalone code cannot prove that a real scanner ran, that metadata was cryptographically authenticated or that a host's GitHub update implements atomic expected-head compare-and-swap. A real external GitHub integration and scanner must be independently implemented and verified, with adversarial source tests, least-privilege credentials and zero-permission-to-merge/deploy. Passing mocked commit-inspection tests does not permit automatic production writes.
+
 ## Next acceptance gates
 - Independent review of the proposed schema, least-privilege database permissions and status transitions.
 - Provision or reuse a trusted durable store **without touching production**. Confirm API credentials, quotas, owner approval and limits separately.
