@@ -86,6 +86,12 @@ The GitHub draft CAS gate now **copies and freezes the complete validated write 
 
 This is a *local input integrity* safeguard, not proof of a trusted live GitHub adapter, secret scanner, authenticated worker identity or atomic GitHub/Neon cross-service operation. The live writer remains unconnected and no unattended cloud task is enabled.
 
+## Codex review findings P1/P2 resolved in draft writer (2026-11-19)
+
+- **P1:** A `read_only_review` lease is now rejected by the GitHub draft-write guard at **both lease reads**. Only an authenticated lease row with authoritative `task_type = 'draft_only_development'` can authorize a mutation. Missing, modified, or unexpected task types fail closed.
+- **P2:** The guard now binds `lease.source_commit_sha` to the request's `expectedHead`, and the already-enforced sole parent of `proposedCommit` must equal that same expected head. Unrelated source commits cannot authorize a write. This strict policy intentionally **does not yet support checkpoint descendants**; that requires an independently verified and explicitly authorized ancestry chain, not a request flag or a model assertion.
+- Added regression cases for unauthorized read-only lease types and an unrelated approved source SHA; no actual GitHub writer is connected. These interface tests are not evidence of production deployment or a server-enforced atomic GitHub CAS.
+
 ## Next acceptance gates
 - Independent review of the proposed schema, least-privilege database permissions and status transitions.
 - Provision or reuse a trusted durable store **without touching production**. Confirm API credentials, quotas, owner approval and limits separately.
