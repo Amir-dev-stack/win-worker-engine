@@ -49,6 +49,12 @@ The current draft CAS statements now require `approved = true` not just when acq
 
 Regression tests check all three SQL guards. The optional local PostgreSQL test adds an active-lease revocation scenario; it is **not run in ordinary CI** and remains unverified against real Postgres. Note that the database gate cannot revoke an already executing external model call or a separately authorized GitHub credential. A trusted worker must check the approval and fence again immediately before any external side effect and use GitHub exact-head CAS where writes are allowed. No automatically retried uncertain requests.
 
+## Local Postgres connection isolation (2026-11-19)
+
+The opt-in real PostgreSQL harness was audited for inherited `libpq` environment settings. It now imports `inspectLocalPgConfig` from `scripts/win-development-lease-pg-config.mjs`, validates the explicit localhost/127.0.0.1 test-only URL, and strips inherited `PG*`, `DATABASE_URL` and test destination variables before creating the `psql` subprocess. It explicitly clears `PGHOSTADDR`, `PGSERVICE`, `PGOPTIONS` and inherited passfile lookup. This closes a risk where `PGHOSTADDR` could override a localhost hostname. A separate offline regression file covers remote destinations, port/query-string injections, test-only database names, and inherited libpq settings; it never opens a connection.
+
+The actual concurrent PostgreSQL integration test is still opt-in and **skipped by default**, and remains unverified without an isolated local PostgreSQL service. The connection validator limits accidental destination misrouting; it is not a protection against a malicious local host or compromised process.
+
 ## Next acceptance gates
 - Independent review of the proposed schema, least-privilege database permissions and status transitions.
 - Provision or reuse a trusted durable store **without touching production**. Confirm API credentials, quotas, owner approval and limits separately.
