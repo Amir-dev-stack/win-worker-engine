@@ -321,3 +321,17 @@ test('Codex Windows login status may be emitted on stderr on successful exit',as
   assert.equal(invocations,1);
   assert.equal(result.success,true);
 });
+
+test('Windows read-only smoke requires verified live account and never permits optional write review',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const {fileURLToPath}=await import('node:url');
+  const {join,dirname}=await import('node:path');
+  const launcher=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'Start-WINAutoModels.ps1'),'utf8');
+  assert.match(launcher,/\[switch\]\$ReadOnlySmoke/);
+  assert.match(launcher,/\$ReadOnlySmoke -and \(-not \$Run -or \$VerifyModelsOnly -or \$ReviewAfter -or -not \$UseLiveModels\)/);
+  assert.match(launcher,/if \(\$ReadOnlySmoke -or \$plan\.category -eq 'review'\) \{ 'read-only' \}/);
+  assert.match(launcher,/Safe execution smoke: forcing read-only sandbox/);
+  const readOnlyIndex=launcher.indexOf('$mode = if ($ReadOnlySmoke');
+  const dispatchIndex=launcher.indexOf('& codex exec');
+  assert.ok(readOnlyIndex>0 && dispatchIndex>readOnlyIndex);
+});
