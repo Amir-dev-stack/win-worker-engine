@@ -1,0 +1,30 @@
+# WIN persistent fenced handoff contract — offline draft
+
+This is a **proposal**, not a deployed Neon/Postgres migration, authorized scheduler, or proven PC-off backup. It complements the existing read-only backup reviewer (draft PR #71), and intentionally **does not duplicate** the production cloud runner.
+
+## Problem addressed
+A local-only, single-use JS review envelope prevents duplicates inside one process, but cannot coordinate Cloudflare, Codex, another host or another server instance. The trusted supervisor must use an atomic database CAS to enforce one current lease and an ever-increasing fencing generation.
+
+## Draft components
+- `db/draft_win_dev_fenced_lease.sql`: an unapplied Postgres table with constrained task identifiers, preapproved source commit SHA, read-only/draft task type, forced no production write/no paid spend, lease owner, integer fencing generation, expiration and opaque **commit SHA only** checkpoints. It revokes PUBLIC privileges.
+- `scripts/win-development-lease-store.mjs`: parameterized SQL for preapproved queued task claim, lease renewal, checkpoint SHA, completion and expired-lease quarantine.
+- `scripts/win-development-lease-store.test.mjs`: offline/mock contract tests. They are **not an actual concurrent PostgreSQL transaction test**.
+
+## Essential invariants
+1. **No auto reclaim of an expired running coding task.** The supervisor atomically marks it `blocked_uncertain` and increments the fence. That condition stays blocked until a separate trusted reconciliation verifies the former job is no longer executing and checks its last GitHub/checkpoint effects. No automatic blind model retry.
+2. Claim works only for a preapproved `queued` task with no current owner; one SQL UPDATE executes atomically in Postgres, and a zero-row result means no lease was obtained.
+3. Every subsequent renew, checkpoint or complete operation compares both authenticated worker ID and exact fence, and requires an unexpired lease. A stale worker is unable to change the DB row even if it resumes execution.
+4. A DB fence is **not enough to stop external writes**. Every GitHub draft-branch update must also use an authenticated exact-head compare-and-swap, after rechecking the DB lease. Production deployment, merges, paid model calls and secret access are prohibited. No GitHub writer is implemented in this proposal.
+5. Never derive worker identity, authorization, model quota or Free-plan price from untrusted model output or HTTP JSON. A *trusted independently authenticated* server maps provider identity to DB actor and separates administrative task approval from worker mutation rights.
+6. Keep `checkpoint_commit_sha` restricted to a reviewed, secret-scanned draft commit; do not store prompts, source files, private keys, tokens or arbitrary assistant messages in the lease database. Source GitHub SHA must be verified by the trusted host before enqueuing.
+7. The DB schema is a draft for Neon. Do not apply, create credentials, change billing, or grant access without separate independent security review and explicit owner authorization. PostgreSQL-specific CI tests under an actual database and concurrent worker stress tests are still necessary.
+
+## Next acceptance gates
+- Independent review of the proposed schema, least-privilege database permissions and status transitions.
+- Provision or reuse a trusted durable store **without touching production**. Confirm API credentials, quotas, owner approval and limits separately.
+- Add transaction-level concurrent claim, expiration, stale owner and crash/restart tests against isolated PostgreSQL.
+- Build an independently authenticated scheduler and git reader with approval-bound source SHA, lease checks and exact-head draft writes.
+- Confirm Cloudflare model account is truly Free-plan and approved for processing bounded private code; never infer zero spend from a caller-supplied boolean.
+- Demonstrate PC-off/return path: Codex primary lease ends, reviewer claims a valid task, proposal is independently validated, Codex later resumes without duplicate execution.
+
+No model request, Cloudflare call, payment, database migration or deployment is triggered by these files.
