@@ -20,6 +20,7 @@ function services(options={}) {
   leaseReader:{getCurrent:async()=>{
     reads++;
     if(options.leaseError) throw Error("no log");
+    if(options.leaseOnRecheck && reads>1) return {...lease,...options.leaseOnRecheck};
     return options.revokeOnRecheck && reads>1 ? {...lease,approved:false} : lease;
   }},
   git:{
@@ -118,6 +119,17 @@ test("changed, unverifiable or revoked-after-first-check head blocks dispatch",a
   const result=await guardedDraftUpdate(req(),f.io);
   assert.equal(result.status,"hold");
   assert.equal(f.counts().writes,0);
+ }
+});
+test("authorization and approved source are revalidated immediately before CAS",async()=>{
+ for(const leaseOnRecheck of [
+  {task_type:"read_only_review"},
+  {source_commit_sha:C}
+ ]) {
+  const f=services({leaseOnRecheck});
+  const result=await guardedDraftUpdate(req(),f.io);
+  assert.equal(result.reason,"LEASE_NOT_CURRENT",JSON.stringify(leaseOnRecheck));
+  assert.deepEqual(f.counts(),{writes:0,reads:2,heads:1,inspections:1});
  }
 });
 test("uncertain post-write error, mismatched CAS result, or conflict never triggers retry",async()=>{
