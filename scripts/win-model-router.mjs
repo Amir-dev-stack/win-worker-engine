@@ -10,11 +10,16 @@ export const MODEL_PLAN=Object.freeze({
   simple:{model:'gpt-6.1-terra',effort:'low'},
   standard:{model:'gpt-6.2-sol',effort:'medium'},
   complex:{model:'gpt-6.2-sol',effort:'high'},
-  review:{model:'gpt-6.2-astra',effort:'high'}
+  // Lightweight analysis is preferred where an authenticated Luna is available.
+  // Plain review uses Sol; reserve Astra for requested high-risk architecture.
+  qa:{model:'gpt-6.2-sol',effort:'medium'},
+  review:{model:'gpt-6.2-astra',effort:'high'},
+  architecture:{model:'gpt-6.2-astra',effort:'high'}
 });
 const CATEGORIES=new Set(Object.keys(MODEL_PLAN));
 export function categorize(task){
   if (/\b(security audit|architecture review|final review|milestone review)\b/i.test(task)) return 'review';
+  if (/\b(system architecture|architectural blueprint|distributed system design|database migration design|new service architecture)\b/i.test(task)) return 'architecture';
   if (/\b(race condition|deadlock|concurrency|data corruption|critical bug|deep debug|hard to reproduce)\b/i.test(task)) return 'complex';
   if (/\b(readme|documentation|typo|format|rename|comment only|small text)\b/i.test(task)) return 'simple';
   return 'standard';
@@ -45,7 +50,7 @@ export function buildCodexArgs({category,task,cwd,selection=null}){
   const {model,effort}=selection||MODEL_PLAN[category];
   if(!/^[a-z0-9][a-z0-9.\\-]{2,79}$/.test(model)||!['low','medium','high'].includes(effort))throw Error('INVALID_MODEL_SELECTION');
   return ['exec','-C',cwd,'--model',model,'--config',`model_reasoning_effort="${effort}"`,
-    '--sandbox',category==='review'?'read-only':'workspace-write',task];
+    '--sandbox',['review','qa','architecture'].includes(category)?'read-only':'workspace-write',task];
 }
 export function codexAuthCommand(platform=process.platform){
   return platform==='win32'?{command:'cmd.exe',args:['/d','/s','/c','codex login status']}
@@ -88,26 +93,31 @@ export function selectVerifiedModel(category, evidence, now=new Date()){
      ||expiry-start>86400000)throw Error('MODEL_EVIDENCE_STALE');
   const allowed=(evidence.models||[]).filter(m=>m&&typeof m.id==='string'&&m.available===true
      &&m.allowed===true&&(!m.cooldownUntil||(Number.isFinite(Date.parse(m.cooldownUntil))&&Date.parse(m.cooldownUntil)<=current)));
-  // Version numbers change; only signed-in catalog-listed Terra/Sol/Astra
-  // families may substitute. Preserve the original departmental model preferences.
+  // Only select exact model IDs that are visible in the authenticated catalog.
+  // Families, generations and supported effort are independently verified;
+  // never synthesize a version from the user's model-picker screenshot.
   const catalogFamily=model=>{
-    const match=/^gpt-\d+(?:\.\d+)?-(terra|sol|astra)$/.exec(model);
+    const match=/^gpt-\\d+(?:\\.\\d+)?-(luna|terra|sol|astra)$/.exec(model);
     return match?.[1]||null;
   };
+  const supports=(m,effort)=>!Array.isArray(m.supportedEfforts)||m.supportedEfforts.includes(effort);
   const ranked=(family,effort)=>allowed
-    .filter(m=>catalogFamily(m.id)===family
-      &&(!Array.isArray(m.supportedEfforts)||m.supportedEfforts.includes(effort)))
+    .filter(m=>catalogFamily(m.id)===family && supports(m,effort))
     .sort((a,b)=>b.id.localeCompare(a.id,undefined,{numeric:true}))[0]?.id||null;
+  // The routing order is an initial capability policy, NOT evidence of price.
+  // Tasks can change models only at a fresh pre-dispatch checkpoint.
   const candidates=category==='simple'
-    ?[{...MODEL_PLAN.simple},{model:MODEL_PLAN.standard.model,effort:'low'}]
+    ?[{model:'gpt-6-luna',effort:'low'},{...MODEL_PLAN.simple},{model:'gpt-5.6-terra',effort:'low'},
+      {model:MODEL_PLAN.standard.model,effort:'low'}]
     :category==='standard'
       ?[{...MODEL_PLAN.standard},{model:MODEL_PLAN.simple.model,effort:'medium'}]
       :category==='complex'
         ?[{...MODEL_PLAN.complex},{model:MODEL_PLAN.review.model,effort:'high'}]
-        :[{...MODEL_PLAN.review},{model:MODEL_PLAN.standard.model,effort:'high'}];
+        :category==='qa'
+          ?[{...MODEL_PLAN.qa},{model:MODEL_PLAN.simple.model,effort:'medium'}]
+          :[{...MODEL_PLAN[category]},{model:MODEL_PLAN.standard.model,effort:'high'}];
   for(const candidate of candidates){
-    if(allowed.some(m=>m.id===candidate.model
-      &&(!Array.isArray(m.supportedEfforts)||m.supportedEfforts.includes(candidate.effort))))return candidate;
+    if(allowed.some(m=>m.id===candidate.model && supports(m,candidate.effort)))return candidate;
     const family=catalogFamily(candidate.model);
     const resolved=family&&ranked(family,candidate.effort);
     if(resolved)return {model:resolved,effort:candidate.effort};
@@ -184,7 +194,7 @@ export function discoverCodexModels({spawnFn=spawn,timeoutMs=12000,now=new Date(
           if(cursor){if(++pages>=8)return finish('CODEX_MODEL_DISCOVERY_PAGINATION');ask();}
           else{
             const approved=models.filter(v=>v&&v.hidden!==true&&typeof (v.model||v.id)==='string'
-             &&/^gpt-\d+(?:\.\d+)?-(terra|sol|astra)$/.test(v.model||v.id)).map(v=>({
+             &&/^gpt-\d+(?:\.\d+)?-(luna|terra|sol|astra)$/.test(v.model||v.id)).map(v=>({
               id:v.model||v.id,available:true,allowed:true,
               supportedEfforts:Array.isArray(v.supportedReasoningEfforts)
                 ?v.supportedReasoningEfforts.map(x=>x.reasoningEffort).filter(x=>typeof x==='string'):[]
@@ -227,8 +237,8 @@ export async function runRouter(argv,deps={}){
   }
   const selected=selectVerifiedModel(category,evidence,deps.now||new Date());
   // Prevalidate optional reviewer BEFORE a writable implementation starts.
-  const reviewModel=opts.reviewAfter&&category!=='review'
-    ?selectVerifiedModel('review',evidence,deps.now||new Date()):null;
+  const reviewModel=opts.reviewAfter&&!['review','qa','architecture'].includes(category)
+    ?selectVerifiedModel('qa',evidence,deps.now||new Date()):null;
   const plan={category,model:selected.model,effort:selected.effort,cwd,reviewAfter:opts.reviewAfter,reviewModel:reviewModel?.model||null,reviewEffort:reviewModel?.effort||null,modelAvailability:'owner-verified',fallbackBeforeDispatch:selected.model!==requested.model};
   if(opts.verifyOnly)return {verified:true,...plan};
   // ChatGPT subscription authentication only: API-key sessions may incur usage-based charges.
@@ -244,14 +254,14 @@ export async function runRouter(argv,deps={}){
   const invoke=deps.invokeFn||invokeCodex;
   const result=await invoke(buildCodexArgs({category,task:opts.task,cwd:dir,selection:selected}));
   if(!result.success)return {success:false,stage:'implementation',exitCode:result.code,...plan};
-  if(!opts.reviewAfter||category==='review')return {success:true,stage:'implementation',...plan};
+  if(!opts.reviewAfter||['review','qa','architecture'].includes(category))return {success:true,stage:'implementation',...plan};
   const prompt=`Review ONLY current uncommitted changes in this worktree for correctness, security and regressions. Do not modify files, deploy, or access secrets. Provide severity-ranked findings. Goal: ${opts.task}`;
-  const review=await invoke(buildCodexArgs({category:'review',task:prompt,cwd:dir,selection:reviewModel}));
+  const review=await invoke(buildCodexArgs({category:'qa',task:prompt,cwd:dir,selection:reviewModel}));
   return {success:review.success,stage:'review',reviewExitCode:review.code,...plan};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
   runRouter(process.argv.slice(2)).then(r=>{
-    console.log(r.help?'Usage: --task "..." [--category simple|standard|complex|review] [--cwd PATH] [--run] [--review-after]':JSON.stringify(r,null,2));
+    console.log(r.help?'Usage: --task "..." [--category simple|standard|complex|qa|review|architecture] [--cwd PATH] [--run] [--review-after]':JSON.stringify(r,null,2));
     if(r.success===false)process.exitCode=1;
   }).catch(e=>{console.error('WIN_ROUTER_ERROR:',e.message);process.exitCode=1;});
 }
