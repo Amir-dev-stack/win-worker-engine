@@ -15,6 +15,9 @@ const MAX_FILES = 8;
 const ALLOWED_TYPES = new Set(["code_review", "test_analysis", "draft_patch_proposal"]);
 const BLOCKED_PATH_PARTS = new Set([".git", ".env", ".ssh", ".aws", "node_modules", "secrets", "credentials"]);
 const MAX_PROMPT = 32 * 1024;
+// Same-process provenance barrier: untrusted callers cannot forge a 'prepared'
+// review by submitting arbitrary JSON. This is NOT cloud identity/lease proof.
+const preparedCapabilities = new WeakSet();
 
 function bytes(value) { return Buffer.byteLength(value, "utf8"); }
 function plain(value) {
@@ -75,7 +78,7 @@ export function prepareCloudBackupReview(input, nowMs = Date.now()) {
     files: scopedFiles
   });
   if (bytes(prompt) > MAX_PROMPT) return stop("prompt_too_large");
-  return {
+  const prepared = {
     schema: "WIN_CLOUD_BACKUP_REVIEW_V1",
     status: "prepared",
     taskId: decision.taskId,
@@ -86,10 +89,14 @@ export function prepareCloudBackupReview(input, nowMs = Date.now()) {
     writeOperations: 0,
     warning: "A trusted cloud executor must independently verify identity and atomic lease before invoking a zero-cost model."
   };
+  preparedCapabilities.add(prepared);
+  return prepared;
 }
 
 export async function requestCloudBackupReview(prepared, adapter) {
-  if (!plain(prepared) || prepared.status !== "prepared" ||
+  if (!plain(prepared) || !preparedCapabilities.has(prepared) ||
+      prepared.status !== "prepared" || prepared.writeOperations !== 0 ||
+      prepared.schema !== "WIN_CLOUD_BACKUP_REVIEW_V1" ||
       typeof prepared.prompt !== "string" || bytes(prepared.prompt) > MAX_PROMPT ||
       !plain(adapter) || adapter.providerCostUsd !== 0 ||
       adapter.executionMode !== "cloud_read_only" ||
