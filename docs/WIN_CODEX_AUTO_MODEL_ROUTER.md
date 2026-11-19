@@ -229,3 +229,7 @@ OpenAI's public tracker documents the same cross-client catalog mismatch:
 Therefore **PC-off browser Codex task execution is verified**; **automatic `codex cloud exec` dispatch is not**. The `scripts/Test-WINCodexCloud.ps1` probe proves task-list endpoint connectivity *only*, not environment availability or ability to submit tasks. Its previous success must not be read as authorization or readiness for cloud dispatch. Continue bounded, owner-approved tasks through supported Codex Cloud browser UI, without duplicating environments, exporting personal authentication, bypassing first-party private endpoints, or using separately billed OpenAI API credentials.
 
 **Unblock condition:** a future supported Codex CLI release exposes the owner's current published WIN environment in the *CLI* environment picker; then obtain its CLI-recognized ID from the supported catalog and test a single explicit owner-approved read-only cloud task. Keep cloud-dispatch code disabled until then; the existing local Codex model router remains verified and functional.
+
+## Standing owner instruction: resolve blockers, don't pivot
+
+Read [WIN blocker-resolution policy](WIN_BLOCKER_RESOLUTION_POLICY.md) before abandoning any Codex CLI/cloud problem. The environment ID issue remains open until a supported CLI environment selection and owner-approved end-to-end dispatch have been verified. Continue safe root-cause investigation and document every blocker without circumventing security, spending or approval rules.
