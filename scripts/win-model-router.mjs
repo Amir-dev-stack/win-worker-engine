@@ -97,7 +97,7 @@ export function selectVerifiedModel(category, evidence, now=new Date()){
   // Families, generations and supported effort are independently verified;
   // never synthesize a version from the user's model-picker screenshot.
   const catalogFamily=model=>{
-    const match=/^gpt-\\d+(?:\\.\\d+)?-(luna|terra|sol|astra)$/.exec(model);
+    const match=/^gpt-\d+(?:\.\d+)?-(luna|terra|sol|astra)$/.exec(model);
     return match?.[1]||null;
   };
   const supports=(m,effort)=>!Array.isArray(m.supportedEfforts)||m.supportedEfforts.includes(effort);
