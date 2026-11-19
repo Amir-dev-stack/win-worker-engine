@@ -112,11 +112,11 @@ export function selectVerifiedModel(category, evidence, now=new Date()){
     ?[{...MODEL_PLAN.simple},{model:'gpt-6.1-terra',effort:'low'},
       {model:MODEL_PLAN.standard.model,effort:'low'}]
     :category==='standard'
-      ?[{...MODEL_PLAN.standard},{model:MODEL_PLAN.simple.model,effort:'medium'}]
+      ?[{...MODEL_PLAN.standard},{model:'gpt-6.1-terra',effort:'medium'}]
       :category==='complex'
         ?[{...MODEL_PLAN.complex}]
         :category==='qa'
-          ?[{...MODEL_PLAN.qa},{model:MODEL_PLAN.simple.model,effort:'medium'}]
+          ?[{...MODEL_PLAN.qa},{model:'gpt-6.1-terra',effort:'medium'}]
           :[{...MODEL_PLAN[category]},{model:MODEL_PLAN.standard.model,effort:'high'}];
   for(const candidate of candidates){
     if(allowed.some(m=>m.id===candidate.model && supports(m,candidate.effort)))return candidate;
