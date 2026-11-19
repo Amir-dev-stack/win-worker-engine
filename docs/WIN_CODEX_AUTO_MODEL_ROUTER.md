@@ -168,3 +168,17 @@ A safe, **non-executing live-account** preflight command on the owner's already 
 ```
 
 Do not use `-Run` until account model availability, quota details and the authorized writable worktree have been independently checked. The cloud GitHub runner intentionally cannot pass that live check; do not upload personal auth tokens to GitHub to circumvent it.
+
+## Controlled read-only execution smoke — November 19, 2026
+
+After successful **owner-side** `-VerifyModelsOnly -UseLiveModels` verification, a bounded first real execution can use the *same* Windows launcher, with an explicit `-ReadOnlySmoke` switch. This switch forces `codex exec` to `--sandbox read-only`, requires `-Run -UseLiveModels`, forbids `-ReviewAfter`, and preserves ChatGPT-only authentication, quota preflight, git-root checks and the frozen PR #36 guard. There is no retry, deployment, file modification authority or API-key fallback.
+
+```powershell
+cd C:\Users\PC\source\WIN-AutoRouter
+git pull --ff-only
+.\scripts\Start-WINAutoModels.ps1 -Run -ReadOnlySmoke -UseLiveModels -Category simple -Task "Read README.md and report the first top-level heading. Do not modify any file, run installs, deploy, or access secrets."
+```
+
+The test makes **one real authenticated Codex model request**, which may use an allowance from the ChatGPT plan; it is *not* a no-model-call preflight and should not be run in untrusted environments. The owner must choose whether to run it locally. Record the command's exit/result and compare the git status before and after; `-ReadOnlySmoke` does not attest a successful model response until run on the owner's computer.
+
+[Node CI #44462818828](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44462818828) and [Windows offline CI #44462812573](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44462812573) both passed for code commit `82d5b5fb3c8557d2f73ac555a0b2a3d342419b39`. CI did **not** invoke a model.
