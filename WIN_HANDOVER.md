@@ -215,3 +215,7 @@ Issue #81 A3 adds a disabled deterministic model and design record for a future 
 ## Codex Cloud task provenance assessment — 2026-11-19
 
 Issue #81 B1 is `BLOCKED_EVIDENCE`. No accessible authorized record contains a platform-issued Codex Cloud task ID/URL with repository, managed workspace, verified permissions, start/end timestamps and final state. The hourly ChatGPT automation ID, GitHub commits/PRs and CI runs are not Codex Cloud task receipts. PC-off proof is independently unverified. The branch adds a read-only fail-closed validator that distinguishes `LIVE_VERIFIED`, `REPORTED`, `MOCK_ONLY` and `BLOCKED_EVIDENCE` without dispatching work. PR #83's separately reviewed authorization-predicate gap remains queued and untouched by this branch.
+
+## Durable dispatcher groundwork — 2026-11-19
+
+Issue #81 B2 adds a bounded local durable dispatcher with idempotent enqueue, exclusive writer lock, approval/quota/free-only gates, capped attempts, dead-letter state and fixed redacted trace codes. It accepts a completed launch only through the B1 provenance validator. Actual status is `BLOCKED_INTERFACE` because no verified live Codex Cloud launch interface is available. This is local-file groundwork, not cross-host durability or proof of task dispatch; B2 remains incomplete until a permitted interface returns a genuine receipt.
