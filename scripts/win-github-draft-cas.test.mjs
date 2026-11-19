@@ -14,7 +14,7 @@ function req(overrides={}) {
 function services(options={}) {
  let writes=0,reads=0,heads=0,inspections=0;
  const lease={task_id:"win-1",owner_id:"cloud-reviewer-1",fence:"3",
-   status:"running",approved:true,source_commit_sha:C,
+   status:"running",approved:true,task_type:"draft_only_development",source_commit_sha:A,
    expires_at:new Date(Date.now()+3600000).toISOString(),...options.lease};
  const io={
   leaseReader:{getCurrent:async()=>{
@@ -88,6 +88,30 @@ test("revoked, wrong owner or stale lease must stop without remote writes",async
   assert.equal(f.counts().writes,0);
  }
 });
+test("read-only review leases, altered lease type, and unrelated approved source cannot write",async()=>{
+ for(const opts of [
+  {lease:{task_type:"read_only_review"}},
+  {lease:{task_type:undefined}},
+  {lease:{task_type:"unknown"}},
+  {lease:{source_commit_sha:C}},
+  {lease:{source_commit_sha:undefined}}
+ ]) {
+   const f=services(opts);
+   const result=await guardedDraftUpdate(req(),f.io);
+   assert.equal(result.reason,"LEASE_NOT_CURRENT",JSON.stringify(opts));
+   assert.equal(f.counts().writes,0);
+ }
+ for(const opts of [
+  {revokeOnRecheck:true},
+  {lease:{task_type:"read_only_review",source_commit_sha:C}}
+ ]) {
+   const f=services(opts);
+   const result=await guardedDraftUpdate(req(),f.io);
+   assert.equal(result.status,"hold");
+   assert.equal(f.counts().writes,0);
+ }
+});
+
 test("changed, unverifiable or revoked-after-first-check head blocks dispatch",async()=>{
  for(const opts of [{head:C},{headError:true},{revokeOnRecheck:true}]) {
   const f=services(opts);
@@ -147,7 +171,7 @@ test("mutating request while awaiting lease checks cannot redirect draft write",
  const pending=new Promise(resolve=>{firstRead=resolve;});
  let inspected,updated;
  const lease={task_id:"win-1",owner_id:"cloud-reviewer-1",fence:"3",
-   status:"running",approved:true,source_commit_sha:C,
+   status:"running",approved:true,task_type:"draft_only_development",source_commit_sha:A,
    expires_at:new Date(Date.now()+3600000).toISOString()};
  const io={
    leaseReader:{getCurrent:async()=>{firstRead();await gate;return lease;}},
