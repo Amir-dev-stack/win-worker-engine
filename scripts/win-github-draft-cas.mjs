@@ -43,12 +43,19 @@ function validRequest(request) {
   return request;
 }
 function validLease(lease, request) {
-  return lease && typeof lease === "object" && lease.task_id === request.taskId &&
+  if (!lease || typeof lease !== "object" || lease.task_id !== request.taskId ||
+    lease.task_type !== "draft_only_development" ||
+    typeof lease.source_commit_sha !== "string" ||
+    !SHA.test(lease.source_commit_sha) ||
+    (lease.checkpoint_commit_sha != null &&
+      (typeof lease.checkpoint_commit_sha !== "string" ||
+        !SHA.test(lease.checkpoint_commit_sha)))) return false;
+  const authoritativeHead = lease.checkpoint_commit_sha ?? lease.source_commit_sha;
+  return request.expectedHead === authoritativeHead &&
     lease.owner_id === request.actorId &&
     Number.isSafeInteger(Number(lease.fence)) &&
     Number(lease.fence) === request.fence &&
     lease.status === "running" && lease.approved === true &&
-    lease.source_commit_sha && SHA.test(lease.source_commit_sha) &&
     (typeof lease.expires_at === "string" || lease.expires_at instanceof Date) &&
     Date.parse(lease.expires_at) > Date.now();
 }

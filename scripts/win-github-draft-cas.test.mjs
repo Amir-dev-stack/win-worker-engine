@@ -14,7 +14,8 @@ function req(overrides={}) {
 function services(options={}) {
  let writes=0,reads=0,heads=0,inspections=0;
  const lease={task_id:"win-1",owner_id:"cloud-reviewer-1",fence:"3",
-   status:"running",approved:true,source_commit_sha:C,
+   status:"running",approved:true,source_commit_sha:A,
+   task_type:"draft_only_development",checkpoint_commit_sha:null,
    expires_at:new Date(Date.now()+3600000).toISOString(),...options.lease};
  const io={
   leaseReader:{getCurrent:async()=>{
@@ -78,6 +79,7 @@ test("revoked, wrong owner or stale lease must stop without remote writes",async
  for(const opts of [
   {lease:{approved:false}},{lease:{fence:"2"}},
   {lease:{owner_id:"other"}},{lease:{task_id:"other"}},
+  {lease:{task_type:"read_only_review"}},
   {lease:{status:"blocked_uncertain"}},
   {lease:{expires_at:"2020-01-01T00:00:00Z"}},
   {leaseError:true}
@@ -87,6 +89,25 @@ test("revoked, wrong owner or stale lease must stop without remote writes",async
   assert.equal(result.status,"hold");
   assert.equal(f.counts().writes,0);
  }
+});
+test("draft writes require an authoritative source or checkpoint ancestry chain",async()=>{
+ const rejected=[
+  {source_commit_sha:C},
+  {source_commit_sha:"not-a-sha"},
+  {checkpoint_commit_sha:C},
+  {checkpoint_commit_sha:"not-a-sha"}
+ ];
+ for(const lease of rejected) {
+  const f=services({lease});
+  const result=await guardedDraftUpdate(req(),f.io);
+  assert.equal(result.reason,"LEASE_NOT_CURRENT",JSON.stringify(lease));
+  assert.equal(f.counts().writes,0);
+ }
+
+ const checkpoint=services({lease:{source_commit_sha:C,checkpoint_commit_sha:A}});
+ const result=await guardedDraftUpdate(req(),checkpoint.io);
+ assert.equal(result.status,"draft_written");
+ assert.equal(checkpoint.counts().writes,1);
 });
 test("changed, unverifiable or revoked-after-first-check head blocks dispatch",async()=>{
  for(const opts of [{head:C},{headError:true},{revokeOnRecheck:true}]) {
@@ -147,7 +168,8 @@ test("mutating request while awaiting lease checks cannot redirect draft write",
  const pending=new Promise(resolve=>{firstRead=resolve;});
  let inspected,updated;
  const lease={task_id:"win-1",owner_id:"cloud-reviewer-1",fence:"3",
-   status:"running",approved:true,source_commit_sha:C,
+   status:"running",approved:true,source_commit_sha:A,
+   task_type:"draft_only_development",checkpoint_commit_sha:null,
    expires_at:new Date(Date.now()+3600000).toISOString()};
  const io={
    leaseReader:{getCurrent:async()=>{firstRead();await gate;return lease;}},

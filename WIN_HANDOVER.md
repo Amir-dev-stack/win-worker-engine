@@ -163,3 +163,9 @@ Regression coverage also passes malformed provider arrays, fields and a
 non-array provider collection and verifies a fixed `no_eligible_provider`
 result without adapter execution. Updated verification is targeted 10/10,
 full Node 42/42, quality gates 107/107, and build 61 plus 44.
+
+## PR #72 authorization and provenance checkpoint — 2026-11-19 10:05 UTC
+
+Issue #20 assigned two fail-closed corrections to the draft GitHub CAS boundary. The isolated branch `win-draft/pr72-auth-provenance-20261119` starts from PR #72 head `5b2367ad983df88c03e34964ad8c6ef8bb1bc5a9`. `scripts/win-github-draft-cas.mjs` now requires both lease reads to identify the task as authoritative `draft_only_development`; `read_only_review` cannot authorize a GitHub mutation. The expected branch head must equal the task's immutable `source_commit_sha` for the first update or its current valid `checkpoint_commit_sha` for a later update. The proposed commit continues to require that expected head as its sole parent.
+
+Regression coverage includes read-only lease rejection, malformed and unrelated source/checkpoint SHAs, and an accepted checkpoint continuation while preserving the original source SHA. Local targeted tests passed 10/10. `npm test` passed 113 tests with one intentional local-PostgreSQL skip and 107/107 quality gates. `npm run build` passed 61 required-file checks, 44 architecture checks and 107/107 quality gates. No database, production, merge, deployment, paid API or secret operation occurred.
