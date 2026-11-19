@@ -278,3 +278,16 @@ test('review preflight remembers both approved model and effort',async()=>{
   assert.match(launcher,/\$reviewPlan\.effort -ne \$plan\.reviewEffort/);
   assert.match(launcher,/--model \$plan\.reviewModel/);
 });
+
+test('PowerShell read-only account smoke check exits before actual Codex dispatch',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const {fileURLToPath}=await import('node:url');
+  const {join,dirname}=await import('node:path');
+  const script=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'Start-WINAutoModels.ps1'),'utf8');
+  assert.match(script,/\[switch\]\$VerifyModelsOnly/);
+  assert.match(script,/\$Run -and \$VerifyModelsOnly/);
+  assert.match(script,/\$VerifyModelsOnly\) \{[\s\S]*?return/);
+  const preflight=script.indexOf('if ($VerifyModelsOnly) {',script.indexOf('Verified selection:'));
+  const invoke=script.indexOf('& codex exec');
+  assert.ok(preflight>0 && invoke>preflight);
+});
