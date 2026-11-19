@@ -12,6 +12,19 @@
 - Existing cloud backup reviewer: [draft PR #36](https://github.com/Amir-dev-stack/win-worker-engine/pull/36) (`scripts/win-cloud-backup-review-worker.mjs`, optional adapter, tests, design) — **review proposal only**, not an authorized unattended writer or deployed worker. Preserve the historically frozen/dirty PR #36 worktree.
 - Existing mock supervisor and issue #60 are complementary: do not build a parallel scheduler, duplicate model router, or pretend that an issue comment is a validated heartbeat/lock.
 
+## Cloudflare Workers AI as an existing cloud backup candidate
+
+**Do not overlook the preexisting implementation.** [Draft PR #36](https://github.com/Amir-dev-stack/win-worker-engine/pull/36) contains `scripts/win-cloudflare-free-adapter.mjs` and `scripts/win-cloudflare-free-adapter.test.mjs`, alongside the provider-neutral backup review worker. [Issue #65](https://github.com/Amir-dev-stack/win-worker-engine/issues/65) is a separate Cloudflare offline contract/test track. Read and reconcile those, plus [cloud-first inference issue #63](https://github.com/Amir-dev-stack/win-worker-engine/issues/63), **before** writing another Cloudflare adapter or provider selector.
+
+- Proposed first model: `@cf/zai-org/glm-4.7-flash`. Cloudflare's July 28, 2026 changelog lists it among models eligible for Workers Free. That list is **not evidence of this owner's Cloudflare account eligibility or remaining quota**.
+- Cloudflare's published Workers AI Free allocation is 10,000 Neurons/day, with further operations failing at the free limit. Some models require a Paid plan. **No paid fallback is allowed.** Recheck official model eligibility, terms and quota before any live request.
+- **Inference is not a coding worker by itself.** A real PC-independent fallback also needs an authorized cloud execution host/scheduler, authenticated GitHub read/write rights limited to staging branches, trusted atomic primary/backup lease, task queue, bounded model context and output, proposal validation, CI/sandbox tests, and Codex return-review.
+- Current PR #36 is **unmerged/unconnected** and only prepared a bounded read-only reviewer. It does not autonomously create code, run tests or submit backup PRs. Treat any later write-capable extension as a separate guarded implementation, validated with synthetic workloads first.
+- A source snapshot/patch sent to Cloudflare is a third-party data transfer. First verify applicable license/privacy/retention requirements and safe approved content scope. Never expose secrets, private credentials or unfiltered source dumps.
+- Until account-specific Free entitlement, hosting, required credentials, safe identity and lease control, privacy consent and end-to-end test are actually verified, label Cloudflare `CANDIDATE_UNVERIFIED`. **Never describe it as active automatic Codex backup.**
+
+Official references: https://developers.cloudflare.com/workers-ai/platform/pricing/ and https://developers.cloudflare.com/changelog/post/2026-07-28-models-require-workers-paid/ .
+
 ## 2. When backup is allowed to take an assignment
 
 Backup may proceed ONLY if (a) a task is explicitly in WIN scope and authorized; (b) Codex has explicitly handed it off, completed it or a **trusted** primary lease has expired / an actual quota failure is verified; (c) the assignment is not already owned by an active primary or another backup; (d) the backup runtime, model, quota, repo access and working directory are verified; and (e) safety/cost and file-scope gates pass.
