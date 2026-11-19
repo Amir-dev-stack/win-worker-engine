@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS win_dev_lease_tasks (
   paid_spend_allowed boolean NOT NULL DEFAULT false
     CHECK (paid_spend_allowed = false),
   owner_id text,
-  fence bigint NOT NULL DEFAULT 0 CHECK (fence >= 0),
+  fence bigint NOT NULL DEFAULT 0 CHECK (fence >= 0 AND fence <= 9007199254740991),
   expires_at timestamptz,
   checkpoint_commit_sha text CHECK (
     checkpoint_commit_sha IS NULL OR checkpoint_commit_sha ~ '^[0-9a-f]{40}$'
