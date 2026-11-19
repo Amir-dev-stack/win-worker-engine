@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { executeWinLLMWithPolicy } from "../netlify/lib/llm-execution.mts";
+import { executeWinLLMWithFailover, executeWinLLMWithPolicy } from "../netlify/lib/llm-execution.mts";
 import { WIN_LLM_CONTRACT_VERSION } from "../netlify/lib/llm-contract.mts";
 
 const request = (overrides = {}) => ({
@@ -125,4 +125,50 @@ test("an explicit zero-cost reservation remains contract-valid", async () => {
   });
   assert.equal(result.response.status, "completed");
   assert.deepEqual(result.validationErrors, []);
+});
+
+test("bounded failover switches to the next approved provider after an explicit retryable failure", async () => {
+  const backup = { ...descriptor, id: "backup", models: ["backup-model"], priority: 2 };
+  const calls = [];
+  const result = await executeWinLLMWithFailover({
+    request: request({ providerPolicy: { allowedProviders: ["fake", "backup"], preferredProvider: "fake", requiredCapabilities: ["text"] } }),
+    providers: [descriptor, backup], maxAttempts: 2,
+    adapters: [
+      { providerId: "fake", async execute(input) { calls.push([input.providerPolicy.model, "fake"]); return { ...success(input), status: "failed", output: "", error: { category: "retryable", code: "temporary_unavailable" } }; } },
+      { providerId: "backup", async execute(input) { calls.push([input.providerPolicy.model, "backup"]); return { ...success(input), providerId: "backup", model: "backup-model" }; } },
+    ],
+  });
+  assert.equal(result.response.status, "completed");
+  assert.deepEqual(calls, [["fake-model", "fake"], ["backup-model", "backup"]]);
+  assert.deepEqual(result.attempts?.map(attempt => attempt.providerId), ["fake", "backup"]);
+});
+
+test("model switching stays within the approved provider before using a backup", async () => {
+  const primary = { ...descriptor, models: ["primary-model", "secondary-model"] };
+  const calls = [];
+  const result = await executeWinLLMWithFailover({
+    request: request(), providers: [primary], maxAttempts: 2,
+    adapters: [{ providerId: "fake", async execute(input) {
+      calls.push(input.providerPolicy.model);
+      if (calls.length === 1) return { ...success(input), status: "failed", output: "", error: { category: "retryable", code: "model_unavailable" } };
+      return { ...success(input), model: "secondary-model" };
+    } }],
+  });
+  assert.equal(result.response.status, "completed");
+  assert.deepEqual(calls, ["primary-model", "secondary-model"]);
+});
+
+test("failover never replays an uncertain provider outcome", async () => {
+  const backup = { ...descriptor, id: "backup", models: ["backup-model"], priority: 2 };
+  let backupCalls = 0;
+  const result = await executeWinLLMWithFailover({
+    request: request({ providerPolicy: { allowedProviders: ["fake", "backup"], preferredProvider: "fake", requiredCapabilities: ["text"] } }),
+    providers: [descriptor, backup], adapters: [
+      { providerId: "fake", async execute() { throw new Error("connection lost after submit"); } },
+      { providerId: "backup", async execute(input) { backupCalls++; return { ...success(input), providerId: "backup", model: "backup-model" }; } },
+    ],
+  });
+  assert.equal(result.response.error?.category, "uncertain");
+  assert.equal(backupCalls, 0);
+  assert.deepEqual(result.attempts?.map(attempt => attempt.providerId), ["fake"]);
 });
