@@ -89,6 +89,7 @@ export function prepareCloudBackupReview(input, nowMs = Date.now()) {
     writeOperations: 0,
     warning: "A trusted cloud executor must independently verify identity and atomic lease before invoking a zero-cost model."
   };
+  Object.freeze(prepared); // Prevent post-validation prompt or task ID substitution.
   preparedCapabilities.add(prepared);
   return prepared;
 }
