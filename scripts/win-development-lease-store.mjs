@@ -47,6 +47,7 @@ UPDATE win_dev_lease_tasks
 SET expires_at = clock_timestamp() + ($4::integer * interval '1 second'),
     revision = revision + 1, updated_at = clock_timestamp()
 WHERE task_id = $1 AND owner_id = $2 AND fence = $3
+  AND approved = true
   AND status = 'running' AND expires_at > clock_timestamp()
   AND $4::integer BETWEEN 5 AND 900
 RETURNING task_id, fence, expires_at
@@ -56,6 +57,7 @@ UPDATE win_dev_lease_tasks
 SET checkpoint_commit_sha = $4, revision = revision + 1,
     updated_at = clock_timestamp()
 WHERE task_id = $1 AND owner_id = $2 AND fence = $3
+  AND approved = true
   AND status = 'running' AND expires_at > clock_timestamp()
   AND $4 ~ '^[0-9a-f]{40}$'
 RETURNING task_id, fence, checkpoint_commit_sha
@@ -65,6 +67,7 @@ UPDATE win_dev_lease_tasks
 SET status = 'completed', owner_id = NULL, expires_at = NULL,
     revision = revision + 1, updated_at = clock_timestamp()
 WHERE task_id = $1 AND owner_id = $2 AND fence = $3
+  AND approved = true
   AND status = 'running' AND expires_at > clock_timestamp()
 RETURNING task_id, fence, status
 `.trim(),
