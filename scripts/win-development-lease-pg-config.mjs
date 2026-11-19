@@ -25,11 +25,8 @@ export function inspectLocalPgConfig(raw, parentEnvironment = process.env) {
   environment.PGPASSWORD = password;
   environment.PGCONNECT_TIMEOUT = "4";
   environment.PGSSLMODE = "disable";
-  // Prevent inherited service, hostaddr, options, target-session or .pgpass
-  // settings from redirecting the connection or injecting session options.
-  environment.PGHOSTADDR = "";
-  environment.PGSERVICE = "";
-  environment.PGOPTIONS = "";
+  // Leave all inherited PG routing variables absent, not empty strings;
+  // libpq can interpret an explicitly empty setting differently from unset.
   environment.PGPASSFILE = process.platform === "win32" ? "NUL" : "/dev/null";
   return {
     options:["-X","-qAt","-v","ON_ERROR_STOP=1",
