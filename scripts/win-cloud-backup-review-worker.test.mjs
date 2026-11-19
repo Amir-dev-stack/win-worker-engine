@@ -128,3 +128,36 @@ test("forged or cloned prepared envelope is rejected before provider invocation"
   assert.equal(outcome.status, "proposal_only");
   assert.equal(calls, 1);
 });
+
+test("prepared backup capability is one-shot even during concurrent calls", async () => {
+  const prepared = prepareCloudBackupReview(fixture(), NOW);
+  let calls = 0;
+  let finish;
+  const inFlight = new Promise(resolve => { finish = resolve; });
+  const provider = {
+    providerCostUsd: 0, executionMode: "cloud_read_only", toolsEnabled: false,
+    generate: async () => { calls++; await inFlight; return "unverified review"; }
+  };
+  const first = requestCloudBackupReview(prepared, provider);
+  const duplicate = await requestCloudBackupReview(prepared, provider);
+  assert.equal(duplicate.status, "hold");
+  assert.equal(duplicate.reason, "free_read_only_provider_not_configured");
+  assert.equal(calls, 1);
+  finish();
+  const firstResult = await first;
+  assert.equal(firstResult.status, "proposal_only");
+  assert.equal((await requestCloudBackupReview(prepared, provider)).status, "hold");
+  assert.equal(calls, 1);
+});
+
+test("failed model requests cannot automatically replay a consumed backup capability", async () => {
+  const prepared = prepareCloudBackupReview(fixture(), NOW);
+  let calls = 0;
+  const adapter = {
+    providerCostUsd: 0, executionMode: "cloud_read_only", toolsEnabled: false,
+    generate: async () => { calls++; throw Error("uncertain after submit"); }
+  };
+  assert.equal((await requestCloudBackupReview(prepared, adapter)).status, "hold");
+  assert.equal((await requestCloudBackupReview(prepared, adapter)).status, "hold");
+  assert.equal(calls, 1);
+});
