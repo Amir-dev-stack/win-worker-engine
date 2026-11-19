@@ -55,6 +55,17 @@ The opt-in real PostgreSQL harness was audited for inherited `libpq` environment
 
 The actual concurrent PostgreSQL integration test is still opt-in and **skipped by default**, and remains unverified without an isolated local PostgreSQL service. The connection validator limits accidental destination misrouting; it is not a protection against a malicious local host or compromised process.
 
+## Actual disposable PostgreSQL concurrency verification — 2026-11-19
+
+The previously opt-in concurrency test **has now passed against a real isolated PostgreSQL 16 server** started as a disposable GitHub Actions service for **draft PR #72 only**. The workflow uses synthetic test credentials, a `win_lease_test_ci` local database, and a generated temporary schema. It performs real SQL transactions using independent `psql` processes. The exact reviewed code commit is `8c2909eb275133683cdcbdd1bdec57f20660010c`.
+
+- [Real PostgreSQL integration run 44494006362](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44494006362): **SUCCESS**, 1/1 live integration test passed, 0 skipped. The test checks two competing claims (exactly one winner), active-lease approval revocation (renew/checkpoint/complete denied), lease expiry, no third-party steal, quarantining the uncertain lease and rejection of the stale prior fence.
+- [Normal WIN validation run 44494006382](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44494006382): **SUCCESS**; architecture/build, ordinary Node tests, quality gates and function bundling passed. Its ordinary Node suite still skips the optional integration test because it runs only in the dedicated PostgreSQL-service job.
+- The first dedicated PostgreSQL run failed on connection configuration, not the lease SQL. A fixed, credential-safe diagnostic step verified disposable service connectivity, and the harness now **removes** inherited libpq routing variables rather than setting them to empty strings. The corrected run passed.
+- Workflow `.github/workflows/win-lease-postgres-integration.yml` is scoped to pull request #72 targeting the draft base and selected database files. It has `contents: read` permissions, an 8-minute timeout and no real Neon or Cloudflare credentials.
+
+**This is real PostgreSQL concurrency evidence in a disposable CI environment**, not proof of production database permissions, a multi-host crash recovery protocol, cryptographic agent authentication or an automatic PC-off development task. No Neon migration, persistent task supervisor, Cloudflare activation or GitHub draft writer was deployed. An independent review and broader fault-injection tests remain required before any live rollout.
+
 ## Next acceptance gates
 - Independent review of the proposed schema, least-privilege database permissions and status transitions.
 - Provision or reuse a trusted durable store **without touching production**. Confirm API credentials, quotas, owner approval and limits separately.
