@@ -134,3 +134,17 @@ References:
 - https://learn.chatgpt.com/docs/github-action
 
 The valid remaining routes require independently authorized infrastructure (for example a trusted private authenticated host with suitable access/entitlement, or an officially supported Codex Cloud task dispatch mechanism). Such a host or dispatcher has **not been verified or provisioned in this project**. Keep cloud agent task execution and paid-path triggers disabled until explicit security and budget approval. Current WIN GitHub Actions may still run non-generative tests and monitoring tasks with PC off.
+
+## Safe account-only activation check — November 19, 2026
+
+The original Windows launcher now supports a **read-only model-and-quota check** without running a Codex coding task, even while the real cloud dispatcher and Oracle hosting are unavailable:
+
+```powershell
+.\scripts\Start-WINAutoModels.ps1 -Task "Implement a bounded WIN worker service" -VerifyModelsOnly -UseLiveModels
+```
+
+Run this from the root of an authorized local WIN worktree with Node.js and a **ChatGPT-authenticated** Codex CLI. It prints the chosen eligible model and account preflight result, then exits **before `codex exec`**. The `-VerifyModelsOnly` switch cannot be combined with `-Run`. It does not start a coding task, require an Oracle account, transfer secrets to GitHub Actions, or attempt paid API fallback. If account discovery reports an unavailable model, expired quota or an unsupported Codex client, the check fails safely.
+
+The Windows launcher also retains the **model and reasoning effort selected for an optional read-only review**. Before review, it revalidates eligibility; if the new selection differs from the original approved preflight, it stops instead of switching review models silently.
+
+**Verification:** GitHub Actions [run #44460602618](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44460602618) passed **87/87 tests**. This is a mock/structural validation, not proof of execution on the owner's Windows PC.
