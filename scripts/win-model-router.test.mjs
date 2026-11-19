@@ -6,7 +6,11 @@ test('routes routine, complex and review',()=>{
   assert.equal(categorize('Update README documentation'),'simple');
   assert.equal(categorize('Implement worker service'),'standard');
   assert.equal(categorize('Debug database concurrency'),'complex');
-  assert.equal(categorize('Final review'),'review');
+  assert.equal(categorize('Final review'),'qa');
+  assert.equal(categorize('Milestone review'),'qa');
+  assert.equal(categorize('Code review'),'qa');
+  assert.equal(categorize('Security audit'),'review');
+  assert.equal(categorize('Architecture review'),'review');
 });
 test('dry-run launches no subprocesses',async()=>{
   const r=await runRouter(['--task','Implement worker','--cwd','/repo'],{
@@ -58,6 +62,20 @@ test('PowerShell launcher shares router model choices and uses current worktree 
   assert.match(launcher,/--category', 'qa'/);
   assert.match(launcher,/--model \$plan\.reviewModel/);
   assert.doesNotMatch(launcher,/pr49-safety-hardening|--model 'gpt-6\.2-astra'/);
+});
+
+test('routine review chooses Sol QA without triggering Astra credit usage',()=>{
+  const now=new Date('2026-11-18T15:30:00Z');
+  const evidence={...validEvidence,models:[
+    {id:'gpt-6.2-sol',available:true,allowed:true,supportedEfforts:['medium']},
+    {id:'gpt-6.2-astra',available:true,allowed:true,supportedEfforts:['high']}
+  ]};
+  assert.equal(categorize('Final review of implementation'), 'qa');
+  assert.deepEqual(selectVerifiedModel(categorize('Final review of implementation'),evidence,now),
+    {model:'gpt-6.2-sol',effort:'medium'});
+  assert.equal(categorize('Security audit of authentication'), 'review');
+  assert.deepEqual(selectVerifiedModel('review',evidence,now),
+    {model:'gpt-6.2-astra',effort:'high'});
 });
 
 test('review task does not spawn an additional review process',async()=>{
