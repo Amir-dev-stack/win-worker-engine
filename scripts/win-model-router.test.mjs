@@ -17,6 +17,22 @@ test('dry-run launches no subprocesses',async()=>{
     spawnSyncFn(){throw Error('unexpected');},invokeFn(){throw Error('unexpected');}});
   assert.equal(r.dryRun,true);assert.equal(r.model,'gpt-6.2-sol');
 });
+test('simple dry-run preview matches actual Luna-first routing without generating tokens',async()=>{
+  const dry=await runRouter(['--task','Update README'],{
+    invokeFn(){throw Error('unexpected model invocation');}
+  });
+  assert.equal(dry.dryRun,true);
+  assert.equal(dry.category,'simple');
+  assert.equal(dry.model,'gpt-6-luna');
+  const evidence={...validEvidence,models:[
+    {id:'gpt-6.1-terra',available:true,allowed:true,supportedEfforts:['low']}
+  ]};
+  const verified=await runRouter(['--verify-only','--verified-models','/catalog.json','--task','Update README'],{
+    readFileSyncFn:()=>JSON.stringify(evidence),now:new Date('2026-11-18T15:30:00Z')
+  });
+  assert.equal(verified.model,'gpt-6.1-terra');
+  assert.equal(verified.fallbackBeforeDispatch,true);
+});
 test('rejects invalid args and category',()=>{
   assert.throws(()=>optionsFromArgs([]),/INVALID_TASK/);
   assert.throws(()=>optionsFromArgs(['--task','x','--extra']),/UNKNOWN_ARGUMENT/);
