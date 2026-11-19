@@ -30,6 +30,7 @@ const required = [
   "netlify/lib/library.mts",
   "netlify/lib/oauth-store.mts",
   "netlify/lib/coverage.mts",
+  "netlify/lib/coverage-inventory.mts",
   "netlify/functions/coverage.mts",
   "netlify/functions/coverage-monitor.mts",
   "netlify/functions/human-coupon-settlements.mts",

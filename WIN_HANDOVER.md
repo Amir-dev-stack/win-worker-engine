@@ -163,3 +163,9 @@ Regression coverage also passes malformed provider arrays, fields and a
 non-array provider collection and verifies a fixed `no_eligible_provider`
 result without adapter execution. Updated verification is targeted 10/10,
 full Node 42/42, quality gates 107/107, and build 61 plus 44.
+
+## C1 evidence coverage inventory — 2026-11-19
+
+Branch `win-draft/c1-coverage-inventory-20261119` starts from main exact `844efeba8ad1d20dbe587e286ed5546b81eb5baa`. Implementation commit `823551d` extends the authenticated coverage report and dashboard with bounded explicit competition/league, season, team/participant, player/athlete and market identities from persisted `library/research-evidence`. It reports records without each identity, stable-ID presence, latest observed timestamps and undated identified records. Alias values remain separate until a verified provider-specific mapping exists.
+
+Approved open/no-credential provider registry entries are shown separately as `registry_approved_not_live_verified`; the report claims zero live connections. Deterministic inventory tests pass 4/4. Full `npm test` passes 59/59 Node tests and 108/108 quality gates. `npm run build` passes 62 required files, 44 architecture checks and 108/108 gates. This is a C1 observability slice, not proof of live stored-data breadth, provider connectivity, licensing beyond registry review, or complete fixture/player/injury/lineup/tactical coverage. Next C1 work should add reviewed canonical identity namespaces and live connection receipts, then use actual persisted reports to prioritize explicit data gaps without unlicensed ingestion.
