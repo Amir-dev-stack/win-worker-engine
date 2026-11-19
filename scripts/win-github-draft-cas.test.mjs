@@ -138,3 +138,58 @@ test("inspector must be independently supplied before any lease or GitHub operat
  assert.equal((await guardedDraftUpdate(req(),f.io)).reason,"TRUSTED_IO_NOT_CONFIGURED");
  assert.deepEqual(f.counts(),{writes:0,reads:0,heads:0,inspections:0});
 });
+
+test("mutating request while awaiting lease checks cannot redirect draft write",async()=>{
+ const original=req();
+ let firstRead;
+ let releaseFirst;
+ const gate=new Promise(resolve=>{releaseFirst=resolve;});
+ const pending=new Promise(resolve=>{firstRead=resolve;});
+ let inspected,updated;
+ const lease={task_id:"win-1",owner_id:"cloud-reviewer-1",fence:"3",
+   status:"running",approved:true,source_commit_sha:C,
+   expires_at:new Date(Date.now()+3600000).toISOString()};
+ const io={
+   leaseReader:{getCurrent:async()=>{firstRead();await gate;return lease;}},
+   git:{
+     atomicCompareAndSwapVerified:true,
+     getHead:async(_repo,branch)=>{assert.equal(branch,"win-draft/backup-review-1");return A;},
+     inspectProposedCommit:async(_repo,sha)=>{
+       inspected=sha;
+       return {sha:B,parents:[A],files:["scripts/review-proposal.mjs"],
+         secretScanPassed:true,sourceVerified:true};
+     },
+     updateHeadIfEquals:async args=>{
+       updated=args;
+       return {updated:true,oldHead:A,newHead:B};
+     }
+   }
+ };
+ const running=guardedDraftUpdate(original,io);
+ await pending;
+ // Change *every* sensitive field after the API has validated the request.
+ original.branch="main";
+ original.expectedHead=C;
+ original.proposedCommit=C;
+ original.taskId="other-task";
+ original.actorId="other-worker";
+ original.fence=999;
+ original.approved=false;
+ original.paths[0]="secrets/password.txt";
+ original.paths.push("scripts/extra.mjs");
+ releaseFirst();
+ const result=await running;
+ assert.equal(result.status,"draft_written");
+ assert.equal(result.branch,"win-draft/backup-review-1");
+ assert.equal(result.head,B);
+ assert.equal(result.taskId,"win-1");
+ assert.equal(result.fence,3);
+ assert.equal(inspected,B);
+ assert.deepEqual(updated,{
+   repository:"Amir-dev-stack/win-worker-engine",
+   branch:"win-draft/backup-review-1",
+   expectedHead:A,newHead:B,taskId:"win-1",
+   actorId:"cloud-reviewer-1",fence:3,
+   paths:["scripts/review-proposal.mjs"]
+ });
+});
