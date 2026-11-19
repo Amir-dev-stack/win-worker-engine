@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { inspectLocalPgConfig } from "./win-development-lease-postgres.integration.test.mjs";
+import { inspectLocalPgConfig } from "./win-development-lease-pg-config.mjs";
 
 const local = "postgresql://test_user:dummy_password@127.0.0.1:5432/win_lease_test_disposable";
 
