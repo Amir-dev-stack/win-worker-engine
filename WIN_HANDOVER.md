@@ -163,3 +163,13 @@ Regression coverage also passes malformed provider arrays, fields and a
 non-array provider collection and verifies a fixed `no_eligible_provider`
 result without adapter execution. Updated verification is targeted 10/10,
 full Node 42/42, quality gates 107/107, and build 61 plus 44.
+
+## Issue #20 GitHub commit reader checkpoint — 2026-11-19 09:45 UTC
+
+The starting checkout was clean on `work` at `844efeba8ad1d20dbe587e286ed5546b81eb5baa`, matching remote main. The isolated branch `win-draft/github-commit-reader-20261119` starts at `01c6171800d005a2b325267e73e2d706757706ff` from [draft PR #73](https://github.com/Amir-dev-stack/win-worker-engine/pull/73). GitHub reported success for [Netlify validation](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44499022731) and [worker engine checks](https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/44499022607) at that base.
+
+This checkpoint adds `scripts/win-github-commit-reader.mjs` and its tests. The reader takes a host-provided GitHub credential and makes a bounded GET for one exact WIN commit. It returns the SHA, parent and file paths and discards any attestation claims in the response. The draft inspector still requires separate source and secret-scan evidence.
+
+Local verification used Node v24.22.1. `node --test scripts/win-github-commit-{reader,inspector}.test.mjs` passed 15/15. `npm test` passed 70/70 tests and 107/107 quality gates. `npm run build` passed 61 required-file checks, 44 architecture checks and 107/107 gates. The adapter tests use a simulated GitHub response. The local GitHub CLI reported its configured authentication invalid, so a live authenticated adapter smoke test remains open. A separately verifiable Codex Cloud task URL or PC-off execution record was unavailable in this session.
+
+Next task: verify one live read using an existing authorized read-only host credential and compare the parent and paths with the GitHub connector. Source approval and secret-scan integration require independent evidence before the inspector can return verified.
