@@ -55,4 +55,6 @@ jobs:
           try { & $launcher -Task 'Update README documentation' -VerifyModelsOnly -VerifiedModels $evidencePath | Out-Null }
           catch { $rejected = $true }
           if (-not $rejected) { throw 'Expired model evidence was incorrectly accepted.' }
+          # An intentional negative native-process test leaves LASTEXITCODE=1 even after the throw is caught.
+          $global:LASTEXITCODE = 0
           "Windows offline smoke PASSED: no credentials, no model calls, no task execution." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
