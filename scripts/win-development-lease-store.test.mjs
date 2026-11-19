@@ -148,3 +148,14 @@ test('accepts PostgreSQL BIGINT fence strings and valid operation-specific rows'
  assert.equal((await s.complete('task-1','worker',5)).status,'completed');
  assert.equal((await s.quarantineExpired('task-1')).status,'blocked_uncertain');
 });
+
+test('fence wraparound cannot violate JavaScript safe integer range',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const {dirname,join}=await import('node:path');
+ const {fileURLToPath}=await import('node:url');
+ const schema=readFileSync(join(dirname(fileURLToPath(import.meta.url)),
+   '../db/draft_win_dev_fenced_lease.sql'),'utf8');
+ assert.match(schema,/fence <= 9007199254740991/);
+ assert.match(LEASE_SQL.claim,/fence < 9007199254740991/);
+ assert.match(LEASE_SQL.quarantineExpired,/fence < 9007199254740991/);
+});
