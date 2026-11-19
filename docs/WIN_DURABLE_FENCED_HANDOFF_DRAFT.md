@@ -25,6 +25,24 @@ The adapter now validates each affected row **after** checking that exactly one 
 
 These checks protect the **application adapter** against inconsistent or malformed driver results and prevent false success claims. They do **not** authenticate the database, prove the actor owns its identity, establish a real distributed lease, prevent a rogue caller from bypassing the adapter, or replace database transactional/concurrency tests. Real PostgreSQL sessions and least-privilege role validation remain essential before deployment.
 
+## Optional real local PostgreSQL concurrency test
+
+Added `scripts/win-development-lease-postgres.integration.test.mjs`. It is **skipped in ordinary CI**. Running it requires `psql`, a separately created **local-only test database** whose name starts with `win_lease_test_`, a PostgreSQL URL pointing only to `localhost` or `127.0.0.1` port 5432, and explicit `WIN_LEASE_LOCAL_PG_TEST=run`. The test creates a random temporary schema inside that local test DB, executes the draft DDL and runs two competing `psql` claim sessions; it expects exactly one winner. It then expires the lease, verifies no automatic takeover or stale-worker renewal, quarantines the task, and ensures a stale fence cannot complete. Its generated test schema is cleaned up in a `finally` block.
+
+Example for a **separately provisioned local disposable PostgreSQL**, never a Neon or production URL:
+
+```powershell
+$env:WIN_LEASE_LOCAL_PG_TEST = 'run'
+$env:WIN_LEASE_TEST_DATABASE_URL = 'postgresql://local_test_user:local_test_password@127.0.0.1:5432/win_lease_test_sandbox'
+node --test scripts/win-development-lease-postgres.integration.test.mjs
+Remove-Item Env:WIN_LEASE_TEST_DATABASE_URL
+Remove-Item Env:WIN_LEASE_LOCAL_PG_TEST
+```
+
+The URL above is an **illustrative dummy**, not a real credential. Do not commit or print real passwords. Normal CI may include a skipped result and does **not** prove PostgreSQL concurrency has been run. No database or provider connection was made while adding this test. The script only exercises a database that was already supplied locally; it does not create projects, purchase capacity or apply migrations in Neon.
+
+Fencing counter arithmetic is now explicitly bounded to JavaScript's maximum safe integer at the table and claim/quarantine levels. An exhausted counter cannot be silently wrapped or interpreted imprecisely; claim/quarantine then update zero rows and require manual reconciliation.
+
 ## Next acceptance gates
 - Independent review of the proposed schema, least-privilege database permissions and status transitions.
 - Provision or reuse a trusted durable store **without touching production**. Confirm API credentials, quotas, owner approval and limits separately.
