@@ -7,7 +7,7 @@ import { resolve, normalize } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const MODEL_PLAN=Object.freeze({
-  simple:{model:'gpt-6.1-terra',effort:'low'},
+  simple:{model:'gpt-6-luna',effort:'low'},
   standard:{model:'gpt-6.2-sol',effort:'medium'},
   complex:{model:'gpt-6.2-sol',effort:'high'},
   // Lightweight analysis is preferred where an authenticated Luna is available.
@@ -109,7 +109,7 @@ export function selectVerifiedModel(category, evidence, now=new Date()){
   // The routing order is an initial capability policy, NOT evidence of price.
   // Tasks can change models only at a fresh pre-dispatch checkpoint.
   const candidates=category==='simple'
-    ?[{model:'gpt-6-luna',effort:'low'},{...MODEL_PLAN.simple},{model:'gpt-5.6-terra',effort:'low'},
+    ?[{...MODEL_PLAN.simple},{model:'gpt-6.1-terra',effort:'low'},
       {model:MODEL_PLAN.standard.model,effort:'low'}]
     :category==='standard'
       ?[{...MODEL_PLAN.standard},{model:MODEL_PLAN.simple.model,effort:'medium'}]
