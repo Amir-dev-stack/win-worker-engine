@@ -66,6 +66,12 @@ The previously opt-in concurrency test **has now passed against a real isolated 
 
 **This is real PostgreSQL concurrency evidence in a disposable CI environment**, not proof of production database permissions, a multi-host crash recovery protocol, cryptographic agent authentication or an automatic PC-off development task. No Neon migration, persistent task supervisor, Cloudflare activation or GitHub draft writer was deployed. An independent review and broader fault-injection tests remain required before any live rollout.
 
+## GitHub draft-only CAS boundary — 2026-11-19
+
+`scripts/win-github-draft-cas.mjs` adds a dependency-injected **fail-closed write gate**, with offline tests in `scripts/win-github-draft-cas.test.mjs`. It requires an approved task, exact source and proposed commit SHAs, a `win-draft/*` branch, bounded non-sensitive changed-file paths, and a verified current lease owner and fencing epoch. It rejects production/main/release branches, suspicious paths, expired/revoked leases and a changed GitHub branch head. The gate rechecks the lease immediately before one write attempt, and never automatically retries uncertain GitHub outcomes. It can only call an injected `git.updateHeadIfEquals` adapter that declares it implements **server-side atomic expected-head compare-and-swap**. Mock tests check these safety rules.
+
+**Critical limit:** There is **no real GitHub branch mutation adapter or authenticated cloud supervisor wired into this module**. A caller-supplied `atomicCompareAndSwapVerified` flag is an interface assertion, not cryptographic proof or enforceable GitHub atomicity. A real host must independently validate the adapter and GitHub permissions, approved commit ancestry, path policy and secret scanning. A preflight DB lease check and subsequent GitHub CAS cannot by themselves create an atomic cross-service transaction, so external side-effect/revocation races and crash recovery still require a trusted reconciliation protocol. The module is not currently used to make any live writes, and nobody should treat a mocked passing test as proof of a production-ready cloud writer.
+
 ## Next acceptance gates
 - Independent review of the proposed schema, least-privilege database permissions and status transitions.
 - Provision or reuse a trusted durable store **without touching production**. Confirm API credentials, quotas, owner approval and limits separately.
