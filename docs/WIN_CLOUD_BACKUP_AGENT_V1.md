@@ -35,6 +35,12 @@ If Codex runs out of quota or an active task ends, WIN must preserve a durable c
 6. **Connect GitHub handover and reporting**; publish draft patch/review proposals with independent verification and owner-readable progress. Never auto-merge/deploy. Secure backup checkpoints for uncommitted work using approved, secret-filtered workflow—not a blind `git add -A`.
 7. **Test end-to-end with a synthetic assignment:** primary heartbeat expires, lease is atomically reclaimed, backup resumes from the correct checkpoint, reports findings, and Codex can safely return without conflicting edits. Then test with the owner's PC off.
 
+### Hardened in-process review handoff (2026-11-19)
+
+The review core now returns a frozen, single-use, same-process preparation envelope. A caller cannot bypass `prepareCloudBackupReview` merely by forging or cloning an object with `status: prepared`; only the original validated object can be submitted, and it is consumed synchronously before awaiting the injected adapter. Two concurrent invocations of the same envelope cannot both call a provider. An uncertain provider failure does not automatically replay that envelope.
+
+**Important limitation:** This protects local code paths only. It does not cryptographically authenticate a cloud worker, establish the owner’s authorization, verify private source provenance, stop another process from issuing a separate request, or provide a distributed idempotency lock. A trusted cloud host must independently verify a fenced atomic lease, approved task, source SHA and free quota. Do not serialize this ephemeral envelope as a durable checkpoint; trusted hosts must independently revalidate and re-prepare after recovery, never automatically replay a possibly completed model request.
+
 ### Critical limitations of current prototype
 
 - It has **no cloud deployment, model credentials, long-running job scheduler, live GitHub reading, or Neon lease mutation**. It does not run while Codex stops; calling a JavaScript module locally does not create a cloud agent.
