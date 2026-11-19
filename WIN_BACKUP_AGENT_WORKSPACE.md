@@ -4,6 +4,30 @@
 
 **State of this document:** Workflow specification and staging convention **only**. Creating this document does **not** start Ollama/OpenCode, run a persistent monitor, enable a cloud host, or deploy PR #35/#36. Follow the verified runtime/lease requirements below before claiming automatic takeover.
 
+## Five independent runtime gates — status and proof required
+
+**Owner-provided checklist (2026-11-19).** The first three checks are reported verified, but they are not enough to declare automatic WIN cloud coding operational. Distinguish account/service reachability from environment selection, actual task completion, independent dispatch and unattended recovery. Evidence below is based on reports linked in [router PR #51](https://github.com/Amir-dev-stack/win-worker-engine/pull/51), not a new live execution in this documentation branch.
+
+| Check | Status | Verified evidence or gap | Required acceptance to advance |
+| --- | --- | --- | --- |
+| Local Codex AI execution | **VERIFIED (read-only smoke)** | Windows router selected authenticated Terra and completed a bounded README inspection, reported in PR #51 | Separate scoped write-task validation with clean worktree, exact model and test evidence before calling autonomous coding verified |
+| ChatGPT authentication | **VERIFIED (reported local CLI)** | ChatGPT-authenticated `codex login` and live local execution; no API key | Confirm same authorized account **and workspace** across Windows CLI, Desktop and Cloud without revealing any credentials |
+| Cloud task-listing access | **VERIFIED (endpoint reachable)** | `codex cloud list --limit 10 --json` returned `{"tasks":[],"cursor":null}`; a successful response is **not** an environment inventory | Match an actual Cloud task and environment selector via a documented supported interface |
+| Cloud environment availability | **PARTIAL: Browser/Desktop reported available; CLI environment selection NOT VERIFIED** | A read-only browser Cloud task reportedly read WIN files; Desktop showed the saved ready environment; Windows CLI still errors `no cloud environments are available for this workspace` before resolving the supplied ID | Supported CLI/API discovers the correct **published, account/workspace-matched WIN environment** and can submit a bounded task without guessed IDs or credential extraction |
+| PC-off autonomous coding | **NOT ACTIVATED / NOT VERIFIED** | Some Cloud test execution and a likely-PC-sleep report do not prove independent *automated* dispatch, durable host, lease/queue, wakeup, recovery or safe backup coding | Authenticated scheduled trigger on authorized persistent host, exactly one protected live task, owner confirms PC-off, preserved artifacts/results and safe Codex/backup handoff in an end-to-end demonstration |
+
+**Do not collapse these gates.** The browser cloud execution can work even while CLI environment discovery fails. Do not automatically mark Codex offline due to a broken CLI picker. Do not create extra cloud environments as a speculative fix or claim that Cloudflare model inference is a background host. Investigate account/workspace parity and supported upstream CLI Cloud Tasks environment compatibility; record evidence and open a targeted support escalation if upstream.
+
+### Recovery order and no-waste checks
+
+1. Preserve the already verified local read-only Codex router path; never rerun model smoke tests just for reassurance. Use **read-only and free** commands to verify account/workspace parity across CLI/Desktop/Cloud and whether the published environment appears in supported CLI discovery.
+2. Resolve environment selection with actual evidence; do not guess from `ccarenv_...` runtime identifiers or `asenvcfg_...` config selectors. If provider-side discovery is blocked, keep the cloud-dispatch track `BLOCKED_UPSTREAM`, report and proceed with other safe engineering. **No paid API workaround.**
+3. After real supported environment discovery, run one bounded no-new-spend read-only task from an approved execution surface and retain task URL/ID, exact repo SHA, log-free test counts, timestamps and clean state.
+4. Separately prove **PC-independent** cloud execution with the PC genuinely off before task completion. Do not infer this from cloud metadata or a task run before PC sleep.
+5. Only then verify **automatic** PC-off dispatch and backup/failover: allowlisted task, real timed trigger/monitor, authenticated atomic lease, one task owner, checkpoint persistence, simulated primary expiry first, real backup-runner availability, draft-only output, Codex return-reconciliation and kill switch. Test retry/duplicate claims and provider exhaustion. Never enable infinite polling/retry, credit-burning model loops, or automatic payment.
+
+**Definition of done:** all five rows include dated task evidence or are explicitly marked blocked. A verified local router is not a 24/7 cloud system, and a configured backup proposal folder is not an automatic backup agent.
+
 ## 1. Source of truth and existing work — do not duplicate
 
 - Project repository: `Amir-dev-stack/win-worker-engine`. Mainline code on `main` is **not** the backup scratchpad.
