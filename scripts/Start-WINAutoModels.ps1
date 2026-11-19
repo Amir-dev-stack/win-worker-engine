@@ -11,6 +11,7 @@ param(
     [switch]$Run,
     [string]$VerifiedModels,
     [switch]$UseLiveModels,
+    [switch]$VerifyModelsOnly,
     [switch]$ReviewAfter
 )
 $ErrorActionPreference = 'Stop'
@@ -27,7 +28,8 @@ $planText = & node @cmd
 if ($LASTEXITCODE -ne 0) { throw "WIN router validation failed." }
 $plan = $planText | ConvertFrom-Json
 Write-Host ("WIN selected model: {0} ({1}), task type: {2}" -f $plan.model,$plan.effort,$plan.category)
-if (-not $Run) {
+if ($Run -and $VerifyModelsOnly) { throw "Use -VerifyModelsOnly without -Run." }
+if (-not $Run -and -not $VerifyModelsOnly) {
     Write-Host "Dry run only. Add -Run to execute with the selected model."
     return
 }
@@ -47,6 +49,10 @@ $verifiedText = & node @verifiedArgs
 if ($LASTEXITCODE -ne 0) { throw "WIN model evidence is invalid, stale or unavailable." }
 $plan = $verifiedText | ConvertFrom-Json
 Write-Host ("Verified selection: {0} ({1}), pre-dispatch fallback: {2}" -f $plan.model,$plan.effort,$plan.fallbackBeforeDispatch)
+if ($VerifyModelsOnly) {
+    Write-Host "WIN Codex account model and quota preflight passed. No coding task was executed."
+    return
+}
 if (-not (Test-Path -LiteralPath $Worktree -PathType Container)) {
     throw "Git worktree not found: $Worktree"
 }
