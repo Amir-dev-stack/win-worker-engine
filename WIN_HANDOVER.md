@@ -211,3 +211,7 @@ After fetching all accessible remote branches and tags, the bounded scan covered
 ## Server-atomic ref CAS investigation — 2026-11-19
 
 Issue #81 A3 adds a disabled deterministic model and design record for a future scratch-ref transaction. It explicitly rejects client GET-then-PATCH as atomic CAS. The model makes expected old head, current lease owner/fence, expiry/revocation and idempotency receipt checks part of one server-owned transaction. Tests cover two-writer contention, lease takeover, crash/restart boundaries, lost acknowledgement and quarantine of changed intent without blind replay. `GITHUB_REF_WRITER_ENABLED` remains false; there is no GitHub transport or ref mutation capability. Incident reference: `WIN-INC-20261119-GITHUB-ATOMIC-REF-CAS` in issue #46.
+
+## Codex Cloud task provenance assessment — 2026-11-19
+
+Issue #81 B1 is `BLOCKED_EVIDENCE`. No accessible authorized record contains a platform-issued Codex Cloud task ID/URL with repository, managed workspace, verified permissions, start/end timestamps and final state. The hourly ChatGPT automation ID, GitHub commits/PRs and CI runs are not Codex Cloud task receipts. PC-off proof is independently unverified. The branch adds a read-only fail-closed validator that distinguishes `LIVE_VERIFIED`, `REPORTED`, `MOCK_ONLY` and `BLOCKED_EVIDENCE` without dispatching work. PR #83's separately reviewed authorization-predicate gap remains queued and untouched by this branch.
