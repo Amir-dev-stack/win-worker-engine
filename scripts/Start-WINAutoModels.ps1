@@ -82,7 +82,13 @@ if ($ReviewAfter -and $plan.category -ne 'review') {
     $reviewPlanText = & node @reviewArgs
     if ($LASTEXITCODE -ne 0) { throw "WIN review plan validation failed." }
     $reviewPlan = $reviewPlanText | ConvertFrom-Json
-    & codex exec -C $target --model $reviewPlan.model -c ('model_reasoning_effort="{0}"' -f $reviewPlan.effort) --sandbox 'read-only' $reviewPrompt
-    if ($LASTEXITCODE -ne 0) { throw "Astra review was not completed." }
+    if (-not $plan.reviewModel -or -not $plan.reviewEffort) {
+        throw "Reviewer was not selected during the original preflight."
+    }
+    if ($reviewPlan.model -ne $plan.reviewModel -or $reviewPlan.effort -ne $plan.reviewEffort) {
+        throw "Reviewer eligibility changed since original preflight; stopping rather than switching silently."
+    }
+    & codex exec -C $target --model $plan.reviewModel -c ('model_reasoning_effort="{0}"' -f $plan.reviewEffort) --sandbox 'read-only' $reviewPrompt
+    if ($LASTEXITCODE -ne 0) { throw "WIN read-only review was not completed." }
 }
 Write-Host "WIN model-routed task completed. Review code and tests before any deployment."
