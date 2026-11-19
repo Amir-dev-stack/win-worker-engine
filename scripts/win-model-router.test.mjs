@@ -80,7 +80,7 @@ test('routine review chooses Sol QA without triggering Astra credit usage',()=>{
 
 test('review task does not spawn an additional review process',async()=>{
   const launched=[];
-  const result=await runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Final review','--cwd','/repo'],{
+  const result=await runRouter(['--run','--review-after','--verified-models','/catalog.json','--task','Security audit','--cwd','/repo'],{
     spawnSyncFn:(cmd)=>cmd==='codex'?{status:0,stdout:'Logged in using ChatGPT'}:{status:0,stdout:'/repo\n'},realpathSyncFn:x=>x,
     readFileSyncFn:()=>JSON.stringify(validEvidence), now:new Date('2026-11-18T15:30:00Z'),
     invokeFn:async args=>{launched.push(args);return {success:true,code:0};}
