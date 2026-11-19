@@ -41,7 +41,7 @@ Ask for one **read-only Astra review** after successful implementation (explicit
 node scripts/win-model-router.mjs --run --verified-models .win-codex-models.json --review-after --task "Implement and test the worker service"
 ```
 
-Manually override task classification using `--category simple|standard|complex|review`. The router uses simple → Terra Low, standard → Sol Medium, complex → Sol High, review → Astra High. No infinite retries. Each model call is a new Codex CLI session; it does not change the model inside a running Codex Desktop chat.
+Manually override task classification using `--category simple|standard|complex|review`. The router uses simple → Luna Low where verified (Terra Low fallback), standard → Sol Medium (Terra Medium fallback), complex → Sol High without automatic Astra escalation, ordinary QA → Sol Medium, and explicit high-risk review/architecture → Astra High (read-only). No infinite retries. Each model call is a new Codex CLI session; it does not change the model inside a running Codex Desktop chat.
 
 **Caveats:** `--review-after` checks only that the implementation Codex process exited successfully; it does **not** assert tests passed. Inspect test logs and diff before any merge or production deployment. The review sees the current worktree's uncommitted changes; committed diffs are not currently included. The router does not yet queue recurring work, manage credit balance, distinguish rate-limit errors for automatic fallback or guarantee actual savings. Usage limits may be shared across models. This prototype does not start the user’s VM or run WIN 24/7.
 
