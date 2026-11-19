@@ -59,6 +59,7 @@ const required = [
   "netlify/lib/post-match-followup.mts",
   "netlify/lib/win-learning-core.mjs",
   "scripts/win-learning-core.test.mjs",
+  "scripts/win-statsbomb-open-data.mjs",
   "netlify/functions/learning-observatory.mts",
   "netlify/lib/learning-observatory.mts",
   "scripts/quality-gates.mjs"
