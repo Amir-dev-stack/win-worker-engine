@@ -79,8 +79,18 @@ function hold(reason) {
  * git.updateHeadIfEquals must guarantee server-side atomic expected-head
  * matching. This module cannot verify the implementation is atomic.
  */
-export async function guardedDraftUpdate(request, {leaseReader, git} = {}) {
-  validRequest(request);
+export async function guardedDraftUpdate(input, {leaseReader, git} = {}) {
+  validRequest(input);
+  // Capture a complete immutable value snapshot before the first async
+  // boundary. Callers can mutate input while lease/GitHub checks are pending.
+  const request = Object.freeze({
+    repository: input.repository, branch: input.branch,
+    expectedHead: input.expectedHead, proposedCommit: input.proposedCommit,
+    taskId: input.taskId, actorId: input.actorId, fence: input.fence,
+    approved: input.approved, productionWriteAllowed: input.productionWriteAllowed,
+    paidSpendAllowed: input.paidSpendAllowed, draftOnly: input.draftOnly,
+    paths: Object.freeze([...input.paths])
+  });
   if (!leaseReader || typeof leaseReader.getCurrent !== "function" ||
       !git || typeof git.getHead !== "function" ||
       typeof git.inspectProposedCommit !== "function" ||
