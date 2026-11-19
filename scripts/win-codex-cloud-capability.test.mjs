@@ -132,4 +132,3 @@ test("supported interface with blocked access cannot dispatch", () => {
   value.capabilityStatus = "SUPPORTED_INTERFACE_BLOCKED_ACCESS";
   assert.equal(decideCodexCloudContinuation(value).reason, "CLOUD_ACCESS_NOT_VERIFIED");
 });
-
