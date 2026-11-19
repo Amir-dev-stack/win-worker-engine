@@ -27,9 +27,16 @@ async function sql(config, statement) {
       env:config.environment,timeout:12000,maxBuffer:65536,windowsHide:true
     });
     return result.stdout.trim();
-  } catch {
-    // Never log the connection URL, credentials or entire SQL error response.
-    throw Error("LOCAL_POSTGRES_TEST_QUERY_FAILED");
+  } catch (error) {
+    // Report only known-safe failure codes; stderr can contain credentials.
+    const stderr = typeof error?.stderr === "string" ? error.stderr : "";
+    const reason = /password authentication failed|no password supplied/i.test(stderr)
+      ? "AUTH" : /connection refused|could not connect to server/i.test(stderr)
+        ? "CONNECT" : /could not translate host name|could not resolve/i.test(stderr)
+          ? "HOST" : /permission denied|must be owner/i.test(stderr)
+            ? "PERMISSION" : /syntax error/i.test(stderr)
+              ? "SYNTAX" : "OTHER";
+    throw Error("LOCAL_POSTGRES_TEST_QUERY_FAILED_" + reason);
   }
 }
 const quote=value=>"'"+value.replaceAll("'","''")+"'";
