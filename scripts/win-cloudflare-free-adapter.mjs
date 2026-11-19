@@ -62,7 +62,7 @@ export function createWorkersAiFreeAdapter(config) {
         });
         if (!response.ok) throw new Error("Workers AI rejected request; stop, do not retry or switch providers.");
         const size = response.headers?.get("content-length");
-        if (size !== null && size !== undefined && Number(size) > 2 * MAX_RESPONSE_BYTES)
+        if (size !== null && size !== undefined && Number(size) > MAX_RESPONSE_BYTES)
           throw new Error("Cloud response too large");
         // Limit raw response bytes regardless of content-length; never log payload.
         if (!response.body || typeof response.body.getReader !== "function")
@@ -75,13 +75,19 @@ export function createWorkersAiFreeAdapter(config) {
             const { value, done } = await reader.read();
             if (done) break;
             total += value.byteLength;
-            if (total > 2 * MAX_RESPONSE_BYTES) throw new Error("Cloud response too large");
+            if (total > MAX_RESPONSE_BYTES) throw new Error("Cloud response too large");
             chunks.push(value);
           }
         } finally {
           reader.releaseLock();
         }
-        const data = JSON.parse(new TextDecoder().decode(Buffer.concat(chunks.map(x => Buffer.from(x)))));
+        let data;
+        try {
+          data = JSON.parse(new TextDecoder().decode(Buffer.concat(chunks.map(x => Buffer.from(x)))));
+        } catch {
+          // Never expose raw provider body or parser snippets in errors/logs.
+          throw new Error("Invalid cloud model response");
+        }
         const text = data?.result?.response;
         if (data?.success !== true || typeof text !== "string" ||
             byteLength(text) > maxOutputBytes) throw new Error("Invalid cloud model response");

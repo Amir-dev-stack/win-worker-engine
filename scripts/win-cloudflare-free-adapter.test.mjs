@@ -66,3 +66,16 @@ test("too-large model responses fail without leaking payload content", async () 
     prompt: "test", maxOutputBytes: 2048, taskId: "win-123"
   }), /Cloud response too large/);
 });
+
+test("malformed provider JSON errors are fixed and never quote potentially sensitive response", async () => {
+  const sensitive = "PRIVATE_TEST_MARKER_NEVER_LOG";
+  const a = createWorkersAiFreeAdapter(config(async () =>
+    new Response("{not-json:" + sensitive, { status: 200 })));
+  await assert.rejects(a.generate({
+    prompt: "bounded test", maxOutputBytes: 2048, taskId: "win-123"
+  }), error => {
+    assert.equal(error.message, "Invalid cloud model response");
+    assert.ok(!error.message.includes(sensitive));
+    return true;
+  });
+});
