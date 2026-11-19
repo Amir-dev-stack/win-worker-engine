@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {categorize,optionsFromArgs,buildCodexArgs,workspaceCheck,runRouter,selectVerifiedModel,isChatGPTLogin,discoverCodexModels,codexAuthCommand,validateCodexRateLimits} from './win-model-router.mjs';
+import {categorize,optionsFromArgs,buildCodexArgs,workspaceCheck,runRouter,selectVerifiedModel,isChatGPTLogin,hasChatGPTCliAuth,discoverCodexModels,codexAuthCommand,validateCodexRateLimits} from './win-model-router.mjs';
 const validEvidence={source:'codex-app-server:model/list',verifiedAt:'2026-11-18T15:00:00Z',expiresAt:'2026-11-18T18:00:00Z',models:[{id:'gpt-6.1-terra',available:true,allowed:true},{id:'gpt-6.2-sol',available:true,allowed:true},{id:'gpt-6.2-astra',available:true,allowed:true}]};
 test('routes routine, complex and review',()=>{
   assert.equal(categorize('Update README documentation'),'simple');
@@ -301,4 +301,23 @@ test('Windows model-only validation does not mislabel offline evidence as live q
   assert.match(launcher,/Live Codex account model and quota preflight passed/);
   assert.match(launcher,/Account quota was NOT queried/);
   assert.match(launcher,/if \(\$VerifyModelsOnly\) \{/);
+});
+
+test('Codex Windows login status may be emitted on stderr on successful exit',async()=>{
+  assert.equal(hasChatGPTCliAuth({status:0,stdout:'',stderr:'Logged in using ChatGPT\n'}),true);
+  assert.equal(hasChatGPTCliAuth({status:0,stdout:'Logged in using ChatGPT\n',stderr:''}),true);
+  assert.equal(hasChatGPTCliAuth({status:1,stdout:'Logged in using ChatGPT',stderr:''}),false);
+  assert.equal(hasChatGPTCliAuth({status:0,stdout:'',stderr:'Logged in using an API key'}),false);
+  assert.equal(hasChatGPTCliAuth({status:0,stdout:'',stderr:'Not logged in using ChatGPT'}),false);
+  let invocations=0;
+  const result=await runRouter(['--run','--verified-models','/catalog.json','--task','Implement worker','--cwd','/repo'],{
+    readFileSyncFn:()=>JSON.stringify(validEvidence),
+    now:new Date('2026-11-18T15:30:00Z'),realpathSyncFn:x=>x,
+    spawnSyncFn:cmd=>cmd==='codex'
+      ?{status:0,stdout:'',stderr:'Logged in using ChatGPT\n'}
+      :{status:0,stdout:'/repo\n'},
+    invokeFn:async()=>{invocations++;return {success:true,code:0};}
+  });
+  assert.equal(invocations,1);
+  assert.equal(result.success,true);
 });
