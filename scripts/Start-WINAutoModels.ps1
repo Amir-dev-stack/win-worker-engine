@@ -74,12 +74,18 @@ if ($target.TrimEnd('\','/') -ine $gitCanonical.TrimEnd('\','/')) {
 if ($target -match '(?i)([\\/])pr36([\\/]|$)|pr36-review|pr36-safety') {
     throw "PR #36 is frozen; choose a different authorized Git worktree."
 }
-if (-not (Get-Command codex -ErrorAction SilentlyContinue)) {
-    throw "Codex CLI is unavailable in PowerShell. Check 'codex --version' and login first."
+# Prefer the npm-generated Windows .cmd launcher, not codex.ps1.
+# npm's PowerShell shim may print a successful login on stderr; in Windows
+# PowerShell with ErrorActionPreference=Stop that becomes a terminating error.
+$codexCmd = Get-Command codex.cmd -ErrorAction SilentlyContinue
+if (-not $codexCmd) {
+    throw "Codex CLI Windows command shim is unavailable. Verify installation with: codex.cmd --version"
 }
-# Require ChatGPT login so a CLI API-key session cannot silently create usage-based charges.
-$authText = (& codex login status 2>&1 | Out-String).Trim()
-if ($LASTEXITCODE -ne 0 -or $authText -notmatch '(?i)^Logged in (using|via) chatgpt\b') {
+# Static command only: no user text, worktree or secrets are passed through cmd.exe.
+# cmd.exe combines both CLI streams into standard output for robust status parsing.
+$authText = (& cmd.exe /d /s /c 'codex.cmd login status 2>&1' | Out-String).Trim()
+$authCode = $LASTEXITCODE
+if ($authCode -ne 0 -or $authText -notmatch '(?i)^Logged in (using|via) chatgpt\b') {
     throw "ChatGPT-authenticated Codex CLI is required; API-key or unknown login modes are blocked."
 }
 $mode = if ($ReadOnlySmoke -or $plan.category -eq 'review') { 'read-only' } else { 'workspace-write' }
@@ -87,8 +93,16 @@ if ($ReadOnlySmoke) {
     Write-Host "Safe execution smoke: forcing read-only sandbox; no automatic review or retry."
 }
 Write-Host "Starting one bounded Codex task in $target"
-& codex exec -C $target --model $plan.model -c ('model_reasoning_effort="{0}"' -f $plan.effort) --sandbox $mode $Task
-$taskCode = $LASTEXITCODE
+# Preserve Codex stderr as normal live output, without turning it into an
+# early PowerShell exception. Always inspect the native process exit code.
+$previousErrorAction = $ErrorActionPreference
+try {
+    $ErrorActionPreference = 'Continue'
+    & $codexCmd.Source exec -C $target --model $plan.model -c ('model_reasoning_effort="{0}"' -f $plan.effort) --sandbox $mode $Task
+    $taskCode = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $previousErrorAction
+}
 if ($taskCode -ne 0) { throw "Codex task failed; Astra review skipped. Exit code: $taskCode" }
 if ($ReviewAfter -and $plan.category -ne 'review') {
     $reviewPrompt = "Read-only security and regression review of the CURRENT UNCOMMITTED changes in this worktree. Do not change files, deploy, merge, read secrets, or alter billing. Report prioritized findings. Goal: " + $Task
@@ -105,7 +119,14 @@ if ($ReviewAfter -and $plan.category -ne 'review') {
     if ($reviewPlan.model -ne $plan.reviewModel -or $reviewPlan.effort -ne $plan.reviewEffort) {
         throw "Reviewer eligibility changed since original preflight; stopping rather than switching silently."
     }
-    & codex exec -C $target --model $plan.reviewModel -c ('model_reasoning_effort="{0}"' -f $plan.reviewEffort) --sandbox 'read-only' $reviewPrompt
-    if ($LASTEXITCODE -ne 0) { throw "WIN read-only review was not completed." }
+    $previousErrorAction = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $codexCmd.Source exec -C $target --model $plan.reviewModel -c ('model_reasoning_effort="{0}"' -f $plan.reviewEffort) --sandbox 'read-only' $reviewPrompt
+        $reviewCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+    }
+    if ($reviewCode -ne 0) { throw "WIN read-only review was not completed." }
 }
 Write-Host "WIN model-routed task completed. Review code and tests before any deployment."
