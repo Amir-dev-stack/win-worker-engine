@@ -90,7 +90,7 @@ export async function buildCoverageReport(now = new Date()) {
   return {
     generatedAt: now.toISOString(),
     evidence: { total: evidence.length, observedSports: [...observedSports].sort(), domains: domainRows },
-    inventory: buildCoverageInventory(evidence, DATA_PROVIDER_REGISTRY),
+    inventory: buildCoverageInventory(evidence, DATA_PROVIDER_REGISTRY, SPORT_REGISTRY.map(sport => sport.id)),
     sports,
     humanIntelligence: {
       importedSourceRecords: imports.length, sourceCounts,
