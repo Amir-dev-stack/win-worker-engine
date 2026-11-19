@@ -38,6 +38,7 @@ SET status = 'running', owner_id = $2, fence = fence + 1,
     revision = revision + 1, updated_at = clock_timestamp()
 WHERE task_id = $1 AND approved = true
   AND status = 'queued' AND owner_id IS NULL
+  AND fence < 9007199254740991
   AND $3::integer BETWEEN 5 AND 900
 RETURNING task_id, source_commit_sha, task_type, fence, expires_at, checkpoint_commit_sha
 `.trim(),
@@ -74,6 +75,7 @@ UPDATE win_dev_lease_tasks
 SET status = 'blocked_uncertain', owner_id = NULL, expires_at = NULL,
     fence = fence + 1, revision = revision + 1, updated_at = clock_timestamp()
 WHERE task_id = $1 AND status = 'running'
+  AND fence < 9007199254740991
   AND expires_at <= clock_timestamp()
 RETURNING task_id, fence, status
 `.trim()
