@@ -54,7 +54,7 @@ test('PowerShell launcher shares router model choices and uses current worktree 
   const launcher=readFileSync(join(dirname(fileURLToPath(import.meta.url)),'Start-WINAutoModels.ps1'),'utf8');
   assert.match(launcher,/\$Worktree\s*=\s*\(Get-Location\)\.Path/);
   assert.match(launcher,/--category', 'review'/);
-  assert.match(launcher,/--model \$reviewPlan\.model/);
+  assert.match(launcher,/--model \$plan\.reviewModel/);
   assert.doesNotMatch(launcher,/pr49-safety-hardening|--model 'gpt-6\.2-astra'/);
 });
 
