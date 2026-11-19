@@ -224,7 +224,7 @@ export async function runRouter(argv,deps={}){
   // Prevalidate optional reviewer BEFORE a writable implementation starts.
   const reviewModel=opts.reviewAfter&&category!=='review'
     ?selectVerifiedModel('review',evidence,deps.now||new Date()):null;
-  const plan={category,model:selected.model,effort:selected.effort,cwd,reviewAfter:opts.reviewAfter,reviewModel:reviewModel?.model||null,modelAvailability:'owner-verified',fallbackBeforeDispatch:selected.model!==requested.model};
+  const plan={category,model:selected.model,effort:selected.effort,cwd,reviewAfter:opts.reviewAfter,reviewModel:reviewModel?.model||null,reviewEffort:reviewModel?.effort||null,modelAvailability:'owner-verified',fallbackBeforeDispatch:selected.model!==requested.model};
   if(opts.verifyOnly)return {verified:true,...plan};
   // ChatGPT subscription authentication only: API-key sessions may incur usage-based charges.
   const {command, args}=codexAuthCommand(deps.platform||process.platform);
