@@ -94,7 +94,9 @@ test("adapter failures and oversized results fail closed", async () => {
   };
   assert.equal((await requestCloudBackupReview(p, adapter)).reason, "provider_failed");
   adapter.generate = async () => "x".repeat(30000);
-  assert.equal((await requestCloudBackupReview(p, adapter)).reason, "invalid_provider_response");
+  // A distinct case requires its own verified, single-use prepared envelope.
+  const oversized = prepareCloudBackupReview(fixture(), NOW);
+  assert.equal((await requestCloudBackupReview(oversized, adapter)).reason, "invalid_provider_response");
 });
 test("malformed, huge and unapproved tasks fail closed", () => {
   const x = fixture();
