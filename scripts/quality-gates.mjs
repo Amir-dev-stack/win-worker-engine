@@ -156,10 +156,16 @@ add("Football Asian handicap settlement is shared, selected-side explicit and sp
 
 add("Football European handicap settlement requires explicit two-sided integer adjustments",
   winLearningCore.includes("evaluateEuropeanHandicapLeg") &&
+  winLearningCore.includes("SUPPORTED_EUROPEAN_HANDICAP_MARKETS") &&
+  winLearningCore.includes("marketDeclarations.every(isSupportedEuropeanHandicapMarketLabel)") &&
   winLearningCore.includes("european_three_way_explicit_score_adjustment_v1") &&
   winLearningCore.includes('typeof homeHandicap !== "number" || typeof awayHandicap !== "number"') &&
   winLearningCoreTests.includes("European three-way handicap settles explicit adjusted home, draw and away results") &&
   winLearningCoreTests.includes("rejects implicit, malformed, compound and non-regulation inputs") &&
+  winLearningCoreTests.includes("European Handicap + Shots") &&
+  winLearningCoreTests.includes("European Handicap / Offsides") &&
+  winLearningCoreTests.includes("European Handicap and Fouls") &&
+  europeanHandicapDoc.includes("exact normalized allowlist") &&
   europeanHandicapDoc.includes("never infers handicap orientation") &&
   europeanHandicapDoc.includes("do not prove live-provider compatibility"),
   "Explicit bounded integer home/away adjustments produce one regulation 1X2 result; label-only, malformed, period and compound markets fail closed.");

@@ -137,6 +137,9 @@ test("Asian handicap rejects split, ambiguous, compound and period-specific inpu
 
 test("European three-way handicap settles explicit adjusted home, draw and away results", () => {
   const base = { market: "European Handicap 1X2", homeTeam: "Alpha United", awayTeam: "Beta United", homeHandicap: 0, awayHandicap: 0 };
+  for (const market of ["European Handicap", "European Handicap 1X2", "European Three Way Handicap", "European 3 Way Handicap", "Three Way Handicap", "3 Way Handicap", "Handicap 1X2"]) {
+    assert.equal(evaluateFullTimeLeg({ ...base, market, pick: "Home" }, { home: 2, away: 1 }).status, "won", market);
+  }
   assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home" }, { home: 2, away: 1 }).status, "won");
   assert.equal(evaluateFullTimeLeg({ ...base, pick: "Away" }, { home: 1, away: 2 }).status, "won");
   assert.equal(evaluateFullTimeLeg({ ...base, pick: "Draw" }, { home: 1, away: 1 }).status, "won");
@@ -168,6 +171,10 @@ test("European handicap rejects implicit, malformed, compound and non-regulation
   assert.equal(evaluateFullTimeLeg({ market: "Handicap 1X2 (1:0)", homeTeam: "Alpha United", awayTeam: "Beta United", pick: "Home" }, { home: 2, away: 1 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ ...base, market: "First Half European Handicap" }, { home: 2, away: 1 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ ...base, market: "European Handicap and BTTS" }, { home: 2, away: 1 }).status, "unsupported_market");
+  for (const market of ["European Handicap + Shots", "European Handicap / Offsides", "European Handicap and Fouls", "European Handicap: Unknown Market"]) {
+    assert.equal(evaluateFullTimeLeg({ ...base, market }, { home: 2, away: 1 }).status, "unsupported_market", market);
+  }
+  assert.equal(evaluateFullTimeLeg({ ...base, settlementRule: "Shots" }, { home: 2, away: 1 }).status, "unsupported_market");
 });
 
 test("period markets, ambiguous picks, unsupported markets and invalid scores fail closed", () => {

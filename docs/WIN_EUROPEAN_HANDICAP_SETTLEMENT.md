@@ -10,6 +10,13 @@ JavaScript numbers. WIN adds those values to the verified regulation home and
 away goals, derives the adjusted home/draw/away result, and settles one
 unambiguous 1X2-style selection.
 
+The shared entry point uses an exact normalized allowlist for these single
+market labels: `European Handicap`, `European Handicap 1X2`, `European Three
+Way Handicap`, `European 3 Way Handicap`, `Three Way Handicap`, `3 Way
+Handicap`, and `Handicap 1X2`. Extra words or punctuation-separated suffixes
+do not extend that allowlist. For example, shots, offsides, fouls, or any other
+unknown family combined with an allowed label fails closed.
+
 Score fields must also be present non-negative safe-integer numbers. Missing,
 null, blank, digit-string, fractional, negative, nonfinite, malformed, or
 compound values fail closed. Handicap strings, fractions, missing sides, and

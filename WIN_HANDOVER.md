@@ -493,3 +493,18 @@ after this handover-only evidence update.
 This synthetic arithmetic does not prove score provenance, provider rules,
 historical coverage, settlement accuracy, profitability or production
 readiness, and does not complete D3 or issue #81.
+
+Independent review of PR #100 exact head
+`84d6deb958a53ce665bb22909caf84194a1a4eb4` found that substring market
+recognition plus a finite derivative-family rejection list could accept an
+unknown compound suffix such as `European Handicap + Shots`. The hardening
+update replaces that assumption with an exact normalized allowlist for the
+supported single European-handicap aliases. Any extra market declaration or
+punctuation-separated suffix now fails before settlement. Regression tests
+cover shots, offsides, fouls, an unknown family, an additional settlement-rule
+declaration, and every retained plain alias.
+
+Verification before the hardening commit: targeted settlement tests 18/18,
+full Node tests 141/141, quality gates 115/115, build 79 required files plus 44
+architecture checks, and exact-base `git diff --check` passed. Re-run on the
+final commit and require exact-head GitHub Actions before handoff.

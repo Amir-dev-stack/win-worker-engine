@@ -1,5 +1,18 @@
 const clean = (value, max = 3000) => typeof value === "string" ? value.trim().slice(0, max) : "";
 const normalized = value => String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/ł/g, "l").replace(/[^a-z0-9]+/g, " ").trim();
+const SUPPORTED_EUROPEAN_HANDICAP_MARKETS = new Set([
+  "european handicap",
+  "european handicap 1x2",
+  "european three way handicap",
+  "european 3 way handicap",
+  "three way handicap",
+  "3 way handicap",
+  "handicap 1x2"
+]);
+
+function isSupportedEuropeanHandicapMarketLabel(value) {
+  return SUPPORTED_EUROPEAN_HANDICAP_MARKETS.has(normalized(value));
+}
 
 function sameTeam(a, b) {
   const x = normalized(a), y = normalized(b);
@@ -138,7 +151,8 @@ export function evaluateEuropeanHandicapLeg(leg, score) {
  * Period-specific, unrecognized and unparseable markets deliberately remain unsupported.
  */
 export function evaluateFullTimeLeg(leg, score) {
-  const market = normalized(clean(leg?.market, 180) + " " + clean(leg?.settlementRule, 500));
+  const marketDeclarations = [clean(leg?.market, 180), clean(leg?.settlementRule, 500)].filter(Boolean);
+  const market = normalized(marketDeclarations.join(" "));
   const rawPick = clean(leg?.pick || leg?.selection, 180);
   const pick = normalized(rawPick);
   const home = Number(score?.home), away = Number(score?.away);
@@ -151,20 +165,21 @@ export function evaluateFullTimeLeg(leg, score) {
   const drawNoBetMarket = /draw no bet|zaklad bez remisu|\bdnb\b/.test(market);
   const doubleChanceMarket = /double chance|podwojna szansa/.test(market);
   const asianHandicapMarket = /asian handicap|asian spread/.test(market);
-  const europeanHandicapMarket = /european handicap|three way handicap|3 way handicap|handicap 1x2/.test(market);
+  const europeanHandicapMention = /european handicap|three way handicap|3 way handicap|handicap 1x2/.test(market);
+  const europeanHandicapMarket = europeanHandicapMention && marketDeclarations.every(isSupportedEuropeanHandicapMarketLabel);
   const resultFamily = /1x2|match winner|moneyline|full time result|wynik meczu|zwyciezca meczu/.test(market);
   const joinsResultFamilies = /\b(and|plus|with|oraz|lub)\b|[&/+]/.test(market) && resultFamily;
   const compoundOrDerivativeMarket = joinsResultFamilies || /both teams to score|btts|goals?|gole|goli|handicap|asian|spread|cards?|corners?|player|goalscorer|team total/.test(market);
   if ((drawNoBetMarket || doubleChanceMarket) && compoundOrDerivativeMarket) {
     return { status: "unsupported_market", reason: "Compound or derivative Draw No Bet and Double Chance markets require an explicit settlement rule." };
   }
+  if (europeanHandicapMention && !europeanHandicapMarket) {
+    return { status: "unsupported_market", reason: "European handicap settlement requires one explicitly supported single-market label." };
+  }
   if (asianHandicapMarket && /both teams to score|btts|goals?|gole|goli|cards?|corners?|player|goalscorer|team total|1x2|match winner|moneyline|draw no bet|double chance/.test(market)) {
     return { status: "unsupported_market", reason: "Compound or derivative Asian handicap markets require an explicit settlement rule." };
   }
   if (asianHandicapMarket) return evaluateAsianHandicapLeg(leg, score);
-  if (europeanHandicapMarket && /both teams to score|btts|goals?|gole|goli|cards?|corners?|player|goalscorer|team total|asian|spread|draw no bet|double chance/.test(market)) {
-    return { status: "unsupported_market", reason: "Compound or derivative European handicap markets require an explicit settlement rule." };
-  }
   if (europeanHandicapMarket) return evaluateEuropeanHandicapLeg(leg, score);
   if (/both teams to score|btts|obie druzyny strzela|obie druzyny/.test(market)) {
     const yes = home > 0 && away > 0;
