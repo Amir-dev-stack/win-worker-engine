@@ -675,3 +675,40 @@ settlement accuracy, shot-definition or void-rule compatibility,
 profitability, deployment or production readiness, and does not complete D3
 or issue #81. No provider, paid API, production/database, coupon, betting or
 financial action occurred.
+
+## Issue #81 D3 player shots-on-target checkpoint — 2026-11-20
+
+Branch `win-draft/d3-player-sot-total-settlement-20261120` is stacked on
+independently accepted draft PR #104 exact
+`65b1b7c54b36b34f929d7c9a51264cb9011909fa`. Implementation commit
+`7c7a6530380d18e720bd65bfb6b4cef7f23d26a4` adds a separate pure
+regulation-time player shots-on-target total helper without changing the
+score, corner, card, player-goal or player-total-shots settlement paths.
+
+The helper requires an allowlisted single-market label; matching bounded
+opaque event and player identities on the leg and evidence; final
+`regulation_time` scope; explicit `played` participation; the exact
+`official_regulation_player_shot_on_target_count` basis; a bounded safe-integer
+count; a whole/half numeric line; and exact agreeing over/under selection
+evidence. Every settlement-critical field must be an own property.
+
+Did-not-play and unused-substitute cases remain unsupported because void rules
+are not universal. Total shots, team statistics, player names, goals, shot
+events, locations, attempts, blocked/off-target breakdowns, provider labels,
+team/period/extra-time/other-stat and compound markets, quarter/split lines,
+inherited fields and malformed or conflicting inputs cannot settle. The
+score-only result path remains unable to settle player props.
+
+Pre-handover verification: focused settlement tests 34/34, full Node tests
+157/157, quality gates 120/120, build 84 required files plus 44 architecture
+checks, and exact-base `git diff --check` passed. Re-run the full matrix on the
+final handover commit and require exact-head GitHub Actions before reporting
+completion.
+
+This synthetic typed-input boundary authenticates no event, identity,
+participation record, statistic, provider or bookmaker rule. It does not prove
+live compatibility, real-match player shots-on-target accuracy, historical
+coverage, settlement accuracy, shot-definition or void-rule compatibility,
+profitability, deployment or production readiness, and does not complete D3
+or issue #81. No provider, paid API, production/database, coupon, betting or
+financial action occurred.
