@@ -67,7 +67,10 @@ const required = [
   "docs/WIN_EVIDENCE_SNAPSHOT_ENVELOPE.md",
   "netlify/lib/prediction-ledger-envelope.mts",
   "scripts/prediction-ledger-envelope.test.mjs",
-  "docs/WIN_PREDICTION_LEDGER_ENVELOPE.md"
+  "docs/WIN_PREDICTION_LEDGER_ENVELOPE.md",
+  "netlify/lib/team-strength-snapshot.mts",
+  "scripts/team-strength-snapshot.test.mjs",
+  "docs/WIN_TEAM_STRENGTH_SNAPSHOT.md"
 ];
 
 for (const file of required) await access(file);
