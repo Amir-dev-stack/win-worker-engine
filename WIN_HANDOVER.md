@@ -508,3 +508,49 @@ Verification before the hardening commit: targeted settlement tests 18/18,
 full Node tests 141/141, quality gates 115/115, build 79 required files plus 44
 architecture checks, and exact-base `git diff --check` passed. Re-run on the
 final commit and require exact-head GitHub Actions before handoff.
+
+## Issue #81 D3 match-total corners checkpoint — 2026-11-20
+
+Branch `win-draft/d3-corner-total-settlement-20261120` is stacked on
+independently accepted draft PR #100 exact
+`a18fd8a62471fd275e8f778fcbdbdfeaeca6f49b`.
+
+The shared pure settlement library now exposes a dedicated match-total corners
+helper. It requires an allowlisted single-market label, final regulation-time
+scope, explicit bounded integer home/away corner counts, a whole/half numeric
+line, and an exact over/under selection. It returns won/lost/void plus the
+typed arithmetic used for settlement.
+
+The score-only result path remains unable to settle corners, so football goals
+cannot be mistaken for corner evidence. Partial/live, team, period, extra-time,
+quarter/split, compound/suffixed, string/fractional/missing and ambiguous
+inputs fail closed. The helper performs no provider call, production write,
+coupon construction or betting action.
+
+Local verification: targeted settlement tests 20/20, full Node tests 143/143,
+quality gates 116/116, build 80 required files plus 44 architecture checks,
+and exact-base `git diff --check` passed. GitHub Actions run `44778087900`,
+job `136433177330`, succeeded for implementation commit
+`2b36214daac85f59e8c17782d6d70f507317d49f`; exact-head CI will be reported
+after this handover-only evidence update.
+
+Synthetic fixtures do not prove event/statistic provenance, bookmaker rules,
+live-provider compatibility, historical coverage, settlement accuracy,
+profitability or production readiness, and do not complete D3 or issue #81.
+
+Independent review of PR #101 exact head
+`6dafa4129d66d86d9aa2287fb3137dbf2bdc9205` found that `pick || selection`
+could hide contradictory or malformed explicitly supplied selection evidence.
+The hardening update validates each own `pick`/`selection` field independently,
+requires both to be exact equivalent directions when both exist, and rejects
+blank, null, undefined, malformed or conflicting dual-field declarations.
+Valid pick-only, selection-only and equivalent dual-field inputs remain
+supported.
+
+Verification before the hardening commit: targeted settlement tests 21/21,
+full Node tests 144/144, quality gates 116/116, build 80 required files plus 44
+architecture checks, and exact-base `git diff --check` passed. Re-run on the
+final commit and require exact-head GitHub Actions before handoff.
+
+No live provider, statistic, bookmaker-rule or production claim follows from
+these synthetic regressions.

@@ -9,9 +9,34 @@ const SUPPORTED_EUROPEAN_HANDICAP_MARKETS = new Set([
   "3 way handicap",
   "handicap 1x2"
 ]);
+const SUPPORTED_MATCH_CORNER_TOTAL_MARKETS = new Set([
+  "match total corners",
+  "total match corners",
+  "total corners",
+  "corners total"
+]);
 
 function isSupportedEuropeanHandicapMarketLabel(value) {
   return SUPPORTED_EUROPEAN_HANDICAP_MARKETS.has(normalized(value));
+}
+
+function isSupportedMatchCornerTotalMarketLabel(value) {
+  return SUPPORTED_MATCH_CORNER_TOTAL_MARKETS.has(normalized(value));
+}
+
+function parseExactOverUnderSelectionFields(leg) {
+  const record = leg && typeof leg === "object" ? leg : {};
+  const suppliedFields = ["pick", "selection"].filter(field => Object.prototype.hasOwnProperty.call(record, field));
+  if (!suppliedFields.length) return null;
+  const directions = [];
+  for (const field of suppliedFields) {
+    const value = record[field];
+    if (typeof value !== "string" || !clean(value, 80)) return null;
+    const direction = normalized(clean(value, 80));
+    if (!["over", "under"].includes(direction)) return null;
+    directions.push(direction);
+  }
+  return directions.every(direction => direction === directions[0]) ? directions[0] : null;
 }
 
 function sameTeam(a, b) {
@@ -143,6 +168,47 @@ export function evaluateEuropeanHandicapLeg(leg, score) {
     homeHandicap,
     awayHandicap,
     adjustedScore: { home: adjustedHome, away: adjustedAway }
+  };
+}
+
+/** Pure settlement for one final regulation-time match-total corners line. */
+export function evaluateMatchCornerTotalLeg(leg, statistics) {
+  const marketLabel = clean(leg?.market, 180);
+  const additionalMarketLabel = clean(leg?.settlementRule, 500);
+  if (!marketLabel || !isSupportedMatchCornerTotalMarketLabel(marketLabel) ||
+      (additionalMarketLabel && !isSupportedMatchCornerTotalMarketLabel(additionalMarketLabel))) {
+    return { status: "unsupported_market", reason: "An explicitly supported single match-total corners label is required." };
+  }
+  if (statistics?.scope !== "regulation_time" || statistics?.status !== "final") {
+    return { status: "unsupported_market", reason: "Final regulation-time corner statistics are required." };
+  }
+  const homeCorners = statistics?.homeCorners, awayCorners = statistics?.awayCorners;
+  if (typeof homeCorners !== "number" || typeof awayCorners !== "number" ||
+      !Number.isSafeInteger(homeCorners) || !Number.isSafeInteger(awayCorners) ||
+      homeCorners < 0 || awayCorners < 0 || homeCorners > 100 || awayCorners > 100) {
+    return { status: "unsupported_market", reason: "Bounded non-negative integer home and away corner counts are required." };
+  }
+  const line = leg?.line;
+  if (typeof line !== "number" || !Number.isFinite(line) || line < 0 || line > 100 ||
+      Math.abs(line * 2 - Math.round(line * 2)) > 1e-8) {
+    return { status: "unsupported_market", reason: "An explicit bounded whole or half match-total corners line is required." };
+  }
+  const direction = parseExactOverUnderSelectionFields(leg);
+  if (!direction) {
+    return { status: "unsupported_market", reason: "The corner-total selection must be exactly over or under." };
+  }
+  const totalCorners = homeCorners + awayCorners;
+  const status = totalCorners === line ? "void" : direction === "over" ? (totalCorners > line ? "won" : "lost") : (totalCorners < line ? "won" : "lost");
+  return {
+    status,
+    reason: "Settled from final regulation-time corner counts and an explicit match-total line.",
+    settlementRule: "match_total_corners_regulation_whole_or_half_v1",
+    selectedDirection: direction,
+    line,
+    scope: statistics.scope,
+    homeCorners,
+    awayCorners,
+    totalCorners
   };
 }
 

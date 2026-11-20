@@ -35,6 +35,7 @@ const winLearningCoreTests = await read("scripts/win-learning-core.test.mjs");
 const footballSettlementDoc = await read("docs/WIN_FOOTBALL_MARKET_SETTLEMENT.md");
 const asianHandicapDoc = await read("docs/WIN_ASIAN_HANDICAP_SETTLEMENT.md");
 const europeanHandicapDoc = await read("docs/WIN_EUROPEAN_HANDICAP_SETTLEMENT.md");
+const matchCornerTotalDoc = await read("docs/WIN_MATCH_CORNER_TOTAL_SETTLEMENT.md");
 const learningObservatoryFn = await read("netlify/functions/learning-observatory.mts");
 const learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts");
 const mcpApi = await read("netlify/functions/mcp.mts");
@@ -169,6 +170,25 @@ add("Football European handicap settlement requires explicit two-sided integer a
   europeanHandicapDoc.includes("never infers handicap orientation") &&
   europeanHandicapDoc.includes("do not prove live-provider compatibility"),
   "Explicit bounded integer home/away adjustments produce one regulation 1X2 result; label-only, malformed, period and compound markets fail closed.");
+
+add("Football match-total corners settlement requires final typed count evidence",
+  winLearningCore.includes("evaluateMatchCornerTotalLeg") &&
+  winLearningCore.includes("SUPPORTED_MATCH_CORNER_TOTAL_MARKETS") &&
+  winLearningCore.includes("parseExactOverUnderSelectionFields") &&
+  winLearningCore.includes('Object.prototype.hasOwnProperty.call(record, field)') &&
+  winLearningCore.includes('statistics?.scope !== "regulation_time" || statistics?.status !== "final"') &&
+  winLearningCore.includes("match_total_corners_regulation_whole_or_half_v1") &&
+  winLearningCoreTests.includes("match-total corners settle from final regulation counts and explicit lines") &&
+  winLearningCoreTests.includes("corner totals reject partial, malformed, split-line and derivative inputs") &&
+  winLearningCoreTests.includes("corner totals reconcile pick and selection fields without masking conflicts") &&
+  winLearningCoreTests.includes('pick: "Over", selection: "Under"') &&
+  winLearningCoreTests.includes("Total Corners + Cards") &&
+  winLearningCoreTests.includes("Total Corners / Shots") &&
+  matchCornerTotalDoc.includes("does not infer corners from a football score") &&
+  matchCornerTotalDoc.includes("Each explicitly supplied field is") &&
+  matchCornerTotalDoc.includes("Synthetic tests and CI do not prove") &&
+  matchCornerTotalDoc.includes("live-provider compatibility"),
+  "One pure helper settles explicit whole/half match-total corner lines only from final regulation counts; partial, period, team, split and compound markets fail closed.");
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&

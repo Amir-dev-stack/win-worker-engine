@@ -6,6 +6,7 @@ import {
   evaluateAsianHandicapLeg,
   evaluateEuropeanHandicapLeg,
   evaluateFullTimeLeg,
+  evaluateMatchCornerTotalLeg,
   isEligibleWinForecastCoupon,
   isIndependentlyValidatedLesson
 } from "../netlify/lib/win-learning-core.mjs";
@@ -175,6 +176,77 @@ test("European handicap rejects implicit, malformed, compound and non-regulation
     assert.equal(evaluateFullTimeLeg({ ...base, market }, { home: 2, away: 1 }).status, "unsupported_market", market);
   }
   assert.equal(evaluateFullTimeLeg({ ...base, settlementRule: "Shots" }, { home: 2, away: 1 }).status, "unsupported_market");
+});
+
+test("match-total corners settle from final regulation counts and explicit lines", () => {
+  const evidence = { scope: "regulation_time", status: "final", homeCorners: 6, awayCorners: 5 };
+  for (const market of ["Match Total Corners", "Total Match Corners", "Total Corners", "Corners Total"]) {
+    assert.equal(evaluateMatchCornerTotalLeg({ market, pick: "Over", line: 10.5 }, evidence).status, "won", market);
+  }
+  assert.equal(evaluateMatchCornerTotalLeg({ market: "Total Corners", pick: "Under", line: 11.5 }, evidence).status, "won");
+  assert.equal(evaluateMatchCornerTotalLeg({ market: "Total Corners", pick: "Under", line: 10.5 }, evidence).status, "lost");
+  assert.equal(evaluateMatchCornerTotalLeg({ market: "Total Corners", pick: "Over", line: 11 }, evidence).status, "void");
+  const settled = evaluateMatchCornerTotalLeg({ market: "Total Corners", pick: "Over", line: 10.5 }, evidence);
+  assert.equal(settled.settlementRule, "match_total_corners_regulation_whole_or_half_v1");
+  assert.equal(settled.totalCorners, 11);
+  assert.equal(settled.selectedDirection, "over");
+});
+
+test("corner totals reconcile pick and selection fields without masking conflicts", () => {
+  const base = { market: "Total Corners", line: 9.5 };
+  const evidence = { scope: "regulation_time", status: "final", homeCorners: 5, awayCorners: 5 };
+  assert.equal(evaluateMatchCornerTotalLeg({ ...base, pick: "Over" }, evidence).status, "won");
+  assert.equal(evaluateMatchCornerTotalLeg({ ...base, selection: "Over" }, evidence).status, "won");
+  assert.equal(evaluateMatchCornerTotalLeg({ ...base, pick: "Over", selection: "Over" }, evidence).status, "won");
+  for (const leg of [
+    { ...base, pick: "Over", selection: "Under" },
+    { ...base, pick: "Over", selection: "" },
+    { ...base, pick: "", selection: "Under" },
+    { ...base, pick: "Over", selection: "Over 9.5" },
+    { ...base, pick: "Over", selection: null },
+    { ...base, pick: undefined, selection: "Over" },
+    { ...base, pick: "Sideways", selection: "Sideways" },
+    { ...base, selection: "" }
+  ]) assert.equal(evaluateMatchCornerTotalLeg(leg, evidence).status, "unsupported_market", JSON.stringify(leg));
+});
+
+test("corner totals reject partial, malformed, split-line and derivative inputs", () => {
+  const leg = { market: "Total Corners", pick: "Over", line: 9.5 };
+  const valid = { scope: "regulation_time", status: "final", homeCorners: 5, awayCorners: 5 };
+  for (const statistics of [
+    {},
+    { ...valid, scope: "full_match" },
+    { ...valid, scope: "extra_time" },
+    { ...valid, status: "live" },
+    { ...valid, status: "pending" },
+    { ...valid, homeCorners: null },
+    { ...valid, homeCorners: "5" },
+    { ...valid, homeCorners: 5.5 },
+    { ...valid, homeCorners: -1 },
+    { ...valid, homeCorners: 101 },
+    { ...valid, awayCorners: undefined },
+    { ...valid, awayCorners: Number.NaN },
+    { ...valid, awayCorners: Number.POSITIVE_INFINITY }
+  ]) assert.equal(evaluateMatchCornerTotalLeg(leg, statistics).status, "unsupported_market", JSON.stringify(statistics));
+  for (const invalidLeg of [
+    { ...leg, line: undefined },
+    { ...leg, line: "9.5" },
+    { ...leg, line: Number.NaN },
+    { ...leg, line: Number.POSITIVE_INFINITY },
+    { ...leg, line: -0.5 },
+    { ...leg, line: 100.5 },
+    { ...leg, line: 9.25 },
+    { ...leg, line: 9.75 },
+    { ...leg, pick: "Over 9.5" },
+    { ...leg, pick: "Over or Under" },
+    { ...leg, pick: "Home Over" },
+    { ...leg, market: "Team Total Corners" },
+    { ...leg, market: "First Half Total Corners" },
+    { ...leg, market: "Total Corners + Cards" },
+    { ...leg, market: "Total Corners / Shots" },
+    { ...leg, settlementRule: "Unknown Corner Rule" }
+  ]) assert.equal(evaluateMatchCornerTotalLeg(invalidLeg, valid).status, "unsupported_market", JSON.stringify(invalidLeg));
+  assert.equal(evaluateFullTimeLeg({ market: "Total Corners", pick: "Over", line: 9.5 }, { home: 6, away: 5 }).status, "unsupported_market");
 });
 
 test("period markets, ambiguous picks, unsupported markets and invalid scores fail closed", () => {
