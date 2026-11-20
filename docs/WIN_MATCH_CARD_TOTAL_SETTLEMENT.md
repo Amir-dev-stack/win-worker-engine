@@ -16,6 +16,12 @@ provide:
 - one explicit bounded whole or half numeric `line`; and
 - an exact `Over` or `Under` selection.
 
+Every settlement-critical field must be an own property of its supplied leg or
+statistics record. Prototype-inherited market, line, pick/selection, scope,
+status, count basis, or team count evidence is absent for settlement purposes
+and fails closed. Own fields on ordinary or null-prototype records remain
+supported.
+
 The count-basis field declares that the two supplied team values are already
 the final card counts for the reviewed market rule. It does not make those
 values trustworthy and does not authorize the helper to construct them from

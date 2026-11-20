@@ -586,3 +586,19 @@ rule. It does not prove live compatibility, real-match card accuracy,
 historical coverage, settlement accuracy, profitability, deployment or
 production readiness, and does not complete D3 or issue #81. No provider,
 paid API, production/database, coupon, betting or financial action occurred.
+
+Independent review of PR #102 exact head
+`515621d2a0974744f956a5ee06a8a20a75bd89c3` found that inherited market, line,
+selection, scope or status fields could be read through ordinary property
+access even though the handoff claimed inherited evidence failed closed. The
+hardening update requires own properties for every settlement-critical leg and
+statistics field. Prototype-inherited market, line, pick/selection, scope,
+status, count basis and team counts cannot settle; ordinary and null-prototype
+records with legitimate own fields remain supported.
+
+Adversarial `Object.create(...)` tests cover each inherited field separately
+and one valid null-prototype case. Verification before the hardening commit:
+focused settlement tests 25/25, full Node tests 148/148, quality gates 117/117,
+build 81 required files plus 44 architecture checks, and exact-base
+`git diff --check` passed. Re-run on the final commit and require exact-head
+GitHub Actions before handoff.

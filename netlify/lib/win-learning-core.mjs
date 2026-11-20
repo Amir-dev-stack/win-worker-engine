@@ -224,15 +224,18 @@ export function evaluateMatchCornerTotalLeg(leg, statistics) {
 
 /** Pure settlement for one final regulation-time match-total cards line. */
 export function evaluateMatchCardTotalLeg(leg, statistics) {
+  const legRecord = leg && typeof leg === "object" ? leg : {};
   const statisticRecord = statistics && typeof statistics === "object" ? statistics : {};
+  const hasOwnLeg = field => Object.prototype.hasOwnProperty.call(legRecord, field);
   const hasOwnStatistic = field => Object.prototype.hasOwnProperty.call(statisticRecord, field);
-  const marketLabel = clean(leg?.market, 180);
-  const additionalMarketLabel = clean(leg?.settlementRule, 500);
+  const marketLabel = hasOwnLeg("market") ? clean(legRecord.market, 180) : "";
+  const additionalMarketLabel = hasOwnLeg("settlementRule") ? clean(legRecord.settlementRule, 500) : "";
   if (!marketLabel || !isSupportedMatchCardTotalMarketLabel(marketLabel) ||
       (additionalMarketLabel && !isSupportedMatchCardTotalMarketLabel(additionalMarketLabel))) {
     return { status: "unsupported_market", reason: "An explicitly supported single match-total cards label is required." };
   }
-  if (statisticRecord.scope !== "regulation_time" || statisticRecord.status !== "final") {
+  if (!hasOwnStatistic("scope") || !hasOwnStatistic("status") ||
+      statisticRecord.scope !== "regulation_time" || statisticRecord.status !== "final") {
     return { status: "unsupported_market", reason: "Final regulation-time card statistics are required." };
   }
   if (!hasOwnStatistic("countingRule") || statisticRecord.countingRule !== "explicit_final_market_card_count") {
@@ -253,12 +256,12 @@ export function evaluateMatchCardTotalLeg(leg, statistics) {
       homeCards < 0 || awayCards < 0 || homeCards > 100 || awayCards > 100) {
     return { status: "unsupported_market", reason: "Bounded non-negative integer home and away card counts are required." };
   }
-  const line = leg?.line;
-  if (typeof line !== "number" || !Number.isFinite(line) || line < 0 || line > 100 ||
+  const line = legRecord.line;
+  if (!hasOwnLeg("line") || typeof line !== "number" || !Number.isFinite(line) || line < 0 || line > 100 ||
       Math.abs(line * 2 - Math.round(line * 2)) > 1e-8) {
     return { status: "unsupported_market", reason: "An explicit bounded whole or half match-total cards line is required." };
   }
-  const direction = parseExactOverUnderSelectionFields(leg);
+  const direction = parseExactOverUnderSelectionFields(legRecord);
   if (!direction) {
     return { status: "unsupported_market", reason: "The card-total selection must be exactly over or under." };
   }

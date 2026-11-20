@@ -193,11 +193,17 @@ add("Football match-total corners settlement requires final typed count evidence
 
 add("Football match-total cards settlement requires explicit final market counts",
   winLearningCore.includes("evaluateMatchCardTotalLeg") &&
+  winLearningCore.includes('hasOwnLeg("market")') &&
+  winLearningCore.includes('hasOwnLeg("line")') &&
+  winLearningCore.includes('hasOwnStatistic("scope")') &&
+  winLearningCore.includes('hasOwnStatistic("status")') &&
   winLearningCore.includes('statisticRecord.countingRule !== "explicit_final_market_card_count"') &&
   winLearningCore.includes('"homeYellowCards", "awayYellowCards", "homeRedCards", "awayRedCards"') &&
   winLearningCore.includes('settlementRule: "match_total_cards_regulation_explicit_count_whole_or_half_v1"') &&
   winLearningCoreTests.includes("card totals reject inferred counts, malformed evidence, split lines and derivatives") &&
   winLearningCoreTests.includes("card totals reconcile pick and selection fields without masking conflicts") &&
+  winLearningCoreTests.includes("card totals reject inherited settlement-critical fields") &&
+  winLearningCoreTests.includes("Object.create({ market: \"Total Cards\" })") &&
   winLearningCoreTests.includes("Total Cards + Corners") &&
   winLearningCoreTests.includes("Total Cards / Shots") &&
   matchCardTotalDoc.includes("does not infer cards from a football score") &&

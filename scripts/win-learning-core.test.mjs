@@ -295,6 +295,38 @@ test("card totals reconcile pick and selection fields without masking conflicts"
   ]) assert.equal(evaluateMatchCardTotalLeg(leg, evidence).status, "unsupported_market", JSON.stringify(leg));
 });
 
+test("card totals reject inherited settlement-critical fields", () => {
+  const leg = { market: "Total Cards", pick: "Over", line: 4.5 };
+  const evidence = {
+    scope: "regulation_time",
+    status: "final",
+    countingRule: "explicit_final_market_card_count",
+    homeCards: 3,
+    awayCards: 2
+  };
+
+  const inheritedMarket = Object.assign(Object.create({ market: "Total Cards" }), { pick: "Over", line: 4.5 });
+  const inheritedLine = Object.assign(Object.create({ line: 4.5 }), { market: "Total Cards", pick: "Over" });
+  const inheritedPick = Object.assign(Object.create({ pick: "Over" }), { market: "Total Cards", line: 4.5 });
+  const inheritedSelection = Object.assign(Object.create({ selection: "Over" }), { market: "Total Cards", line: 4.5 });
+  for (const inheritedLeg of [inheritedMarket, inheritedLine, inheritedPick, inheritedSelection]) {
+    assert.equal(evaluateMatchCardTotalLeg(inheritedLeg, evidence).status, "unsupported_market");
+  }
+
+  const inheritedScope = Object.assign(Object.create({ scope: "regulation_time" }), {
+    status: "final", countingRule: "explicit_final_market_card_count", homeCards: 3, awayCards: 2
+  });
+  const inheritedStatus = Object.assign(Object.create({ status: "final" }), {
+    scope: "regulation_time", countingRule: "explicit_final_market_card_count", homeCards: 3, awayCards: 2
+  });
+  assert.equal(evaluateMatchCardTotalLeg(leg, inheritedScope).status, "unsupported_market");
+  assert.equal(evaluateMatchCardTotalLeg(leg, inheritedStatus).status, "unsupported_market");
+
+  const ownLeg = Object.assign(Object.create(null), leg);
+  const ownEvidence = Object.assign(Object.create(null), evidence);
+  assert.equal(evaluateMatchCardTotalLeg(ownLeg, ownEvidence).status, "won");
+});
+
 test("card totals reject inferred counts, malformed evidence, split lines and derivatives", () => {
   const leg = { market: "Total Cards", pick: "Over", line: 4.5 };
   const valid = {
