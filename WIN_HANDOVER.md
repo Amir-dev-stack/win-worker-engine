@@ -413,3 +413,17 @@ score provenance, independently verify evidence, prove compatibility with a
 live provider, or demonstrate historical coverage, settlement accuracy,
 profitability, deployment or production readiness. It is not completion of D3
 or issue #81.
+
+Independent review of PR #98 identified an ambiguity regression in the shared
+1X2 path: compound picks containing a home marker and draw marker could be
+reduced to home. The hardening update now rejects compound connectors, other
+settlement-family terms and contradictory outcome/team markers before mapping a
+single 1X2 outcome. Exact team names, `Home win`, `X` and away-team selections
+remain supported. Adversarial tests cover Home-or-Draw, Home-or-Away,
+Home-win-or-Draw, conflicting team names, and mixed DNB/Double Chance market
+families. Final exact-head verification and CI evidence must be reported after
+the hardening commit.
+
+Verification before the hardening handover commit: targeted settlement tests
+13/13, full Node tests 136/136, quality gates 113/113, build 77 required files
+plus 44 architecture checks, and exact-base `git diff --check` passed.

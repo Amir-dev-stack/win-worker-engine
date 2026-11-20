@@ -129,6 +129,8 @@ add("Football DNB and Double Chance settlement is regulation-only and fail-close
   winLearningCore.includes("could not be mapped unambiguously to one match side") &&
   winLearningCoreTests.includes("Draw No Bet settles one match side") &&
   winLearningCoreTests.includes("Double Chance settles only exact 1X, X2 and 12 combinations") &&
+  winLearningCoreTests.includes("full-time 1X2 rejects compound and contradictory selections") &&
+  winLearningCoreTests.includes("Home win or Draw") &&
   winLearningCoreTests.includes("reject ambiguous or non-regulation inputs") &&
   footballSettlementDoc.includes("90-minute regulation full-time result") &&
   footballSettlementDoc.includes("does not prove live-provider compatibility"),

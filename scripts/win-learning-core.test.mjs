@@ -12,12 +12,24 @@ import {
 // public result APIs, the AI runtime, or any production coupon/review endpoint.
 
 test("full-time 1X2 settles home, draw and away selections", () => {
-  const base = { market: "Full Time Result 1X2", homeTeam: "Alpha FC", awayTeam: "Beta FC" };
+  const base = { market: "Full Time Result 1X2", homeTeam: "Alpha United", awayTeam: "Beta United" };
   assert.equal(evaluateFullTimeLeg({ ...base, pick: "1" }, { home: 2, away: 0 }).status, "won");
   assert.equal(evaluateFullTimeLeg({ ...base, pick: "X" }, { home: 1, away: 1 }).status, "won");
   assert.equal(evaluateFullTimeLeg({ ...base, pick: "2" }, { home: 0, away: 1 }).status, "won");
   assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home win" }, { home: 2, away: 0 }).status, "won");
-  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Alpha FC" }, { home: 0, away: 2 }).status, "lost");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Alpha United" }, { home: 0, away: 2 }).status, "lost");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Beta United" }, { home: 0, away: 2 }).status, "won");
+});
+
+test("full-time 1X2 rejects compound and contradictory selections", () => {
+  const base = { market: "Full Time Result 1X2", homeTeam: "Alpha United", awayTeam: "Beta United" };
+  for (const pick of ["Home or Draw", "Home or Away", "Home win or Draw", "Alpha United or Beta United"]) {
+    assert.equal(evaluateFullTimeLeg({ ...base, pick }, { home: 2, away: 0 }).status, "unsupported_market", pick);
+  }
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home win" }, { home: 2, away: 0 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "X" }, { home: 1, away: 1 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Beta United" }, { home: 0, away: 1 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ market: base.market, homeTeam: "Brighton and Hove Albion", awayTeam: "Leeds United", pick: "Brighton and Hove Albion" }, { home: 1, away: 0 }).status, "won");
 });
 
 test("goal totals settle over, under and an exact whole-number push", () => {
@@ -61,6 +73,10 @@ test("Draw No Bet and Double Chance reject ambiguous or non-regulation inputs", 
   assert.equal(evaluateFullTimeLeg({ market: "Double Chance", pick: "1X2" }, { home: 1, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "Double Chance", pick: "Home or maybe Draw" }, { home: 1, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "Double Chance and BTTS", pick: "1X and Yes" }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Draw No Bet and BTTS", pick: "Home and Yes" }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Double Chance plus Over 2.5 Goals", pick: "1X and Over" }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Full Time Result 1X2 plus Draw No Bet", pick: "Home" }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Double Chance and Match Winner", pick: "1X" }, { home: 2, away: 1 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "Corners Draw No Bet", pick: "Home" }, { home: 1, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "First Half Draw No Bet", pick: "Home" }, { home: 1, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "Extra Time Double Chance", pick: "1X" }, { home: 1, away: 0 }).status, "unsupported_market");

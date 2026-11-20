@@ -21,6 +21,24 @@ function selectedMatchSide(pick, leg, exactOnly = true) {
   return { home, away };
 }
 
+function parseFullTimeResultSelection(pick, leg) {
+  const homeTeam = normalized(leg?.homeTeam || "");
+  const awayTeam = normalized(leg?.awayTeam || "");
+  const exactHomeTeam = Boolean(homeTeam && pick === homeTeam);
+  const exactAwayTeam = Boolean(awayTeam && pick === awayTeam);
+  if (exactHomeTeam !== exactAwayTeam) return exactHomeTeam ? "home" : "away";
+
+  const compoundPick = /\b(or|and|lub|albo|plus|with|versus|vs)\b|[&/+]/.test(pick) ||
+    /draw no bet|\bdnb\b|double chance|podwojna szansa|both teams to score|\bbtts\b|\b(over|under)\b|goals?|gole|goli|handicap|asian|spread|cards?|corners?|player|goalscorer|team total/.test(pick);
+  if (compoundPick) return null;
+
+  const selected = selectedMatchSide(pick, leg, false);
+  const selectedDraw = /\b(x|draw|remis)\b/.test(pick);
+  const selectionCount = Number(selected.home) + Number(selected.away) + Number(selectedDraw);
+  if (selectionCount !== 1) return null;
+  return selected.home ? "home" : selected.away ? "away" : "draw";
+}
+
 function parseDoubleChanceSelection(pick) {
   const compactCode = /^[12x ]+$/.test(pick) ? pick.replaceAll(" ", "") : "";
   if (["1x", "x1"].includes(compactCode) || ["home or draw", "draw or home", "home draw", "1 lub remis", "remis lub 1"].includes(pick)) return "home_or_draw";
@@ -46,7 +64,9 @@ export function evaluateFullTimeLeg(leg, score) {
     return { status: "unsupported_market", reason: "The source provides a match-final score; this period-specific or extra-time market needs a period-specific result." };
   const drawNoBetMarket = /draw no bet|zaklad bez remisu|\bdnb\b/.test(market);
   const doubleChanceMarket = /double chance|podwojna szansa/.test(market);
-  const compoundOrDerivativeMarket = /both teams to score|btts|goals?|gole|goli|handicap|asian|spread|cards?|corners?|player|goalscorer|team total/.test(market);
+  const resultFamily = /1x2|match winner|moneyline|full time result|wynik meczu|zwyciezca meczu/.test(market);
+  const joinsResultFamilies = /\b(and|plus|with|oraz|lub)\b|[&/+]/.test(market) && resultFamily;
+  const compoundOrDerivativeMarket = joinsResultFamilies || /both teams to score|btts|goals?|gole|goli|handicap|asian|spread|cards?|corners?|player|goalscorer|team total/.test(market);
   if ((drawNoBetMarket || doubleChanceMarket) && compoundOrDerivativeMarket) {
     return { status: "unsupported_market", reason: "Compound or derivative Draw No Bet and Double Chance markets require an explicit settlement rule." };
   }
@@ -96,12 +116,9 @@ export function evaluateFullTimeLeg(leg, score) {
   const fullTimeResultMarket = /1x2|match winner|moneyline|full time result|wynik meczu|zwyciezca meczu|zwycięzca meczu/.test(market)
     && !/handicap|asian|double chance|podwojna szansa|draw no bet|zaklad bez remisu|spread|dnb/.test(market);
   if (fullTimeResultMarket) {
-    const selected = selectedMatchSide(pick, leg, false);
-    const selectedDraw = ["x", "draw", "remis"].includes(pick);
     const result = home > away ? "home" : home < away ? "away" : "draw";
-    const selectionCount = Number(selected.home) + Number(selected.away) + Number(selectedDraw);
-    const chosen = selected.home ? "home" : selected.away ? "away" : selectedDraw ? "draw" : null;
-    if (selectionCount !== 1) return { status: "unsupported_market", reason: "1X2 selection could not be mapped unambiguously to home/draw/away." };
+    const chosen = parseFullTimeResultSelection(pick, leg);
+    if (!chosen) return { status: "unsupported_market", reason: "1X2 selection could not be mapped unambiguously to home/draw/away." };
     return { status: chosen === result ? "won" : "lost", reason: "Settled from the verified full-time score." };
   }
   return { status: "unsupported_market", reason: "This market is not yet supported by the deterministic result adapter." };
