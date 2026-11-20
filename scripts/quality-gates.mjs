@@ -37,6 +37,7 @@ const asianHandicapDoc = await read("docs/WIN_ASIAN_HANDICAP_SETTLEMENT.md");
 const europeanHandicapDoc = await read("docs/WIN_EUROPEAN_HANDICAP_SETTLEMENT.md");
 const matchCornerTotalDoc = await read("docs/WIN_MATCH_CORNER_TOTAL_SETTLEMENT.md");
 const matchCardTotalDoc = await read("docs/WIN_MATCH_CARD_TOTAL_SETTLEMENT.md");
+const playerGoalTotalDoc = await read("docs/WIN_PLAYER_GOAL_TOTAL_SETTLEMENT.md");
 const learningObservatoryFn = await read("netlify/functions/learning-observatory.mts");
 const learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts");
 const mcpApi = await read("netlify/functions/mcp.mts");
@@ -211,6 +212,23 @@ add("Football match-total cards settlement requires explicit final market counts
   matchCardTotalDoc.includes("Synthetic tests and CI do not prove") &&
   matchCardTotalDoc.includes("bookmaker-rule compatibility"),
   "Cards settle only from explicit final regulation-time market counts and whole/half lines; raw card-event conversion, score inference and ambiguous derivatives fail closed.");
+
+add("Football player total-goals settlement is match-bound and participation explicit",
+  winLearningCore.includes("evaluatePlayerGoalTotalLeg") &&
+  winLearningCore.includes("SUPPORTED_PLAYER_GOAL_TOTAL_MARKETS") &&
+  winLearningCore.includes('statisticRecord.participationStatus !== "played"') &&
+  winLearningCore.includes('statisticRecord.countingRule !== "official_regulation_player_goal_count"') &&
+  winLearningCore.includes('settlementRule: "player_total_goals_regulation_official_count_whole_or_half_v1"') &&
+  winLearningCoreTests.includes("player goal totals settle exact match-bound final regulation evidence") &&
+  winLearningCoreTests.includes("player goal totals require own fields and reconcile dual selections") &&
+  winLearningCoreTests.includes("player goal totals reject identity, participation, inference and derivative ambiguity") &&
+  winLearningCoreTests.includes("Anytime Goalscorer") &&
+  winLearningCoreTests.includes("Player Total Goals + Shots") &&
+  playerGoalTotalDoc.includes("does not infer a player's goals from the team score") &&
+  playerGoalTotalDoc.includes("Did-not-play and unused-substitute cases remain unsupported") &&
+  playerGoalTotalDoc.includes("Synthetic tests and CI do not prove") &&
+  playerGoalTotalDoc.includes("void-rule compatibility"),
+  "Player goal totals settle only from exact match/player-bound final regulation counts with explicit participation; score/name/event inference and unknown void rules fail closed.");
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&
