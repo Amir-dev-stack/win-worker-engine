@@ -223,3 +223,19 @@ service, model-training system, live prediction path, or proof of calibration,
 profitability, provider rights or historical coverage. Durable append-only
 storage, concurrency, independently reviewed market settlement and prospective
 evaluation remain separate work.
+
+PR #94 review hardening commit `864356f` closes the prior-context boundary
+reported in the independent draft review. Callers must now set a separate
+`maxPriorPredictions` cap from zero through 500. Oversized prior context is
+rejected before any entry is inspected or echoed. Prior and current predictions
+are grouped together by ledger key; if one key has multiple content identities,
+no version may authorize an outcome. Current conflicting predictions and every
+outcome referencing a conflicted prior/current version are quarantined.
+
+Adversarial tests cover an oversized prior array, two changed prior versions
+with outcomes referencing each version, a prior/current collision with an
+outcome referencing the prior, exact duplicate prior evidence, reversed input
+and prior order, and unaffected clean evidence. Updated verification before the
+handover commit is targeted 16/16, full Node 84/84, quality gates 109/109 and
+build 67 required files plus 44 architecture checks. This remains an in-memory
+offline boundary; it does not prove durable storage or cross-process history.
