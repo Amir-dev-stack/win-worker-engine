@@ -249,6 +249,80 @@ test("taints a prediction when a malformed replay reuses its record identity", (
   assert.equal(report.cohorts[0].losses, 1);
 });
 
+test("rejected outcome conflicts quarantine their prediction despite independent clean outcome evidence", () => {
+  const taintedPrediction = createPredictionLedgerEntry(predictionDraft(1));
+  const sharedLedgerKey = `outcome-conflict:${taintedPrediction.recordId}`;
+  const conflictingWon = createOutcomeLedgerEntry(outcomeDraft(taintedPrediction, 1, {
+    ledgerKey: sharedLedgerKey,
+    verifierId: "reviewer-a",
+    outcome: "won"
+  }));
+  const conflictingLost = createOutcomeLedgerEntry(outcomeDraft(taintedPrediction, 1, {
+    ledgerKey: sharedLedgerKey,
+    verifierId: "reviewer-b",
+    outcome: "lost",
+    resultSnapshotId: hash("1"),
+    evidenceHash: hash("2")
+  }));
+  const independentOutcome = createOutcomeLedgerEntry(outcomeDraft(taintedPrediction, 1, {
+    ledgerKey: `outcome-independent:${taintedPrediction.recordId}`,
+    verifierId: "reviewer-c",
+    outcome: "won",
+    resultSnapshotId: hash("3"),
+    evidenceHash: hash("4")
+  }));
+  const clean = pair(2, { probability: 0.4 }, { outcome: "lost" });
+  const rows = [taintedPrediction, conflictingWon, conflictingLost, independentOutcome, clean.prediction, clean.outcome];
+
+  const forward = evaluateWalkForwardLedger(rows, options());
+  const reverse = evaluateWalkForwardLedger([...rows].reverse(), options());
+  assert.deepEqual(forward, reverse);
+  assert.equal(forward.status, "partial");
+  assert.equal(forward.totals.scoredCount, 1);
+  assert.equal(forward.totals.excludedPredictionCount, 1);
+  assert.equal(forward.cohorts[0].losses, 1);
+  assert.deepEqual(forward.diagnostics, ["INVALID_LEDGER_RECORD", "REJECTED_OUTCOME_EVIDENCE"]);
+  assert.deepEqual(forward.excluded.filter(item => item.scope === "prediction"), [{
+    recordId: taintedPrediction.recordId,
+    scope: "prediction",
+    diagnostics: ["REJECTED_OUTCOME_EVIDENCE"]
+  }]);
+  assert.deepEqual(forward.batchTrust, { status: "rejected_records_quarantined", unlinkedRejectedOutcomeCount: 0 });
+});
+
+test("malformed rejected outcome with recoverable prediction reference cannot restore scoring", () => {
+  const tainted = pair(1);
+  const malformedOutcome = { ...tainted.outcome, recordId: "untrusted", evidenceHash: "untrusted" };
+  const clean = pair(2, { probability: 0.4 }, { outcome: "lost" });
+  const report = evaluateWalkForwardLedger([tainted.prediction, tainted.outcome, malformedOutcome, clean.prediction, clean.outcome], options());
+
+  assert.equal(report.totals.scoredCount, 1);
+  assert.equal(report.totals.excludedPredictionCount, 1);
+  assert.deepEqual(report.excluded.filter(item => item.scope === "prediction"), [{
+    recordId: tainted.prediction.recordId,
+    scope: "prediction",
+    diagnostics: ["REJECTED_OUTCOME_EVIDENCE"]
+  }]);
+  assert.equal(report.cohorts[0].losses, 1);
+});
+
+test("unrecoverable rejected outcome identity degrades batch trust without echoing payload", () => {
+  const clean = pair(1);
+  const unlinked = {
+    kind: "outcome",
+    recordId: "untrusted-record",
+    predictionId: "untrusted-prediction",
+    privatePayload: "must-not-echo"
+  };
+  const report = evaluateWalkForwardLedger([clean.prediction, clean.outcome, unlinked], options());
+
+  assert.equal(report.totals.scoredCount, 1);
+  assert.deepEqual(report.batchTrust, { status: "degraded_unlinked_rejected_outcome", unlinkedRejectedOutcomeCount: 1 });
+  assert.deepEqual(report.diagnostics, ["INVALID_LEDGER_RECORD", "UNLINKED_REJECTED_OUTCOME"]);
+  assert.equal(JSON.stringify(report).includes("must-not-echo"), false);
+  assert.equal(JSON.stringify(report).includes("untrusted-prediction"), false);
+});
+
 test("excludes events outside explicit evaluation windows", () => {
   const outside = pair(8);
   const report = evaluateWalkForwardLedger([outside.prediction, outside.outcome], options());

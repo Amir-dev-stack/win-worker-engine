@@ -88,10 +88,13 @@ add("Walk-forward evaluation is point-in-time, cohort-isolated and conclusion-ca
   walkForward.includes("trainingCutoffMs + options.embargoMilliseconds > evaluationStartMs") &&
   walkForward.includes("CONFLICTING_OUTCOME") &&
   walkForward.includes("taintedPredictionIds") &&
+  walkForward.includes("rejectedOutcomePredictionIds") &&
+  walkForward.includes("degraded_unlinked_rejected_outcome") &&
   walkForward.includes('closingLineValue: { status: "unavailable"') &&
   walkForward.includes("calibrationConclusion: null") &&
   walkForwardTests.includes("assert.deepEqual(forward, reverse)") &&
   walkForwardTests.includes("malformed replay reuses its record identity") &&
+  walkForwardTests.includes("rejected outcome conflicts quarantine their prediction") &&
   walkForwardDoc.includes("never declares a model calibrated, accurate, profitable or better"),
   "Validated prediction/outcome entries produce bounded fold and exact-cohort Brier, log-loss and ECE evidence without laundering conflicts, leaking future outcomes or claiming model quality.");
 add("OAuth authorization requires explicit least-privilege scopes", oauthAuthorize.includes("const requested = value.trim() ? value.trim().split") && oauthAuthorize.includes(": [];") && oauthAuthorize.includes("!requested.length"), "An omitted scope is rejected instead of silently granting every supported permission.");

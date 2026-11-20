@@ -28,7 +28,9 @@ type EvaluationDiagnostic =
   | "MISSING_OUTCOME"
   | "MODEL_TRAINING_LEAKAGE"
   | "OUTCOME_AFTER_AS_OF"
-  | "OUTSIDE_EVALUATION_WINDOW";
+  | "OUTSIDE_EVALUATION_WINDOW"
+  | "REJECTED_OUTCOME_EVIDENCE"
+  | "UNLINKED_REJECTED_OUTCOME";
 
 type ScoredObservation = {
   prediction: PredictionLedgerEntry;
@@ -233,6 +235,7 @@ export function evaluateWalkForwardLedger(inputs: unknown, options: WalkForwardE
       folds: [],
       cohorts: [],
       totals: { inputRecords: inputs.length, acceptedLedgerRecords: 0, predictionCount: 0, scoredCount: 0, voidOrPushCount: 0, excludedPredictionCount: 0 },
+      batchTrust: { status: "rejected_before_inspection", unlinkedRejectedOutcomeCount: 0 },
       retryDisposition: "do_not_retry_automatically",
       comparativeEvidence: { closingLineValue: { status: "unavailable", reason: "closing_price_not_in_ledger" }, distributionShift: { status: "unavailable", reason: "reference_distribution_not_supplied" } },
       limitations: ["offline_ledger_evaluation_only", "no_predictive_superiority_claim", "no_model_promotion"]
@@ -248,7 +251,21 @@ export function evaluateWalkForwardLedger(inputs: unknown, options: WalkForwardE
 
   const diagnostics = new Set<EvaluationDiagnostic>();
   const predictionIds = new Set(predictions.map(prediction => prediction.recordId));
-  const taintedPredictionIds = new Set(ledger.rejected.map(item => item.recordId).filter(recordId => predictionIds.has(recordId)));
+  const rejectedRecordIds = new Set(ledger.rejected.map(item => item.recordId));
+  const rejectedOutcomePredictionIds = new Set<string>();
+  let unlinkedRejectedOutcomeCount = 0;
+  for (const input of inputs) {
+    if (!input || typeof input !== "object" || Array.isArray(input)) continue;
+    const row = input as Record<string, unknown>;
+    if (row.kind !== "outcome" && !("predictionId" in row)) continue;
+    const claimedRecordId = typeof row.recordId === "string" && HASH.test(row.recordId) ? row.recordId : "invalid-record";
+    if (!rejectedRecordIds.has(claimedRecordId)) continue;
+    if (typeof row.predictionId === "string" && HASH.test(row.predictionId)) rejectedOutcomePredictionIds.add(row.predictionId);
+    else unlinkedRejectedOutcomeCount += 1;
+  }
+  const directlyTaintedPredictionIds = new Set(ledger.rejected.map(item => item.recordId).filter(recordId => predictionIds.has(recordId)));
+  const outcomeTaintedPredictionIds = new Set([...rejectedOutcomePredictionIds].filter(recordId => predictionIds.has(recordId)));
+  const taintedPredictionIds = new Set([...directlyTaintedPredictionIds, ...outcomeTaintedPredictionIds]);
   const excludedPredictionIds = new Set<string>(taintedPredictionIds);
   const excluded = ledger.rejected.map(item => ({
     recordId: HASH.test(item.recordId) ? item.recordId : "invalid-record",
@@ -256,13 +273,19 @@ export function evaluateWalkForwardLedger(inputs: unknown, options: WalkForwardE
     diagnostics: ["INVALID_LEDGER_RECORD"] as EvaluationDiagnostic[]
   }));
   if (ledger.rejected.length) diagnostics.add("INVALID_LEDGER_RECORD");
+  if (outcomeTaintedPredictionIds.size) diagnostics.add("REJECTED_OUTCOME_EVIDENCE");
+  if (unlinkedRejectedOutcomeCount) diagnostics.add("UNLINKED_REJECTED_OUTCOME");
   const observations: ScoredObservation[] = [];
   let voidOrPushCount = 0;
 
   for (const prediction of predictions) {
     const matchingOutcomes = (outcomesByPrediction.get(prediction.recordId) ?? []).filter(outcome => Date.parse(outcome.verifiedAt) <= policy.evaluationAsOfMs);
     const allOutcomes = outcomesByPrediction.get(prediction.recordId) ?? [];
-    let diagnostic: EvaluationDiagnostic | null = taintedPredictionIds.has(prediction.recordId) ? "INVALID_LEDGER_RECORD" : null;
+    let diagnostic: EvaluationDiagnostic | null = directlyTaintedPredictionIds.has(prediction.recordId)
+      ? "INVALID_LEDGER_RECORD"
+      : outcomeTaintedPredictionIds.has(prediction.recordId)
+        ? "REJECTED_OUTCOME_EVIDENCE"
+        : null;
     const fold = policy.folds.find(candidate => Date.parse(prediction.eventTime) >= candidate.evaluationStartMs && Date.parse(prediction.eventTime) < candidate.evaluationEndMs);
     if (!diagnostic && !fold) diagnostic = "OUTSIDE_EVALUATION_WINDOW";
     else if (!diagnostic && Date.parse(prediction.model.trainedThrough) > fold!.trainingCutoffMs) diagnostic = "MODEL_TRAINING_LEAKAGE";
@@ -272,7 +295,7 @@ export function evaluateWalkForwardLedger(inputs: unknown, options: WalkForwardE
     if (diagnostic) {
       diagnostics.add(diagnostic);
       excludedPredictionIds.add(prediction.recordId);
-      if (!taintedPredictionIds.has(prediction.recordId)) excluded.push({ recordId: prediction.recordId, scope: "prediction", diagnostics: [diagnostic] });
+      if (!directlyTaintedPredictionIds.has(prediction.recordId)) excluded.push({ recordId: prediction.recordId, scope: "prediction", diagnostics: [diagnostic] });
       continue;
     }
 
@@ -323,6 +346,11 @@ export function evaluateWalkForwardLedger(inputs: unknown, options: WalkForwardE
       voidOrPushCount,
       excludedPredictionCount: excludedPredictionIds.size
     },
+    batchTrust: unlinkedRejectedOutcomeCount
+      ? { status: "degraded_unlinked_rejected_outcome", unlinkedRejectedOutcomeCount }
+      : ledger.rejected.length
+        ? { status: "rejected_records_quarantined", unlinkedRejectedOutcomeCount: 0 }
+        : { status: "accepted_ledger_records_only", unlinkedRejectedOutcomeCount: 0 },
     retryDisposition: "do_not_retry_automatically",
     comparativeEvidence: {
       closingLineValue: { status: "unavailable", reason: "closing_price_not_in_ledger" },

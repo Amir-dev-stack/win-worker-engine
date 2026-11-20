@@ -39,8 +39,18 @@ in report totals and are never converted to binary wins or losses.
 Malformed, tampered or ledger-conflicted inputs are not echoed. If a malformed
 record reuses an otherwise valid prediction record ID, that prediction is
 tainted and cannot be scored; an accompanying clean copy cannot restore trust.
-Independent clean predictions may still be evaluated. Exclusions distinguish a
-ledger record from a prediction, and contain only a safe record ID, scope and
+Rejected outcome evidence is also traced through a recoverable prediction ID.
+Two changed outcome versions sharing a ledger key therefore quarantine their
+prediction even when a different accepted verifier record would otherwise
+support a score. A malformed outcome cannot be laundered by retaining one clean
+outcome. Independent clean predictions may still be evaluated.
+
+When a rejected outcome-shaped record has no trustworthy prediction ID, the
+report cannot attribute it safely. It does not guess or echo the value; instead,
+`batchTrust` becomes `degraded_unlinked_rejected_outcome` and exposes only a
+count. When all rejected outcome evidence is linkable, it is quarantined and
+batch trust reports `rejected_records_quarantined`. Exclusions distinguish a
+ledger record from a prediction and contain only a safe record ID, scope and
 fixed diagnostic.
 
 ## Metrics and cohorts
@@ -79,8 +89,8 @@ defined evidence and cannot be inferred from this report.
 
 Synthetic tests prove the local formulas, fold/embargo validation, model
 training cutoff, as-of outcome boundary, cohort isolation, conflict quarantine,
-malformed replay tainting, input-order stability, caps, redaction and in-memory
-immutability.
+malformed prediction and outcome replay tainting, unlinked-outcome trust
+degradation, input-order stability, caps, redaction and in-memory immutability.
 
 They do not prove source correctness, complete historical coverage, settlement
 accuracy, closing-price capture, walk-forward performance on real seasons,
