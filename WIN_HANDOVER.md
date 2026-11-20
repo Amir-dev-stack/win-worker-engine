@@ -163,3 +163,13 @@ Regression coverage also passes malformed provider arrays, fields and a
 non-array provider collection and verifies a fixed `no_eligible_provider`
 result without adapter execution. Updated verification is targeted 10/10,
 full Node 42/42, quality gates 107/107, and build 61 plus 44.
+
+## C2 offline evidence conflict resolution — 2026-11-20
+
+Branch `win-draft/c2-evidence-conflict-resolution-20261119` starts from approved main exact `844efeba8ad1d20dbe587e286ed5546b81eb5baa`. Implementation commit `49e5c3edce1170e0eb0e8c315c1d5652b16f2b1c` adds a disconnected typed resolver for synthetic multi-source result and settlement observations. It requires provider-scoped and WIN canonical identities, event/retrieval times, source/version, approved rights and attribution, observed-record origin, and a configurable independent-provider minimum.
+
+The resolver rejects stale, undated, future/pre-event, unlicensed, malformed and registry-candidate rows; detects ambiguous provider aliases and changed replays; deduplicates exact/same-provider replays; and emits audit-safe sorted provenance. Contradictory results and settlements always remain unresolved. Explicit provider priority only identifies a deterministic review candidate; equal priority is an explicit tie and never selects truth.
+
+Adversarial targeted tests pass 12/12, including timestamp conflicts, replay/duplicate handling, contradictory results, conflicting settlement, alias collision, rights-unknown/candidate records and valid/malformed input-order invariance. Full Node tests pass 67/67, quality gates 108/108, and build checks pass 64 required files plus 44 architecture checks. `git diff --check` passes.
+
+Evidence class: IMPLEMENTED_AND_LOCALLY_VERIFIED offline policy only. The resolver is not connected to any provider, registry runtime, storage, function, scheduler, prediction, settlement or learning path. Live identity governance, source-priority ownership, licence verification, sport/market-specific freshness, corrections/retractions and reviewer workflow remain unverified. No network/provider call, scraping, ingestion, credential, paid API, GitHub writer activation, merge, deployment, migration, schedule or production/database write occurred.
