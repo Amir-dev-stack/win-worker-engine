@@ -39,6 +39,7 @@ const matchCornerTotalDoc = await read("docs/WIN_MATCH_CORNER_TOTAL_SETTLEMENT.m
 const matchCardTotalDoc = await read("docs/WIN_MATCH_CARD_TOTAL_SETTLEMENT.md");
 const playerGoalTotalDoc = await read("docs/WIN_PLAYER_GOAL_TOTAL_SETTLEMENT.md");
 const playerShotTotalDoc = await read("docs/WIN_PLAYER_SHOT_TOTAL_SETTLEMENT.md");
+const playerShotOnTargetTotalDoc = await read("docs/WIN_PLAYER_SHOT_ON_TARGET_TOTAL_SETTLEMENT.md");
 const learningObservatoryFn = await read("netlify/functions/learning-observatory.mts");
 const learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts");
 const mcpApi = await read("netlify/functions/mcp.mts");
@@ -247,6 +248,22 @@ add("Football player total-shots settlement is match-bound and statistic explici
   playerShotTotalDoc.includes("Synthetic tests and CI do not prove") &&
   playerShotTotalDoc.includes("shot-definition or void-rule compatibility"),
   "Player shot totals settle only from exact match/player-bound final regulation counts with explicit participation; derivative statistics and unknown provider rules fail closed.");
+
+add("Football player shots-on-target settlement is match-bound and statistic explicit",
+  winLearningCore.includes("evaluatePlayerShotOnTargetTotalLeg") &&
+  winLearningCore.includes("SUPPORTED_PLAYER_SHOT_ON_TARGET_TOTAL_MARKETS") &&
+  winLearningCore.includes('statisticRecord.countingRule !== "official_regulation_player_shot_on_target_count"') &&
+  winLearningCore.includes('settlementRule: "player_total_shots_on_target_regulation_official_count_whole_or_half_v1"') &&
+  winLearningCoreTests.includes("player shots-on-target totals settle exact match-bound final regulation evidence") &&
+  winLearningCoreTests.includes("player shots-on-target totals require own fields and reconcile dual selections") &&
+  winLearningCoreTests.includes("player shots-on-target totals reject identity, participation and related-stat ambiguity") &&
+  winLearningCoreTests.includes("Player Shots on Target + Goals") &&
+  winLearningCoreTests.includes("Team Shots on Target") &&
+  playerShotOnTargetTotalDoc.includes("does not infer a player's shots on target from total shots") &&
+  playerShotOnTargetTotalDoc.includes("Did-not-play and unused-substitute cases remain unsupported") &&
+  playerShotOnTargetTotalDoc.includes("Synthetic tests and CI do not prove") &&
+  playerShotOnTargetTotalDoc.includes("shot-definition or void-rule compatibility"),
+  "Player shots-on-target totals settle only from exact match/player-bound final regulation counts with explicit participation; total-shot and related-stat inference fails closed.");
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&
