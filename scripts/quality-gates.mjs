@@ -174,13 +174,18 @@ add("Football European handicap settlement requires explicit two-sided integer a
 add("Football match-total corners settlement requires final typed count evidence",
   winLearningCore.includes("evaluateMatchCornerTotalLeg") &&
   winLearningCore.includes("SUPPORTED_MATCH_CORNER_TOTAL_MARKETS") &&
+  winLearningCore.includes("parseExactOverUnderSelectionFields") &&
+  winLearningCore.includes('Object.prototype.hasOwnProperty.call(record, field)') &&
   winLearningCore.includes('statistics?.scope !== "regulation_time" || statistics?.status !== "final"') &&
   winLearningCore.includes("match_total_corners_regulation_whole_or_half_v1") &&
   winLearningCoreTests.includes("match-total corners settle from final regulation counts and explicit lines") &&
   winLearningCoreTests.includes("corner totals reject partial, malformed, split-line and derivative inputs") &&
+  winLearningCoreTests.includes("corner totals reconcile pick and selection fields without masking conflicts") &&
+  winLearningCoreTests.includes('pick: "Over", selection: "Under"') &&
   winLearningCoreTests.includes("Total Corners + Cards") &&
   winLearningCoreTests.includes("Total Corners / Shots") &&
   matchCornerTotalDoc.includes("does not infer corners from a football score") &&
+  matchCornerTotalDoc.includes("Each explicitly supplied field is") &&
   matchCornerTotalDoc.includes("Synthetic tests and CI do not prove") &&
   matchCornerTotalDoc.includes("live-provider compatibility"),
   "One pure helper settles explicit whole/half match-total corner lines only from final regulation counts; partial, period, team, split and compound markets fail closed.");

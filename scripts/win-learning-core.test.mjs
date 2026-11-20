@@ -192,6 +192,24 @@ test("match-total corners settle from final regulation counts and explicit lines
   assert.equal(settled.selectedDirection, "over");
 });
 
+test("corner totals reconcile pick and selection fields without masking conflicts", () => {
+  const base = { market: "Total Corners", line: 9.5 };
+  const evidence = { scope: "regulation_time", status: "final", homeCorners: 5, awayCorners: 5 };
+  assert.equal(evaluateMatchCornerTotalLeg({ ...base, pick: "Over" }, evidence).status, "won");
+  assert.equal(evaluateMatchCornerTotalLeg({ ...base, selection: "Over" }, evidence).status, "won");
+  assert.equal(evaluateMatchCornerTotalLeg({ ...base, pick: "Over", selection: "Over" }, evidence).status, "won");
+  for (const leg of [
+    { ...base, pick: "Over", selection: "Under" },
+    { ...base, pick: "Over", selection: "" },
+    { ...base, pick: "", selection: "Under" },
+    { ...base, pick: "Over", selection: "Over 9.5" },
+    { ...base, pick: "Over", selection: null },
+    { ...base, pick: undefined, selection: "Over" },
+    { ...base, pick: "Sideways", selection: "Sideways" },
+    { ...base, selection: "" }
+  ]) assert.equal(evaluateMatchCornerTotalLeg(leg, evidence).status, "unsupported_market", JSON.stringify(leg));
+});
+
 test("corner totals reject partial, malformed, split-line and derivative inputs", () => {
   const leg = { market: "Total Corners", pick: "Over", line: 9.5 };
   const valid = { scope: "regulation_time", status: "final", homeCorners: 5, awayCorners: 5 };

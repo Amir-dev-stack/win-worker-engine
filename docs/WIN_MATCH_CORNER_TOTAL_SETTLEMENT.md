@@ -14,6 +14,11 @@ must also provide:
 - one explicit bounded whole or half numeric `line`; and
 - an exact `Over` or `Under` selection.
 
+Callers may use `pick` or `selection`. Each explicitly supplied field is
+validated independently. If both are present, both must be non-blank exact
+directions and must agree. A contradictory, blank, null, undefined, or
+otherwise malformed field cannot be hidden by a valid value in the other.
+
 The two team counts are added and compared with the line. Equality on a whole
 line is `void`; other supported outcomes are `won` or `lost`.
 

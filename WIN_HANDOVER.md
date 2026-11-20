@@ -537,3 +537,20 @@ after this handover-only evidence update.
 Synthetic fixtures do not prove event/statistic provenance, bookmaker rules,
 live-provider compatibility, historical coverage, settlement accuracy,
 profitability or production readiness, and do not complete D3 or issue #81.
+
+Independent review of PR #101 exact head
+`6dafa4129d66d86d9aa2287fb3137dbf2bdc9205` found that `pick || selection`
+could hide contradictory or malformed explicitly supplied selection evidence.
+The hardening update validates each own `pick`/`selection` field independently,
+requires both to be exact equivalent directions when both exist, and rejects
+blank, null, undefined, malformed or conflicting dual-field declarations.
+Valid pick-only, selection-only and equivalent dual-field inputs remain
+supported.
+
+Verification before the hardening commit: targeted settlement tests 21/21,
+full Node tests 144/144, quality gates 116/116, build 80 required files plus 44
+architecture checks, and exact-base `git diff --check` passed. Re-run on the
+final commit and require exact-head GitHub Actions before handoff.
+
+No live provider, statistic, bookmaker-rule or production claim follows from
+these synthetic regressions.

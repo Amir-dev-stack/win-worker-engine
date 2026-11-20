@@ -24,6 +24,21 @@ function isSupportedMatchCornerTotalMarketLabel(value) {
   return SUPPORTED_MATCH_CORNER_TOTAL_MARKETS.has(normalized(value));
 }
 
+function parseExactOverUnderSelectionFields(leg) {
+  const record = leg && typeof leg === "object" ? leg : {};
+  const suppliedFields = ["pick", "selection"].filter(field => Object.prototype.hasOwnProperty.call(record, field));
+  if (!suppliedFields.length) return null;
+  const directions = [];
+  for (const field of suppliedFields) {
+    const value = record[field];
+    if (typeof value !== "string" || !clean(value, 80)) return null;
+    const direction = normalized(clean(value, 80));
+    if (!["over", "under"].includes(direction)) return null;
+    directions.push(direction);
+  }
+  return directions.every(direction => direction === directions[0]) ? directions[0] : null;
+}
+
 function sameTeam(a, b) {
   const x = normalized(a), y = normalized(b);
   return Boolean(x && y && (x === y || (x.length >= 7 && y.length >= 7 && (x.includes(y) || y.includes(x)))));
@@ -178,8 +193,8 @@ export function evaluateMatchCornerTotalLeg(leg, statistics) {
       Math.abs(line * 2 - Math.round(line * 2)) > 1e-8) {
     return { status: "unsupported_market", reason: "An explicit bounded whole or half match-total corners line is required." };
   }
-  const direction = normalized(clean(leg?.pick || leg?.selection, 80));
-  if (!["over", "under"].includes(direction)) {
+  const direction = parseExactOverUnderSelectionFields(leg);
+  if (!direction) {
     return { status: "unsupported_market", reason: "The corner-total selection must be exactly over or under." };
   }
   const totalCorners = homeCorners + awayCorners;
