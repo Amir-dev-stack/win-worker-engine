@@ -163,3 +163,31 @@ Regression coverage also passes malformed provider arrays, fields and a
 non-array provider collection and verifies a fixed `no_eligible_provider`
 result without adapter execution. Updated verification is targeted 10/10,
 full Node 42/42, quality gates 107/107, and build 61 plus 44.
+
+## Issue #81 C2 snapshot-envelope checkpoint — 2026-11-20
+
+Branch `win-draft/c2-snapshot-archive-envelope-20261120` starts from main at
+`844efeba8ad1d20dbe587e286ed5546b81eb5baa`. Implementation commit
+`989c8a9` adds a disconnected, provider-neutral evidence boundary for typed
+schedule, final-result and pre-event odds records. It requires explicit
+provider and canonical identities, timezone-qualified event and observation
+times, approved rights and attribution metadata, monotonic source revisions,
+and deterministic SHA-256 content identities. Returned envelopes are deeply
+frozen in memory.
+
+The bounded batch validator fails closed for oversized input and quarantines
+tampered, ambiguous, stale, future, unlicensed, candidate, conflicting-revision
+or temporally invalid records. Exact replay is deduplicated and no automatic
+retry is requested. Diagnostic output contains snapshot IDs and fixed codes,
+not rejected payloads. Input order does not change accepted or rejected output.
+
+Verified before this handover update: targeted envelope tests 13/13, full Node
+tests 68/68, quality gates 108/108, build 64 required files plus 44 architecture
+checks, and `git diff --check` passed. Re-run the same commands on the final
+handover commit and use exact-head GitHub Actions as the remote evidence.
+
+This checkpoint does not fetch provider data, activate a provider, create a
+database, persist snapshots, schedule ingestion, settle bets, deploy, or prove
+licensing for any source. Provider adapters, durable storage and live historical
+coverage remain separate review-gated work. Do not describe this envelope as a
+historical database or as live data ingestion.
