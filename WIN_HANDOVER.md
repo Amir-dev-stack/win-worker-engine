@@ -465,3 +465,46 @@ reported after the hardening commit.
 Verification before the hardening handover commit: targeted settlement tests
 16/16, full Node tests 139/139, quality gates 114/114, build 78 required files
 plus 44 architecture checks, and exact-base `git diff --check` passed.
+
+## Issue #81 D3 European handicap settlement checkpoint — 2026-11-20
+
+Branch `win-draft/d3-european-handicap-settlement-20261120` is stacked on
+independently accepted draft PR #99 exact
+`f518f121b52457bfd5e40f6e28e5a1f270cc721a`.
+
+The shared pure result adapter now supports regulation European three-way
+handicap only when callers provide explicit bounded integer home and away
+adjustments. The adjusted score determines a home/draw/away result and one
+unambiguous 1X2-style selection settles won or lost.
+
+Provider notation such as `(1:0)` is never interpreted because label
+orientation is not typed evidence. Missing/string/fractional/out-of-range
+handicaps, malformed scores, compound selections or markets, and period,
+extra-time or Asian cases fail closed. The helper performs no provider call,
+storage write, coupon construction or betting action.
+
+Local verification: targeted settlement tests 18/18, full Node tests 141/141,
+quality gates 115/115, build 79 required files plus 44 architecture checks,
+and exact-base `git diff --check` passed. GitHub Actions run `44758594377`,
+job `136364823073`, succeeded for implementation commit
+`58ba76a7b025beb9851f5d2109220546d48f8627`; exact-head CI will be reported
+after this handover-only evidence update.
+
+This synthetic arithmetic does not prove score provenance, provider rules,
+historical coverage, settlement accuracy, profitability or production
+readiness, and does not complete D3 or issue #81.
+
+Independent review of PR #100 exact head
+`84d6deb958a53ce665bb22909caf84194a1a4eb4` found that substring market
+recognition plus a finite derivative-family rejection list could accept an
+unknown compound suffix such as `European Handicap + Shots`. The hardening
+update replaces that assumption with an exact normalized allowlist for the
+supported single European-handicap aliases. Any extra market declaration or
+punctuation-separated suffix now fails before settlement. Regression tests
+cover shots, offsides, fouls, an unknown family, an additional settlement-rule
+declaration, and every retained plain alias.
+
+Verification before the hardening commit: targeted settlement tests 18/18,
+full Node tests 141/141, quality gates 115/115, build 79 required files plus 44
+architecture checks, and exact-base `git diff --check` passed. Re-run on the
+final commit and require exact-head GitHub Actions before handoff.
