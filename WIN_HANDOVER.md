@@ -465,3 +465,29 @@ reported after the hardening commit.
 Verification before the hardening handover commit: targeted settlement tests
 16/16, full Node tests 139/139, quality gates 114/114, build 78 required files
 plus 44 architecture checks, and exact-base `git diff --check` passed.
+
+## Issue #81 D3 European handicap settlement checkpoint — 2026-11-20
+
+Branch `win-draft/d3-european-handicap-settlement-20261120` is stacked on
+independently accepted draft PR #99 exact
+`f518f121b52457bfd5e40f6e28e5a1f270cc721a`.
+
+The shared pure result adapter now supports regulation European three-way
+handicap only when callers provide explicit bounded integer home and away
+adjustments. The adjusted score determines a home/draw/away result and one
+unambiguous 1X2-style selection settles won or lost.
+
+Provider notation such as `(1:0)` is never interpreted because label
+orientation is not typed evidence. Missing/string/fractional/out-of-range
+handicaps, malformed scores, compound selections or markets, and period,
+extra-time or Asian cases fail closed. The helper performs no provider call,
+storage write, coupon construction or betting action.
+
+Local verification: targeted settlement tests 18/18, full Node tests 141/141,
+quality gates 115/115, build 79 required files plus 44 architecture checks,
+and exact-base `git diff --check` passed. Exact-head GitHub Actions remains
+pending until the draft branch is pushed.
+
+This synthetic arithmetic does not prove score provenance, provider rules,
+historical coverage, settlement accuracy, profitability or production
+readiness, and does not complete D3 or issue #81.

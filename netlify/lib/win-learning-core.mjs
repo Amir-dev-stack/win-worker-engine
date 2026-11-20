@@ -104,6 +104,35 @@ export function evaluateAsianHandicapLeg(leg, score) {
   };
 }
 
+/** Pure regulation-score settlement for an explicit European three-way handicap. */
+export function evaluateEuropeanHandicapLeg(leg, score) {
+  const home = score?.home, away = score?.away;
+  if (typeof home !== "number" || typeof away !== "number" || !Number.isSafeInteger(home) || !Number.isSafeInteger(away) || home < 0 || away < 0) {
+    return { status: "unsupported_market", reason: "Non-negative integer number fields are required for the regulation full-time score." };
+  }
+  const homeHandicap = leg?.homeHandicap, awayHandicap = leg?.awayHandicap;
+  if (typeof homeHandicap !== "number" || typeof awayHandicap !== "number" ||
+      !Number.isSafeInteger(homeHandicap) || !Number.isSafeInteger(awayHandicap) ||
+      Math.abs(homeHandicap) > 20 || Math.abs(awayHandicap) > 20) {
+    return { status: "unsupported_market", reason: "Explicit bounded integer home and away handicaps are required." };
+  }
+  const pick = normalized(clean(leg?.pick || leg?.selection, 180));
+  const chosen = parseFullTimeResultSelection(pick, leg);
+  if (!chosen) return { status: "unsupported_market", reason: "European handicap selection could not be mapped unambiguously to home/draw/away." };
+  const adjustedHome = home + homeHandicap, adjustedAway = away + awayHandicap;
+  const result = adjustedHome > adjustedAway ? "home" : adjustedHome < adjustedAway ? "away" : "draw";
+  return {
+    status: chosen === result ? "won" : "lost",
+    reason: "Settled from the verified regulation full-time score and explicit European three-way handicaps.",
+    settlementRule: "european_three_way_explicit_score_adjustment_v1",
+    selectedResult: chosen,
+    adjustedResult: result,
+    homeHandicap,
+    awayHandicap,
+    adjustedScore: { home: adjustedHome, away: adjustedAway }
+  };
+}
+
 /**
  * Deterministic full-time score settlement only.
  * Period-specific, unrecognized and unparseable markets deliberately remain unsupported.
@@ -122,6 +151,7 @@ export function evaluateFullTimeLeg(leg, score) {
   const drawNoBetMarket = /draw no bet|zaklad bez remisu|\bdnb\b/.test(market);
   const doubleChanceMarket = /double chance|podwojna szansa/.test(market);
   const asianHandicapMarket = /asian handicap|asian spread/.test(market);
+  const europeanHandicapMarket = /european handicap|three way handicap|3 way handicap|handicap 1x2/.test(market);
   const resultFamily = /1x2|match winner|moneyline|full time result|wynik meczu|zwyciezca meczu/.test(market);
   const joinsResultFamilies = /\b(and|plus|with|oraz|lub)\b|[&/+]/.test(market) && resultFamily;
   const compoundOrDerivativeMarket = joinsResultFamilies || /both teams to score|btts|goals?|gole|goli|handicap|asian|spread|cards?|corners?|player|goalscorer|team total/.test(market);
@@ -132,6 +162,10 @@ export function evaluateFullTimeLeg(leg, score) {
     return { status: "unsupported_market", reason: "Compound or derivative Asian handicap markets require an explicit settlement rule." };
   }
   if (asianHandicapMarket) return evaluateAsianHandicapLeg(leg, score);
+  if (europeanHandicapMarket && /both teams to score|btts|goals?|gole|goli|cards?|corners?|player|goalscorer|team total|asian|spread|draw no bet|double chance/.test(market)) {
+    return { status: "unsupported_market", reason: "Compound or derivative European handicap markets require an explicit settlement rule." };
+  }
+  if (europeanHandicapMarket) return evaluateEuropeanHandicapLeg(leg, score);
   if (/both teams to score|btts|obie druzyny strzela|obie druzyny/.test(market)) {
     const yes = home > 0 && away > 0;
     const saysYes = /\b(yes|tak)\b/.test(" " + pick), saysNo = /\b(no|nie)\b/.test(" " + pick);

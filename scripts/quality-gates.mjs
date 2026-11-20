@@ -34,6 +34,7 @@ const winLearningCore = await read("netlify/lib/win-learning-core.mjs");
 const winLearningCoreTests = await read("scripts/win-learning-core.test.mjs");
 const footballSettlementDoc = await read("docs/WIN_FOOTBALL_MARKET_SETTLEMENT.md");
 const asianHandicapDoc = await read("docs/WIN_ASIAN_HANDICAP_SETTLEMENT.md");
+const europeanHandicapDoc = await read("docs/WIN_EUROPEAN_HANDICAP_SETTLEMENT.md");
 const learningObservatoryFn = await read("netlify/functions/learning-observatory.mts");
 const learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts");
 const mcpApi = await read("netlify/functions/mcp.mts");
@@ -152,6 +153,16 @@ add("Football Asian handicap settlement is shared, selected-side explicit and sp
   asianHandicapDoc.includes("cannot represent safely") &&
   asianHandicapDoc.includes("does not prove live-provider compatibility"),
   "One pure helper settles explicit selected-side whole/half lines in shared and historical paths; quarter, compound, period and orientation-ambiguous markets fail closed.");
+
+add("Football European handicap settlement requires explicit two-sided integer adjustments",
+  winLearningCore.includes("evaluateEuropeanHandicapLeg") &&
+  winLearningCore.includes("european_three_way_explicit_score_adjustment_v1") &&
+  winLearningCore.includes('typeof homeHandicap !== "number" || typeof awayHandicap !== "number"') &&
+  winLearningCoreTests.includes("European three-way handicap settles explicit adjusted home, draw and away results") &&
+  winLearningCoreTests.includes("rejects implicit, malformed, compound and non-regulation inputs") &&
+  europeanHandicapDoc.includes("never infers handicap orientation") &&
+  europeanHandicapDoc.includes("do not prove live-provider compatibility"),
+  "Explicit bounded integer home/away adjustments produce one regulation 1X2 result; label-only, malformed, period and compound markets fail closed.");
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&

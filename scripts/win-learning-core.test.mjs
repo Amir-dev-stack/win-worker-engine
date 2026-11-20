@@ -4,6 +4,7 @@ import {
   aggregateCouponOutcome,
   deriveReviewedCouponOutcome,
   evaluateAsianHandicapLeg,
+  evaluateEuropeanHandicapLeg,
   evaluateFullTimeLeg,
   isEligibleWinForecastCoupon,
   isIndependentlyValidatedLesson
@@ -132,6 +133,41 @@ test("Asian handicap rejects split, ambiguous, compound and period-specific inpu
   assert.equal(evaluateFullTimeLeg({ ...base, market: "First Half Asian Handicap", pick: "Home", line: -0.5 }, { home: 2, away: 1 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ ...base, market: "Asian Handicap and BTTS", pick: "Home", line: -0.5 }, { home: 2, away: 1 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ ...base, market: "Handicap 1X2 (1:0)", pick: "2", line: 1 }, { home: 2, away: 1 }).status, "unsupported_market");
+});
+
+test("European three-way handicap settles explicit adjusted home, draw and away results", () => {
+  const base = { market: "European Handicap 1X2", homeTeam: "Alpha United", awayTeam: "Beta United", homeHandicap: 0, awayHandicap: 0 };
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home" }, { home: 2, away: 1 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Away" }, { home: 1, away: 2 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Draw" }, { home: 1, away: 1 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Draw", awayHandicap: 1 }, { home: 2, away: 1 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home", homeHandicap: 1 }, { home: 1, away: 1 }).status, "won");
+  const adjusted = evaluateEuropeanHandicapLeg({ ...base, pick: "Beta United", homeHandicap: -1, awayHandicap: 1 }, { home: 2, away: 1 });
+  assert.equal(adjusted.status, "won");
+  assert.equal(adjusted.adjustedResult, "away");
+  assert.deepEqual(adjusted.adjustedScore, { home: 1, away: 2 });
+  assert.equal(adjusted.settlementRule, "european_three_way_explicit_score_adjustment_v1");
+});
+
+test("European handicap rejects implicit, malformed, compound and non-regulation inputs", () => {
+  const base = { market: "European Handicap 1X2", homeTeam: "Alpha United", awayTeam: "Beta United", pick: "Home", homeHandicap: 1, awayHandicap: 0 };
+  const invalidScores = [{}, { home: null, away: 1 }, { home: "1", away: 1 }, { home: 1.5, away: 1 }, { home: -1, away: 1 }];
+  for (const score of invalidScores) {
+    assert.equal(evaluateEuropeanHandicapLeg(base, score).status, "unsupported_market", JSON.stringify(score));
+    assert.equal(evaluateFullTimeLeg(base, score).status, "unsupported_market", JSON.stringify(score));
+  }
+  for (const leg of [
+    { ...base, homeHandicap: undefined },
+    { ...base, awayHandicap: undefined },
+    { ...base, homeHandicap: "1" },
+    { ...base, homeHandicap: 0.5 },
+    { ...base, awayHandicap: 21 },
+    { ...base, pick: "Home or Draw" },
+    { ...base, pick: "Alpha United or Beta United" }
+  ]) assert.equal(evaluateFullTimeLeg(leg, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Handicap 1X2 (1:0)", homeTeam: "Alpha United", awayTeam: "Beta United", pick: "Home" }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ ...base, market: "First Half European Handicap" }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ ...base, market: "European Handicap and BTTS" }, { home: 2, away: 1 }).status, "unsupported_market");
 });
 
 test("period markets, ambiguous picks, unsupported markets and invalid scores fail closed", () => {
