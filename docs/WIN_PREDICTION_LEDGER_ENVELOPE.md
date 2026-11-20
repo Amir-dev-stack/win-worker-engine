@@ -56,11 +56,21 @@ reviewed market-specific component must produce the result and evidence hashes.
 Strings identifying a prior prediction are insufficient: callers must supply a
 complete content-verified prediction envelope.
 
+Prior context is not trusted merely because it came from an earlier batch. The
+caller must set an explicit `maxPriorPredictions` from zero through 500. The
+validator rejects the whole operation before inspecting prior entries when that
+cap is exceeded. It also groups prior and current predictions by ledger key.
+If one key has more than one content identity, no version of that prediction may
+authorize an outcome; current conflicting predictions and every outcome that
+references a conflicted prior/current version are quarantined.
+
 ## Bounded batch behavior
 
 - The caller selects a positive batch limit no greater than 500.
+- Prior prediction context has a separate explicit cap no greater than 500.
 - Oversized batches are rejected as a whole with
-  `split_batch_no_automatic_replay`.
+  `split_batch_no_automatic_replay`; oversized prior context is rejected before
+  validation with `reduce_prior_context_no_automatic_replay`.
 - Exact record replays are deduplicated.
 - Tampered and malformed records return only fixed diagnostics and safe record
   IDs; rejected input payloads are not echoed.

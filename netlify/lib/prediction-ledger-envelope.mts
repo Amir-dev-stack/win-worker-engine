@@ -66,6 +66,7 @@ export type PredictionLedgerRecord = PredictionLedgerEntry | OutcomeLedgerEntry;
 
 export type PredictionLedgerBatchOptions = {
   maxBatchSize: number;
+  maxPriorPredictions: number;
   priorPredictions?: readonly PredictionLedgerEntry[];
 };
 
@@ -74,6 +75,7 @@ type Diagnostic =
   | "CONFLICTING_RECORD"
   | "INVALID_RECORD"
   | "MISSING_PREDICTION"
+  | "PRIOR_LIMIT_EXCEEDED"
   | "SETTLEMENT_MISMATCH"
   | "TAMPERED_RECORD";
 
@@ -247,8 +249,14 @@ function uniqueSorted<T extends string>(values: T[]) {
 export function validatePredictionLedgerBatch(inputs: unknown, options: PredictionLedgerBatchOptions) {
   if (!Array.isArray(inputs)) throw new TypeError("Prediction ledger batch must be an array");
   if (!Number.isSafeInteger(options?.maxBatchSize) || options.maxBatchSize < 1 || options.maxBatchSize > 500) throw new TypeError("Invalid prediction ledger batch limit");
+  if (!Number.isSafeInteger(options?.maxPriorPredictions) || options.maxPriorPredictions < 0 || options.maxPriorPredictions > 500) throw new TypeError("Invalid prior prediction limit");
+  const priorInputs = options.priorPredictions ?? [];
+  if (!Array.isArray(priorInputs)) throw new TypeError("Prior predictions must be an array");
   if (inputs.length > options.maxBatchSize) {
     return { status: "rejected", diagnostics: ["BATCH_LIMIT_EXCEEDED"] as Diagnostic[], accepted: [] as PredictionLedgerRecord[], rejected: [] as { recordId: string; diagnostics: Diagnostic[] }[], deduplicatedRecordIds: [] as string[], retryDisposition: "split_batch_no_automatic_replay" };
+  }
+  if (priorInputs.length > options.maxPriorPredictions) {
+    return { status: "rejected", diagnostics: ["PRIOR_LIMIT_EXCEEDED"] as Diagnostic[], accepted: [] as PredictionLedgerRecord[], rejected: [] as { recordId: string; diagnostics: Diagnostic[] }[], deduplicatedRecordIds: [] as string[], retryDisposition: "reduce_prior_context_no_automatic_replay" };
   }
 
   const diagnostics = [] as Diagnostic[];
@@ -277,17 +285,33 @@ export function validatePredictionLedgerBatch(inputs: unknown, options: Predicti
   if (blocked.size) diagnostics.push("CONFLICTING_RECORD");
 
   const prior = [] as PredictionLedgerEntry[];
-  for (const item of options.priorPredictions ?? []) {
+  for (const item of priorInputs) {
     const checked = validateRecord(item);
     if (!checked.record || checked.record.kind !== "prediction") throw new TypeError("Invalid prior prediction entry");
     prior.push(checked.record);
   }
+
+  const currentPredictions = unique.filter((item): item is PredictionLedgerEntry => item.kind === "prediction");
+  const predictionsByLedgerKey = new Map<string, PredictionLedgerEntry[]>();
+  for (const row of [...prior, ...currentPredictions]) predictionsByLedgerKey.set(row.ledgerKey, [...(predictionsByLedgerKey.get(row.ledgerKey) ?? []), row]);
+  const conflictingPredictionIds = new Set<string>();
+  for (const rows of predictionsByLedgerKey.values()) {
+    if (new Set(rows.map(row => row.recordId)).size > 1) {
+      rows.forEach(row => conflictingPredictionIds.add(row.recordId));
+      currentPredictions.filter(row => rows.some(candidate => candidate.recordId === row.recordId)).forEach(row => blocked.set(row.recordId, "CONFLICTING_RECORD"));
+    }
+  }
+  if (conflictingPredictionIds.size) diagnostics.push("CONFLICTING_RECORD");
+
   const predictions = new Map<string, PredictionLedgerEntry>();
-  for (const row of [...prior, ...unique.filter((item): item is PredictionLedgerEntry => item.kind === "prediction" && !blocked.has(item.recordId))]) predictions.set(row.recordId, row);
+  for (const row of [...prior, ...currentPredictions]) {
+    if (!conflictingPredictionIds.has(row.recordId) && !blocked.has(row.recordId)) predictions.set(row.recordId, row);
+  }
 
   for (const row of unique.filter((item): item is OutcomeLedgerEntry => item.kind === "outcome" && !blocked.has(item.recordId))) {
     const prediction = predictions.get(row.predictionId);
-    if (!prediction) blocked.set(row.recordId, "MISSING_PREDICTION");
+    if (conflictingPredictionIds.has(row.predictionId)) blocked.set(row.recordId, "CONFLICTING_RECORD");
+    else if (!prediction) blocked.set(row.recordId, "MISSING_PREDICTION");
     else if (prediction.eventId !== row.eventId || prediction.market.settlementRuleId !== row.settlementRuleId || prediction.producerId === row.verifierId || Date.parse(row.resultObservedAt) < Date.parse(prediction.eventTime)) blocked.set(row.recordId, "SETTLEMENT_MISMATCH");
   }
   for (const row of unique.filter(item => blocked.has(item.recordId))) {

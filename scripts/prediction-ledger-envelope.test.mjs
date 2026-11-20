@@ -7,7 +7,7 @@ import {
 } from "../netlify/lib/prediction-ledger-envelope.mts";
 
 const hash = character => character.repeat(64);
-const options = { maxBatchSize: 20 };
+const options = { maxBatchSize: 20, maxPriorPredictions: 20 };
 
 function predictionDraft(overrides = {}) {
   const base = {
@@ -167,10 +167,51 @@ test("outcomes fail closed for missing or mismatched prediction evidence", () =>
 test("outcomes can reference a separately validated prior prediction", () => {
   const prediction = createPredictionLedgerEntry(predictionDraft());
   const outcome = createOutcomeLedgerEntry(outcomeDraft(prediction));
-  const result = validatePredictionLedgerBatch([outcome], { ...options, priorPredictions: [prediction] });
+  const result = validatePredictionLedgerBatch([outcome], { ...options, priorPredictions: [prediction, prediction] });
   assert.equal(result.status, "accepted");
   assert.deepEqual(result.accepted.map(row => row.recordId), [outcome.recordId]);
   assert.throws(() => validatePredictionLedgerBatch([outcome], { ...options, priorPredictions: [{ ...prediction, probability: 0.99 }] }), /prior prediction/u);
+});
+
+test("prior prediction context is strictly bounded before validation", () => {
+  const prediction = createPredictionLedgerEntry(predictionDraft());
+  const result = validatePredictionLedgerBatch([], { ...options, maxPriorPredictions: 1, priorPredictions: [prediction, prediction] });
+  assert.deepEqual(result, {
+    status: "rejected",
+    diagnostics: ["PRIOR_LIMIT_EXCEEDED"],
+    accepted: [],
+    rejected: [],
+    deduplicatedRecordIds: [],
+    retryDisposition: "reduce_prior_context_no_automatic_replay"
+  });
+});
+
+test("two changed prior versions cannot authorize either outcome", () => {
+  const original = createPredictionLedgerEntry(predictionDraft());
+  const changed = createPredictionLedgerEntry(predictionDraft({ probability: 0.58 }));
+  const originalOutcome = createOutcomeLedgerEntry(outcomeDraft(original));
+  const changedOutcome = createOutcomeLedgerEntry(outcomeDraft(changed));
+  const forward = validatePredictionLedgerBatch([originalOutcome, changedOutcome], { ...options, priorPredictions: [original, changed] });
+  const reverse = validatePredictionLedgerBatch([changedOutcome, originalOutcome], { ...options, priorPredictions: [changed, original] });
+  assert.deepEqual(forward, reverse);
+  assert.equal(forward.status, "rejected");
+  assert.deepEqual(forward.diagnostics, ["CONFLICTING_RECORD"]);
+  assert.equal(forward.accepted.length, 0);
+  assert.deepEqual(forward.rejected.map(row => row.recordId).sort(), [originalOutcome.recordId, changedOutcome.recordId].sort());
+});
+
+test("a prior/current ledger-key collision blocks the prior outcome and current prediction", () => {
+  const prior = createPredictionLedgerEntry(predictionDraft());
+  const changedCurrent = createPredictionLedgerEntry(predictionDraft({ probability: 0.58 }));
+  const priorOutcome = createOutcomeLedgerEntry(outcomeDraft(prior));
+  const clean = createPredictionLedgerEntry(predictionDraft({ ledgerKey: "prediction:event-45:away:model-v1", eventId: "event-45", market: { selectionId: "away-win" } }));
+  const forward = validatePredictionLedgerBatch([changedCurrent, priorOutcome, clean], { ...options, priorPredictions: [prior] });
+  const reverse = validatePredictionLedgerBatch([clean, priorOutcome, changedCurrent], { ...options, priorPredictions: [prior] });
+  assert.deepEqual(forward, reverse);
+  assert.equal(forward.status, "partial");
+  assert.deepEqual(forward.diagnostics, ["CONFLICTING_RECORD"]);
+  assert.deepEqual(forward.accepted.map(row => row.recordId), [clean.recordId]);
+  assert.deepEqual(forward.rejected.map(row => row.recordId).sort(), [changedCurrent.recordId, priorOutcome.recordId].sort());
 });
 
 test("outcome construction requires ordered verification timestamps and evidence hashes", () => {
@@ -182,7 +223,7 @@ test("outcome construction requires ordered verification timestamps and evidence
 
 test("oversized batches fail as a whole without automatic replay", () => {
   const prediction = createPredictionLedgerEntry(predictionDraft());
-  const result = validatePredictionLedgerBatch([prediction, prediction], { maxBatchSize: 1 });
+  const result = validatePredictionLedgerBatch([prediction, prediction], { maxBatchSize: 1, maxPriorPredictions: 20 });
   assert.deepEqual(result, {
     status: "rejected",
     diagnostics: ["BATCH_LIMIT_EXCEEDED"],
@@ -195,6 +236,9 @@ test("oversized batches fail as a whole without automatic replay", () => {
 
 test("batch configuration is bounded and rejects malformed input", () => {
   assert.throws(() => validatePredictionLedgerBatch({}, options), /array/u);
-  assert.throws(() => validatePredictionLedgerBatch([], { maxBatchSize: 0 }), /limit/u);
-  assert.throws(() => validatePredictionLedgerBatch([], { maxBatchSize: 501 }), /limit/u);
+  assert.throws(() => validatePredictionLedgerBatch([], { ...options, maxBatchSize: 0 }), /limit/u);
+  assert.throws(() => validatePredictionLedgerBatch([], { ...options, maxBatchSize: 501 }), /limit/u);
+  assert.throws(() => validatePredictionLedgerBatch([], { ...options, maxPriorPredictions: -1 }), /prior prediction limit/u);
+  assert.throws(() => validatePredictionLedgerBatch([], { ...options, maxPriorPredictions: 501 }), /prior prediction limit/u);
+  assert.throws(() => validatePredictionLedgerBatch([], { ...options, priorPredictions: {} }), /array/u);
 });

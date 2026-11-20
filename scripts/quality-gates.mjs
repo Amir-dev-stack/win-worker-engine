@@ -58,6 +58,8 @@ add("Prediction ledger envelopes enforce a deterministic point-in-time boundary"
   predictionLedger.includes("availableMs > cutoffMs") &&
   predictionLedger.includes("SETTLEMENT_MISMATCH") &&
   predictionLedger.includes("CONFLICTING_RECORD") &&
+  predictionLedger.includes("PRIOR_LIMIT_EXCEEDED") &&
+  predictionLedger.includes("conflictingPredictionIds.has(row.predictionId)") &&
   predictionLedgerTests.includes("assert.deepEqual(forward, reverse)") &&
   predictionLedgerTests.includes("must-not-echo") &&
   predictionLedgerDoc.includes("not a database, append-only storage implementation"),
