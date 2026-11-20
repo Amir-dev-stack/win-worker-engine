@@ -15,6 +15,12 @@ const SUPPORTED_MATCH_CORNER_TOTAL_MARKETS = new Set([
   "total corners",
   "corners total"
 ]);
+const SUPPORTED_MATCH_CARD_TOTAL_MARKETS = new Set([
+  "match total cards",
+  "total match cards",
+  "total cards",
+  "cards total"
+]);
 
 function isSupportedEuropeanHandicapMarketLabel(value) {
   return SUPPORTED_EUROPEAN_HANDICAP_MARKETS.has(normalized(value));
@@ -22,6 +28,10 @@ function isSupportedEuropeanHandicapMarketLabel(value) {
 
 function isSupportedMatchCornerTotalMarketLabel(value) {
   return SUPPORTED_MATCH_CORNER_TOTAL_MARKETS.has(normalized(value));
+}
+
+function isSupportedMatchCardTotalMarketLabel(value) {
+  return SUPPORTED_MATCH_CARD_TOTAL_MARKETS.has(normalized(value));
 }
 
 function parseExactOverUnderSelectionFields(leg) {
@@ -209,6 +219,62 @@ export function evaluateMatchCornerTotalLeg(leg, statistics) {
     homeCorners,
     awayCorners,
     totalCorners
+  };
+}
+
+/** Pure settlement for one final regulation-time match-total cards line. */
+export function evaluateMatchCardTotalLeg(leg, statistics) {
+  const statisticRecord = statistics && typeof statistics === "object" ? statistics : {};
+  const hasOwnStatistic = field => Object.prototype.hasOwnProperty.call(statisticRecord, field);
+  const marketLabel = clean(leg?.market, 180);
+  const additionalMarketLabel = clean(leg?.settlementRule, 500);
+  if (!marketLabel || !isSupportedMatchCardTotalMarketLabel(marketLabel) ||
+      (additionalMarketLabel && !isSupportedMatchCardTotalMarketLabel(additionalMarketLabel))) {
+    return { status: "unsupported_market", reason: "An explicitly supported single match-total cards label is required." };
+  }
+  if (statisticRecord.scope !== "regulation_time" || statisticRecord.status !== "final") {
+    return { status: "unsupported_market", reason: "Final regulation-time card statistics are required." };
+  }
+  if (!hasOwnStatistic("countingRule") || statisticRecord.countingRule !== "explicit_final_market_card_count") {
+    return { status: "unsupported_market", reason: "An explicit final-market card-count basis is required." };
+  }
+  const unresolvedBreakdownFields = [
+    "homeYellowCards", "awayYellowCards", "homeRedCards", "awayRedCards",
+    "homeSecondYellowCards", "awaySecondYellowCards", "homeBookingPoints", "awayBookingPoints",
+    "cardEvents"
+  ].filter(hasOwnStatistic);
+  if (unresolvedBreakdownFields.length) {
+    return { status: "unsupported_market", reason: "Raw card-event and booking-point evidence must be reconciled into one reviewed final market count before settlement." };
+  }
+  const homeCards = statisticRecord.homeCards, awayCards = statisticRecord.awayCards;
+  if (!hasOwnStatistic("homeCards") || !hasOwnStatistic("awayCards") ||
+      typeof homeCards !== "number" || typeof awayCards !== "number" ||
+      !Number.isSafeInteger(homeCards) || !Number.isSafeInteger(awayCards) ||
+      homeCards < 0 || awayCards < 0 || homeCards > 100 || awayCards > 100) {
+    return { status: "unsupported_market", reason: "Bounded non-negative integer home and away card counts are required." };
+  }
+  const line = leg?.line;
+  if (typeof line !== "number" || !Number.isFinite(line) || line < 0 || line > 100 ||
+      Math.abs(line * 2 - Math.round(line * 2)) > 1e-8) {
+    return { status: "unsupported_market", reason: "An explicit bounded whole or half match-total cards line is required." };
+  }
+  const direction = parseExactOverUnderSelectionFields(leg);
+  if (!direction) {
+    return { status: "unsupported_market", reason: "The card-total selection must be exactly over or under." };
+  }
+  const totalCards = homeCards + awayCards;
+  const status = totalCards === line ? "void" : direction === "over" ? (totalCards > line ? "won" : "lost") : (totalCards < line ? "won" : "lost");
+  return {
+    status,
+    reason: "Settled from explicit final regulation-time market card counts and an explicit match-total line.",
+    settlementRule: "match_total_cards_regulation_explicit_count_whole_or_half_v1",
+    countingRule: statisticRecord.countingRule,
+    selectedDirection: direction,
+    line,
+    scope: statisticRecord.scope,
+    homeCards,
+    awayCards,
+    totalCards
   };
 }
 

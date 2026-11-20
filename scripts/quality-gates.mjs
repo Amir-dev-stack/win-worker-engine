@@ -36,6 +36,7 @@ const footballSettlementDoc = await read("docs/WIN_FOOTBALL_MARKET_SETTLEMENT.md
 const asianHandicapDoc = await read("docs/WIN_ASIAN_HANDICAP_SETTLEMENT.md");
 const europeanHandicapDoc = await read("docs/WIN_EUROPEAN_HANDICAP_SETTLEMENT.md");
 const matchCornerTotalDoc = await read("docs/WIN_MATCH_CORNER_TOTAL_SETTLEMENT.md");
+const matchCardTotalDoc = await read("docs/WIN_MATCH_CARD_TOTAL_SETTLEMENT.md");
 const learningObservatoryFn = await read("netlify/functions/learning-observatory.mts");
 const learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts");
 const mcpApi = await read("netlify/functions/mcp.mts");
@@ -189,6 +190,21 @@ add("Football match-total corners settlement requires final typed count evidence
   matchCornerTotalDoc.includes("Synthetic tests and CI do not prove") &&
   matchCornerTotalDoc.includes("live-provider compatibility"),
   "One pure helper settles explicit whole/half match-total corner lines only from final regulation counts; partial, period, team, split and compound markets fail closed.");
+
+add("Football match-total cards settlement requires explicit final market counts",
+  winLearningCore.includes("evaluateMatchCardTotalLeg") &&
+  winLearningCore.includes('statisticRecord.countingRule !== "explicit_final_market_card_count"') &&
+  winLearningCore.includes('"homeYellowCards", "awayYellowCards", "homeRedCards", "awayRedCards"') &&
+  winLearningCore.includes('settlementRule: "match_total_cards_regulation_explicit_count_whole_or_half_v1"') &&
+  winLearningCoreTests.includes("card totals reject inferred counts, malformed evidence, split lines and derivatives") &&
+  winLearningCoreTests.includes("card totals reconcile pick and selection fields without masking conflicts") &&
+  winLearningCoreTests.includes("Total Cards + Corners") &&
+  winLearningCoreTests.includes("Total Cards / Shots") &&
+  matchCardTotalDoc.includes("does not infer cards from a football score") &&
+  matchCardTotalDoc.includes("Each explicitly supplied field is") &&
+  matchCardTotalDoc.includes("Synthetic tests and CI do not prove") &&
+  matchCardTotalDoc.includes("bookmaker-rule compatibility"),
+  "Cards settle only from explicit final regulation-time market counts and whole/half lines; raw card-event conversion, score inference and ambiguous derivatives fail closed.");
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&

@@ -6,6 +6,7 @@ import {
   evaluateAsianHandicapLeg,
   evaluateEuropeanHandicapLeg,
   evaluateFullTimeLeg,
+  evaluateMatchCardTotalLeg,
   evaluateMatchCornerTotalLeg,
   isEligibleWinForecastCoupon,
   isIndependentlyValidatedLesson
@@ -247,6 +248,110 @@ test("corner totals reject partial, malformed, split-line and derivative inputs"
     { ...leg, settlementRule: "Unknown Corner Rule" }
   ]) assert.equal(evaluateMatchCornerTotalLeg(invalidLeg, valid).status, "unsupported_market", JSON.stringify(invalidLeg));
   assert.equal(evaluateFullTimeLeg({ market: "Total Corners", pick: "Over", line: 9.5 }, { home: 6, away: 5 }).status, "unsupported_market");
+});
+
+test("match-total cards settle from explicit final regulation counts and lines", () => {
+  const evidence = {
+    scope: "regulation_time",
+    status: "final",
+    countingRule: "explicit_final_market_card_count",
+    homeCards: 3,
+    awayCards: 2
+  };
+  for (const market of ["Match Total Cards", "Total Match Cards", "Total Cards", "Cards Total"]) {
+    assert.equal(evaluateMatchCardTotalLeg({ market, pick: "Over", line: 4.5 }, evidence).status, "won", market);
+  }
+  assert.equal(evaluateMatchCardTotalLeg({ market: "Total Cards", pick: "Under", line: 5.5 }, evidence).status, "won");
+  assert.equal(evaluateMatchCardTotalLeg({ market: "Total Cards", pick: "Under", line: 4.5 }, evidence).status, "lost");
+  assert.equal(evaluateMatchCardTotalLeg({ market: "Total Cards", pick: "Over", line: 5 }, evidence).status, "void");
+  const settled = evaluateMatchCardTotalLeg({ market: "Total Cards", pick: "Over", line: 4.5 }, evidence);
+  assert.equal(settled.settlementRule, "match_total_cards_regulation_explicit_count_whole_or_half_v1");
+  assert.equal(settled.countingRule, "explicit_final_market_card_count");
+  assert.equal(settled.totalCards, 5);
+  assert.equal(settled.selectedDirection, "over");
+});
+
+test("card totals reconcile pick and selection fields without masking conflicts", () => {
+  const base = { market: "Total Cards", line: 4.5 };
+  const evidence = {
+    scope: "regulation_time",
+    status: "final",
+    countingRule: "explicit_final_market_card_count",
+    homeCards: 3,
+    awayCards: 2
+  };
+  assert.equal(evaluateMatchCardTotalLeg({ ...base, pick: "Over" }, evidence).status, "won");
+  assert.equal(evaluateMatchCardTotalLeg({ ...base, selection: "Over" }, evidence).status, "won");
+  assert.equal(evaluateMatchCardTotalLeg({ ...base, pick: "Over", selection: "Over" }, evidence).status, "won");
+  for (const leg of [
+    { ...base, pick: "Over", selection: "Under" },
+    { ...base, pick: "Over", selection: "" },
+    { ...base, pick: "", selection: "Under" },
+    { ...base, pick: "Over", selection: "Over 4.5" },
+    { ...base, pick: "Over", selection: null },
+    { ...base, pick: undefined, selection: "Over" },
+    { ...base, pick: "Sideways", selection: "Sideways" },
+    { ...base, selection: "" }
+  ]) assert.equal(evaluateMatchCardTotalLeg(leg, evidence).status, "unsupported_market", JSON.stringify(leg));
+});
+
+test("card totals reject inferred counts, malformed evidence, split lines and derivatives", () => {
+  const leg = { market: "Total Cards", pick: "Over", line: 4.5 };
+  const valid = {
+    scope: "regulation_time",
+    status: "final",
+    countingRule: "explicit_final_market_card_count",
+    homeCards: 3,
+    awayCards: 2
+  };
+  for (const statistics of [
+    {},
+    { ...valid, scope: "full_match" },
+    { ...valid, scope: "extra_time" },
+    { ...valid, status: "live" },
+    { ...valid, status: "pending" },
+    { ...valid, countingRule: undefined },
+    { ...valid, countingRule: "yellow_plus_red" },
+    { ...valid, homeCards: null },
+    { ...valid, homeCards: "3" },
+    { ...valid, homeCards: 3.5 },
+    { ...valid, homeCards: -1 },
+    { ...valid, homeCards: 101 },
+    { ...valid, awayCards: undefined },
+    { ...valid, awayCards: Number.NaN },
+    { ...valid, awayCards: Number.POSITIVE_INFINITY },
+    { ...valid, homeYellowCards: 3, awayYellowCards: 2 },
+    { ...valid, homeRedCards: 1 },
+    { ...valid, homeSecondYellowCards: 1 },
+    { ...valid, homeBookingPoints: 30, awayBookingPoints: 20 },
+    { ...valid, cardEvents: [] },
+    { scope: "regulation_time", status: "final", countingRule: "explicit_final_market_card_count", homeYellowCards: 3, awayYellowCards: 2 }
+  ]) assert.equal(evaluateMatchCardTotalLeg(leg, statistics).status, "unsupported_market", JSON.stringify(statistics));
+  const inherited = Object.create({ countingRule: "explicit_final_market_card_count", homeCards: 3, awayCards: 2 });
+  inherited.scope = "regulation_time";
+  inherited.status = "final";
+  assert.equal(evaluateMatchCardTotalLeg(leg, inherited).status, "unsupported_market");
+  for (const invalidLeg of [
+    { ...leg, line: undefined },
+    { ...leg, line: "4.5" },
+    { ...leg, line: Number.NaN },
+    { ...leg, line: Number.POSITIVE_INFINITY },
+    { ...leg, line: -0.5 },
+    { ...leg, line: 100.5 },
+    { ...leg, line: 4.25 },
+    { ...leg, line: 4.75 },
+    { ...leg, pick: "Over 4.5" },
+    { ...leg, pick: "Over or Under" },
+    { ...leg, pick: "Home Over" },
+    { ...leg, market: "Team Total Cards" },
+    { ...leg, market: "Player Total Cards" },
+    { ...leg, market: "First Half Total Cards" },
+    { ...leg, market: "Total Cards + Corners" },
+    { ...leg, market: "Total Cards / Shots" },
+    { ...leg, market: "Total Booking Points" },
+    { ...leg, settlementRule: "Unknown Card Rule" }
+  ]) assert.equal(evaluateMatchCardTotalLeg(invalidLeg, valid).status, "unsupported_market", JSON.stringify(invalidLeg));
+  assert.equal(evaluateFullTimeLeg({ market: "Total Cards", pick: "Over", line: 4.5 }, { home: 3, away: 2 }).status, "unsupported_market");
 });
 
 test("period markets, ambiguous picks, unsupported markets and invalid scores fail closed", () => {
