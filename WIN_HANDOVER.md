@@ -554,3 +554,35 @@ final commit and require exact-head GitHub Actions before handoff.
 
 No live provider, statistic, bookmaker-rule or production claim follows from
 these synthetic regressions.
+
+## Issue #81 D3 match-total cards checkpoint — 2026-11-20
+
+Branch `win-draft/d3-card-total-settlement-20261120` is stacked on independently
+accepted draft PR #101 exact
+`25a4902c18313d03e327876bcdd1e21a88ce4ec3`. Implementation commit
+`64fb6545ead4b6afcffa6c959feeea2139eaef51` adds a separate pure match-total
+cards helper without changing the score or corner settlement paths.
+
+The helper requires an allowlisted single-market label, final
+`regulation_time` scope, explicit bounded integer per-side card counts, the
+exact `explicit_final_market_card_count` basis, a whole/half numeric line, and
+exact agreeing over/under selection evidence. It returns won/lost/void plus the
+typed arithmetic used for settlement.
+
+The boundary does not derive card counts from goals, yellow/red/second-yellow
+events or booking points. Raw event/breakdown fields supplied alongside final
+counts are rejected rather than silently ignored. Team, player, period,
+extra-time, booking-point, quarter/split, compound/suffixed, inherited,
+string/fractional/missing and conflicting inputs fail closed.
+
+Pre-handover verification: focused settlement tests 24/24, full Node tests
+147/147, quality gates 117/117, build 81 required files plus 44 architecture
+checks, and exact-base `git diff --check` passed. Re-run the full matrix on the
+final handover commit and require exact-head GitHub Actions before reporting
+completion.
+
+This synthetic helper authenticates no event, statistic, provider or bookmaker
+rule. It does not prove live compatibility, real-match card accuracy,
+historical coverage, settlement accuracy, profitability, deployment or
+production readiness, and does not complete D3 or issue #81. No provider,
+paid API, production/database, coupon, betting or financial action occurred.
