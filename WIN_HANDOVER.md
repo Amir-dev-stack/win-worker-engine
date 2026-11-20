@@ -287,3 +287,40 @@ clean record plus unrelated invalid evidence. Updated verification before the
 handover commit is targeted 18/18, full Node 102/102, quality gates 110/110 and
 build 70 required files plus 44 architecture checks. The evidence remains
 synthetic and disconnected.
+
+## Issue #81 D1 walk-forward evaluation checkpoint — 2026-11-20
+
+Branch `win-draft/d1-walk-forward-evaluation-20261120` is stacked on draft PR
+#95 exact `9a34fba8b4de72104e433e71a72f13df0d363d3e`. Implementation commit
+`ec88104` adds a disconnected evaluation boundary that consumes accepted C4
+prediction and independently verified outcome ledger entries.
+
+Callers declare bounded, non-overlapping evaluation folds, a training cutoff,
+an embargo, an evaluation as-of instant, fixed calibration bins and a minimum
+sample size. A model trained after its fold cutoff, an outcome verified after
+the report as-of time, a prediction outside declared windows, or missing and
+conflicting outcomes cannot enter the score. Void and push outcomes are counted
+but never coerced into wins or losses.
+
+Reports calculate Brier score, natural-log loss and fixed-bin ECE by fold and by
+an exact sport/competition/market/selection/model cohort. Meeting the minimum
+sample only yields `measured_not_independently_validated`; the evaluator never
+declares calibration or superiority. Closing-line value and distribution shift
+remain explicitly unavailable because the required evidence is not supplied.
+
+Malformed or tampered ledger rows expose only a safe record ID and fixed
+diagnostic. A malformed replay that reuses a valid prediction ID taints that
+prediction, so a clean copy cannot launder it into the scored set. Independent
+clean evidence may remain usable. Output is bounded, deterministic, deeply
+frozen and content-addressed, and requests no automatic retry.
+
+Verification before this handover update: targeted D1 tests 13/13, full Node
+tests 115/115, quality gates 111/111, build 73 required files plus 44
+architecture checks, and exact-base `git diff --check` passed. Re-run all checks
+on the final handover commit and use exact-head GitHub Actions as remote
+evidence.
+
+This does not prove real-season coverage, source correctness, settlement
+accuracy, closing prices, calibrated probabilities, CLV, drift, accuracy,
+profitability, model promotion, durable storage or production operation. It is
+a synthetic offline D1 milestone, not completion of D1 or issue #81.
