@@ -271,3 +271,19 @@ This does not prove complete seasons, current injuries or real lineups,
 tactical strength, cross-league comparability, calibration, prediction accuracy,
 profitability, storage or production operation. No provider or live service is
 connected by this checkpoint.
+
+PR #95 review hardening commit `c3d87bb` makes availability trust fail closed at
+the team level. Any changed replay makes the status `conflicted`, even when a
+newer clean lineup exists. That clean record may remain visible only as
+`latestUnconflictedEvidence` with `usableForStatus: false`; `latestEvidence`
+remains null. A future or otherwise invalid version sharing a valid evidence ID
+taints the ID as a replay conflict. Unrelated invalid evidence degrades an
+otherwise clean record to `uncertain`, never `confirmed`. `trustStatus` exposes
+the reason directly so consumers do not infer trust from an evidence object.
+
+New input-order-invariant tests cover a conflicted ID plus a newer clean
+confirmed lineup, a valid record plus a future version of the same ID, and a
+clean record plus unrelated invalid evidence. Updated verification before the
+handover commit is targeted 18/18, full Node 102/102, quality gates 110/110 and
+build 70 required files plus 44 architecture checks. The evidence remains
+synthetic and disconnected.
