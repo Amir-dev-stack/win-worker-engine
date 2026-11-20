@@ -347,3 +347,40 @@ outcome with private payload. Updated verification before the handover commit
 is targeted 16/16, full Node 118/118, quality gates 111/111 and build 73
 required files plus 44 architecture checks. This remains synthetic,
 disconnected and draft-only.
+
+## Issue #81 D1 paired-baseline checkpoint — 2026-11-20
+
+Branch `win-draft/d1-paired-baseline-comparison-20261120` is stacked on draft
+PR #96 exact `3d9ab2a31d4db9f13eaf2f78a4485b247f938883`.
+Implementation commit `5472c2a` adds a disconnected strict paired comparison
+between one candidate-model walk-forward report and one reference baseline.
+
+Walk-forward cohorts now bind producer, source-code hash, model ID/version and
+artifact hash, so changed artifacts or code cannot be pooled under one label.
+Each scored observation also exposes a model-independent, content-addressed
+comparison-unit ID plus its Brier and log losses. The unit identity binds fold,
+event/time, sport, competition, market/version, settlement rule, selection and
+verified target without copying raw event identity into the comparison report.
+
+The comparator recomputes source report content identities and requires exact
+fold policy, accepted ledger-only trust, one candidate/reference per evidence
+cohort, distinct model identities and identical comparison-unit/fold sets. A
+tampered, degraded, ambiguous, missing or sample-mismatched cohort rejects the
+whole comparison and returns no partial deltas.
+
+Accepted comparisons report paired candidate-minus-reference Brier/log-loss
+deltas, lower/tied/higher loss counts, sample dispersion and standard error. A
+normal-approximation interval is withheld until at least 30 pairs and remains
+explicitly descriptive. `promotionAllowed` is always false and
+`superiorityConclusion` always null. Canonical identities prove integrity, not
+producer authenticity or real-world evidence correctness.
+
+Verification before this handover update: targeted evaluator/comparator tests
+30/30, full Node tests 132/132, quality gates 112/112, build 76 required files
+plus 44 architecture checks, and exact-base `git diff --check` passed. Re-run
+all checks on the final handover commit and require exact-head GitHub Actions.
+
+This does not prove representative season-out data, source/settlement
+correctness, calibration, CLV, drift, statistical significance, predictive
+superiority, profitability, model promotion, storage or production operation.
+It is a synthetic offline D1 milestone, not completion of D1 or issue #81.
