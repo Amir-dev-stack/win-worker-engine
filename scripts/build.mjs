@@ -61,7 +61,10 @@ const required = [
   "scripts/win-learning-core.test.mjs",
   "netlify/functions/learning-observatory.mts",
   "netlify/lib/learning-observatory.mts",
-  "scripts/quality-gates.mjs"
+  "scripts/quality-gates.mjs",
+  "netlify/lib/evidence-conflict-resolution.mts",
+  "scripts/evidence-conflict-resolution.test.mjs",
+  "docs/WIN_EVIDENCE_CONFLICT_RESOLUTION.md"
 ];
 
 for (const file of required) await access(file);
