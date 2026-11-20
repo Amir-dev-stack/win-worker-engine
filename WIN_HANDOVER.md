@@ -602,3 +602,39 @@ focused settlement tests 25/25, full Node tests 148/148, quality gates 117/117,
 build 81 required files plus 44 architecture checks, and exact-base
 `git diff --check` passed. Re-run on the final commit and require exact-head
 GitHub Actions before handoff.
+
+## Issue #81 D3 player total-goals checkpoint — 2026-11-20
+
+Branch `win-draft/d3-player-goal-total-settlement-20261120` is stacked on
+independently accepted draft PR #102 exact
+`587748275b3b48acfb0816188acd97e646d5b07f`. Implementation commit
+`d11dea181aa8f14046cb003d74505a468ab1114c` adds a separate pure
+regulation-time player total-goals helper without changing the score, corner
+or card settlement paths.
+
+The helper requires an allowlisted single-market label; matching bounded
+opaque event and player identities on the leg and evidence; final
+`regulation_time` scope; explicit `played` participation; the exact
+`official_regulation_player_goal_count` basis; a bounded safe-integer goal
+count; a whole/half numeric line; and exact agreeing over/under selection
+evidence. Every settlement-critical field must be an own property.
+
+Did-not-play and unused-substitute cases remain unsupported because void rules
+are not universal. Team scores, player names, goal events, scorer lists,
+provider labels, team/period/extra-time/other-stat and compound markets,
+quarter/split lines, inherited fields and malformed or conflicting inputs
+cannot settle. The score-only result path remains unable to settle player
+props.
+
+Pre-handover verification: focused settlement tests 28/28, full Node tests
+151/151, quality gates 118/118, build 82 required files plus 44 architecture
+checks, and exact-base `git diff --check` passed. Re-run the full matrix on the
+final handover commit and require exact-head GitHub Actions before reporting
+completion.
+
+This synthetic typed-input boundary authenticates no event, identity,
+participation record, statistic, provider or bookmaker rule. It does not prove
+live compatibility, real-match player-goal accuracy, historical coverage,
+settlement accuracy, void-rule compatibility, profitability, deployment or
+production readiness, and does not complete D3 or issue #81. No provider,
+paid API, production/database, coupon, betting or financial action occurred.
