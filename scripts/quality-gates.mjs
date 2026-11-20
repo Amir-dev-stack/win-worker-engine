@@ -31,6 +31,8 @@ const postMatchCheckApi = await read("netlify/functions/post-match-check.mts");
 const postMatchRunner = await read("netlify/functions/post-match-runner.mts");
 const learningObservatory = await read("netlify/lib/learning-observatory.mts");
 const winLearningCore = await read("netlify/lib/win-learning-core.mjs");
+const winLearningCoreTests = await read("scripts/win-learning-core.test.mjs");
+const footballSettlementDoc = await read("docs/WIN_FOOTBALL_MARKET_SETTLEMENT.md");
 const learningObservatoryFn = await read("netlify/functions/learning-observatory.mts");
 const learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts");
 const mcpApi = await read("netlify/functions/mcp.mts");
@@ -120,6 +122,19 @@ add("WIN audit consent accurately describes read-only research-run metadata", oa
 add("WIN audit MCP tools are read-only and limited to an explicit collection allowlist", mcpApi.includes("get_win_audit_overview") && mcpApi.includes("list_win_audit_records") && mcpApi.includes("get_win_audit_record") && mcpApi.includes("auditCollections") && mcpApi.includes('scope="win:audit win:read win:research"') && mcpApi.includes("if (!scopes.includes(\"win:audit\"))") && !mcpApi.includes("put(auditCollections") && !mcpApi.includes("remove(auditCollections"), "Audit tokens can inspect observatory and approved WIN data collections but cannot mutate storage or invoke research tools.");
 
 add("WIN settlement and lesson trust rules are shared across live paths and covered by isolated unit tests", winLearningCore.includes("evaluateFullTimeLeg") && winLearningCore.includes("aggregateCouponOutcome") && winLearningCore.includes("deriveReviewedCouponOutcome") && winLearningCore.includes("isEligibleWinForecastCoupon") && winLearningCore.includes("isIndependentlyValidatedLesson") && postMatch.includes("evaluateFullTimeLeg as evaluateLeg") && postMatch.includes("isEligibleWinForecastCoupon") && independentReview.includes("deriveReviewedCouponOutcome as deriveCouponOutcome") && library.includes("isIndependentlyValidatedLesson") && learningObservatory.includes("isIndependentlyValidatedLesson as validatedLesson") && pkg.includes("--experimental-strip-types --test scripts/*.test.mjs") && (await read("scripts/win-learning-core.test.mjs")).includes("Fixtures are pure in-memory values"), "Both result checking and independent review use the tested pure core; unit fixtures cannot write to production storage or call public APIs.");
+
+add("Football DNB and Double Chance settlement is regulation-only and fail-closed",
+  winLearningCore.includes("Draw No Bet is void on a regulation full-time draw") &&
+  winLearningCore.includes("parseDoubleChanceSelection") &&
+  winLearningCore.includes("could not be mapped unambiguously to one match side") &&
+  winLearningCoreTests.includes("Draw No Bet settles one match side") &&
+  winLearningCoreTests.includes("Double Chance settles only exact 1X, X2 and 12 combinations") &&
+  winLearningCoreTests.includes("full-time 1X2 rejects compound and contradictory selections") &&
+  winLearningCoreTests.includes("Home win or Draw") &&
+  winLearningCoreTests.includes("reject ambiguous or non-regulation inputs") &&
+  footballSettlementDoc.includes("90-minute regulation full-time result") &&
+  footballSettlementDoc.includes("does not prove live-provider compatibility"),
+  "DNB draw pushes and exact 1X/X2/12 results are deterministic; ambiguous wording, period/extra-time markets and provider-specific rules remain unsupported.");
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&
