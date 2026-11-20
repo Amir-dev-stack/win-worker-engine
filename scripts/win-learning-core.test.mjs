@@ -16,6 +16,7 @@ test("full-time 1X2 settles home, draw and away selections", () => {
   assert.equal(evaluateFullTimeLeg({ ...base, pick: "1" }, { home: 2, away: 0 }).status, "won");
   assert.equal(evaluateFullTimeLeg({ ...base, pick: "X" }, { home: 1, away: 1 }).status, "won");
   assert.equal(evaluateFullTimeLeg({ ...base, pick: "2" }, { home: 0, away: 1 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home win" }, { home: 2, away: 0 }).status, "won");
   assert.equal(evaluateFullTimeLeg({ ...base, pick: "Alpha FC" }, { home: 0, away: 2 }).status, "lost");
 });
 
@@ -32,6 +33,39 @@ test("BTTS yes and no settle from the full-time score", () => {
   assert.equal(evaluateFullTimeLeg({ market: "BTTS", pick: "Yes" }, { home: 1, away: 0 }).status, "lost");
 });
 
+test("Draw No Bet settles one match side and voids a regulation draw", () => {
+  const base = { market: "Draw No Bet", homeTeam: "Alpha United", awayTeam: "Beta United" };
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home" }, { home: 2, away: 0 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "1" }, { home: 0, away: 2 }).status, "lost");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Beta United" }, { home: 0, away: 2 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Away" }, { home: 1, away: 1 }).status, "void");
+  assert.equal(evaluateFullTimeLeg({ ...base, market: "Zakład bez remisu", pick: "Gospodarze" }, { home: 3, away: 1 }).status, "won");
+});
+
+test("Double Chance settles only exact 1X, X2 and 12 combinations", () => {
+  const market = "Double Chance 1X2";
+  assert.equal(evaluateFullTimeLeg({ market, pick: "1X" }, { home: 2, away: 0 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ market, pick: "X 1" }, { home: 1, away: 1 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ market, pick: "Home or Draw" }, { home: 0, away: 1 }).status, "lost");
+  assert.equal(evaluateFullTimeLeg({ market, pick: "X2" }, { home: 1, away: 1 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ market, pick: "Away or Draw" }, { home: 2, away: 0 }).status, "lost");
+  assert.equal(evaluateFullTimeLeg({ market, pick: "12" }, { home: 0, away: 1 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ market, pick: "Home or Away" }, { home: 0, away: 0 }).status, "lost");
+  assert.equal(evaluateFullTimeLeg({ market: "Podwójna szansa", pick: "Remis lub 2" }, { home: 1, away: 2 }).status, "won");
+});
+
+test("Draw No Bet and Double Chance reject ambiguous or non-regulation inputs", () => {
+  const teams = { homeTeam: "Alpha United", awayTeam: "Beta United" };
+  assert.equal(evaluateFullTimeLeg({ ...teams, market: "Draw No Bet", pick: "Draw" }, { home: 1, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ ...teams, market: "Draw No Bet", pick: "Alpha United or Beta United" }, { home: 1, away: 0 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Double Chance", pick: "1X2" }, { home: 1, away: 0 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Double Chance", pick: "Home or maybe Draw" }, { home: 1, away: 0 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Double Chance and BTTS", pick: "1X and Yes" }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Corners Draw No Bet", pick: "Home" }, { home: 1, away: 0 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "First Half Draw No Bet", pick: "Home" }, { home: 1, away: 0 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ market: "Extra Time Double Chance", pick: "1X" }, { home: 1, away: 0 }).status, "unsupported_market");
+});
+
 test("period markets, ambiguous picks, unsupported markets and invalid scores fail closed", () => {
   assert.equal(evaluateFullTimeLeg({ market: "1st Half - Over 0.5 Goals", pick: "Over 0.5" }, { home: 1, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "2nd Half - Over 0.5 Goals", pick: "Over 0.5" }, { home: 1, away: 0 }).status, "unsupported_market");
@@ -44,7 +78,6 @@ test("period markets, ambiguous picks, unsupported markets and invalid scores fa
   assert.equal(evaluateFullTimeLeg({ market: "Total Cards Over 4.5", pick: "Over 4.5" }, { home: 1, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "Player Total Goals Over 0.5", pick: "Over 0.5" }, { home: 1, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "Handicap 1X2 (1:0)", pick: "2" }, { home: 2, away: 0 }).status, "unsupported_market");
-  assert.equal(evaluateFullTimeLeg({ market: "Double Chance 1X2", pick: "1X" }, { home: 2, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "Asian Handicap -0.5", pick: "Home" }, { home: 2, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "Full Time Result 1X2", pick: "1" }, { home: -1, away: 0 }).status, "unsupported_market");
 });

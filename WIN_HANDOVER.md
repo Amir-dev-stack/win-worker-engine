@@ -384,3 +384,32 @@ This does not prove representative season-out data, source/settlement
 correctness, calibration, CLV, drift, statistical significance, predictive
 superiority, profitability, model promotion, storage or production operation.
 It is a synthetic offline D1 milestone, not completion of D1 or issue #81.
+
+## Issue #81 D3 football settlement checkpoint — 2026-11-20
+
+Branch `win-draft/d3-football-dnb-double-chance-20261120` is stacked on draft
+PR #97 exact `547ef076a60dc8cc88ae97f46732609bb3bfa0dd`.
+
+The existing pure full-time result adapter now evaluates conservative football
+Draw No Bet and Double Chance inputs. DNB maps exactly one home/away selection,
+returns `void` on a regulation draw, and rejects draw or conflicting selections.
+Double Chance accepts only exact 1X, X2, or 12 combinations (including bounded
+documented English/Polish labels). Ambiguous wording fails closed.
+
+The pre-existing period guard continues to reject half/period, extra-time,
+overtime, and shootout inputs before settlement. Asian handicaps, spreads,
+quarter lines, cards, corners, player props, abandonment/postponement and
+bookmaker-specific conventions remain unsupported. The adapter fetches no
+results or odds, calls no paid API, writes no production data and places no bet.
+
+Verification before this handover update: targeted settlement tests 12/12,
+full Node tests 135/135, quality gates 113/113, build 77 required files plus 44
+architecture checks, and exact-base `git diff --check` passed. Re-run these on
+the final handover commit and require exact-head GitHub Actions as remote
+evidence.
+
+This is a synthetic offline mapping improvement. It does not establish event or
+score provenance, independently verify evidence, prove compatibility with a
+live provider, or demonstrate historical coverage, settlement accuracy,
+profitability, deployment or production readiness. It is not completion of D3
+or issue #81.
