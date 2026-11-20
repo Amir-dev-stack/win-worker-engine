@@ -485,8 +485,10 @@ storage write, coupon construction or betting action.
 
 Local verification: targeted settlement tests 18/18, full Node tests 141/141,
 quality gates 115/115, build 79 required files plus 44 architecture checks,
-and exact-base `git diff --check` passed. Exact-head GitHub Actions remains
-pending until the draft branch is pushed.
+and exact-base `git diff --check` passed. GitHub Actions run `44758594377`,
+job `136364823073`, succeeded for implementation commit
+`58ba76a7b025beb9851f5d2109220546d48f8627`; exact-head CI will be reported
+after this handover-only evidence update.
 
 This synthetic arithmetic does not prove score provenance, provider rules,
 historical coverage, settlement accuracy, profitability or production
