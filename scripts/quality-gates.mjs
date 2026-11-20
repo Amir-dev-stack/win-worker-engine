@@ -42,6 +42,9 @@ const snapshotEnvelopeDoc = await read("docs/WIN_EVIDENCE_SNAPSHOT_ENVELOPE.md")
 const predictionLedger = await read("netlify/lib/prediction-ledger-envelope.mts");
 const predictionLedgerTests = await read("scripts/prediction-ledger-envelope.test.mjs");
 const predictionLedgerDoc = await read("docs/WIN_PREDICTION_LEDGER_ENVELOPE.md");
+const teamStrength = await read("netlify/lib/team-strength-snapshot.mts");
+const teamStrengthTests = await read("scripts/team-strength-snapshot.test.mjs");
+const teamStrengthDoc = await read("docs/WIN_TEAM_STRENGTH_SNAPSHOT.md");
 add("WIN exposes a dedicated read-only audit scope through OAuth", oauthStore.includes('"win:audit"') && oauthAuthorize.includes("Read-only WIN diagnostics") && mcpApi.includes('securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]'), "The user can authorize diagnostics separately from research permissions.");
 add("Evidence snapshot envelopes are immutable, bounded and disconnected",
   snapshotEnvelope.includes('win.evidence-snapshot.v1') &&
@@ -64,6 +67,18 @@ add("Prediction ledger envelopes enforce a deterministic point-in-time boundary"
   predictionLedgerTests.includes("must-not-echo") &&
   predictionLedgerDoc.includes("not a database, append-only storage implementation"),
   "Content-addressed predictions bind model, market, price and feature availability to a pre-event cutoff; independently verified outcomes must match the exact prediction and settlement rule.");
+add("Team strength snapshots are season-bounded, conflict-aware and non-predictive",
+  teamStrength.includes('win.team-strength.v1') &&
+  teamStrength.includes("CONFLICTING_EVENT_RESULT") &&
+  teamStrength.includes("Date.parse(row.eventTime) >= seasonStartMs") &&
+  teamStrength.includes("descriptive_ppg_plus_half_schedule_delta_v1") &&
+  teamStrength.includes("predictiveConfidence: null") &&
+  teamStrength.includes('trustStatus: "conflicted_replay"') &&
+  teamStrength.includes("usableForStatus: false") &&
+  teamStrengthTests.includes("assert.deepEqual(forward, reverse)") &&
+  teamStrengthTests.includes("full-season aggregates enforce the explicit season boundary") &&
+  teamStrengthDoc.includes("not fitted or calibrated"),
+  "Validated final-result envelopes produce transparent full-season, home/away, recent and opponent-context summaries; conflicts, missing samples and lineup uncertainty remain explicit and cannot become probabilities.");
 add("OAuth authorization requires explicit least-privilege scopes", oauthAuthorize.includes("const requested = value.trim() ? value.trim().split") && oauthAuthorize.includes(": [];") && oauthAuthorize.includes("!requested.length"), "An omitted scope is rejected instead of silently granting every supported permission.");
 add("WIN audit consent accurately describes read-only research-run metadata", oauthAuthorize.includes("read-only research-run records") && oauthAuthorize.includes("Cannot start research") && mcpApi.includes("read-only research-run metadata"), "The audit scope may read run metadata but cannot start research or mutate data.");
 add("WIN audit MCP tools are read-only and limited to an explicit collection allowlist", mcpApi.includes("get_win_audit_overview") && mcpApi.includes("list_win_audit_records") && mcpApi.includes("get_win_audit_record") && mcpApi.includes("auditCollections") && mcpApi.includes('scope="win:audit win:read win:research"') && mcpApi.includes("if (!scopes.includes(\"win:audit\"))") && !mcpApi.includes("put(auditCollections") && !mcpApi.includes("remove(auditCollections"), "Audit tokens can inspect observatory and approved WIN data collections but cannot mutate storage or invoke research tools.");

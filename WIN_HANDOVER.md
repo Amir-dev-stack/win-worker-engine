@@ -239,3 +239,51 @@ and prior order, and unaffected clean evidence. Updated verification before the
 handover commit is targeted 16/16, full Node 84/84, quality gates 109/109 and
 build 67 required files plus 44 architecture checks. This remains an in-memory
 offline boundary; it does not prove durable storage or cross-process history.
+
+## Issue #81 C3 team-strength checkpoint — 2026-11-20
+
+Branch `win-draft/c3-team-strength-snapshot-20261120` is stacked on accepted-for-
+draft PR #94 exact `c1769e0aef86c9ff490ed43fc2045f9af494ac39`.
+Implementation commit `473bdf3` adds a disconnected point-in-time team-strength
+snapshot that consumes C2 final-result envelopes.
+
+The snapshot requires an explicit sport, competition, season ID, season start,
+as-of instant, two team IDs, evidence caps, result freshness, minimum sample and
+recent-window policy. It reports full-season W/D/L, points/game, goals,
+home/away splits, bounded recent form and a transparent opponent-quality
+context. The fixed schedule adjustment is descriptive and uncalibrated;
+`predictiveConfidence` is always null.
+
+Canonical events with contradictory identity or final scores are fully
+quarantined. Agreeing provider results add provenance without increasing match
+count. Future, stale, pre-season and out-of-scope results are excluded through
+the C2 envelope validator plus the explicit season boundary. Availability
+evidence is separately capped and timestamped; invalid, future or changed
+replays cannot establish squad status. Missing availability is never treated as
+a healthy squad and availability never silently changes strength.
+
+Verified before this handover update: targeted C3 tests 15/15, full Node tests
+99/99, quality gates 110/110, build 70 required files plus 44 architecture
+checks, and `git diff --check` passed. Re-run on the final handover head and use
+exact-head GitHub Actions for remote evidence.
+
+This does not prove complete seasons, current injuries or real lineups,
+tactical strength, cross-league comparability, calibration, prediction accuracy,
+profitability, storage or production operation. No provider or live service is
+connected by this checkpoint.
+
+PR #95 review hardening commit `c3d87bb` makes availability trust fail closed at
+the team level. Any changed replay makes the status `conflicted`, even when a
+newer clean lineup exists. That clean record may remain visible only as
+`latestUnconflictedEvidence` with `usableForStatus: false`; `latestEvidence`
+remains null. A future or otherwise invalid version sharing a valid evidence ID
+taints the ID as a replay conflict. Unrelated invalid evidence degrades an
+otherwise clean record to `uncertain`, never `confirmed`. `trustStatus` exposes
+the reason directly so consumers do not infer trust from an evidence object.
+
+New input-order-invariant tests cover a conflicted ID plus a newer clean
+confirmed lineup, a valid record plus a future version of the same ID, and a
+clean record plus unrelated invalid evidence. Updated verification before the
+handover commit is targeted 18/18, full Node 102/102, quality gates 110/110 and
+build 70 required files plus 44 architecture checks. The evidence remains
+synthetic and disconnected.
