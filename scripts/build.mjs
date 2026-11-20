@@ -64,7 +64,10 @@ const required = [
   "scripts/quality-gates.mjs",
   "netlify/lib/evidence-snapshot-envelope.mts",
   "scripts/evidence-snapshot-envelope.test.mjs",
-  "docs/WIN_EVIDENCE_SNAPSHOT_ENVELOPE.md"
+  "docs/WIN_EVIDENCE_SNAPSHOT_ENVELOPE.md",
+  "netlify/lib/prediction-ledger-envelope.mts",
+  "scripts/prediction-ledger-envelope.test.mjs",
+  "docs/WIN_PREDICTION_LEDGER_ENVELOPE.md"
 ];
 
 for (const file of required) await access(file);
