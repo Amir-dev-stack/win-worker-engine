@@ -324,3 +324,26 @@ This does not prove real-season coverage, source correctness, settlement
 accuracy, closing prices, calibrated probabilities, CLV, drift, accuracy,
 profitability, model promotion, durable storage or production operation. It is
 a synthetic offline D1 milestone, not completion of D1 or issue #81.
+
+PR #96 review hardening commit `8ee6c81` closes the rejected-outcome trust gap
+reported by independent review. Rejected outcome-shaped records are inspected
+only for a recoverable, hash-shaped prediction reference. When present, the
+referenced accepted prediction is quarantined with
+`REJECTED_OUTCOME_EVIDENCE`, even if another accepted outcome would otherwise
+support scoring. Two changed outcome versions sharing a ledger key therefore
+cannot be hidden behind a third clean verifier record.
+
+Malformed outcome evidence with a recoverable prediction reference has the
+same fail-closed effect. If a rejected outcome-shaped record has no trustworthy
+prediction reference, the evaluator does not guess or echo it; `batchTrust`
+becomes `degraded_unlinked_rejected_outcome` and reports only a count.
+Independent clean predictions remain separately scoreable while the report's
+degraded trust is explicit.
+
+New order-invariant adversarial tests cover two conflicting same-key outcomes
+plus a separate accepted outcome, an unaffected clean prediction, a malformed
+outcome with a recoverable prediction reference, and an unlinked rejected
+outcome with private payload. Updated verification before the handover commit
+is targeted 16/16, full Node 118/118, quality gates 111/111 and build 73
+required files plus 44 architecture checks. This remains synthetic,
+disconnected and draft-only.
