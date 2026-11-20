@@ -45,6 +45,9 @@ const predictionLedgerDoc = await read("docs/WIN_PREDICTION_LEDGER_ENVELOPE.md")
 const teamStrength = await read("netlify/lib/team-strength-snapshot.mts");
 const teamStrengthTests = await read("scripts/team-strength-snapshot.test.mjs");
 const teamStrengthDoc = await read("docs/WIN_TEAM_STRENGTH_SNAPSHOT.md");
+const walkForward = await read("netlify/lib/walk-forward-evaluation.mts");
+const walkForwardTests = await read("scripts/walk-forward-evaluation.test.mjs");
+const walkForwardDoc = await read("docs/WIN_WALK_FORWARD_EVALUATION.md");
 add("WIN exposes a dedicated read-only audit scope through OAuth", oauthStore.includes('"win:audit"') && oauthAuthorize.includes("Read-only WIN diagnostics") && mcpApi.includes('securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]'), "The user can authorize diagnostics separately from research permissions.");
 add("Evidence snapshot envelopes are immutable, bounded and disconnected",
   snapshotEnvelope.includes('win.evidence-snapshot.v1') &&
@@ -79,6 +82,18 @@ add("Team strength snapshots are season-bounded, conflict-aware and non-predicti
   teamStrengthTests.includes("full-season aggregates enforce the explicit season boundary") &&
   teamStrengthDoc.includes("not fitted or calibrated"),
   "Validated final-result envelopes produce transparent full-season, home/away, recent and opponent-context summaries; conflicts, missing samples and lineup uncertainty remain explicit and cannot become probabilities.");
+add("Walk-forward evaluation is point-in-time, cohort-isolated and conclusion-cautious",
+  walkForward.includes('win.walk-forward-evaluation.v1') &&
+  walkForward.includes("MODEL_TRAINING_LEAKAGE") &&
+  walkForward.includes("trainingCutoffMs + options.embargoMilliseconds > evaluationStartMs") &&
+  walkForward.includes("CONFLICTING_OUTCOME") &&
+  walkForward.includes("taintedPredictionIds") &&
+  walkForward.includes('closingLineValue: { status: "unavailable"') &&
+  walkForward.includes("calibrationConclusion: null") &&
+  walkForwardTests.includes("assert.deepEqual(forward, reverse)") &&
+  walkForwardTests.includes("malformed replay reuses its record identity") &&
+  walkForwardDoc.includes("never declares a model calibrated, accurate, profitable or better"),
+  "Validated prediction/outcome entries produce bounded fold and exact-cohort Brier, log-loss and ECE evidence without laundering conflicts, leaking future outcomes or claiming model quality.");
 add("OAuth authorization requires explicit least-privilege scopes", oauthAuthorize.includes("const requested = value.trim() ? value.trim().split") && oauthAuthorize.includes(": [];") && oauthAuthorize.includes("!requested.length"), "An omitted scope is rejected instead of silently granting every supported permission.");
 add("WIN audit consent accurately describes read-only research-run metadata", oauthAuthorize.includes("read-only research-run records") && oauthAuthorize.includes("Cannot start research") && mcpApi.includes("read-only research-run metadata"), "The audit scope may read run metadata but cannot start research or mutate data.");
 add("WIN audit MCP tools are read-only and limited to an explicit collection allowlist", mcpApi.includes("get_win_audit_overview") && mcpApi.includes("list_win_audit_records") && mcpApi.includes("get_win_audit_record") && mcpApi.includes("auditCollections") && mcpApi.includes('scope="win:audit win:read win:research"') && mcpApi.includes("if (!scopes.includes(\"win:audit\"))") && !mcpApi.includes("put(auditCollections") && !mcpApi.includes("remove(auditCollections"), "Audit tokens can inspect observatory and approved WIN data collections but cannot mutate storage or invoke research tools.");
