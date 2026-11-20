@@ -529,8 +529,10 @@ coupon construction or betting action.
 
 Local verification: targeted settlement tests 20/20, full Node tests 143/143,
 quality gates 116/116, build 80 required files plus 44 architecture checks,
-and exact-base `git diff --check` passed. Exact-head GitHub Actions remains
-pending until the draft branch is pushed.
+and exact-base `git diff --check` passed. GitHub Actions run `44778087900`,
+job `136433177330`, succeeded for implementation commit
+`2b36214daac85f59e8c17782d6d70f507317d49f`; exact-head CI will be reported
+after this handover-only evidence update.
 
 Synthetic fixtures do not prove event/statistic provenance, bookmaker rules,
 live-provider compatibility, historical coverage, settlement accuracy,
