@@ -70,9 +70,9 @@ function parseSelectedSideHandicap(rawPick, explicitLine) {
 
 /** Pure regulation-score settlement for a selected-side Asian handicap line. */
 export function evaluateAsianHandicapLeg(leg, score) {
-  const home = Number(score?.home), away = Number(score?.away);
-  if (!Number.isFinite(home) || !Number.isFinite(away) || home < 0 || away < 0) {
-    return { status: "unsupported_market", reason: "A valid non-negative regulation full-time score is required." };
+  const home = score?.home, away = score?.away;
+  if (typeof home !== "number" || typeof away !== "number" || !Number.isSafeInteger(home) || !Number.isSafeInteger(away) || home < 0 || away < 0) {
+    return { status: "unsupported_market", reason: "Non-negative integer number fields are required for the regulation full-time score." };
   }
   const rawPick = clean(leg?.pick || leg?.selection, 180);
   const parsed = parseSelectedSideHandicap(rawPick, leg?.line);

@@ -96,6 +96,26 @@ test("Asian handicap settles explicit whole and half selected-side lines", () =>
   assert.equal(named.line, 0.5);
   assert.equal(named.settlementRule, "asian_handicap_whole_or_half_selected_side_v1");
   assert.equal(evaluateFullTimeLeg({ market: base.market, homeTeam: "Brighton and Hove Albion", awayTeam: "Leeds United", pick: "Brighton and Hove Albion -0.5" }, { home: 2, away: 1 }).status, "won");
+  assert.equal(evaluateAsianHandicapLeg({ ...base, pick: "Home", line: 0 }, { home: 0, away: 0 }).status, "void");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home", line: 0 }, { home: 0, away: 0 }).status, "void");
+});
+
+test("Asian handicap requires strict non-negative integer score fields", () => {
+  const leg = { market: "Asian Handicap", homeTeam: "Alpha United", awayTeam: "Beta United", pick: "Home", line: -0.5 };
+  const invalidScores = [
+    {},
+    { home: null, away: 1 },
+    { home: "", away: 1 },
+    { home: "0", away: 1 },
+    { home: 0.5, away: 1 },
+    { home: 0, away: -1 },
+    { home: Number.NaN, away: 1 },
+    { home: Number.POSITIVE_INFINITY, away: 1 }
+  ];
+  for (const score of invalidScores) {
+    assert.equal(evaluateAsianHandicapLeg(leg, score).status, "unsupported_market", JSON.stringify(score));
+    assert.equal(evaluateFullTimeLeg(leg, score).status, "unsupported_market", JSON.stringify(score));
+  }
 });
 
 test("Asian handicap rejects split, ambiguous, compound and period-specific inputs", () => {

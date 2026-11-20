@@ -139,12 +139,15 @@ add("Football DNB and Double Chance settlement is regulation-only and fail-close
 
 add("Football Asian handicap settlement is shared, selected-side explicit and split-line safe",
   winLearningCore.includes("evaluateAsianHandicapLeg") &&
+  winLearningCore.includes('typeof home !== "number" || typeof away !== "number"') &&
+  winLearningCore.includes("!Number.isSafeInteger(home) || !Number.isSafeInteger(away)") &&
   winLearningCore.includes("asian_handicap_whole_or_half_selected_side_v1") &&
   settlementBridge.includes('import { evaluateAsianHandicapLeg } from "./win-learning-core.mjs"') &&
   settlementBridge.includes("if(/asian_handicap|asian_spread/.test(market)") &&
   settlementBridge.includes('if(!side||side==="draw")return null') &&
   settlementBridge.includes("evaluateAsianHandicapLeg({pick:side") &&
   winLearningCoreTests.includes("Asian handicap settles explicit whole and half selected-side lines") &&
+  winLearningCoreTests.includes("Asian handicap requires strict non-negative integer score fields") &&
   winLearningCoreTests.includes("rejects split, ambiguous, compound and period-specific inputs") &&
   asianHandicapDoc.includes("cannot represent safely") &&
   asianHandicapDoc.includes("does not prove live-provider compatibility"),

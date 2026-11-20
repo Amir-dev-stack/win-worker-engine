@@ -4,6 +4,10 @@ This draft reconciles the existing observed-market Asian handicap calculation
 with WIN's shared pure result adapter. Both paths use one deterministic helper
 for a selected football side and a regulation full-time score.
 
+The score fields must be present as non-negative safe-integer JavaScript
+numbers. Missing, null, blank, fractional, negative, nonfinite, malformed, or
+digit-string values fail closed; the helper never coerces them to goals.
+
 ## Supported rule
 
 - The line is attached to the selected side, not inferred from a provider's

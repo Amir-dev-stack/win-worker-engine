@@ -452,3 +452,16 @@ final handover commit and require exact-head GitHub Actions.
 This synthetic offline settlement slice does not prove score provenance,
 bookmaker compatibility, historical coverage, settlement accuracy,
 profitability, deployment or production readiness, and does not complete D3.
+
+Independent review of PR #99 identified unsafe score coercion in the newly
+exported helper: null, blank and fractional score fields could be converted and
+settled. The hardening update requires present non-negative safe-integer number
+fields and explicitly rejects digit strings, missing/null/blank, fractional,
+negative, nonfinite and malformed values through both the direct helper and the
+shared full-time entry point. Valid zero-zero, nonzero whole/half-line
+win/loss/void behavior remains covered. Final exact-head evidence must be
+reported after the hardening commit.
+
+Verification before the hardening handover commit: targeted settlement tests
+16/16, full Node tests 139/139, quality gates 114/114, build 78 required files
+plus 44 architecture checks, and exact-base `git diff --check` passed.
