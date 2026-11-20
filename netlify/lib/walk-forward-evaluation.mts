@@ -195,8 +195,11 @@ function cohortKey(prediction: PredictionLedgerEntry) {
     prediction.market.marketVersion,
     prediction.market.settlementRuleId,
     prediction.market.selectionId,
+    prediction.producerId,
+    prediction.sourceCodeHash,
     prediction.model.modelId,
-    prediction.model.modelVersion
+    prediction.model.modelVersion,
+    prediction.model.artifactHash
   ].join("|");
 }
 
@@ -208,9 +211,37 @@ function cohortIdentity(prediction: PredictionLedgerEntry) {
     marketVersion: prediction.market.marketVersion,
     settlementRuleId: prediction.market.settlementRuleId,
     selectionId: prediction.market.selectionId,
+    producerId: prediction.producerId,
+    sourceCodeHash: prediction.sourceCodeHash,
     modelId: prediction.model.modelId,
-    modelVersion: prediction.model.modelVersion
+    modelVersion: prediction.model.modelVersion,
+    artifactHash: prediction.model.artifactHash
   };
+}
+
+function comparisonUnits(rows: readonly ScoredObservation[]) {
+  return rows.map(row => {
+    const unitId = sha256({
+      schemaVersion: "win.evaluation-unit.v1",
+      foldId: row.foldId,
+      eventId: row.prediction.eventId,
+      eventTime: row.prediction.eventTime,
+      sportId: row.prediction.sportId,
+      competitionId: row.prediction.competitionId,
+      marketId: row.prediction.market.marketId,
+      marketVersion: row.prediction.market.marketVersion,
+      settlementRuleId: row.prediction.market.settlementRuleId,
+      selectionId: row.prediction.market.selectionId,
+      target: row.target
+    });
+    const probability = row.prediction.probability;
+    return {
+      unitId,
+      foldId: row.foldId,
+      brierLoss: rounded((probability - row.target) ** 2),
+      logLoss: rounded(-(row.target * Math.log(probability) + (1 - row.target) * Math.log(1 - probability)))
+    };
+  }).sort((left, right) => left.unitId.localeCompare(right.unitId));
 }
 
 export function evaluateWalkForwardLedger(inputs: unknown, options: WalkForwardEvaluationOptions) {
@@ -320,13 +351,18 @@ export function evaluateWalkForwardLedger(inputs: unknown, options: WalkForwardE
 
   const cohortRows = new Map<string, ScoredObservation[]>();
   for (const observation of observations) cohortRows.set(cohortKey(observation.prediction), [...(cohortRows.get(cohortKey(observation.prediction)) ?? []), observation]);
-  const cohorts = [...cohortRows.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([key, rows]) => ({
-    cohortId: sha256({ schemaVersion: SCHEMA_VERSION, key }),
-    identity: cohortIdentity(rows[0].prediction),
-    foldIds: [...new Set(rows.map(row => row.foldId))].sort(),
-    outcomeEvidenceCount: rows.reduce((total, row) => total + row.outcomeEvidenceCount, 0),
-    ...metrics(rows, policy.calibrationBins, policy.minimumScoredSamples)
-  }));
+  const cohorts = [...cohortRows.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([key, rows]) => {
+    const units = comparisonUnits(rows);
+    return {
+      cohortId: sha256({ schemaVersion: SCHEMA_VERSION, key }),
+      identity: cohortIdentity(rows[0].prediction),
+      foldIds: [...new Set(rows.map(row => row.foldId))].sort(),
+      outcomeEvidenceCount: rows.reduce((total, row) => total + row.outcomeEvidenceCount, 0),
+      sampleSetId: sha256({ schemaVersion: "win.evaluation-sample-set.v1", unitIds: units.map(unit => unit.unitId) }),
+      comparisonUnits: units,
+      ...metrics(rows, policy.calibrationBins, policy.minimumScoredSamples)
+    };
+  });
 
   const normalizedExcluded = [...new Map(excluded.map(item => [`${item.scope}|${item.recordId}|${item.diagnostics.join("|")}`, item])).values()]
     .sort((left, right) => left.recordId.localeCompare(right.recordId) || left.scope.localeCompare(right.scope) || left.diagnostics.join("|").localeCompare(right.diagnostics.join("|")));
