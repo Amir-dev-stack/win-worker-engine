@@ -36,7 +36,18 @@ const learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts"
 const mcpApi = await read("netlify/functions/mcp.mts");
 const oauthStore = await read("netlify/lib/oauth-store.mts");
 const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
+const evidenceConflictResolver = await read("netlify/lib/evidence-conflict-resolution.mts");
+const evidenceConflictTests = await read("scripts/evidence-conflict-resolution.test.mjs");
+const evidenceConflictDoc = await read("docs/WIN_EVIDENCE_CONFLICT_RESOLUTION.md");
 add("WIN exposes a dedicated read-only audit scope through OAuth", oauthStore.includes('"win:audit"') && oauthAuthorize.includes("Read-only WIN diagnostics") && mcpApi.includes('securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]'), "The user can authorize diagnostics separately from research permissions.");
+add("Offline evidence conflicts fail closed with deterministic provenance",
+  evidenceConflictResolver.includes("conflicts_remain_unresolved_priority_is_advisory") &&
+  evidenceConflictResolver.includes("CANDIDATE_NOT_EVIDENCE") &&
+  evidenceConflictResolver.includes("AMBIGUOUS_IDENTITY") &&
+  evidenceConflictResolver.includes("CONFLICTING_SETTLEMENT") &&
+  evidenceConflictTests.includes("resolution output is invariant to input ordering") &&
+  evidenceConflictDoc.includes("does not fetch, ingest, store, schedule or activate any provider"),
+  "Synthetic multi-source observations retain provider-scoped provenance; ambiguous identity, conflicting settlement, stale or unlicensed evidence cannot silently resolve.");
 add("OAuth authorization requires explicit least-privilege scopes", oauthAuthorize.includes("const requested = value.trim() ? value.trim().split") && oauthAuthorize.includes(": [];") && oauthAuthorize.includes("!requested.length"), "An omitted scope is rejected instead of silently granting every supported permission.");
 add("WIN audit consent accurately describes read-only research-run metadata", oauthAuthorize.includes("read-only research-run records") && oauthAuthorize.includes("Cannot start research") && mcpApi.includes("read-only research-run metadata"), "The audit scope may read run metadata but cannot start research or mutate data.");
 add("WIN audit MCP tools are read-only and limited to an explicit collection allowlist", mcpApi.includes("get_win_audit_overview") && mcpApi.includes("list_win_audit_records") && mcpApi.includes("get_win_audit_record") && mcpApi.includes("auditCollections") && mcpApi.includes('scope="win:audit win:read win:research"') && mcpApi.includes("if (!scopes.includes(\"win:audit\"))") && !mcpApi.includes("put(auditCollections") && !mcpApi.includes("remove(auditCollections"), "Audit tokens can inspect observatory and approved WIN data collections but cannot mutate storage or invoke research tools.");
