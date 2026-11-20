@@ -33,7 +33,12 @@ Availability evidence has a separate cap. Each record carries a stable evidence
 ID, source snapshot hash, observation and availability timestamps, evidence
 class, expected/confirmed starter counts and count-only absence/questionable
 fields. Future, malformed or impossible records are excluded. A changed replay
-of one evidence ID is conflicted and cannot become the latest evidence.
+of one evidence ID makes the entire team's availability status `conflicted`.
+An otherwise clean newer record can remain visible only as separately attributed
+`latestUnconflictedEvidence` with `usableForStatus: false`; it cannot restore a
+`confirmed` status while a replay conflict exists. An invalid or future version
+sharing a valid evidence ID taints that ID as a conflict. Unrelated invalid
+evidence degrades a clean record to `uncertain` instead of `confirmed`.
 No player name, diagnosis or inferred injury is created by this module.
 
 ## Descriptive outputs
@@ -46,6 +51,10 @@ For each requested team, the snapshot reports:
 - average opponent points per game and the competition average; and
 - availability status: `confirmed`, `uncertain`, `conflicted` or
   `not_provided`.
+
+Availability also exposes an explicit `trustStatus`. Consumers must use the
+team-level status/trust status, not infer trust from the presence of an
+attributed evidence object.
 
 The transparent schedule-context heuristic is:
 

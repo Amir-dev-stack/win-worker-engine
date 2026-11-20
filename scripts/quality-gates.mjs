@@ -73,6 +73,8 @@ add("Team strength snapshots are season-bounded, conflict-aware and non-predicti
   teamStrength.includes("Date.parse(row.eventTime) >= seasonStartMs") &&
   teamStrength.includes("descriptive_ppg_plus_half_schedule_delta_v1") &&
   teamStrength.includes("predictiveConfidence: null") &&
+  teamStrength.includes('trustStatus: "conflicted_replay"') &&
+  teamStrength.includes("usableForStatus: false") &&
   teamStrengthTests.includes("assert.deepEqual(forward, reverse)") &&
   teamStrengthTests.includes("full-season aggregates enforce the explicit season boundary") &&
   teamStrengthDoc.includes("not fitted or calibrated"),

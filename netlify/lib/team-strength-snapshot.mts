@@ -176,27 +176,25 @@ function resolveMatches(rows: SnapshotEnvelope[]) {
 function availabilityFor(teamId: string, evidence: TeamAvailabilityEvidence[], asOfMs: number) {
   const diagnostics = [] as Diagnostic[];
   const normalized = [] as Array<TeamAvailabilityEvidence & { contentId: string }>;
+  const invalidEvidenceIds = new Set<string>();
   for (const item of evidence.filter(row => row?.teamId === teamId)) {
     const observedMs = parseStrictIsoTimestamp(item?.observedAt);
     const availableMs = parseStrictIsoTimestamp(item?.availableAt);
     if (!safeId(item?.evidenceId) || !HASH.test(String(item?.sourceSnapshotId)) || observedMs === null || availableMs === null || observedMs > availableMs || availableMs > asOfMs || !["confirmed_lineup", "provisional", "availability_report"].includes(item?.status) || !Number.isSafeInteger(item?.expectedStartingSlots) || item.expectedStartingSlots < 1 || item.expectedStartingSlots > 50 || !Number.isSafeInteger(item?.confirmedStartingSlots) || item.confirmedStartingSlots < 0 || item.confirmedStartingSlots > item.expectedStartingSlots || !Number.isSafeInteger(item?.confirmedAbsences) || item.confirmedAbsences < 0 || item.confirmedAbsences > 50 || !Number.isSafeInteger(item?.questionablePlayers) || item.questionablePlayers < 0 || item.questionablePlayers > 50) {
       diagnostics.push("INVALID_AVAILABILITY");
+      if (safeId(item?.evidenceId)) invalidEvidenceIds.add(item.evidenceId);
       continue;
     }
     normalized.push({ ...item, contentId: sha256(item) });
   }
   const byEvidenceId = new Map<string, Array<TeamAvailabilityEvidence & { contentId: string }>>();
   for (const row of normalized) byEvidenceId.set(row.evidenceId, [...(byEvidenceId.get(row.evidenceId) ?? []), row]);
-  const conflicting = new Set([...byEvidenceId].filter(([, rows]) => new Set(rows.map(row => row.contentId)).size > 1).map(([id]) => id));
+  const conflicting = new Set([...byEvidenceId].filter(([id, rows]) => invalidEvidenceIds.has(id) || new Set(rows.map(row => row.contentId)).size > 1).map(([id]) => id));
   if (conflicting.size) diagnostics.push("AVAILABILITY_CONFLICT");
   const eligible = [...byEvidenceId].filter(([id]) => !conflicting.has(id)).map(([, rows]) => rows[0])
     .sort((left, right) => Date.parse(right.availableAt) - Date.parse(left.availableAt) || left.evidenceId.localeCompare(right.evidenceId));
   const latest = eligible[0];
-  if (!latest) return { status: conflicting.size ? "conflicted" : "not_provided", latestEvidence: null, diagnostics: [...new Set(diagnostics)].sort() };
-  const confirmed = latest.status === "confirmed_lineup" && latest.confirmedStartingSlots === latest.expectedStartingSlots;
-  return {
-    status: confirmed ? "confirmed" : "uncertain",
-    latestEvidence: {
+  const latestView = latest ? {
       evidenceId: latest.evidenceId,
       sourceSnapshotId: latest.sourceSnapshotId,
       observedAt: latest.observedAt,
@@ -206,9 +204,27 @@ function availabilityFor(teamId: string, evidence: TeamAvailabilityEvidence[], a
       confirmedStartingSlots: latest.confirmedStartingSlots,
       confirmedAbsences: latest.confirmedAbsences,
       questionablePlayers: latest.questionablePlayers
-    },
-    diagnostics: [...new Set(diagnostics)].sort()
+    } : null;
+  const sortedDiagnostics = [...new Set(diagnostics)].sort();
+  if (conflicting.size) return {
+    status: "conflicted",
+    trustStatus: "conflicted_replay",
+    latestEvidence: null,
+    latestUnconflictedEvidence: latestView ? { ...latestView, usableForStatus: false } : null,
+    conflictingEvidenceIds: [...conflicting].sort(),
+    diagnostics: sortedDiagnostics
   };
+  if (diagnostics.includes("INVALID_AVAILABILITY")) return {
+    status: latest ? "uncertain" : "not_provided",
+    trustStatus: "degraded_invalid_evidence",
+    latestEvidence: null,
+    latestUnconflictedEvidence: latestView ? { ...latestView, usableForStatus: false } : null,
+    conflictingEvidenceIds: [],
+    diagnostics: sortedDiagnostics
+  };
+  if (!latest) return { status: "not_provided", trustStatus: "not_provided", latestEvidence: null, latestUnconflictedEvidence: null, conflictingEvidenceIds: [], diagnostics: sortedDiagnostics };
+  const confirmed = latest.status === "confirmed_lineup" && latest.confirmedStartingSlots === latest.expectedStartingSlots;
+  return { status: confirmed ? "confirmed" : "uncertain", trustStatus: "trusted", latestEvidence: latestView, latestUnconflictedEvidence: null, conflictingEvidenceIds: [], diagnostics: sortedDiagnostics };
 }
 
 export function buildTeamStrengthSnapshot(resultInputs: unknown, options: TeamStrengthOptions) {

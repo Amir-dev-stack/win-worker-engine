@@ -175,6 +175,7 @@ test("invalid or future availability fails closed without inventing squad health
   const snapshot = buildTeamStrengthSnapshot(seasonResults(), { ...options, availabilityEvidence: [future, malformed] });
   const teamA = snapshot.teams.find(team => team.teamId === "team-a");
   assert.equal(teamA.availability.status, "not_provided");
+  assert.equal(teamA.availability.trustStatus, "degraded_invalid_evidence");
   assert.deepEqual(teamA.availability.latestEvidence, null);
   assert.ok(snapshot.diagnostics.includes("INVALID_AVAILABILITY"));
 });
@@ -186,7 +187,51 @@ test("changed availability replay is conflicted and not selected", () => {
   const reverse = buildTeamStrengthSnapshot([...seasonResults()].reverse(), { ...options, availabilityEvidence: [changed, original] });
   assert.deepEqual(forward, reverse);
   assert.equal(forward.teams.find(team => team.teamId === "team-a").availability.status, "conflicted");
+  assert.equal(forward.teams.find(team => team.teamId === "team-a").availability.trustStatus, "conflicted_replay");
   assert.ok(forward.diagnostics.includes("AVAILABILITY_CONFLICT"));
+});
+
+test("a newer clean lineup cannot override another conflicted evidence ID", () => {
+  const original = availability();
+  const changed = availability({ confirmedAbsences: 2 });
+  const newerClean = availability({ evidenceId: "availability-a-new", sourceSnapshotId: hash("c"), observedAt: "2026-11-20T17:00:00.000Z", availableAt: "2026-11-20T17:01:00.000Z" });
+  const forward = buildTeamStrengthSnapshot(seasonResults(), { ...options, availabilityEvidence: [original, changed, newerClean] });
+  const reverse = buildTeamStrengthSnapshot([...seasonResults()].reverse(), { ...options, availabilityEvidence: [newerClean, changed, original] });
+  assert.deepEqual(forward, reverse);
+  const availabilityResult = forward.teams.find(team => team.teamId === "team-a").availability;
+  assert.equal(availabilityResult.status, "conflicted");
+  assert.equal(availabilityResult.trustStatus, "conflicted_replay");
+  assert.equal(availabilityResult.latestEvidence, null);
+  assert.equal(availabilityResult.latestUnconflictedEvidence.evidenceId, "availability-a-new");
+  assert.equal(availabilityResult.latestUnconflictedEvidence.usableForStatus, false);
+  assert.deepEqual(availabilityResult.conflictingEvidenceIds, ["availability-a"]);
+});
+
+test("an invalid or future version sharing an evidence ID taints the valid version", () => {
+  const valid = availability();
+  const futureSameId = availability({ sourceSnapshotId: hash("d"), availableAt: "2026-11-21T00:00:00.000Z" });
+  const forward = buildTeamStrengthSnapshot(seasonResults(), { ...options, availabilityEvidence: [valid, futureSameId] });
+  const reverse = buildTeamStrengthSnapshot([...seasonResults()].reverse(), { ...options, availabilityEvidence: [futureSameId, valid] });
+  assert.deepEqual(forward, reverse);
+  const availabilityResult = forward.teams.find(team => team.teamId === "team-a").availability;
+  assert.equal(availabilityResult.status, "conflicted");
+  assert.equal(availabilityResult.trustStatus, "conflicted_replay");
+  assert.equal(availabilityResult.latestEvidence, null);
+  assert.deepEqual(availabilityResult.conflictingEvidenceIds, ["availability-a"]);
+  assert.ok(availabilityResult.diagnostics.includes("INVALID_AVAILABILITY"));
+  assert.ok(availabilityResult.diagnostics.includes("AVAILABILITY_CONFLICT"));
+});
+
+test("unrelated invalid evidence degrades a clean lineup and cannot present confirmed", () => {
+  const valid = availability();
+  const invalidOther = availability({ evidenceId: "availability-invalid", sourceSnapshotId: hash("e"), confirmedStartingSlots: 12 });
+  const snapshot = buildTeamStrengthSnapshot(seasonResults(), { ...options, availabilityEvidence: [valid, invalidOther] });
+  const availabilityResult = snapshot.teams.find(team => team.teamId === "team-a").availability;
+  assert.equal(availabilityResult.status, "uncertain");
+  assert.equal(availabilityResult.trustStatus, "degraded_invalid_evidence");
+  assert.equal(availabilityResult.latestEvidence, null);
+  assert.equal(availabilityResult.latestUnconflictedEvidence.evidenceId, "availability-a");
+  assert.equal(availabilityResult.latestUnconflictedEvidence.usableForStatus, false);
 });
 
 test("insufficient samples are explicit and never become predictive confidence", () => {
