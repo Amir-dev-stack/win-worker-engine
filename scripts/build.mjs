@@ -60,6 +60,7 @@ const required = [
   "netlify/lib/win-learning-core.mjs",
   "scripts/win-learning-core.test.mjs",
   "docs/WIN_FOOTBALL_MARKET_SETTLEMENT.md",
+  "docs/WIN_ASIAN_HANDICAP_SETTLEMENT.md",
   "netlify/functions/learning-observatory.mts",
   "netlify/lib/learning-observatory.mts",
   "scripts/quality-gates.mjs",

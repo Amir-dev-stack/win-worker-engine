@@ -33,6 +33,7 @@ const learningObservatory = await read("netlify/lib/learning-observatory.mts");
 const winLearningCore = await read("netlify/lib/win-learning-core.mjs");
 const winLearningCoreTests = await read("scripts/win-learning-core.test.mjs");
 const footballSettlementDoc = await read("docs/WIN_FOOTBALL_MARKET_SETTLEMENT.md");
+const asianHandicapDoc = await read("docs/WIN_ASIAN_HANDICAP_SETTLEMENT.md");
 const learningObservatoryFn = await read("netlify/functions/learning-observatory.mts");
 const learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts");
 const mcpApi = await read("netlify/functions/mcp.mts");
@@ -135,6 +136,19 @@ add("Football DNB and Double Chance settlement is regulation-only and fail-close
   footballSettlementDoc.includes("90-minute regulation full-time result") &&
   footballSettlementDoc.includes("does not prove live-provider compatibility"),
   "DNB draw pushes and exact 1X/X2/12 results are deterministic; ambiguous wording, period/extra-time markets and provider-specific rules remain unsupported.");
+
+add("Football Asian handicap settlement is shared, selected-side explicit and split-line safe",
+  winLearningCore.includes("evaluateAsianHandicapLeg") &&
+  winLearningCore.includes("asian_handicap_whole_or_half_selected_side_v1") &&
+  settlementBridge.includes('import { evaluateAsianHandicapLeg } from "./win-learning-core.mjs"') &&
+  settlementBridge.includes("if(/asian_handicap|asian_spread/.test(market)") &&
+  settlementBridge.includes('if(!side||side==="draw")return null') &&
+  settlementBridge.includes("evaluateAsianHandicapLeg({pick:side") &&
+  winLearningCoreTests.includes("Asian handicap settles explicit whole and half selected-side lines") &&
+  winLearningCoreTests.includes("rejects split, ambiguous, compound and period-specific inputs") &&
+  asianHandicapDoc.includes("cannot represent safely") &&
+  asianHandicapDoc.includes("does not prove live-provider compatibility"),
+  "One pure helper settles explicit selected-side whole/half lines in shared and historical paths; quarter, compound, period and orientation-ambiguous markets fail closed.");
 
 add("WIN coupon-to-lesson lifecycle has an isolated end-to-end regression test",
   (await read("netlify/lib/store.mts")).includes("installIsolatedTestStore") &&

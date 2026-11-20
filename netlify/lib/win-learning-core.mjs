@@ -47,6 +47,63 @@ function parseDoubleChanceSelection(pick) {
   return null;
 }
 
+function parseSelectedSideHandicap(rawPick, explicitLine) {
+  const matches = [...rawPick.matchAll(/([+\-−–])\s*(\d+(?:[.,]\d+)?)/g)];
+  if (matches.length > 1) return { line: null, sidePick: "", reason: "Multiple handicap lines were supplied." };
+  const parsedPickLine = matches.length === 1
+    ? Number(matches[0][2].replace(",", ".")) * (matches[0][1] === "+" ? 1 : -1)
+    : null;
+  const declaredLine = typeof explicitLine === "number" && Number.isFinite(explicitLine) ? explicitLine : null;
+  if (explicitLine !== undefined && explicitLine !== null && declaredLine === null) {
+    return { line: null, sidePick: "", reason: "The explicit handicap line must be a finite number." };
+  }
+  if (declaredLine !== null && parsedPickLine !== null && Math.abs(declaredLine - parsedPickLine) > 1e-8) {
+    return { line: null, sidePick: "", reason: "The selection and explicit handicap lines conflict." };
+  }
+  const line = declaredLine ?? parsedPickLine;
+  if (line === null) return { line: null, sidePick: "", reason: "An explicit selected-side handicap line is required." };
+  const sideText = matches.length === 1
+    ? rawPick.slice(0, matches[0].index) + " " + rawPick.slice((matches[0].index || 0) + matches[0][0].length)
+    : rawPick;
+  return { line, sidePick: normalized(sideText), reason: null };
+}
+
+/** Pure regulation-score settlement for a selected-side Asian handicap line. */
+export function evaluateAsianHandicapLeg(leg, score) {
+  const home = Number(score?.home), away = Number(score?.away);
+  if (!Number.isFinite(home) || !Number.isFinite(away) || home < 0 || away < 0) {
+    return { status: "unsupported_market", reason: "A valid non-negative regulation full-time score is required." };
+  }
+  const rawPick = clean(leg?.pick || leg?.selection, 180);
+  const parsed = parseSelectedSideHandicap(rawPick, leg?.line);
+  if (parsed.reason) return { status: "unsupported_market", reason: parsed.reason };
+  if (Math.abs(parsed.line) > 20 || Math.abs(parsed.line * 2 - Math.round(parsed.line * 2)) > 1e-8) {
+    return { status: "unsupported_market", reason: "Only bounded whole and half selected-side Asian handicap lines are supported." };
+  }
+  const homeTeam = normalized(leg?.homeTeam || ""), awayTeam = normalized(leg?.awayTeam || "");
+  const exactNamedSide = (homeTeam && parsed.sidePick === homeTeam) || (awayTeam && parsed.sidePick === awayTeam);
+  if (!exactNamedSide && (/\b(or|and|lub|albo|plus|with|versus|vs|draw|remis|x)\b|[&/+]/.test(parsed.sidePick))) {
+    return { status: "unsupported_market", reason: "Compound Asian handicap selections are not supported." };
+  }
+  const selected = selectedMatchSide(parsed.sidePick, leg);
+  if (Number(selected.home) + Number(selected.away) !== 1) {
+    return { status: "unsupported_market", reason: "Asian handicap selection could not be mapped unambiguously to one match side." };
+  }
+  const selectedSide = selected.home ? "home" : "away";
+  const selectedScore = selected.home ? home : away;
+  const otherScore = selected.home ? away : home;
+  const adjustedMargin = selectedScore - otherScore + parsed.line;
+  const status = Math.abs(adjustedMargin) < 1e-8 ? "void" : adjustedMargin > 0 ? "won" : "lost";
+  return {
+    status,
+    reason: "Settled from the verified regulation full-time score and explicit selected-side Asian handicap line.",
+    settlementRule: "asian_handicap_whole_or_half_selected_side_v1",
+    selectedSide,
+    line: parsed.line,
+    adjustedMargin
+  };
+}
+
 /**
  * Deterministic full-time score settlement only.
  * Period-specific, unrecognized and unparseable markets deliberately remain unsupported.
@@ -64,12 +121,17 @@ export function evaluateFullTimeLeg(leg, score) {
     return { status: "unsupported_market", reason: "The source provides a match-final score; this period-specific or extra-time market needs a period-specific result." };
   const drawNoBetMarket = /draw no bet|zaklad bez remisu|\bdnb\b/.test(market);
   const doubleChanceMarket = /double chance|podwojna szansa/.test(market);
+  const asianHandicapMarket = /asian handicap|asian spread/.test(market);
   const resultFamily = /1x2|match winner|moneyline|full time result|wynik meczu|zwyciezca meczu/.test(market);
   const joinsResultFamilies = /\b(and|plus|with|oraz|lub)\b|[&/+]/.test(market) && resultFamily;
   const compoundOrDerivativeMarket = joinsResultFamilies || /both teams to score|btts|goals?|gole|goli|handicap|asian|spread|cards?|corners?|player|goalscorer|team total/.test(market);
   if ((drawNoBetMarket || doubleChanceMarket) && compoundOrDerivativeMarket) {
     return { status: "unsupported_market", reason: "Compound or derivative Draw No Bet and Double Chance markets require an explicit settlement rule." };
   }
+  if (asianHandicapMarket && /both teams to score|btts|goals?|gole|goli|cards?|corners?|player|goalscorer|team total|1x2|match winner|moneyline|draw no bet|double chance/.test(market)) {
+    return { status: "unsupported_market", reason: "Compound or derivative Asian handicap markets require an explicit settlement rule." };
+  }
+  if (asianHandicapMarket) return evaluateAsianHandicapLeg(leg, score);
   if (/both teams to score|btts|obie druzyny strzela|obie druzyny/.test(market)) {
     const yes = home > 0 && away > 0;
     const saysYes = /\b(yes|tak)\b/.test(" " + pick), saysNo = /\b(no|nie)\b/.test(" " + pick);
