@@ -191,3 +191,35 @@ database, persist snapshots, schedule ingestion, settle bets, deploy, or prove
 licensing for any source. Provider adapters, durable storage and live historical
 coverage remain separate review-gated work. Do not describe this envelope as a
 historical database or as live data ingestion.
+
+## Issue #81 C4 prediction-ledger checkpoint — 2026-11-20
+
+Branch `win-draft/c4-prediction-ledger-envelope-20261120` is stacked on draft
+PR #93 exact `2e8d88249e31b75b96e735ac18f9e8f7374c1eaa` to preserve that
+completed C2 work without independently editing the same build and handover
+lines. Implementation commit `2fccf28` adds a disconnected content-addressed
+prediction and independently verified outcome record boundary.
+
+Predictions bind event, cutoff, model/artifact/source-code, market/selection,
+settlement rule, probability, optional observed price and feature snapshot
+availability into one deterministic frozen record. Model training, feature
+availability and price availability must all precede the information cutoff;
+the prediction must precede the event. Changed records reusing a ledger key are
+quarantined. Exact replay is deduplicated.
+
+Outcome records reference the exact prediction and result snapshot. Batch
+validation requires the same event and settlement rule, a post-event result,
+and a verifier distinct from the prediction producer. Missing predictions and
+settlement mismatches fail closed. Rejected records expose only fixed diagnostic
+codes and record IDs.
+
+Verified before this handover update: targeted ledger tests 13/13, full Node
+tests 81/81, quality gates 109/109, build 67 required files plus 44 architecture
+checks, and `git diff --check` passed. Re-run those checks at the final handover
+head and use exact-head GitHub Actions as remote evidence.
+
+This boundary is not a durable ledger, database, ingestion or settlement
+service, model-training system, live prediction path, or proof of calibration,
+profitability, provider rights or historical coverage. Durable append-only
+storage, concurrency, independently reviewed market settlement and prospective
+evaluation remain separate work.
