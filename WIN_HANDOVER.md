@@ -287,3 +287,63 @@ clean record plus unrelated invalid evidence. Updated verification before the
 handover commit is targeted 18/18, full Node 102/102, quality gates 110/110 and
 build 70 required files plus 44 architecture checks. The evidence remains
 synthetic and disconnected.
+
+## Issue #81 D1 walk-forward evaluation checkpoint — 2026-11-20
+
+Branch `win-draft/d1-walk-forward-evaluation-20261120` is stacked on draft PR
+#95 exact `9a34fba8b4de72104e433e71a72f13df0d363d3e`. Implementation commit
+`ec88104` adds a disconnected evaluation boundary that consumes accepted C4
+prediction and independently verified outcome ledger entries.
+
+Callers declare bounded, non-overlapping evaluation folds, a training cutoff,
+an embargo, an evaluation as-of instant, fixed calibration bins and a minimum
+sample size. A model trained after its fold cutoff, an outcome verified after
+the report as-of time, a prediction outside declared windows, or missing and
+conflicting outcomes cannot enter the score. Void and push outcomes are counted
+but never coerced into wins or losses.
+
+Reports calculate Brier score, natural-log loss and fixed-bin ECE by fold and by
+an exact sport/competition/market/selection/model cohort. Meeting the minimum
+sample only yields `measured_not_independently_validated`; the evaluator never
+declares calibration or superiority. Closing-line value and distribution shift
+remain explicitly unavailable because the required evidence is not supplied.
+
+Malformed or tampered ledger rows expose only a safe record ID and fixed
+diagnostic. A malformed replay that reuses a valid prediction ID taints that
+prediction, so a clean copy cannot launder it into the scored set. Independent
+clean evidence may remain usable. Output is bounded, deterministic, deeply
+frozen and content-addressed, and requests no automatic retry.
+
+Verification before this handover update: targeted D1 tests 13/13, full Node
+tests 115/115, quality gates 111/111, build 73 required files plus 44
+architecture checks, and exact-base `git diff --check` passed. Re-run all checks
+on the final handover commit and use exact-head GitHub Actions as remote
+evidence.
+
+This does not prove real-season coverage, source correctness, settlement
+accuracy, closing prices, calibrated probabilities, CLV, drift, accuracy,
+profitability, model promotion, durable storage or production operation. It is
+a synthetic offline D1 milestone, not completion of D1 or issue #81.
+
+PR #96 review hardening commit `8ee6c81` closes the rejected-outcome trust gap
+reported by independent review. Rejected outcome-shaped records are inspected
+only for a recoverable, hash-shaped prediction reference. When present, the
+referenced accepted prediction is quarantined with
+`REJECTED_OUTCOME_EVIDENCE`, even if another accepted outcome would otherwise
+support scoring. Two changed outcome versions sharing a ledger key therefore
+cannot be hidden behind a third clean verifier record.
+
+Malformed outcome evidence with a recoverable prediction reference has the
+same fail-closed effect. If a rejected outcome-shaped record has no trustworthy
+prediction reference, the evaluator does not guess or echo it; `batchTrust`
+becomes `degraded_unlinked_rejected_outcome` and reports only a count.
+Independent clean predictions remain separately scoreable while the report's
+degraded trust is explicit.
+
+New order-invariant adversarial tests cover two conflicting same-key outcomes
+plus a separate accepted outcome, an unaffected clean prediction, a malformed
+outcome with a recoverable prediction reference, and an unlinked rejected
+outcome with private payload. Updated verification before the handover commit
+is targeted 16/16, full Node 118/118, quality gates 111/111 and build 73
+required files plus 44 architecture checks. This remains synthetic,
+disconnected and draft-only.
