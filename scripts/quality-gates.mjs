@@ -36,7 +36,19 @@ const learningDataJobsFn = await read("netlify/functions/learning-data-jobs.mts"
 const mcpApi = await read("netlify/functions/mcp.mts");
 const oauthStore = await read("netlify/lib/oauth-store.mts");
 const oauthAuthorize = await read("netlify/functions/oauth-authorize.mts");
+const snapshotEnvelope = await read("netlify/lib/evidence-snapshot-envelope.mts");
+const snapshotEnvelopeTests = await read("scripts/evidence-snapshot-envelope.test.mjs");
+const snapshotEnvelopeDoc = await read("docs/WIN_EVIDENCE_SNAPSHOT_ENVELOPE.md");
 add("WIN exposes a dedicated read-only audit scope through OAuth", oauthStore.includes('"win:audit"') && oauthAuthorize.includes("Read-only WIN diagnostics") && mcpApi.includes('securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]'), "The user can authorize diagnostics separately from research permissions.");
+add("Evidence snapshot envelopes are immutable, bounded and disconnected",
+  snapshotEnvelope.includes('win.evidence-snapshot.v1') &&
+  snapshotEnvelope.includes("BATCH_LIMIT_EXCEEDED") &&
+  snapshotEnvelope.includes("NON_MONOTONIC_REVISION") &&
+  snapshotEnvelope.includes("Registry candidates are not evidence") &&
+  snapshotEnvelopeTests.includes("stable order") &&
+  snapshotEnvelopeTests.includes("assert.deepEqual(forward, reverse)") &&
+  snapshotEnvelopeDoc.includes("not an ingestion job or historical database"),
+  "Typed schedule, final-result and pre-event odds facts use deterministic content IDs; oversize, ambiguous, stale, replay-conflicted or unlicensed batches fail closed without enabling ingestion.");
 add("OAuth authorization requires explicit least-privilege scopes", oauthAuthorize.includes("const requested = value.trim() ? value.trim().split") && oauthAuthorize.includes(": [];") && oauthAuthorize.includes("!requested.length"), "An omitted scope is rejected instead of silently granting every supported permission.");
 add("WIN audit consent accurately describes read-only research-run metadata", oauthAuthorize.includes("read-only research-run records") && oauthAuthorize.includes("Cannot start research") && mcpApi.includes("read-only research-run metadata"), "The audit scope may read run metadata but cannot start research or mutate data.");
 add("WIN audit MCP tools are read-only and limited to an explicit collection allowlist", mcpApi.includes("get_win_audit_overview") && mcpApi.includes("list_win_audit_records") && mcpApi.includes("get_win_audit_record") && mcpApi.includes("auditCollections") && mcpApi.includes('scope="win:audit win:read win:research"') && mcpApi.includes("if (!scopes.includes(\"win:audit\"))") && !mcpApi.includes("put(auditCollections") && !mcpApi.includes("remove(auditCollections"), "Audit tokens can inspect observatory and approved WIN data collections but cannot mutate storage or invoke research tools.");
