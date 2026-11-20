@@ -73,7 +73,10 @@ const required = [
   "docs/WIN_TEAM_STRENGTH_SNAPSHOT.md",
   "netlify/lib/walk-forward-evaluation.mts",
   "scripts/walk-forward-evaluation.test.mjs",
-  "docs/WIN_WALK_FORWARD_EVALUATION.md"
+  "docs/WIN_WALK_FORWARD_EVALUATION.md",
+  "netlify/lib/paired-baseline-comparison.mts",
+  "scripts/paired-baseline-comparison.test.mjs",
+  "docs/WIN_PAIRED_BASELINE_COMPARISON.md"
 ];
 
 for (const file of required) await access(file);

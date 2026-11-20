@@ -48,6 +48,9 @@ const teamStrengthDoc = await read("docs/WIN_TEAM_STRENGTH_SNAPSHOT.md");
 const walkForward = await read("netlify/lib/walk-forward-evaluation.mts");
 const walkForwardTests = await read("scripts/walk-forward-evaluation.test.mjs");
 const walkForwardDoc = await read("docs/WIN_WALK_FORWARD_EVALUATION.md");
+const pairedBaseline = await read("netlify/lib/paired-baseline-comparison.mts");
+const pairedBaselineTests = await read("scripts/paired-baseline-comparison.test.mjs");
+const pairedBaselineDoc = await read("docs/WIN_PAIRED_BASELINE_COMPARISON.md");
 add("WIN exposes a dedicated read-only audit scope through OAuth", oauthStore.includes('"win:audit"') && oauthAuthorize.includes("Read-only WIN diagnostics") && mcpApi.includes('securitySchemes: [{ type: "oauth2", scopes: ["win:audit"] }]'), "The user can authorize diagnostics separately from research permissions.");
 add("Evidence snapshot envelopes are immutable, bounded and disconnected",
   snapshotEnvelope.includes('win.evidence-snapshot.v1') &&
@@ -97,6 +100,21 @@ add("Walk-forward evaluation is point-in-time, cohort-isolated and conclusion-ca
   walkForwardTests.includes("rejected outcome conflicts quarantine their prediction") &&
   walkForwardDoc.includes("never declares a model calibrated, accurate, profitable or better"),
   "Validated prediction/outcome entries produce bounded fold and exact-cohort Brier, log-loss and ECE evidence without laundering conflicts, leaking future outcomes or claiming model quality.");
+add("Paired baseline comparison requires exact reports, policies and evaluation units",
+  walkForward.includes("win.evaluation-unit.v1") &&
+  walkForward.includes("sampleSetId") &&
+  walkForward.includes("sourceCodeHash: prediction.sourceCodeHash") &&
+  walkForward.includes("artifactHash: prediction.model.artifactHash") &&
+  pairedBaseline.includes('win.paired-baseline-comparison.v1') &&
+  pairedBaseline.includes("sha256(body) !== reportId") &&
+  pairedBaseline.includes("SAMPLE_SET_MISMATCH") &&
+  pairedBaseline.includes("DEGRADED_REPORT_TRUST") &&
+  pairedBaseline.includes('promotionAllowed: false') &&
+  pairedBaseline.includes("superiorityConclusion: null") &&
+  pairedBaselineTests.includes("sample-set mismatch even when sample counts are equal") &&
+  pairedBaselineTests.includes("reports an explicitly approximate interval only at thirty paired samples") &&
+  pairedBaselineDoc.includes("cannot automatically promote a model"),
+  "Candidate/reference loss deltas are calculated only for content-verified reports with identical policy and exact paired event/market/outcome units; output remains descriptive and cannot promote a model.");
 add("OAuth authorization requires explicit least-privilege scopes", oauthAuthorize.includes("const requested = value.trim() ? value.trim().split") && oauthAuthorize.includes(": [];") && oauthAuthorize.includes("!requested.length"), "An omitted scope is rejected instead of silently granting every supported permission.");
 add("WIN audit consent accurately describes read-only research-run metadata", oauthAuthorize.includes("read-only research-run records") && oauthAuthorize.includes("Cannot start research") && mcpApi.includes("read-only research-run metadata"), "The audit scope may read run metadata but cannot start research or mutate data.");
 add("WIN audit MCP tools are read-only and limited to an explicit collection allowlist", mcpApi.includes("get_win_audit_overview") && mcpApi.includes("list_win_audit_records") && mcpApi.includes("get_win_audit_record") && mcpApi.includes("auditCollections") && mcpApi.includes('scope="win:audit win:read win:research"') && mcpApi.includes("if (!scopes.includes(\"win:audit\"))") && !mcpApi.includes("put(auditCollections") && !mcpApi.includes("remove(auditCollections"), "Audit tokens can inspect observatory and approved WIN data collections but cannot mutate storage or invoke research tools.");

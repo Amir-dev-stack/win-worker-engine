@@ -22,11 +22,11 @@ function predictionDraft(sequence, overrides = {}) {
     informationCutoff: `2026-01-${eventDay}T18:00:00.000Z`,
     predictionTime: `2026-01-${eventDay}T18:05:00.000Z`,
     producerId: "win-baseline-lab",
-    sourceCodeHash: hexHash(sequence),
+    sourceCodeHash: hexHash(1),
     model: {
       modelId: "football-frequency-baseline",
       modelVersion: "v1",
-      artifactHash: hexHash(sequence, 3),
+      artifactHash: hexHash(4),
       trainedThrough: "2025-12-31T23:00:00.000Z"
     },
     market: {
@@ -208,6 +208,17 @@ test("keeps competitions, markets, selections and model versions in separate coh
   assert.equal(report.cohorts.length, 3);
   assert.deepEqual(report.cohorts.map(item => item.identity.competitionId), ["league-1", "league-1", "league-2"]);
   assert.equal(report.cohorts.every(item => item.evidenceStatus === "insufficient_sample"), true);
+});
+
+test("keeps changed artifacts and source code in separate model cohorts", () => {
+  const first = pair(1);
+  const second = pair(2, { sourceCodeHash: hash("e"), model: { artifactHash: hash("f") } });
+  const report = evaluateWalkForwardLedger([first.prediction, first.outcome, second.prediction, second.outcome], options());
+
+  assert.equal(report.cohorts.length, 2);
+  assert.deepEqual(report.cohorts.map(item => item.identity.artifactHash), [hash("e"), hash("f")].sort());
+  assert.equal(report.cohorts.every(item => item.comparisonUnits.length === 1), true);
+  assert.equal(report.cohorts.every(item => /^[a-f0-9]{64}$/u.test(item.sampleSetId)), true);
 });
 
 test("makes CLV, drift and calibration conclusions explicitly unavailable", () => {
