@@ -508,3 +508,30 @@ Verification before the hardening commit: targeted settlement tests 18/18,
 full Node tests 141/141, quality gates 115/115, build 79 required files plus 44
 architecture checks, and exact-base `git diff --check` passed. Re-run on the
 final commit and require exact-head GitHub Actions before handoff.
+
+## Issue #81 D3 match-total corners checkpoint — 2026-11-20
+
+Branch `win-draft/d3-corner-total-settlement-20261120` is stacked on
+independently accepted draft PR #100 exact
+`a18fd8a62471fd275e8f778fcbdbdfeaeca6f49b`.
+
+The shared pure settlement library now exposes a dedicated match-total corners
+helper. It requires an allowlisted single-market label, final regulation-time
+scope, explicit bounded integer home/away corner counts, a whole/half numeric
+line, and an exact over/under selection. It returns won/lost/void plus the
+typed arithmetic used for settlement.
+
+The score-only result path remains unable to settle corners, so football goals
+cannot be mistaken for corner evidence. Partial/live, team, period, extra-time,
+quarter/split, compound/suffixed, string/fractional/missing and ambiguous
+inputs fail closed. The helper performs no provider call, production write,
+coupon construction or betting action.
+
+Local verification: targeted settlement tests 20/20, full Node tests 143/143,
+quality gates 116/116, build 80 required files plus 44 architecture checks,
+and exact-base `git diff --check` passed. Exact-head GitHub Actions remains
+pending until the draft branch is pushed.
+
+Synthetic fixtures do not prove event/statistic provenance, bookmaker rules,
+live-provider compatibility, historical coverage, settlement accuracy,
+profitability or production readiness, and do not complete D3 or issue #81.
