@@ -31,6 +31,11 @@ const SUPPORTED_PLAYER_SHOT_TOTAL_MARKETS = new Set([
   "total player shots",
   "player shots total"
 ]);
+const SUPPORTED_PLAYER_SHOT_ON_TARGET_TOTAL_MARKETS = new Set([
+  "player total shots on target",
+  "total player shots on target",
+  "player shots on target total"
+]);
 
 function isSupportedEuropeanHandicapMarketLabel(value) {
   return SUPPORTED_EUROPEAN_HANDICAP_MARKETS.has(normalized(value));
@@ -50,6 +55,10 @@ function isSupportedPlayerGoalTotalMarketLabel(value) {
 
 function isSupportedPlayerShotTotalMarketLabel(value) {
   return SUPPORTED_PLAYER_SHOT_TOTAL_MARKETS.has(normalized(value));
+}
+
+function isSupportedPlayerShotOnTargetTotalMarketLabel(value) {
+  return SUPPORTED_PLAYER_SHOT_ON_TARGET_TOTAL_MARKETS.has(normalized(value));
 }
 
 function exactBoundedIdentity(value, max = 160) {
@@ -432,6 +441,76 @@ export function evaluatePlayerShotTotalLeg(leg, statistics) {
     playerId: legPlayerId,
     participationStatus: statisticRecord.participationStatus,
     shots
+  };
+}
+
+/** Pure settlement for one final regulation-time player shots-on-target line. */
+export function evaluatePlayerShotOnTargetTotalLeg(leg, statistics) {
+  const legRecord = leg && typeof leg === "object" ? leg : {};
+  const statisticRecord = statistics && typeof statistics === "object" ? statistics : {};
+  const hasOwnLeg = field => Object.prototype.hasOwnProperty.call(legRecord, field);
+  const hasOwnStatistic = field => Object.prototype.hasOwnProperty.call(statisticRecord, field);
+  const marketLabel = hasOwnLeg("market") ? clean(legRecord.market, 180) : "";
+  const hasAdditionalMarketLabel = hasOwnLeg("settlementRule");
+  const additionalMarketLabel = hasAdditionalMarketLabel ? clean(legRecord.settlementRule, 500) : "";
+  if (!marketLabel || !isSupportedPlayerShotOnTargetTotalMarketLabel(marketLabel) ||
+      (hasAdditionalMarketLabel && (!additionalMarketLabel || !isSupportedPlayerShotOnTargetTotalMarketLabel(additionalMarketLabel)))) {
+    return { status: "unsupported_market", reason: "An explicitly supported single player shots-on-target total label is required." };
+  }
+  const legEventId = hasOwnLeg("eventId") ? exactBoundedIdentity(legRecord.eventId) : null;
+  const legPlayerId = hasOwnLeg("playerId") ? exactBoundedIdentity(legRecord.playerId) : null;
+  const statisticEventId = hasOwnStatistic("eventId") ? exactBoundedIdentity(statisticRecord.eventId) : null;
+  const statisticPlayerId = hasOwnStatistic("playerId") ? exactBoundedIdentity(statisticRecord.playerId) : null;
+  if (!legEventId || !legPlayerId || !statisticEventId || !statisticPlayerId ||
+      legEventId !== statisticEventId || legPlayerId !== statisticPlayerId) {
+    return { status: "unsupported_market", reason: "Exact matching event and player identities are required on the leg and final evidence." };
+  }
+  if (!hasOwnStatistic("scope") || !hasOwnStatistic("status") ||
+      statisticRecord.scope !== "regulation_time" || statisticRecord.status !== "final") {
+    return { status: "unsupported_market", reason: "Final regulation-time player statistics are required." };
+  }
+  if (!hasOwnStatistic("participationStatus") || statisticRecord.participationStatus !== "played") {
+    return { status: "unsupported_market", reason: "Explicit played participation is required; non-participation rules are not inferred." };
+  }
+  if (!hasOwnStatistic("countingRule") || statisticRecord.countingRule !== "official_regulation_player_shot_on_target_count") {
+    return { status: "unsupported_market", reason: "An explicit official regulation-time player shots-on-target count basis is required." };
+  }
+  const unresolvedEvidenceFields = [
+    "shotEvents", "shotLocations", "shots", "shotAttempts", "blockedShots",
+    "offTargetShots", "goals", "teamShotsOnTarget", "homeShotsOnTarget", "awayShotsOnTarget"
+  ].filter(hasOwnStatistic);
+  if (unresolvedEvidenceFields.length) {
+    return { status: "unsupported_market", reason: "Raw or related shot evidence must be reconciled into one reviewed final player shots-on-target count before settlement." };
+  }
+  const shotsOnTarget = statisticRecord.shotsOnTarget;
+  if (!hasOwnStatistic("shotsOnTarget") || typeof shotsOnTarget !== "number" ||
+      !Number.isSafeInteger(shotsOnTarget) || shotsOnTarget < 0 || shotsOnTarget > 100) {
+    return { status: "unsupported_market", reason: "A bounded non-negative integer player shots-on-target count is required." };
+  }
+  const line = legRecord.line;
+  if (!hasOwnLeg("line") || typeof line !== "number" || !Number.isFinite(line) || line < 0 || line > 100 ||
+      Math.abs(line * 2 - Math.round(line * 2)) > 1e-8) {
+    return { status: "unsupported_market", reason: "An explicit bounded whole or half player shots-on-target total line is required." };
+  }
+  const direction = parseExactOverUnderSelectionFields(legRecord);
+  if (!direction) {
+    return { status: "unsupported_market", reason: "The player shots-on-target selection must be exactly over or under." };
+  }
+  const status = shotsOnTarget === line ? "void" : direction === "over"
+    ? (shotsOnTarget > line ? "won" : "lost")
+    : (shotsOnTarget < line ? "won" : "lost");
+  return {
+    status,
+    reason: "Settled from exact match-bound final regulation-time player shots-on-target evidence and an explicit total line.",
+    settlementRule: "player_total_shots_on_target_regulation_official_count_whole_or_half_v1",
+    countingRule: statisticRecord.countingRule,
+    selectedDirection: direction,
+    line,
+    scope: statisticRecord.scope,
+    eventId: legEventId,
+    playerId: legPlayerId,
+    participationStatus: statisticRecord.participationStatus,
+    shotsOnTarget
   };
 }
 
