@@ -427,3 +427,41 @@ the hardening commit.
 Verification before the hardening handover commit: targeted settlement tests
 13/13, full Node tests 136/136, quality gates 113/113, build 77 required files
 plus 44 architecture checks, and exact-base `git diff --check` passed.
+
+## Issue #81 D3 Asian handicap settlement checkpoint — 2026-11-20
+
+Branch `win-draft/d3-asian-handicap-settlement-20261120` is stacked on
+independently accepted draft PR #98 exact
+`80e55bef0cb212dd50c888799c03c3618e7eae7e`.
+
+The existing observed-market Asian handicap calculation is reconciled with the
+shared pure result adapter through one selected-side helper. It accepts an
+explicit finite line or one signed line in the selection, settles regulation
+whole/half lines by adjusted goal margin, and preserves `void` on a zero margin.
+
+Quarter and other split lines remain unsupported because the coupon outcome
+model has no safe half-win/half-loss representation. European three-way
+handicap, half/period, extra-time, compound, ambiguous-line/side and implicit
+provider-orientation cases fail closed. No result, odds or provider data is
+fetched by the helper, and no coupon or bet is created.
+
+Verification before this handover update: targeted settlement tests 15/15,
+full Node tests 138/138, quality gates 114/114, build 78 required files plus 44
+architecture checks, and exact-base `git diff --check` passed. Re-run on the
+final handover commit and require exact-head GitHub Actions.
+This synthetic offline settlement slice does not prove score provenance,
+bookmaker compatibility, historical coverage, settlement accuracy,
+profitability, deployment or production readiness, and does not complete D3.
+
+Independent review of PR #99 identified unsafe score coercion in the newly
+exported helper: null, blank and fractional score fields could be converted and
+settled. The hardening update requires present non-negative safe-integer number
+fields and explicitly rejects digit strings, missing/null/blank, fractional,
+negative, nonfinite and malformed values through both the direct helper and the
+shared full-time entry point. Valid zero-zero, nonzero whole/half-line
+win/loss/void behavior remains covered. Final exact-head evidence must be
+reported after the hardening commit.
+
+Verification before the hardening handover commit: targeted settlement tests
+16/16, full Node tests 139/139, quality gates 114/114, build 78 required files
+plus 44 architecture checks, and exact-base `git diff --check` passed.

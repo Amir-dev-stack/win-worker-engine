@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   aggregateCouponOutcome,
   deriveReviewedCouponOutcome,
+  evaluateAsianHandicapLeg,
   evaluateFullTimeLeg,
   isEligibleWinForecastCoupon,
   isIndependentlyValidatedLesson
@@ -80,6 +81,57 @@ test("Draw No Bet and Double Chance reject ambiguous or non-regulation inputs", 
   assert.equal(evaluateFullTimeLeg({ market: "Corners Draw No Bet", pick: "Home" }, { home: 1, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "First Half Draw No Bet", pick: "Home" }, { home: 1, away: 0 }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg({ market: "Extra Time Double Chance", pick: "1X" }, { home: 1, away: 0 }).status, "unsupported_market");
+});
+
+test("Asian handicap settles explicit whole and half selected-side lines", () => {
+  const base = { market: "Asian Handicap", homeTeam: "Alpha United", awayTeam: "Beta United" };
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home", line: -0.5 }, { home: 2, away: 1 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home", line: -1 }, { home: 2, away: 1 }).status, "void");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home -1.5" }, { home: 2, away: 1 }).status, "lost");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Away +1.5" }, { home: 2, away: 1 }).status, "won");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Away +1,5" }, { home: 2, away: 1 }).status, "won");
+  const named = evaluateAsianHandicapLeg({ ...base, pick: "Beta United +0.5" }, { home: 1, away: 1 });
+  assert.equal(named.status, "won");
+  assert.equal(named.selectedSide, "away");
+  assert.equal(named.line, 0.5);
+  assert.equal(named.settlementRule, "asian_handicap_whole_or_half_selected_side_v1");
+  assert.equal(evaluateFullTimeLeg({ market: base.market, homeTeam: "Brighton and Hove Albion", awayTeam: "Leeds United", pick: "Brighton and Hove Albion -0.5" }, { home: 2, away: 1 }).status, "won");
+  assert.equal(evaluateAsianHandicapLeg({ ...base, pick: "Home", line: 0 }, { home: 0, away: 0 }).status, "void");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home", line: 0 }, { home: 0, away: 0 }).status, "void");
+});
+
+test("Asian handicap requires strict non-negative integer score fields", () => {
+  const leg = { market: "Asian Handicap", homeTeam: "Alpha United", awayTeam: "Beta United", pick: "Home", line: -0.5 };
+  const invalidScores = [
+    {},
+    { home: null, away: 1 },
+    { home: "", away: 1 },
+    { home: "0", away: 1 },
+    { home: 0.5, away: 1 },
+    { home: 0, away: -1 },
+    { home: Number.NaN, away: 1 },
+    { home: Number.POSITIVE_INFINITY, away: 1 }
+  ];
+  for (const score of invalidScores) {
+    assert.equal(evaluateAsianHandicapLeg(leg, score).status, "unsupported_market", JSON.stringify(score));
+    assert.equal(evaluateFullTimeLeg(leg, score).status, "unsupported_market", JSON.stringify(score));
+  }
+});
+
+test("Asian handicap rejects split, ambiguous, compound and period-specific inputs", () => {
+  const base = { market: "Asian Handicap", homeTeam: "Alpha United", awayTeam: "Beta United" };
+  for (const line of [-0.25, 0.75, 0.1, 20.5]) {
+    assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home", line }, { home: 2, away: 1 }).status, "unsupported_market", String(line));
+  }
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home -0.5 +1.5" }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Home +0.5", line: -0.5 }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Draw", line: 0 }, { home: 1, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Alpha United or Beta United", line: 0 }, { home: 1, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ ...base, pick: "Alpha United or Draw -0.5" }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ ...base, market: "Asian Handicap -0.5", pick: "Home" }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ ...base, market: "First Half Asian Handicap", pick: "Home", line: -0.5 }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ ...base, market: "Asian Handicap and BTTS", pick: "Home", line: -0.5 }, { home: 2, away: 1 }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg({ ...base, market: "Handicap 1X2 (1:0)", pick: "2", line: 1 }, { home: 2, away: 1 }).status, "unsupported_market");
 });
 
 test("period markets, ambiguous picks, unsupported markets and invalid scores fail closed", () => {

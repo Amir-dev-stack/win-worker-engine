@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { get, put, list } from "./store.mts";
 import { createSimulationRun, executeSimulationRun } from "./simulation.mts";
+import { evaluateAsianHandicapLeg } from "./win-learning-core.mjs";
 
 const norm=(v:any)=>String(v??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/&/g," and ").replace(/[^a-z0-9]+/g," ").trim();
 const aliases:Record<string,string>={"usa":"united states","us":"united states","korea republic":"south korea","republic of korea":"south korea","cote divoire":"ivory coast","cote d ivoire":"ivory coast","iran":"iran","ir iran":"iran","turkiye":"turkey","czechia":"czech republic","bosnia herzegovina":"bosnia and herzegovina"};
@@ -70,11 +71,11 @@ function settleMarket(price:any,match:any,orientationReversed:boolean){
   return {result:regulation[0]===targetHome&&regulation[1]===targetAway?"won":"lost",rule:"exact_regulation_score",actual:regulation,selected:[targetHome,targetAway]};
  }
  if(/first_half.*handicap/.test(market))return null;
- if(/asian_handicap|handicap/.test(market)&&!/player/.test(market)){
-  if(line===null||Math.abs(line*2-Math.round(line*2))>1e-8)return null;
+ if(/asian_handicap|asian_spread/.test(market)&&!/player/.test(market)){
   if(!side||side==="draw")return null;
-  const selectedScore=side==="home"?home:away,otherScore=side==="home"?away:home,margin=selectedScore-otherScore+line;
-  return {result:margin===0?"void":margin>0?"won":"lost",rule:"asian_handicap_whole_or_half_line",actualMargin:margin,line,selected:side};
+  const settled=evaluateAsianHandicapLeg({pick:side,homeTeam:price.homeTeam,awayTeam:price.awayTeam,line},{home,away});
+  if(!["won","lost","void"].includes(settled.status))return null;
+  return {result:settled.status,rule:settled.settlementRule,actualMargin:settled.adjustedMargin,line:settled.line,selected:settled.selectedSide};
  }
  if(/total_cards|cards_total/.test(market)){
   if(!match.playerEvents?.bookingsAvailable||line===null)return null;const sideOU=overUnder(selection,selectionType);if(!sideOU)return null;return {result:settleOverUnder(bookings.length,line,sideOU),rule:"total_bookings",actual:bookings.length,line,selected:sideOU};
