@@ -196,3 +196,22 @@ provider-backed crash/restart and interrupted-transaction evidence, persistent
 scheduler/model-routing integration, and supported ChatGPT–Codex execution
 handoffs remain open. The Neon child branch is scheduled for automatic expiry;
 no deletion or production mutation was performed.
+
+## PR #113 worker restart checkpoint — 2026-11-26
+
+The continuation branch adds `createFileSchedulerStateStore`, a validated
+local-only checkpoint store that writes a unique temporary file and atomically
+renames it into place. A child worker writes a running checkpoint and is then
+terminated with `SIGKILL`; the next scheduler instance reads the checkpoint
+and completes the next eligible task. Malformed IDs fail closed without
+creating or resetting the checkpoint file. This store is intentionally not a
+distributed lease or PostgreSQL replacement, and no directory-fsync or host
+power-loss guarantee is claimed.
+
+Exact branch: `win-draft/durable-queue-continuation-20261126` stacked on PR
+#112. Targeted durable tests pass 33/33; full `npm test` passes 75/75, quality
+gates pass 107/107, `npm run build` passes the 61 required-file and 44
+architecture checks, and `git diff --check` is clean. PR #113 remains draft
+and unmerged. Provider-backed process termination is still unavailable through
+the Neon connector, and supported ChatGPT–Codex execution handoff/session
+continuation has not been independently authorized or exposed.
