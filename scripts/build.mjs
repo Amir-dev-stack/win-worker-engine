@@ -67,6 +67,7 @@ const required = [
   "docs/WIN_PLAYER_GOAL_TOTAL_SETTLEMENT.md",
   "docs/WIN_PLAYER_SHOT_TOTAL_SETTLEMENT.md",
   "docs/WIN_PLAYER_SHOT_ON_TARGET_TOTAL_SETTLEMENT.md",
+  "docs/WIN_PLAYER_ASSIST_TOTAL_SETTLEMENT.md",
   "netlify/functions/learning-observatory.mts",
   "netlify/lib/learning-observatory.mts",
   "scripts/quality-gates.mjs",

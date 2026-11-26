@@ -36,6 +36,11 @@ const SUPPORTED_PLAYER_SHOT_ON_TARGET_TOTAL_MARKETS = new Set([
   "total player shots on target",
   "player shots on target total"
 ]);
+const SUPPORTED_PLAYER_ASSIST_TOTAL_MARKETS = new Set([
+  "player total assists",
+  "total player assists",
+  "player assists total"
+]);
 
 function isSupportedEuropeanHandicapMarketLabel(value) {
   return SUPPORTED_EUROPEAN_HANDICAP_MARKETS.has(normalized(value));
@@ -59,6 +64,10 @@ function isSupportedPlayerShotTotalMarketLabel(value) {
 
 function isSupportedPlayerShotOnTargetTotalMarketLabel(value) {
   return SUPPORTED_PLAYER_SHOT_ON_TARGET_TOTAL_MARKETS.has(normalized(value));
+}
+
+function isSupportedPlayerAssistTotalMarketLabel(value) {
+  return SUPPORTED_PLAYER_ASSIST_TOTAL_MARKETS.has(normalized(value));
 }
 
 function exactBoundedIdentity(value, max = 160) {
@@ -511,6 +520,76 @@ export function evaluatePlayerShotOnTargetTotalLeg(leg, statistics) {
     playerId: legPlayerId,
     participationStatus: statisticRecord.participationStatus,
     shotsOnTarget
+  };
+}
+
+/** Pure settlement for one final regulation-time player total-assists line. */
+export function evaluatePlayerAssistTotalLeg(leg, statistics) {
+  const legRecord = leg && typeof leg === "object" ? leg : {};
+  const statisticRecord = statistics && typeof statistics === "object" ? statistics : {};
+  const hasOwnLeg = field => Object.prototype.hasOwnProperty.call(legRecord, field);
+  const hasOwnStatistic = field => Object.prototype.hasOwnProperty.call(statisticRecord, field);
+  const marketLabel = hasOwnLeg("market") ? clean(legRecord.market, 180) : "";
+  const hasAdditionalMarketLabel = hasOwnLeg("settlementRule");
+  const additionalMarketLabel = hasAdditionalMarketLabel ? clean(legRecord.settlementRule, 500) : "";
+  if (!marketLabel || !isSupportedPlayerAssistTotalMarketLabel(marketLabel) ||
+      (hasAdditionalMarketLabel && (!additionalMarketLabel || !isSupportedPlayerAssistTotalMarketLabel(additionalMarketLabel)))) {
+    return { status: "unsupported_market", reason: "An explicitly supported single player total-assists label is required." };
+  }
+  const legEventId = hasOwnLeg("eventId") ? exactBoundedIdentity(legRecord.eventId) : null;
+  const legPlayerId = hasOwnLeg("playerId") ? exactBoundedIdentity(legRecord.playerId) : null;
+  const statisticEventId = hasOwnStatistic("eventId") ? exactBoundedIdentity(statisticRecord.eventId) : null;
+  const statisticPlayerId = hasOwnStatistic("playerId") ? exactBoundedIdentity(statisticRecord.playerId) : null;
+  if (!legEventId || !legPlayerId || !statisticEventId || !statisticPlayerId ||
+      legEventId !== statisticEventId || legPlayerId !== statisticPlayerId) {
+    return { status: "unsupported_market", reason: "Exact matching event and player identities are required on the leg and final evidence." };
+  }
+  if (!hasOwnStatistic("scope") || !hasOwnStatistic("status") ||
+      statisticRecord.scope !== "regulation_time" || statisticRecord.status !== "final") {
+    return { status: "unsupported_market", reason: "Final regulation-time player statistics are required." };
+  }
+  if (!hasOwnStatistic("participationStatus") || statisticRecord.participationStatus !== "played") {
+    return { status: "unsupported_market", reason: "Explicit played participation is required; non-participation rules are not inferred." };
+  }
+  if (!hasOwnStatistic("countingRule") || statisticRecord.countingRule !== "official_regulation_player_assist_count") {
+    return { status: "unsupported_market", reason: "An explicit official regulation-time player-assist count basis is required." };
+  }
+  const unresolvedEvidenceFields = [
+    "assistEvents", "assistedGoalEvents", "keyPasses", "passes", "goals", "shots",
+    "providerAssists", "teamAssists", "homeAssists", "awayAssists"
+  ].filter(hasOwnStatistic);
+  if (unresolvedEvidenceFields.length) {
+    return { status: "unsupported_market", reason: "Raw or related event evidence must be reconciled into one reviewed final player-assist count before settlement." };
+  }
+  const assists = statisticRecord.assists;
+  if (!hasOwnStatistic("assists") || typeof assists !== "number" ||
+      !Number.isSafeInteger(assists) || assists < 0 || assists > 20) {
+    return { status: "unsupported_market", reason: "A bounded non-negative integer player assist count is required." };
+  }
+  const line = legRecord.line;
+  if (!hasOwnLeg("line") || typeof line !== "number" || !Number.isFinite(line) || line < 0 || line > 20 ||
+      Math.abs(line * 2 - Math.round(line * 2)) > 1e-8) {
+    return { status: "unsupported_market", reason: "An explicit bounded whole or half player total-assists line is required." };
+  }
+  const direction = parseExactOverUnderSelectionFields(legRecord);
+  if (!direction) {
+    return { status: "unsupported_market", reason: "The player-assist-total selection must be exactly over or under." };
+  }
+  const status = assists === line ? "void" : direction === "over"
+    ? (assists > line ? "won" : "lost")
+    : (assists < line ? "won" : "lost");
+  return {
+    status,
+    reason: "Settled from exact match-bound final regulation-time player-assist evidence and an explicit total line.",
+    settlementRule: "player_total_assists_regulation_official_count_whole_or_half_v1",
+    countingRule: statisticRecord.countingRule,
+    selectedDirection: direction,
+    line,
+    scope: statisticRecord.scope,
+    eventId: legEventId,
+    playerId: legPlayerId,
+    participationStatus: statisticRecord.participationStatus,
+    assists
   };
 }
 

@@ -712,3 +712,41 @@ coverage, settlement accuracy, shot-definition or void-rule compatibility,
 profitability, deployment or production readiness, and does not complete D3
 or issue #81. No provider, paid API, production/database, coupon, betting or
 financial action occurred.
+
+## Issue #81 D3 player total-assists checkpoint — 2026-11-26 09:01 UTC
+
+Branch `win-draft/d3-player-assist-total-settlement-20261121` is stacked on
+independently accepted draft PR #105 exact
+`a1b8917598708424d0ac4d1884c22e28ecc00a01`. Implementation commit
+`4b7dbb9c85ebce71878f47a157e884693841573f` adds a separate pure
+regulation-time football player total-assists helper without changing the
+score, corner, card, player-goal or player-shot settlement paths.
+
+The helper requires an allowlisted single-market label; matching bounded
+opaque event and player identities on the leg and evidence; final
+`regulation_time` scope; explicit `played` participation; the exact
+`official_regulation_player_assist_count` basis; a bounded safe-integer assist
+count; a whole/half numeric line; and exact agreeing over/under selection
+evidence. Every settlement-critical field must be an own property.
+
+Did-not-play and unused-substitute cases remain unsupported because void rules
+are not universal. Goals, shots, passes, key passes, player names, raw
+goal/assist events, provider labels, team/period/extra-time/other-stat and
+compound markets, quarter/split lines, inherited fields and malformed or
+conflicting inputs cannot settle. The score-only result path remains unable to
+settle player props.
+
+Pre-handover verification: focused settlement tests 37/37, full Node tests
+160/160, quality gates 121/121, build 85 required files plus 44 architecture
+checks, and exact-base `git diff --check` passed. Re-run the full matrix on the
+final handover commit and require exact-head GitHub Actions before reporting
+completion.
+
+This synthetic typed-input boundary authenticates no event, identity,
+participation record, statistic, provider or bookmaker rule. It does not prove
+live compatibility, real-match player-assist accuracy, historical coverage,
+settlement accuracy, assist-definition or void-rule compatibility,
+profitability, deployment or production readiness, and does not complete D3
+or issue #81. The unverified NBA reference in issue #106 was not used as
+settlement evidence. No provider, paid API, production/database, coupon,
+betting or financial action occurred.
