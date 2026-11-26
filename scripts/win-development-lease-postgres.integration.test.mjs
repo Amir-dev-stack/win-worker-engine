@@ -12,8 +12,10 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { execFile } from "node:child_process";
-import { LEASE_SQL } from "./win-development-lease-store.mjs";
+import { LEASE_SQL, createFencedLeaseStore } from "./win-development-lease-store.mjs";
 import { inspectLocalPgConfig } from "./win-development-lease-pg-config.mjs";
+
+import { createLeaseSupervisor } from "./win-supervisor-lease-coordinator.mjs";
 
 const run = process.env.WIN_LEASE_LOCAL_PG_TEST === "run";
 const exec = promisify(execFile);
@@ -91,5 +93,77 @@ test("real local PostgreSQL permits only one competing worker, quarantines expir
     assert.equal(state,"t|2|blocked_uncertain");
   } finally {
     await sql(db,"DROP SCHEMA IF EXISTS "+schema+" CASCADE");
+  }
+});
+
+test("real PostgreSQL fences a supervisor effect after renewal and preserves a durable receipt after lost acknowledgement", {
+  skip: !run
+}, async () => {
+  const db = config();
+  const schema = "win_lease_" + randomUUID().replaceAll("-", "").slice(0, 24);
+  const query = (statement) => sql(db, "SET search_path TO " + schema + ",public; " + statement);
+  const store = createFencedLeaseStore({
+    async query(statement, values) {
+      const args = values.map(value => typeof value === "number" ? String(value) : quote(value));
+      const result = await query("PREPARE operation AS WITH affected AS (" + statement +
+        ") SELECT row_to_json(affected) FROM affected; EXECUTE operation(" + args.join(",") + ")");
+      const rows = result ? result.split("\n").map(line => JSON.parse(line)) : [];
+      return { rows, rowCount: rows.length };
+    }
+  });
+  const sourceSha = "a".repeat(40);
+  const input = {
+    taskId: "lost-ack", actorId: "worker-primary", ttlSeconds: 60,
+    operationId: "test-effect", checkpointSha: sourceSha
+  };
+
+  await sql(db, "CREATE SCHEMA " + schema);
+  try {
+    await query(readFileSync(join(sourceDir, "../db/draft_win_dev_fenced_lease.sql"), "utf8"));
+    await query("CREATE TABLE test_effects (task_id text PRIMARY KEY, operation_id text NOT NULL)");
+    await query(`INSERT INTO win_dev_lease_tasks (task_id, source_commit_sha, task_type, approved)
+      SELECT task_id, '${sourceSha}', 'draft_only_development', true
+      FROM (VALUES ('stale-effect'), ('lost-ack')) AS tasks(task_id)`);
+    const expire = taskId => query(`UPDATE win_dev_lease_tasks
+      SET expires_at = clock_timestamp() - interval '1 second' WHERE task_id = ${quote(taskId)}`);
+    // This SQL receipt stands in for an effect that shares PostgreSQL's transaction.
+    async function recordEffect({ taskId, fence, operationId }) {
+      return query(`WITH current_lease AS (
+        SELECT task_id FROM win_dev_lease_tasks WHERE task_id = ${quote(taskId)}
+          AND fence = ${fence} AND status = 'running' AND approved
+          AND expires_at > clock_timestamp()
+        FOR UPDATE
+      )
+      INSERT INTO test_effects SELECT task_id, ${quote(operationId)} FROM current_lease
+      ON CONFLICT (task_id) DO NOTHING RETURNING operation_id`);
+    }
+    const stale = await createLeaseSupervisor({ store, effects: {
+      async apply(operation) {
+        await expire(operation.taskId);
+        assert.equal((await store.quarantineExpired(operation.taskId)).status, "blocked_uncertain");
+        assert.equal(await recordEffect(operation), "");
+        return { status: "rejected" };
+      }
+    }}).run({ ...input, taskId: "stale-effect" });
+    assert.equal(stale.reason, "EFFECT_NOT_CONFIRMED");
+    assert.equal(await query("SELECT count(*) FROM test_effects"), "0");
+
+    const lost = await createLeaseSupervisor({ store, effects: {
+      async apply(operation) {
+        const receipt = await recordEffect(operation);
+        if (receipt !== input.operationId) return { status: "rejected" };
+        throw Error("synthetic lost acknowledgement");
+      }
+    }}).run(input);
+    assert.equal(lost.reason, "EFFECT_ACK_UNKNOWN_QUARANTINE_REQUIRED");
+    await expire(input.taskId);
+    assert.equal((await store.quarantineExpired(input.taskId)).status, "blocked_uncertain");
+    const backup = await createLeaseSupervisor({ store, effects: {
+      apply() { assert.fail("quarantined task must not be replayed"); }
+    }}).run({ ...input, actorId: "worker-backup" });
+    assert.equal(backup.reason, "LEASE_NOT_ACQUIRED");
+    assert.equal(await query("SELECT task_id, operation_id FROM test_effects"), "lost-ack|test-effect");
+  } finally {
+    await sql(db, "DROP SCHEMA IF EXISTS " + schema + " CASCADE");
   }
 });

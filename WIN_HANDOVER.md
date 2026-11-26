@@ -173,3 +173,24 @@ full Node 42/42, quality gates 107/107, and build 61 plus 44.
 Issue #20 assigned authorization and authoritative-source corrections to PR #72. Another Codex worker advanced that branch to `5ed59e92074c7fe50aeffea4ec48cf8249899982` with the primary fixes while an independent overlapping draft was in progress. The follow-up branch `win-draft/pr72-recheck-regression-20261119` therefore adds only non-overlapping coverage that changes `task_type` and `source_commit_sha` on the second lease read after GitHub head and commit inspection. Both changes stop with `LEASE_NOT_CURRENT` before any CAS write. Documentation records that the complete lease policy applies on both reads and that checkpoint descendants remain blocked pending trusted ancestry proof.
 
 Local targeted tests passed 11/11. `npm test` passed 114 tests with one intentional opt-in PostgreSQL skip and 107/107 quality gates. `npm run build` passed 61 required-file checks, 44 architecture checks and 107/107 quality gates. No database, production, merge, deployment, paid API or secret operation occurred.
+
+## PostgreSQL coordinator verification draft — 2026-11-26
+
+See [WIN_MASTER_CHECKLIST.md](WIN_MASTER_CHECKLIST.md) for the infrastructure
+queue and separate product checklist. Branch
+`win-draft/postgres-coordinator-verification` extends PR #86 exact head
+`2950f6fe9721b63442570d52573a7c2181781690`.
+
+The test implementation was verified with Node 24.22.1. The opt-in PostgreSQL
+integration file passed 2/2 on disposable PostgreSQL 16.16. The default
+`npm test` passed 119 tests with the two opt-in PostgreSQL tests skipped and
+107/107 quality gates. `npm run build` passed 61 required-file and 44
+architecture checks plus the same 107 gates. The simulated receipt shares
+the database transaction with the fence check. The test covers a fence change
+after renewal, persistence after lost acknowledgement, and rejection of a
+backup claim while the task is quarantined. It provides no backup takeover or
+external GitHub effect evidence.
+
+Next, independently review the test draft and establish authenticated isolated
+reconciliation before allowing a quarantined task to resume. Keep the project
+writer disabled pending the authorization and atomicity gates in issue #81.
