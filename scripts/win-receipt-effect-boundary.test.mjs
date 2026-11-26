@@ -21,6 +21,16 @@ test("receipt-backed boundary applies a duplicate operation only once", async ()
   assert.deepEqual(sink.attempts, ["operation-1"]);
 });
 
+test("operation IDs cannot be rebound to another task, payload or applied owner", async () => {
+  const boundary = createReceiptBackedEffectBoundary({
+    receiptStore: createMemoryEffectReceiptStore(), effectSink: createNoopEffectSink()
+  });
+  await boundary.execute({ ...base, fence: 1 });
+  await assert.rejects(boundary.execute({ ...base, taskId: "task-2", fence: 2 }), /EFFECT_OPERATION_BINDING_MISMATCH/);
+  await assert.rejects(boundary.execute({ ...base, payload: { result: "different" }, fence: 2 }), /EFFECT_OPERATION_BINDING_MISMATCH/);
+  await assert.rejects(boundary.execute({ ...base, ownerId: "worker-b", fence: 2 }), /EFFECT_OPERATION_BINDING_MISMATCH/);
+});
+
 test("worker crash after effect and stale fence cannot duplicate the logical effect", async () => {
   const store = createMemoryEffectReceiptStore();
   const sink = createNoopEffectSink();
@@ -46,5 +56,18 @@ test("malformed attempts fail closed before invoking receipt or sink", async () 
   });
   await assert.rejects(boundary.execute({ ...base, operationId: "bad id", fence: 1 }), /INVALID_EFFECT_ATTEMPT/);
   await assert.rejects(boundary.execute({ ...base, fence: 0 }), /INVALID_EFFECT_ATTEMPT/);
+  assert.equal(sink.attempts.length, 0);
+});
+
+test("untrusted receipt output fails closed before invoking the sink", async () => {
+  const sink = createNoopEffectSink();
+  const boundary = createReceiptBackedEffectBoundary({
+    receiptStore: {
+      async begin() { return { status: "claimed", receipt: { operationId: "operation-1", taskId: "task-1", payloadHash: "bad", ownerId: "worker-a", fence: 1, status: "pending" } }; },
+      async complete() { throw Error("UNEXPECTED_COMPLETE"); }
+    },
+    effectSink: sink
+  });
+  await assert.rejects(boundary.execute({ ...base, fence: 1 }), /INVALID_EFFECT_RECEIPT_RESULT/);
   assert.equal(sink.attempts.length, 0);
 });
