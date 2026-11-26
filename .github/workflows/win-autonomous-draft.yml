@@ -1,0 +1,38 @@
+name: WIN autonomous draft cycle
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+concurrency:
+  group: win-autonomous-draft
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  bounded-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm test
+      - run: node scripts/win-autonomous-runner.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WIN_STATE_PATH: win-autonomous-state.json
+          WIN_OUTPUT_PATH: win-autonomous-result.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-autonomous-cycle-${{ github.run_id }}
+          path: |
+            win-autonomous-state.json
+            win-autonomous-result.json
