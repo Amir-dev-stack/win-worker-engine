@@ -30,3 +30,10 @@ test("fails closed on malformed database result shapes", async () => {
   const adapter = createDurableQueueAdapter({ async query() { return { rows: [{}], rowCount: 2 }; } });
   await assert.rejects(adapter.claim("task-1", "worker-a", 60), /INVALID_DURABLE_DB_RESULT/);
 });
+
+test("fails closed on malformed lease fields even when row counts look valid", async () => {
+  const adapter = createDurableQueueAdapter({ async query() {
+    return { rows: [{ task_id: "task-1", fence: "not-a-fence", source_commit_sha: "bad", task_type: "unknown" }], rowCount: 1 };
+  } });
+  await assert.rejects(adapter.claim("task-1", "worker-a", 60), /INVALID_DURABLE_DB_RESULT/);
+});
