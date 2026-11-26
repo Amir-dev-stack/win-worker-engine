@@ -22,7 +22,11 @@ input and result-shape validation. The adapter has no network or database
 connection by itself.
 
 The adapter, supervisor lifecycle, scheduler and failure-injection suite pass
-18/18 locally at commit `f47d097b4b7e1c19f3580b70ce3ea23937571e95`. Coverage
+18/18 locally. The opt-in PostgreSQL 16 validation script passes at commit
+`1e2efb39fadc259cc1d0e79458ce2faf5ce5cdcb` against an isolated local
+container. It exercises two concurrent claimers, stale lease rejection,
+checkpoint persistence, and rollback after terminating an in-flight transaction.
+Coverage
 includes parameterized CAS statements, malformed-result rejection, checkpoint
 preservation, usage-limit routing, reset gating, lease-expiry takeover,
 concurrent claim serialization, duplicate-handover prevention, scheduler
@@ -34,10 +38,10 @@ injected-component tests; they are not distributed Postgres evidence.
 | Area | Status | Evidence / limitation |
 | --- | --- | --- |
 | Durable queue schema | IN PROGRESS | Draft SQL only, no migration applied. |
-| Atomic claim and fencing | IN PROGRESS | Parameterized SQL contract and prior isolated PostgreSQL CI. Cross-process adapter integration pending. |
-| Durable checkpoints | IN PROGRESS | Queue checkpoint column and existing Neon etag design. Durable end-to-end test pending. |
+| Atomic claim and fencing | IN PROGRESS | Local PostgreSQL two-process claim and stale-fence validation pass; disposable provider-branch evidence still pending. |
+| Durable checkpoints | IN PROGRESS | Local PostgreSQL checkpoint persistence passes; durable provider-backed end-to-end test pending. |
 | Idempotent receipts | IN PROGRESS | Receipt table draft. Effect sink integration pending. |
-| Crash/interruption recovery | IN PROGRESS | Local failure matrix covers injected crashes and interruptions; process-crash and interrupted-transaction tests pending. |
+| Crash/interruption recovery | IN PROGRESS | Local process termination rolls back an interrupted transaction; provider-backed crash recovery remains pending. |
 | Supervisor and scheduler integration | IN PROGRESS | Bounded lifecycle and persistent checkpoint scheduler pass 17/17 locally; durable cross-worker state still pending. |
 | Neon | VERIFIED (read-only inspection) | Project and disposable branches identified without writes. |
 | Supabase | VERIFIED (no project available) | Discovery returned an empty project list. |
