@@ -22,12 +22,12 @@ input and result-shape validation. The adapter has no network or database
 connection by itself.
 
 The adapter, supervisor lifecycle, scheduler and failure-injection suite pass
-17/17 locally at commit `a1e37c736a492d18d0b4152eb5fe519d91fef515`. Coverage
+18/18 locally at commit `f47d097b4b7e1c19f3580b70ce3ea23937571e95`. Coverage
 includes parameterized CAS statements, malformed-result rejection, checkpoint
 preservation, usage-limit routing, reset gating, lease-expiry takeover,
-concurrent claim serialization, duplicate-handover prevention and scheduler
-interruption recovery. These are injected-component tests; they are not
-distributed Postgres evidence.
+concurrent claim serialization, duplicate-handover prevention, scheduler
+interruption recovery and PostgreSQL bigint-fence normalization. These are
+injected-component tests; they are not distributed Postgres evidence.
 
 ## Completion matrix
 
