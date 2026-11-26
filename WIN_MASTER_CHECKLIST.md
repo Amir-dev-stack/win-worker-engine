@@ -6,7 +6,7 @@ Updated 2026-11-26. The owner assignment defines A01–A20. [Issue #81](https://
 
 | Done | Requirement | Current evidence and next gate |
 | --- | --- | --- |
-| [ ] | A01 Cloud execution | Need supported task receipt retrieval, schedule and consecutive PC-off runs. [#87](https://github.com/Amir-dev-stack/win-worker-engine/pull/87) |
+| [ ] | A01 Cloud execution | CLI exposes list, create and status commands, but `codex cloud list --json --limit 1` is blocked by HTTP 403 `Domain forbidden` at `chatgpt.com/backend-api/wham/tasks/list`. This proves programmatic listing is blocked. Creation and status remain unverified because no task ID exists and no unsupported side effect will be attempted. [#87](https://github.com/Amir-dev-stack/win-worker-engine/pull/87) |
 | [ ] | A02 Scheduler | Mock supervisor on main and offline dispatcher in [#85](https://github.com/Amir-dev-stack/win-worker-engine/pull/85). Need live execution adapter and dependency/resume acceptance. |
 | [ ] | A03 Model routing | Offline policy drafts [#51](https://github.com/Amir-dev-stack/win-worker-engine/pull/51), [#64](https://github.com/Amir-dev-stack/win-worker-engine/pull/64) and [#69](https://github.com/Amir-dev-stack/win-worker-engine/pull/69). Verify model eligibility and zero-cost terms and keep Astra architecture preference. |
 | [ ] | A04 Limit recovery | Mock supervisor and inference failover draft [#68](https://github.com/Amir-dev-stack/win-worker-engine/pull/68). Need supported Codex checkpoint/reset and actual no-spend fallback evidence. |
@@ -23,7 +23,7 @@ Updated 2026-11-26. The owner assignment defines A01–A20. [Issue #81](https://
 | [ ] | A15 Performance | Need durable performance evidence and measured improvement before adaptive routing is accepted. |
 | [ ] | A16 Financial isolation | Existing controls and offline policies exist. Live eligibility and quota checks remain unverified. Allow zero new spend only. |
 | [ ] | A17 Owner approvals | Issue ledger exists. Need supported mobile notifications and independently verifiable owner approvals. |
-| [ ] | A18 Monitoring | Need durable scheduler and provider, quota, CI, connectivity and recovery observations. |
+| [ ] | A18 Monitoring | Environment status reports connected cloud infrastructure. Native ChatGPT automation `WIN Cloud Development` is enabled for repository coordination, and its prompt explicitly states that it does not launch Codex. Durable Codex task, provider, quota and recovery observations remain unverified. |
 | [ ] | A20 Acceptance | Needs genuine PC-off schedule, assignment, exact-head review, safe fallback, receipt and multiple cycles. |
 
 ## Product
@@ -38,3 +38,23 @@ A19 remains open. The secondary worker most recently handed off draft [#107](htt
 ## Checkpoint
 
 The isolated test extends draft #86, head `2950f6fe9721b63442570d52573a7c2181781690`. The production checkout and the secondary worker’s branches were left intact. An independent agent inspected #72, #83 and #86 evidence and identified the gap between a pre-effect lease renewal and effect-time fencing. The new test exercises a synthetic effect in the same PostgreSQL transaction as the fence check. GitHub ref mutation and live provider calls remain outside the verified scope.
+
+## Cloud access checkpoint — 2026-11-26
+
+The managed environment is connected and reports a restricted network policy. The
+installed Codex CLI supports `cloud list`, `cloud exec`, and `cloud status`.
+`cloud list --json --limit 1` returned HTTP 403 `Domain forbidden` from the
+`chatgpt.com/backend-api/wham/tasks/list` transport. This is a programmatic task
+listing restriction. Task creation was not attempted because no supported
+authorization path was verified, and task status cannot be tested without a real
+task ID. No credentials were requested, no private endpoint was probed, and no
+access restriction was bypassed.
+
+The enabled native `WIN Cloud Development` ChatGPT automation is a supported
+coordination fallback. Its own instructions explicitly distinguish it from Codex
+dispatch and prohibit claiming that it launches Codex. It may continue safe
+nonconflicting repository work while A01 remains blocked.
+
+When a supported Codex execution mechanism is verified, arrange a two-hour
+owner-PC-off window and record a real task ID, timestamps, workspace, branch,
+commit, test evidence, and handoff before considering A01 or A20 complete.
