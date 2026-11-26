@@ -11,6 +11,7 @@
 | Cloudflare Workers / Durable Objects | Yes | Durable object can fence ownership | Free limits and deployment/auth setup are not verified in this session | Possible durable backend, not selected as first POC |
 | Render free / Hugging Face Spaces | Usually, but sleep/quota behavior varies | No native GitHub issue fencing or agent auth | Provider limits and credentials remain unverified | Not selected |
 | OpenCode + free models | Runner can be PC-off | Requires model/provider credentials and rate-limit handling | Free model availability is not durable or guaranteed | Backup executor only, not yet verified |
+| Independent backup-agent auth (GitHub App/OIDC) | Yes for runner identity | Short-lived repository identity can fence control-plane work | OIDC does not grant model-provider access; a separate approved model credential is still required | Useful for control plane, not an executor credential |
 
 ## Selected architecture
 
