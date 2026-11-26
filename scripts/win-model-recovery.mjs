@@ -79,6 +79,11 @@ export function createRecoveryController({ store, now = () => new Date() } = {})
       await store.write(next);
       return next;
     },
+    async resumeAfterReset(taskId, operationId) {
+      const refreshed = await this.refresh(taskId);
+      if (!refreshed || refreshed.state !== "resumable") return refreshed;
+      return this.resume(taskId, operationId);
+    },
     async complete(taskId) {
       const current = await this.get(taskId);
       if (!current || current.state !== "running") throw Error("RECOVERY_NOT_RUNNING");

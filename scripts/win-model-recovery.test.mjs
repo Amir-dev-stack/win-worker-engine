@@ -25,7 +25,7 @@ test("preserves checkpoint, waits for reset, and resumes idempotently", async ()
   clock = new Date("2026-11-26T12:30:01Z");
   assert.equal((await controller.refresh("task-1")).state, "resumable");
   await assert.rejects(controller.resume("task-1", "wrong-op"), /RECOVERY_OPERATION_CONFLICT/);
-  assert.equal((await controller.resume("task-1", "op-1")).state, "running");
+  assert.equal((await controller.resumeAfterReset("task-1", "op-1")).state, "running");
   assert.equal((await controller.complete("task-1")).state, "completed");
 });
 
