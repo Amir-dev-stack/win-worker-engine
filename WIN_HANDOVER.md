@@ -183,6 +183,8 @@ success.
 
 Draft PR #120 commit `329e2345938b8a52a9266430643038e9bc5ed278` triggered a
 real GitHub-hosted runner without a browser session or model credential.
+The follow-up workflow now restores the latest branch-scoped checkpoint cache
+before claiming work and saves a new immutable run-keyed snapshot afterward.
 Run 45841448653 completed successfully:
 https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/45841448653
 
