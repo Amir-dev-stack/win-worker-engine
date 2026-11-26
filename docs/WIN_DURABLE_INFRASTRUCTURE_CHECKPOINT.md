@@ -21,8 +21,13 @@ parameterized atomic claim, renewal, checkpoint and quarantine statements with
 input and result-shape validation. The adapter has no network or database
 connection by itself.
 
-Targeted adapter tests pass 3/3. They verify parameterized CAS statement use,
-rejection before database access, and fail-closed handling of malformed results.
+The adapter, supervisor lifecycle, scheduler and failure-injection suite pass
+17/17 locally at commit `a1e37c736a492d18d0b4152eb5fe519d91fef515`. Coverage
+includes parameterized CAS statements, malformed-result rejection, checkpoint
+preservation, usage-limit routing, reset gating, lease-expiry takeover,
+concurrent claim serialization, duplicate-handover prevention and scheduler
+interruption recovery. These are injected-component tests; they are not
+distributed Postgres evidence.
 
 ## Completion matrix
 
@@ -32,7 +37,8 @@ rejection before database access, and fail-closed handling of malformed results.
 | Atomic claim and fencing | IN PROGRESS | Parameterized SQL contract and prior isolated PostgreSQL CI. Cross-process adapter integration pending. |
 | Durable checkpoints | IN PROGRESS | Queue checkpoint column and existing Neon etag design. Durable end-to-end test pending. |
 | Idempotent receipts | IN PROGRESS | Receipt table draft. Effect sink integration pending. |
-| Crash/interruption recovery | IN PROGRESS | Quarantine contract exists. Process-crash and interrupted-transaction tests pending. |
+| Crash/interruption recovery | IN PROGRESS | Local failure matrix covers injected crashes and interruptions; process-crash and interrupted-transaction tests pending. |
+| Supervisor and scheduler integration | IN PROGRESS | Bounded lifecycle and persistent checkpoint scheduler pass 17/17 locally; durable cross-worker state still pending. |
 | Neon | VERIFIED (read-only inspection) | Project and disposable branches identified without writes. |
 | Supabase | VERIFIED (no project available) | Discovery returned an empty project list. |
 | Production safety | VERIFIED | No production query, migration, credential access, paid operation or deployment performed. |
