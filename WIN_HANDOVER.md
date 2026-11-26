@@ -163,3 +163,19 @@ Regression coverage also passes malformed provider arrays, fields and a
 non-array provider collection and verifies a fixed `no_eligible_provider`
 result without adapter execution. Updated verification is targeted 10/10,
 full Node 42/42, quality gates 107/107, and build 61 plus 44.
+
+## PC-off autonomous execution control-plane POC — 2026-11-26
+
+Draft branch `win-draft/autonomous-execution-poc-20261126`, exact head
+`dd66695fae43b3137226db0f5a91134f4abbe5a4`. The GitHub Actions proof reads
+issue #20 with the repository-scoped `GITHUB_TOKEN`, serializes scheduled and
+manual runs with a concurrency group, selects the latest WIN handoff marker,
+and writes a bounded fence/checkpoint artifact. Focused tests pass 3/3; full
+tests pass 58/58; quality gates pass 107/107; build checks pass 61 required
+files plus 44 architecture checks; `git diff --check` is clean.
+
+The model executor is deliberately `not_configured` and
+`executionEvidence` remains false. This avoids owner-authentication transfer,
+paid providers and production writers. A genuine independent cloud execution
+still requires a supported executor and must be verified before claiming
+success.
