@@ -63,6 +63,7 @@ injected-component tests; they are not distributed Postgres evidence.
 | Atomic claim and fencing | VERIFIED (disposable branch) | Two independent Neon sessions produced one claim winner and one empty result; stale renewal returned no row. |
 | Durable checkpoints | VERIFIED (disposable branch) | Neon checkpoint write and subsequent read preserved the commit SHA. |
 | Idempotent receipts | VERIFIED (disposable branch) | Unique operation receipt insert returned once; conflicting duplicate was ignored and the original row persisted. Effect-sink integration remains pending. |
+| Receipt-backed effect boundary | VERIFIED (draft local no-op) | Injected sink coalesces duplicate operation IDs across retry, simulated worker crash and stale-fence takeover; no external writer is active. |
 | Crash/interruption recovery | IN PROGRESS | Local PostgreSQL termination rolls back an interrupted transaction, and the scheduler's atomic file checkpoint survives a worker SIGKILL and resumes the next task; provider-backed crash recovery remains pending. |
 | Supervisor and scheduler integration | IN PROGRESS | Bounded lifecycle and persistent checkpoint scheduler pass 33/33 in the targeted durable suite; durable cross-worker state still pending. |
 | Local worker restart checkpoint | VERIFIED (disposable local file) | Atomic temp-file/rename checkpoint survives SIGKILL in a child process; malformed state fails closed without resetting the file. This is local-only and not a distributed lease store. |

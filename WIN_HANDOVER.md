@@ -197,6 +197,22 @@ scheduler/model-routing integration, and supported ChatGPT–Codex execution
 handoffs remain open. The Neon child branch is scheduled for automatic expiry;
 no deletion or production mutation was performed.
 
+## Receipt-backed effect boundary — 2026-11-26
+
+The isolated continuation branch adds a draft-only receipt boundary with an
+injected, externally side-effect-free sink. A receipt is claimed by operation
+ID and fence before execution, completed only after the sink returns, and a
+higher fence may safely resume a pending operation after a simulated worker
+crash. The sink stores one logical effect per operation ID, so a replay can
+make another attempt without applying the logical effect twice. Lower or stale
+fences fail closed, duplicate completed operations return the original result,
+and malformed attempts are rejected before receipt or sink access.
+
+This is a local in-memory proof only: the effect sink is deliberately a no-op,
+there is no external writer, and a production adapter would still require an
+atomic PostgreSQL conditional-write/effect contract. No deployment, migration,
+provider call, credential access, paid operation or financial action occurred.
+
 ## PR #113 worker restart checkpoint — 2026-11-26
 
 The continuation branch adds `createFileSchedulerStateStore`, a validated
