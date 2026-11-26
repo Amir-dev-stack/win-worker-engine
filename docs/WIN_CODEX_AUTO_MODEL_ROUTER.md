@@ -248,3 +248,19 @@ Therefore **PC-off browser Codex task execution is verified**; **automatic `code
 ## Standing owner instruction: resolve blockers, don't pivot
 
 Read [WIN blocker-resolution policy](WIN_BLOCKER_RESOLUTION_POLICY.md) before abandoning any Codex CLI/cloud problem. The environment ID issue remains open until a supported CLI environment selection and owner-approved end-to-end dispatch have been verified. Continue safe root-cause investigation and document every blocker without circumventing security, spending or approval rules.
+
+## Bounded usage-limit recovery — November 26, 2026
+
+`scripts/win-model-recovery.mjs` provides the persistence boundary for a task
+that encounters a verified usage limit after a checkpoint. It classifies usage
+limits separately from authentication, network, service-outage and unknown
+failures. A usage-limit failure stores only a task ID, checkpoint SHA, stable
+operation ID and sequence, then waits for a future reset timestamp. The task
+becomes resumable only after a fresh clock check confirms that reset time has
+passed, and resume requires the same operation ID for idempotent continuation.
+
+The module has memory and atomic JSON stores for isolated testing. It does not
+call a provider, reset a quota, replay a mutating task, or infer entitlement.
+The model router's live account and quota probes remain fail-closed and still
+require an independently supported Codex interface. Exact local verification
+on the model-recovery branch passed 42/42 targeted model and recovery tests.
