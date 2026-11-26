@@ -2,6 +2,9 @@ name: WIN autonomous draft cycle
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - "win-draft/autonomous-execution-poc-20261126"
   schedule:
     - cron: "17 * * * *"
 
@@ -23,8 +26,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - run: npm test
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: node --test scripts/win-autonomous-runner.test.mjs
       - run: node scripts/win-autonomous-runner.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
