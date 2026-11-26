@@ -27,6 +27,10 @@ Updated 2026-11-26. This draft is additive and does not apply a production migra
   one returned the task with fence `1`; the other returned no row.
 - A checkpoint write returned the expected commit SHA, a subsequent read
   observed it, and renewal after an explicitly expired lease returned no row.
+- A receipt insert on the child branch returned one row; a duplicate operation
+  insert with a different result SHA returned no row and the original receipt
+  remained unchanged. This verifies the draft table's unique operation key and
+  conflict-preserving insert shape, not an end-to-end effect sink.
 - The Neon connector could not expose or terminate the transaction backend, so
   process-termination rollback remains separately evidenced only by the
   opt-in local PostgreSQL script below.
@@ -58,7 +62,7 @@ injected-component tests; they are not distributed Postgres evidence.
 | Durable queue schema | VERIFIED (disposable branch) | Draft SQL applied only to expiring Neon child branch `br-proud-poetry-bayjofp7`; no production migration. |
 | Atomic claim and fencing | VERIFIED (disposable branch) | Two independent Neon sessions produced one claim winner and one empty result; stale renewal returned no row. |
 | Durable checkpoints | VERIFIED (disposable branch) | Neon checkpoint write and subsequent read preserved the commit SHA. |
-| Idempotent receipts | IN PROGRESS | Receipt table draft. Effect sink integration pending. |
+| Idempotent receipts | VERIFIED (disposable branch) | Unique operation receipt insert returned once; conflicting duplicate was ignored and the original row persisted. Effect-sink integration remains pending. |
 | Crash/interruption recovery | IN PROGRESS | Local process termination rolls back an interrupted transaction; provider-backed crash recovery remains pending. |
 | Supervisor and scheduler integration | IN PROGRESS | Bounded lifecycle and persistent checkpoint scheduler pass 17/17 locally; durable cross-worker state still pending. |
 | Neon | VERIFIED (disposable validation) | Expiring child branch used for schema and queue evidence; production untouched. |

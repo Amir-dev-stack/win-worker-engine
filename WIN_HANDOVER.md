@@ -180,6 +180,11 @@ one empty result. A checkpoint SHA survived a separate read, and renewal after
 an explicitly expired lease returned no row. No production branch, migration,
 credential, provider API or paid operation was used.
 
+A receipt insert returned one row; a duplicate operation insert with a different
+result SHA returned no row and the original receipt remained unchanged. This
+verifies the draft unique operation key on the disposable branch, not an
+end-to-end side-effect sink.
+
 **Crash evidence:** `./scripts/win-postgres-validation.sh` passed in a fresh
 disposable `postgres:16-alpine` container: concurrent claim serialization,
 stale fencing, checkpoint persistence and rollback after terminating an
