@@ -29,4 +29,8 @@ This avoids transferring owner authentication and works with the owner PC switch
 - The runner is read-only against GitHub except for local artifact files.
 - It does not create branches, PRs, provider calls, model calls, or paid operations.
 - `executionEvidence` remains false until an independently authorized executor produces a task ID, logs, repository change and test results.
-- No claim is made that the scheduled workflow has executed in GitHub Actions from this draft branch.
+- Verified hosted run: draft PR #120 run 45841448653 completed successfully on
+  commit `329e2345938b8a52a9266430643038e9bc5ed278`, passed 4/4 focused tests,
+  fetched issue comment `7194539609`, and uploaded artifact `15128895605`.
+  This is independent control-plane execution with the PC off; it is not a
+  claim of model/Codex execution.
