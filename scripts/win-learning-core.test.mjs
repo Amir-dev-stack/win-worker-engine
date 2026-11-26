@@ -8,6 +8,7 @@ import {
   evaluateFullTimeLeg,
   evaluateMatchCardTotalLeg,
   evaluateMatchCornerTotalLeg,
+  evaluatePlayerAssistTotalLeg,
   evaluatePlayerGoalTotalLeg,
   evaluatePlayerShotOnTargetTotalLeg,
   evaluatePlayerShotTotalLeg,
@@ -726,6 +727,121 @@ test("player shots-on-target totals reject identity, participation and related-s
     { ...leg, settlementRule: null }
   ]) assert.equal(evaluatePlayerShotOnTargetTotalLeg(invalidLeg, valid).status, "unsupported_market", JSON.stringify(invalidLeg));
   assert.equal(evaluatePlayerShotOnTargetTotalLeg({ ...leg, playerId: "Player Nine" }, { ...valid, playerId: "Player Nine" }).status, "unsupported_market");
+  assert.equal(evaluateFullTimeLeg(leg, { home: 2, away: 1 }).status, "unsupported_market");
+});
+
+test("player assist totals settle exact match-bound final regulation evidence", () => {
+  const leg = { market: "Player Total Assists", eventId: "event-1", playerId: "player-9", line: 0.5 };
+  const evidence = {
+    eventId: "event-1",
+    playerId: "player-9",
+    scope: "regulation_time",
+    status: "final",
+    participationStatus: "played",
+    countingRule: "official_regulation_player_assist_count",
+    assists: 1
+  };
+  for (const market of ["Player Total Assists", "Total Player Assists", "Player Assists Total"]) {
+    assert.equal(evaluatePlayerAssistTotalLeg({ ...leg, market, pick: "Over" }, evidence).status, "won", market);
+  }
+  assert.equal(evaluatePlayerAssistTotalLeg({ ...leg, pick: "Under", line: 1.5 }, evidence).status, "won");
+  assert.equal(evaluatePlayerAssistTotalLeg({ ...leg, pick: "Under" }, evidence).status, "lost");
+  assert.equal(evaluatePlayerAssistTotalLeg({ ...leg, pick: "Over", line: 1 }, evidence).status, "void");
+  const settled = evaluatePlayerAssistTotalLeg({ ...leg, pick: "Over" }, evidence);
+  assert.equal(settled.settlementRule, "player_total_assists_regulation_official_count_whole_or_half_v1");
+  assert.equal(settled.eventId, "event-1");
+  assert.equal(settled.playerId, "player-9");
+  assert.equal(settled.participationStatus, "played");
+  assert.equal(settled.assists, 1);
+});
+
+test("player assist totals require own fields and reconcile dual selections", () => {
+  const leg = { market: "Player Total Assists", eventId: "event-1", playerId: "player-9", line: 0.5 };
+  const evidence = {
+    eventId: "event-1", playerId: "player-9", scope: "regulation_time", status: "final",
+    participationStatus: "played", countingRule: "official_regulation_player_assist_count", assists: 1
+  };
+  assert.equal(evaluatePlayerAssistTotalLeg({ ...leg, pick: "Over" }, evidence).status, "won");
+  assert.equal(evaluatePlayerAssistTotalLeg({ ...leg, selection: "Over" }, evidence).status, "won");
+  assert.equal(evaluatePlayerAssistTotalLeg({ ...leg, pick: "Over", selection: "Over" }, evidence).status, "won");
+  for (const invalidLeg of [
+    { ...leg, pick: "Over", selection: "Under" },
+    { ...leg, pick: "Over", selection: "" },
+    { ...leg, pick: undefined, selection: "Over" },
+    Object.assign(Object.create({ market: "Player Total Assists" }), { eventId: "event-1", playerId: "player-9", line: 0.5, pick: "Over" }),
+    Object.assign(Object.create({ line: 0.5 }), { market: "Player Total Assists", eventId: "event-1", playerId: "player-9", pick: "Over" }),
+    Object.assign(Object.create({ pick: "Over" }), { market: "Player Total Assists", eventId: "event-1", playerId: "player-9", line: 0.5 }),
+    Object.assign(Object.create({ eventId: "event-1" }), { market: "Player Total Assists", playerId: "player-9", line: 0.5, pick: "Over" }),
+    Object.assign(Object.create({ playerId: "player-9" }), { market: "Player Total Assists", eventId: "event-1", line: 0.5, pick: "Over" })
+  ]) assert.equal(evaluatePlayerAssistTotalLeg(invalidLeg, evidence).status, "unsupported_market");
+
+  for (const inheritedField of ["eventId", "playerId", "scope", "status", "participationStatus", "countingRule", "assists"]) {
+    const inheritedEvidence = Object.create({ [inheritedField]: evidence[inheritedField] });
+    for (const [field, value] of Object.entries(evidence)) if (field !== inheritedField) inheritedEvidence[field] = value;
+    assert.equal(evaluatePlayerAssistTotalLeg({ ...leg, pick: "Over" }, inheritedEvidence).status, "unsupported_market", inheritedField);
+  }
+
+  const ownLeg = Object.assign(Object.create(null), { ...leg, pick: "Over" });
+  const ownEvidence = Object.assign(Object.create(null), evidence);
+  assert.equal(evaluatePlayerAssistTotalLeg(ownLeg, ownEvidence).status, "won");
+});
+
+test("player assist totals reject identity, participation and related-stat ambiguity", () => {
+  const leg = { market: "Player Total Assists", eventId: "event-1", playerId: "player-9", line: 0.5, pick: "Over" };
+  const valid = {
+    eventId: "event-1", playerId: "player-9", scope: "regulation_time", status: "final",
+    participationStatus: "played", countingRule: "official_regulation_player_assist_count", assists: 1
+  };
+  for (const evidence of [
+    {},
+    { ...valid, eventId: "event-2" },
+    { ...valid, playerId: "player-10" },
+    { ...valid, eventId: " event-1" },
+    { ...valid, playerId: "player-9 " },
+    { ...valid, playerId: "Player Nine" },
+    { ...valid, scope: "full_match" },
+    { ...valid, scope: "extra_time" },
+    { ...valid, status: "live" },
+    { ...valid, participationStatus: "did_not_play" },
+    { ...valid, participationStatus: "unused_substitute" },
+    { ...valid, countingRule: "provider_label" },
+    { ...valid, assists: null },
+    { ...valid, assists: "1" },
+    { ...valid, assists: 1.5 },
+    { ...valid, assists: -1 },
+    { ...valid, assists: 21 },
+    { ...valid, assistEvents: [] },
+    { ...valid, assistedGoalEvents: [] },
+    { ...valid, keyPasses: 3 },
+    { ...valid, passes: 28 },
+    { ...valid, providerAssists: 1 },
+    { ...valid, goals: 1 },
+    { ...valid, shots: 2 },
+    { ...valid, teamAssists: 2 },
+    { ...valid, homeAssists: 2, awayAssists: 1 }
+  ]) assert.equal(evaluatePlayerAssistTotalLeg(leg, evidence).status, "unsupported_market", JSON.stringify(evidence));
+
+  for (const invalidLeg of [
+    { ...leg, eventId: "event-2" },
+    { ...leg, playerId: "player-10" },
+    { ...leg, eventId: "" },
+    { ...leg, playerId: "Player Nine" },
+    { ...leg, line: undefined },
+    { ...leg, line: "0.5" },
+    { ...leg, line: -0.5 },
+    { ...leg, line: 20.5 },
+    { ...leg, line: 0.25 },
+    { ...leg, pick: "Over 0.5" },
+    { ...leg, market: "Player Total Goals" },
+    { ...leg, market: "Player Key Passes" },
+    { ...leg, market: "Team Total Assists" },
+    { ...leg, market: "First Half Player Assists" },
+    { ...leg, market: "Player Assists + Goals" },
+    { ...leg, settlementRule: "Unknown Player Rule" },
+    { ...leg, settlementRule: "" },
+    { ...leg, settlementRule: null }
+  ]) assert.equal(evaluatePlayerAssistTotalLeg(invalidLeg, valid).status, "unsupported_market", JSON.stringify(invalidLeg));
+  assert.equal(evaluatePlayerAssistTotalLeg({ ...leg, playerId: "Player Nine" }, { ...valid, playerId: "Player Nine" }).status, "unsupported_market");
   assert.equal(evaluateFullTimeLeg(leg, { home: 2, away: 1 }).status, "unsupported_market");
 });
 
