@@ -25,6 +25,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Seed checkpoint file
+        run: test -e win-autonomous-state.json || printf '{"fence":0,"active":null}\n' > win-autonomous-state.json
+      - uses: actions/cache/restore@v4
+        with:
+          path: win-autonomous-state.json
+          key: win-autonomous-state-v1-${{ github.run_id }}
+          restore-keys: win-autonomous-state-v1-
       - run: node --test scripts/win-autonomous-runner.test.mjs
       - run: node scripts/win-autonomous-runner.mjs
         env:
@@ -37,3 +44,8 @@ jobs:
           path: |
             win-autonomous-state.json
             win-autonomous-result.json
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: win-autonomous-state.json
+          key: win-autonomous-state-v1-${{ github.run_id }}
