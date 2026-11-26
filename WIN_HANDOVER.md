@@ -179,3 +179,21 @@ The model executor is deliberately `not_configured` and
 paid providers and production writers. A genuine independent cloud execution
 still requires a supported executor and must be verified before claiming
 success.
+## Hosted control-plane verification — 2026-11-26
+
+Draft PR #120 commit `298b735727fc3c492332fb929ba7b0e6a0d426f0` triggered a
+real GitHub-hosted runner without a browser session or model credential.
+Run 45841841388 completed successfully:
+https://github.com/Amir-dev-stack/win-worker-engine/actions/runs/45841841388
+
+The `bounded-cycle` job passed focused runner tests 4/4 and live issue
+retrieval. Permissions were `contents: read`, `issues: read`, and
+`metadata: read`. Artifact 15128012559 (`win-autonomous-cycle-45841841388`)
+was uploaded with SHA-256
+`a49ccfcae382b3f232c69a4788e19c0fc334700c99e11010f5ef53d44d84eb0b`.
+
+Pagination reached issue comment `7194539609`, the current `WIN_HANDOFF_V1`
+NHL report. It contains no bounded A01-A20 ID, so the runner correctly left
+`dispatchStatus=not_configured` and `executionEvidence=false`. This verifies
+independent PC-off control-plane execution and artifact continuation, but not
+model/Codex execution; the external executor remains the next blocker.
