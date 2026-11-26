@@ -163,3 +163,13 @@ Regression coverage also passes malformed provider arrays, fields and a
 non-array provider collection and verifies a fixed `no_eligible_provider`
 result without adapter execution. Updated verification is targeted 10/10,
 full Node 42/42, quality gates 107/107, and build 61 plus 44.
+
+## Performance monitoring checkpoint — 2026-11-26
+
+Branch `win-draft/agent-performance-metrics` adds a bounded performance ledger
+in `scripts/win-agent-performance.mjs`. It records sanitized assignment
+outcomes, computes success, recovery, review-rejection, duration and resource
+metrics, and emits a single-attempt corrective assignment only after measured
+deterioration with sufficient sample size. Targeted tests pass 3/3. This is
+draft evidence and does not claim model learning improvement until durable
+history and independent evaluation exist.
