@@ -163,3 +163,31 @@ Regression coverage also passes malformed provider arrays, fields and a
 non-array provider collection and verifies a fixed `no_eligible_provider`
 result without adapter execution. Updated verification is targeted 10/10,
 full Node 42/42, quality gates 107/107, and build 61 plus 44.
+
+## PR #112 durable queue continuation — 2026-11-26
+
+**Exact baseline:** `8d1ec2a30cac31b3aafa11f3845b372553eebf00` on the isolated
+branch `win-draft/durable-queue-continuation-20261126`; worktree was clean
+before this checkpoint. The source PR remains draft-only and unmerged.
+
+**Disposable Neon evidence (verified):** Created expiring child branch
+`win-pr112-validation-20261126` (`br-proud-poetry-bayjofp7`) from the existing
+non-production validation branch in project `win-memory`
+(`little-feather-51279997`), with expiry `2026-11-26T18:00:00Z`. Applied the
+draft queue/receipt schema only on that child branch. Two independent SQL
+sessions raced the same claim and produced exactly one winner (fence `1`) and
+one empty result. A checkpoint SHA survived a separate read, and renewal after
+an explicitly expired lease returned no row. No production branch, migration,
+credential, provider API or paid operation was used.
+
+**Crash evidence:** `./scripts/win-postgres-validation.sh` passed in a fresh
+disposable `postgres:16-alpine` container: concurrent claim serialization,
+stale fencing, checkpoint persistence and rollback after terminating an
+in-flight backend. The Neon connector did not expose a backend PID for
+termination, so provider-backed process-kill evidence remains unverified.
+
+**Remaining eligible work:** durable receipt/effect-sink integration,
+provider-backed crash/restart and interrupted-transaction evidence, persistent
+scheduler/model-routing integration, and supported ChatGPT–Codex execution
+handoffs remain open. The Neon child branch is scheduled for automatic expiry;
+no deletion or production mutation was performed.

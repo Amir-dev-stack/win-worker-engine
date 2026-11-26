@@ -1,6 +1,6 @@
 # WIN durable infrastructure checkpoint
 
-Updated 2026-11-26. This draft is additive and does not apply a migration.
+Updated 2026-11-26. This draft is additive and does not apply a production migration.
 
 ## Provider evaluation
 
@@ -12,6 +12,24 @@ Updated 2026-11-26. This draft is additive and does not apply a migration.
   written or queried for application data.
 - Supabase project discovery returned no projects. No credentials or secrets
   were requested.
+
+## Disposable provider verification — 2026-11-26
+
+- Created the short-lived child branch `win-pr112-validation-20261126`
+  (`br-proud-poetry-bayjofp7`) from the existing disposable validation branch
+  `win-pg-isolated-validation-20261117` in project `win-memory`
+  (`little-feather-51279997`). It was configured to expire at
+  `2026-11-26T18:00:00Z`; the production branch was not used.
+- Applied the draft queue and receipt tables only on that child branch. The
+  draft adapter schema was not applied to production and no application
+  credentials or connection string were retrieved.
+- Two independent Neon SQL sessions attempted the same queued claim: exactly
+  one returned the task with fence `1`; the other returned no row.
+- A checkpoint write returned the expected commit SHA, a subsequent read
+  observed it, and renewal after an explicitly expired lease returned no row.
+- The Neon connector could not expose or terminate the transaction backend, so
+  process-termination rollback remains separately evidenced only by the
+  opt-in local PostgreSQL script below.
 
 ## Draft implementation
 
@@ -37,13 +55,13 @@ injected-component tests; they are not distributed Postgres evidence.
 
 | Area | Status | Evidence / limitation |
 | --- | --- | --- |
-| Durable queue schema | IN PROGRESS | Draft SQL only, no migration applied. |
-| Atomic claim and fencing | IN PROGRESS | Local PostgreSQL two-process claim and stale-fence validation pass; disposable provider-branch evidence still pending. |
-| Durable checkpoints | IN PROGRESS | Local PostgreSQL checkpoint persistence passes; durable provider-backed end-to-end test pending. |
+| Durable queue schema | VERIFIED (disposable branch) | Draft SQL applied only to expiring Neon child branch `br-proud-poetry-bayjofp7`; no production migration. |
+| Atomic claim and fencing | VERIFIED (disposable branch) | Two independent Neon sessions produced one claim winner and one empty result; stale renewal returned no row. |
+| Durable checkpoints | VERIFIED (disposable branch) | Neon checkpoint write and subsequent read preserved the commit SHA. |
 | Idempotent receipts | IN PROGRESS | Receipt table draft. Effect sink integration pending. |
 | Crash/interruption recovery | IN PROGRESS | Local process termination rolls back an interrupted transaction; provider-backed crash recovery remains pending. |
 | Supervisor and scheduler integration | IN PROGRESS | Bounded lifecycle and persistent checkpoint scheduler pass 17/17 locally; durable cross-worker state still pending. |
-| Neon | VERIFIED (read-only inspection) | Project and disposable branches identified without writes. |
+| Neon | VERIFIED (disposable validation) | Expiring child branch used for schema and queue evidence; production untouched. |
 | Supabase | VERIFIED (no project available) | Discovery returned an empty project list. |
 | Production safety | VERIFIED | No production query, migration, credential access, paid operation or deployment performed. |
 
