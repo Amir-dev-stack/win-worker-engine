@@ -37,3 +37,16 @@ test("fails closed on malformed lease fields even when row counts look valid", a
   } });
   await assert.rejects(adapter.claim("task-1", "worker-a", 60), /INVALID_DURABLE_DB_RESULT/);
 });
+
+test("normalizes PostgreSQL bigint fences for claim-to-renew and checkpoint flow", async () => {
+  const responses = [
+    { rows: [{ task_id: "task-1", source_commit_sha: sha, task_type: "draft_only_development", fence: "7", lease_expires_at: "future", checkpoint_commit_sha: null }], rowCount: 1 },
+    { rows: [{ task_id: "task-1", fence: "7", lease_expires_at: "future" }], rowCount: 1 },
+    { rows: [{ task_id: "task-1", fence: "7", checkpoint_commit_sha: sha }], rowCount: 1 }
+  ];
+  const adapter = createDurableQueueAdapter({ async query() { return responses.shift(); } });
+  const claim = await adapter.claim("task-1", "worker-a", 60);
+  assert.equal(claim.fence, 7);
+  assert.equal((await adapter.renew("task-1", "worker-a", claim.fence, 60)).fence, 7);
+  assert.equal((await adapter.checkpoint("task-1", "worker-a", claim.fence, sha)).fence, 7);
+});

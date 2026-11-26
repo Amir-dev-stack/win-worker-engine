@@ -13,11 +13,12 @@ function one(result, kind) {
   const row = result.rows[0] || null;
   if (!row) return null;
   if (typeof row !== "object" || Array.isArray(row) || !validId(row.task_id)) throw Error("INVALID_DURABLE_DB_RESULT");
-  if (!Number.isSafeInteger(Number(row.fence)) || Number(row.fence) < 1) throw Error("INVALID_DURABLE_DB_RESULT");
+  const fence = Number(row.fence);
+  if (!Number.isSafeInteger(fence) || fence < 1) throw Error("INVALID_DURABLE_DB_RESULT");
   if (kind === "claim" && (!validSha(row.source_commit_sha) || !["draft_only_development", "read_only_review"].includes(row.task_type))) throw Error("INVALID_DURABLE_DB_RESULT");
   if (kind === "checkpoint" && !validSha(row.checkpoint_commit_sha)) throw Error("INVALID_DURABLE_DB_RESULT");
   if (kind === "quarantine" && row.status !== "blocked_uncertain") throw Error("INVALID_DURABLE_DB_RESULT");
-  return row;
+  return { ...row, fence };
 }
 
 export const QUEUE_SQL = Object.freeze({
