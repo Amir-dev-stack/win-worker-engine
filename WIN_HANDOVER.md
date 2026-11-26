@@ -173,3 +173,17 @@ full Node 42/42, quality gates 107/107, and build 61 plus 44.
 Issue #20 assigned authorization and authoritative-source corrections to PR #72. Another Codex worker advanced that branch to `5ed59e92074c7fe50aeffea4ec48cf8249899982` with the primary fixes while an independent overlapping draft was in progress. The follow-up branch `win-draft/pr72-recheck-regression-20261119` therefore adds only non-overlapping coverage that changes `task_type` and `source_commit_sha` on the second lease read after GitHub head and commit inspection. Both changes stop with `LEASE_NOT_CURRENT` before any CAS write. Documentation records that the complete lease policy applies on both reads and that checkpoint descendants remain blocked pending trusted ancestry proof.
 
 Local targeted tests passed 11/11. `npm test` passed 114 tests with one intentional opt-in PostgreSQL skip and 107/107 quality gates. `npm run build` passed 61 required-file checks, 44 architecture checks and 107/107 quality gates. No database, production, merge, deployment, paid API or secret operation occurred.
+
+## Backup takeover state-machine checkpoint — 2026-11-26
+
+Branch `win-draft/backup-takeover-state` adds a provider-neutral, draft-only
+state machine in `scripts/win-backup-takeover.mjs`. It requires explicit
+primary-unavailable evidence, serializes the backup claim, records backup test
+evidence, and requires an independent `accepted` review before restoring
+primary control. `repair_required` and `rejected` outcomes cannot restore the
+primary. The implementation has no provider calls, GitHub writer, deployment,
+automatic merge or live failover path.
+
+Targeted tests pass 3/3, including competing backup claims, quota/lease/handoff
+evidence gates and restoration review. Automatic takeover remains unverified
+until a trusted durable lease and real backup runtime are exercised.
