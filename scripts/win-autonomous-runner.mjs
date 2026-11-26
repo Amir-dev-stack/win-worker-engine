@@ -25,14 +25,25 @@ export function claimAssignment(state, assignmentId, ownerId, now = new Date().t
   return { claimed: true, state: next };
 }
 
+export async function fetchIssueComments({ repository, issueNumber, headers, fetchImpl, maxPages = 20 }) {
+  const comments = [];
+  for (let page = 1; page <= maxPages; page += 1) {
+    const response = await fetchImpl(`https://api.github.com/repos/${repository}/issues/${issueNumber}/comments?per_page=100&page=${page}`, { headers });
+    if (!response?.ok) throw Error(`GITHUB_ISSUE_READ_FAILED_${response?.status || "UNKNOWN"}`);
+    const batch = await response.json();
+    if (!Array.isArray(batch)) throw Error("INVALID_ISSUE_COMMENTS");
+    comments.push(...batch);
+    if (batch.length < 100) return comments;
+  }
+  throw Error("ISSUE_COMMENT_PAGE_LIMIT_EXCEEDED");
+}
+
 export async function runAutonomousCycle({ repository, issueNumber = 20, token, statePath, outputPath, fetchImpl = globalThis.fetch } = {}) {
   if (typeof repository !== "string" || !/^[^/]+\/[^/]+$/u.test(repository)) throw Error("REPOSITORY_REQUIRED");
   if (typeof token !== "string" || token.length < 1) throw Error("GITHUB_TOKEN_REQUIRED");
   if (typeof fetchImpl !== "function") throw Error("FETCH_REQUIRED");
   const headers = { accept: "application/vnd.github+json", authorization: `Bearer ${token}`, "x-github-api-version": "2022-11-28" };
-  const response = await fetchImpl(`https://api.github.com/repos/${repository}/issues/${issueNumber}/comments?per_page=100`, { headers });
-  if (!response?.ok) throw Error(`GITHUB_ISSUE_READ_FAILED_${response?.status || "UNKNOWN"}`);
-  const comments = await response.json();
+  const comments = await fetchIssueComments({ repository, issueNumber, headers, fetchImpl });
   const assignment = selectLatestAssignment(comments);
   let state = { fence: 0, active: null };
   try { state = JSON.parse(await fs.readFile(statePath, "utf8")); } catch (error) { if (error?.code !== "ENOENT") throw Error("INVALID_RUN_STATE"); }
