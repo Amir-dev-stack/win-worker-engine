@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createMemorySchedulerStateStore, createPersistentScheduler } from "./win-persistent-scheduler.mjs";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createFileSchedulerStateStore, createMemorySchedulerStateStore, createPersistentScheduler } from "./win-persistent-scheduler.mjs";
 
 test("selects eligible tasks, persists completion and resumes after interruption", async () => {
   const tasks = [{ taskId: "task-a", ownerId: "worker-a" }, { taskId: "task-b", ownerId: "worker-a" }];
@@ -34,4 +38,40 @@ test("rejects malformed queue output without running a worker", async () => {
   const lifecycle = { async run() { assert.fail("worker must not run"); } };
   const scheduler = createPersistentScheduler({ queue, lifecycle, stateStore: createMemorySchedulerStateStore() });
   assert.equal((await scheduler.runUntilBlocked()).reason, "INVALID_OR_DUPLICATE_TASK");
+});
+
+test("atomic file checkpoint survives worker SIGKILL and resumes the next task", async t => {
+  const directory = mkdtempSync(join(tmpdir(), "win-scheduler-restart-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const file = join(directory, "checkpoint.json");
+  const module = new URL("./win-persistent-scheduler.mjs", import.meta.url).href;
+  const child = spawnSync(process.execPath, ["--input-type=module", "-e", `
+    import { createFileSchedulerStateStore } from ${JSON.stringify(module)};
+    const store = createFileSchedulerStateStore(process.argv[1]);
+    await store.write({ state: "running", completed: ["task-a"], blocked: [], updatedAt: "2026-11-26T00:00:00.000Z" });
+    process.kill(process.pid, "SIGKILL");
+  `, file], { encoding: "utf8", timeout: 5_000 });
+  assert.equal(child.signal, "SIGKILL", child.stderr);
+
+  let calls = 0;
+  const scheduler = createPersistentScheduler({
+    queue: { async nextEligible(done, blocked) {
+      return done.includes("task-b") || blocked.includes("task-b") ? null : { taskId: "task-b" };
+    } },
+    lifecycle: { async run() { calls += 1; return { state: "completed" }; } },
+    stateStore: createFileSchedulerStateStore(file)
+  });
+  const result = await scheduler.runUntilBlocked();
+  assert.equal(result.state, "idle");
+  assert.equal(calls, 1);
+  assert.deepEqual((await createFileSchedulerStateStore(file).read()).completed, ["task-a", "task-b"]);
+});
+
+test("file checkpoint rejects malformed state without resetting the file", async t => {
+  const directory = mkdtempSync(join(tmpdir(), "win-scheduler-invalid-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const file = join(directory, "checkpoint.json");
+  const store = createFileSchedulerStateStore(file);
+  await assert.rejects(() => store.write({ state: "running", completed: ["bad task"], blocked: [] }), /INVALID_SCHEDULER_STATE/);
+  assert.equal(await store.read(), null);
 });
