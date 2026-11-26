@@ -139,8 +139,12 @@ test("real PostgreSQL fences a supervisor effect after renewal and preserves a d
     }
     const stale = await createLeaseSupervisor({ store, effects: {
       async apply(operation) {
+        assert.equal(await recordEffect({ ...operation, fence: operation.fence + 1 }), "",
+          "a running, approved and unexpired lease must reject a mismatched fence");
         await expire(operation.taskId);
-        assert.equal((await store.quarantineExpired(operation.taskId)).status, "blocked_uncertain");
+        const quarantined = await store.quarantineExpired(operation.taskId);
+        assert.equal(quarantined.status, "blocked_uncertain");
+        assert.equal(Number(quarantined.fence), operation.fence + 1);
         assert.equal(await recordEffect(operation), "");
         return { status: "rejected" };
       }
