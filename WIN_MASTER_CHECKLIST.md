@@ -44,11 +44,13 @@ The isolated test extends draft #86, head `2950f6fe9721b63442570d52573a7c2181781
 The managed environment is connected and reports a restricted network policy. The
 installed Codex CLI supports `cloud list`, `cloud exec`, and `cloud status`.
 `cloud list --json --limit 1` returned HTTP 403 `Domain forbidden` from the
-`chatgpt.com/backend-api/wham/tasks/list` transport. This is a programmatic task
-listing restriction. Task creation was not attempted because no supported
-authorization path was verified, and task status cannot be tested without a real
-task ID. No credentials were requested, no private endpoint was probed, and no
-access restriction was bypassed.
+`chatgpt.com/backend-api/wham/tasks/list` transport. A read-only status probe
+with a synthetic task ID returned the same 403 from
+`chatgpt.com/backend-api/wham/tasks/<id>`. This verifies that programmatic task
+listing and status lookup are blocked at the transport boundary. Task creation
+and execution were not attempted because they would create an external task
+without a verified supported authorization path. No credentials were requested,
+no private endpoint was probed, and no access restriction was bypassed.
 
 The enabled native `WIN Cloud Development` ChatGPT automation is a supported
 coordination fallback. Its own instructions explicitly distinguish it from Codex
