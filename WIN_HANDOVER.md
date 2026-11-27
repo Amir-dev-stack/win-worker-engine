@@ -199,3 +199,17 @@ checked merge ref `cab365300e8e2c53dea9d1e2dc9cea0e6341a84c`, passed the
 skips, and passed all 107 quality gates. This independently verifies the
 process-fencing proof in a PC-off hosted environment; it does not configure a
 model executor or prove PostgreSQL runtime-role authorization.
+
+## Neon isolated-branch read-only verification — 2026-11-27
+
+Using the existing free Neon project `win-memory` (`little-feather-51279997`)
+and non-default branch `win-pg-isolated-validation-20261117`
+(`br-divine-art-banin3jl`), read-only inspection confirmed the branch is
+`ready`, non-default, and has the expected WIN job/heartbeat/memory tables and
+claim/checkpoint/complete/fail/heartbeat functions. The database owner is
+`neondb_owner`; the application tables had no `public` or `token_roles`
+grants, while the owner retains full table privileges. No separate
+least-privilege runtime login role is present. No SQL writes, migrations,
+financial-row reads, credentials, production branch access or paid resources
+were used. This verifies provider-backed branch persistence and identifies the
+runtime-role authorization gap; it does not claim PostgreSQL restart recovery.
