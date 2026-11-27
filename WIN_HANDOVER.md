@@ -211,5 +211,5 @@ claim/checkpoint/complete/fail/heartbeat functions. The database owner is
 grants, while the owner retains full table privileges. No separate
 least-privilege runtime login role is present. No SQL writes, migrations,
 financial-row reads, credentials, production branch access or paid resources
-were used. This verifies provider-backed branch persistence and identifies the
+were used. No financial-row contents were read. This verifies provider-backed branch persistence and identifies the
 runtime-role authorization gap; it does not claim PostgreSQL restart recovery.
