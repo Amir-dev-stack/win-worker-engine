@@ -199,3 +199,11 @@ NHL report. It contains no bounded A01-A20 ID, so the runner correctly left
 `dispatchStatus=not_configured` and `executionEvidence=false`. This verifies
 independent PC-off control-plane execution and artifact continuation, but not
 model/Codex execution; the external executor remains the next blocker.
+## Workflow supply-chain hardening — 2026-11-27
+
+Issue #20 review identified floating `@v4` action refs and an unpinned Node
+major. Draft PR #120 now pins checkout, setup-node, cache restore/save and
+artifact upload to verified immutable commit SHAs and uses Node `22.23.5`.
+The branch was rebased onto remote retrigger head `e2d8f0a` without force
+push; hardened head is `bc205d3`. Focused local runner tests remain 4/4 and
+`git diff --check` passes. GitHub has not emitted a check for this head yet.
