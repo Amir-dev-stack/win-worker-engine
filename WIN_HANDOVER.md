@@ -206,4 +206,9 @@ major. Draft PR #120 now pins checkout, setup-node, cache restore/save and
 artifact upload to verified immutable commit SHAs and uses Node `22.23.5`.
 The branch was rebased onto remote retrigger head `e2d8f0a` without force
 push; hardened head is `bc205d3`. Focused local runner tests remain 4/4 and
-`git diff --check` passes. GitHub has not emitted a check for this head yet.
+`git diff --check` passes. A local refresh at the current proof head
+`96a0fdb1ca0db7a962a6db1419a05c79a8f4b88d` also passes `npm test` (59/59
+tests, 107/107 quality gates) and `npm run build` (61 required-file checks,
+44 architecture checks, 107/107 quality gates). GitHub has not emitted a
+check for this head yet; PR-triggered run lookup returns no runs for
+`e2d8f0a`, `bc205d3`, or `96a0fdb`.
