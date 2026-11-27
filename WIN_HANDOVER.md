@@ -189,3 +189,13 @@ Verification: focused process suite 4/4; full Node suite 62/62; quality gates
 107/107; build 61 required files plus 44 architecture checks; `git diff --check`
 clean. This proves independent-process file-store behavior only; PostgreSQL
 runtime-role authorization remains an external validation gap.
+
+## Independent hosted verification — 2026-11-27
+
+PR #121 merge-ref run `45931294240` completed successfully on GitHub-hosted
+Ubuntu with read-only `contents` and `metadata` permissions. Job `validate`
+checked merge ref `cab365300e8e2c53dea9d1e2dc9cea0e6341a84c`, passed the
+61-file and 44-architecture build checks, executed all 62 tests with zero
+skips, and passed all 107 quality gates. This independently verifies the
+process-fencing proof in a PC-off hosted environment; it does not configure a
+model executor or prove PostgreSQL runtime-role authorization.
