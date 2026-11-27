@@ -21,13 +21,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22
+          node-version: 22.23.5
       - name: Seed checkpoint file
         run: test -e win-autonomous-state.json || printf '{"fence":0,"active":null}\n' > win-autonomous-state.json
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: win-autonomous-state.json
           key: win-autonomous-state-v1-${{ github.run_id }}
@@ -38,13 +38,13 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           WIN_STATE_PATH: win-autonomous-state.json
           WIN_OUTPUT_PATH: win-autonomous-result.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: win-autonomous-cycle-${{ github.run_id }}
           path: |
             win-autonomous-state.json
             win-autonomous-result.json
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         if: always()
         with:
           path: win-autonomous-state.json
