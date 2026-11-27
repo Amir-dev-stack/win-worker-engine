@@ -173,3 +173,19 @@ metrics, and emits a single-attempt corrective assignment only after measured
 deterioration with sufficient sample size. Targeted tests pass 3/3. This is
 draft evidence and does not claim model learning improvement until durable
 history and independent evaluation exist.
+
+## Independent-process contention and crash recovery — 2026-11-27
+
+Separate draft branch `win-draft/performance-process-contention-20261127`
+extends PR #118's fenced performance ledger with child-process validation.
+Four sustained rounds launched six independent processes against the same
+file-backed ledger: each round produced exactly one claimant and five fenced
+losers, with four persisted rows and no duplicate ownership. A crash simulation
+left the lease active, rejected an immediate restart, then allowed a new
+owner after expiry with fence `2` and one recovered row. No provider, Neon
+database, production data, credentials, billing or deployment was used.
+
+Verification: focused process suite 4/4; full Node suite 62/62; quality gates
+107/107; build 61 required files plus 44 architecture checks; `git diff --check`
+clean. This proves independent-process file-store behavior only; PostgreSQL
+runtime-role authorization remains an external validation gap.
